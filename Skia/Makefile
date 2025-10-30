@@ -1,2 +1,2 @@
 default:
-	g++ *.cpp -Iskia/include -Llibskia.a -lskia `pkg-config --cflags --libs wayland-client wayland-egl egl glesv2`
+	g++ *.cpp -Iskia -Llibskia.a -lskia -Lliblayershell.so -llayershell
