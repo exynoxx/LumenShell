@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        ".fantomasignore": "ignore",
-        "wlr-layer-shell-unstable-v1-client-protocol.h": "c",
-        "clutter.h": "c"
-    }
-}
