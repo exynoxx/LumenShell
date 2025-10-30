@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
-project(liblayershell LANGUAGES C)
+project(layershell LANGUAGES C)
 
 # Set version
-set(LIBLAYERSHELL_VERSION 1.0)
+set(LAYERSHELL_VERSION 1.0)
 
 # Require C11
 set(CMAKE_C_STANDARD 11)
@@ -28,14 +28,10 @@ include_directories(
 # --- Source and header files ---
 set(SOURCES
     liblayershell.c
-    xdg-shell-client-protocol.c
-    wlr-layer-shell-unstable-v1-protocol.c
 )
 
 set(HEADERS
     liblayershell.h
-    xdg-shell-client-protocol.h
-    wlr-layer-shell-unstable-v1-client-protocol.h
 )
 
 # --- Build shared library ---
@@ -57,7 +53,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 
 # --- Version info ---
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    VERSION ${LIBLAYERSHELL_VERSION}
+    VERSION ${LAYERSHELL_VERSION}
     SOVERSION 1
 )
 
