@@ -1,2 +1,2 @@
 default:
-	valac --pkg gles2 --pkg wlr-layer-shell --pkg egl --pkg wayland-client --vapidir=vapi src/*.vala src/lib/*.c
+	valac --pkg clutter-1.0 src/*.vala src/lib/*.c

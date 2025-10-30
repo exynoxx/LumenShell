@@ -59,7 +59,7 @@ static void wl_init(){
     wl_registry_add_listener(registry, &registry_listener, NULL);
     wl_display_roundtrip(display);
 
-    if (!compositor || !layer_shell) { fprintf(stderr,"Missing Wayland globals\n"); return 1; }
+    if (!compositor || !layer_shell) { fprintf(stderr,"Missing Wayland globals\n"); return; }
 
     surface = wl_compositor_create_surface(compositor);
 }
@@ -98,6 +98,14 @@ static void egl_init (){
     EGLint ctx_attribs[] = {EGL_CONTEXT_CLIENT_VERSION,2,EGL_NONE};
     egl_context = eglCreateContext(egl_display, config, EGL_NO_CONTEXT, ctx_attribs);
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+}
+
+static void swap_buffers(){
+    eglSwapBuffers(egl_display, egl_surface);
+}
+
+static int display_dispatch(){
+    return wl_display_dispatch(display);
 }
 
 static void dispose(){

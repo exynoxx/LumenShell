@@ -1,4 +1,4 @@
-using GLES2;
+using Clutter;
 
 [CCode (cname = "wl_init")]
 extern void wl_init();
@@ -12,110 +12,57 @@ extern void egl_init();
 [CCode (cname = "dispose")]
 extern void dispose();
 
-[CCode (cname = "egl_surface")]
-extern void *egl_surface();
+[CCode (cname = "swap_buffers")]
+extern void swap_buffers();
 
-[CCode (cname = "egl_display")]
-extern void *egl_display();
+[CCode (cname = "display_dispatch")]
+extern int display_dispatch();
 
 public class LayerShellPanel : Object {
 
-    public LayerShellPanel () {
+
+    public static int main (string[] args) {
+
         wl_init();
         layer_shell_init();
         egl_init();
-    }
 
-    public void render_loop () {
-        var program = create_program();
-        if (program == 0) {
-            stderr.printf("Failed to create shader program\n");
-            return;
-        }
-
-        GLES2.glUseProgram(program);
+        Clutter.init (ref args);
+    
+        // Create and setup stage
+        var stage = new Stage ();
+        stage.title = "Clutter Example";
+        stage.set_size (800, 600);
+        stage.set_background_color ({ 50, 50, 50, 255 });
         
-        float[] vertices = { 0.0f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f };
-        int pos_loc = GLES2.glGetAttribLocation(program, "pos");
+        // Create a red rectangle
+        var rect = new Actor ();
+        rect.set_background_color ({ 255, 0, 0, 255 });
+        rect.set_size (150, 150);
+        rect.set_position (100, 100);
+        stage.add_child (rect);
         
-        GLES2.glVertexAttribPointer(pos_loc, 2, GLES2.GL_FLOAT, false, 0, vertices);
-        GLES2.glEnableVertexAttribArray(pos_loc);
-
-        // Main render loop
-        while (display.dispatch() != -1) {
-            GLES2.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            GLES2.glClear(GLES2.GL_COLOR_BUFFER_BIT);
-            GLES2.glDrawArrays(GLES2.GL_TRIANGLES, 0, 3);
-            EGL.eglSwapBuffers(egl_display, egl_surface);
-        }
-
-        GLES2.glDeleteProgram(program);
-        dispose();
-    }
-
-    private int create_program () {
-        string vertex_src = """
-            attribute vec2 pos;
-            void main() {
-                gl_Position = vec4(pos, 0.0, 1.0);
-            }
-        """;
-
-        string fragment_src = """
-            precision mediump float;
-            void main() {
-                gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-            }
-        """;
-
-        int vertex_shader = GLES2.glCreateShader(GLES2.GL_VERTEX_SHADER);
-        GLES2.glShaderSource(vertex_shader, 1, { vertex_src }, null);
-        GLES2.glCompileShader(vertex_shader);
-
-        GLint compiled;
-        GLES2.glGetShaderiv(vertex_shader, GLES2.GL_COMPILE_STATUS, out compiled);
-        if (compiled == 0) {
-            stderr.printf("Vertex shader compilation failed\n");
-            GLES2.glDeleteShader(vertex_shader);
-            return 0;
-        }
-
-        int fragment_shader = GLES2.glCreateShader(GLES2.GL_FRAGMENT_SHADER);
-        GLES2.glShaderSource(fragment_shader, 1, { fragment_src }, null);
-        GLES2.glCompileShader(fragment_shader);
-
-        GLES2.glGetShaderiv(fragment_shader, GLES2.GL_COMPILE_STATUS, out compiled);
-        if (compiled == 0) {
-            stderr.printf("Fragment shader compilation failed\n");
-            GLES2.glDeleteShader(fragment_shader);
-            GLES2.glDeleteShader(vertex_shader);
-            return 0;
-        }
-
-        int program = GLES2.glCreateProgram();
-        GLES2.glAttachShader(program, vertex_shader);
-        GLES2.glAttachShader(program, fragment_shader);
-        GLES2.glLinkProgram(program);
-
-        GLint linked;
-        GLES2.glGetProgramiv(program, GLES2.GL_LINK_STATUS, out linked);
-        if (linked == 0) {
-            stderr.printf("Program linking failed\n");
-            GLES2.glDeleteProgram(program);
-            GLES2.glDeleteShader(vertex_shader);
-            GLES2.glDeleteShader(fragment_shader);
-            return 0;
-        }
-
-        GLES2.glDeleteShader(vertex_shader);
-        GLES2.glDeleteShader(fragment_shader);
-
-        return program;
-    }
-
-    public static int main (string[] args) {
-        var panel = new LayerShellPanel();
-        panel.render_loop();
+        // Create a blue circle
+        var circle = new Actor ();
+        circle.set_background_color ({ 0, 100, 255, 255 });
+        circle.set_size (100, 100);
+        circle.set_position (400, 250);
+        stage.add_child (circle);
+        
+        // Animate the red rectangle
+        var transition = new PropertyTransition ("x");
+        transition.set_duration (2000);
+        transition.set_from_value (100.0f);
+        transition.set_to_value (600.0f);
+        transition.set_repeat_count (-1);  // infinite loop
+        transition.set_auto_reverse (true);
+        rect.add_transition ("move", transition);
+        
+        // Close on ESC or window close
+        stage.destroy.connect (() => Clutter.main_quit ());
+        
+        stage.show ();
+        Clutter.main ();
         return 0;
     }
 }

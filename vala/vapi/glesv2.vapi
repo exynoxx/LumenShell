@@ -596,7 +596,7 @@ namespace GLES2
     public void glGetShaderInfoLog (GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* infolog);
     public void glGetShaderPrecisionFormat (GLenum shadertype, GLenum precisiontype, GLint* range, GLint* precision);
     public void glGetShaderSource (GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* source);
-    public string glGetString (GLenum name);
+    public unowned string glGetString (GLenum name);
     public void glGetTexParameterfv (GLenum target, GLenum pname, GLfloat* params);
     public void glGetTexParameteriv (GLenum target, GLenum pname, GLint* params);
     public void glGetUniformfv (GLuint program, GLint location, GLfloat* params);
@@ -623,7 +623,7 @@ namespace GLES2
     public void glSampleCoverage (GLclampf value, GLboolean invert);
     public void glScissor (GLint x, GLint y, GLsizei width, GLsizei height);
     public void glShaderBinary (GLsizei n, GLuint* shaders, GLenum binaryformat, GLvoid* binary, GLsizei length);
-    public void glShaderSource (GLuint shader, GLsizei count, out string source, GLint* length);
+    public void glShaderSource (GLuint shader, [CCode (array_length_pos = 1.9, array_length_type = "GLsizei")] string[] source, [CCode (array_length_pos = 1.9, array_length_type = "GLsizei")] GLint[] length);
     public void glStencilFunc (GLenum func, GLint @ref, GLuint mask);
     public void glStencilFuncSeparate (GLenum face, GLenum func, GLint @ref, GLuint mask);
     public void glStencilMask (GLuint mask);
