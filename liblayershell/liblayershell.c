@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <wayland-egl.h>
 #include "liblayershell.h"
 #include "wayland/wlr-layer-shell-unstable-v1-client-protocol.h"
 
@@ -113,6 +114,7 @@ int init_layer_shell(const char *layer_name, int width, int height) {
 EGLDisplay get_egl_display(void) { return egl_display; }
 EGLSurface get_egl_surface(void) { return egl_surface; }
 EGLContext get_egl_context(void) { return egl_context; }
+struct wl_display *get_wl_display() {return display; }
 
 void destroy_layer_shell(void) {
     if (egl_display != EGL_NO_DISPLAY) {
