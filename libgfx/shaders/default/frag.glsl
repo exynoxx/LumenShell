@@ -1,0 +1,6 @@
+"#version 100\n"
+"precision mediump float;\n"
+"uniform vec4 color;\n"
+"void main() {\n"
+"    gl_FragColor = color;\n"
+"}\n"
