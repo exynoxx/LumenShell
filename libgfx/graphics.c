@@ -13,6 +13,15 @@ static const char* default_frag_src =
     #include "shaders/default/frag.glsl"
     "";
 
+static const char* texture_vert_src =
+    #include "shaders/texture/vert.glsl"
+    "";
+
+static const char* texture_frag_src =
+    #include "shaders/texture/frag.glsl"
+    "";
+
+
 static GLuint default_program = 0;
 static GLuint rounded_rect_program = 0;
 static GLuint texture_program = 0;
@@ -84,16 +93,16 @@ bool g2d_init(g2d_context *ctx, int screen_width, int screen_height) {
     // Create shader programs
     default_program = create_program(default_vert_src, default_frag_src);
     //rounded_rect_program = create_program(rounded_rect_vertex_shader, rounded_rect_fragment_shader);
-    //texture_program = create_program(texture_vertex_shader, texture_fragment_shader);
+    texture_program = create_program(texture_vert_src, texture_frag_src);
     
-    if (!default_program/*  || !rounded_rect_program || !texture_program */) {
+    if (!default_program || !texture_program /*  || !rounded_rect_program || !texture_program */) {
         fprintf(stderr, "Failed to create shader programs\n");
         return false;
     }
     
     ctx->shader_program = default_program;
     //ctx->rounded_rect_program = rounded_rect_program;
-    //ctx->texture_program = texture_program;
+    ctx->texture_program = texture_program;
     
     // Create VBO
     glGenBuffers(1, &ctx->vbo);
