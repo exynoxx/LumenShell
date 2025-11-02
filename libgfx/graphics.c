@@ -218,25 +218,8 @@ void g2d_draw_rounded_rect(g2d_context *ctx, float x, float y, float width, floa
     glDisableVertexAttribArray(pos_loc);
 }
 
-bool g2d_load_texture(g2d_texture *tex, const unsigned char *data, int width, int height, int channels) {
-    glGenTextures(1, &tex->id);
-    glBindTexture(GL_TEXTURE_2D, tex->id);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-    
-    tex->width = width;
-    tex->height = height;
-    
-    return true;
-}
 
-void g2d_draw_texture(g2d_context *ctx, g2d_texture *tex, float x, float y, float width, float height) {
+void g2d_draw_texture(g2d_context *ctx, GLuint texture_id, float x, float y, float width, float height) {
     glUseProgram(texture_program);
     
     float proj[16];
@@ -271,18 +254,13 @@ void g2d_draw_texture(g2d_context *ctx, g2d_texture *tex, float x, float y, floa
     glVertexAttribPointer(tex_loc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
     glUniform1i(glGetUniformLocation(texture_program, "texture0"), 0);
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
     glDisableVertexAttribArray(pos_loc);
     glDisableVertexAttribArray(tex_loc);
-}
-
-void g2d_free_texture(g2d_texture *tex) {
-    glDeleteTextures(1, &tex->id);
-    tex->id = 0;
 }
 
 

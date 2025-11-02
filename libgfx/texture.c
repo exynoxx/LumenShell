@@ -41,3 +41,7 @@ GLuint Upload(Image image){
 
     return id;
 }
+
+void g2d_free_texture(GLuint id) {
+    glDeleteTextures(1, &id);
+}

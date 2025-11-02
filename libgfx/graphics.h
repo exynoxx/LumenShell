@@ -16,13 +16,6 @@ typedef struct {
     float x, y;
 } g2d_vec2;
 
-// Texture structure
-typedef struct {
-    GLuint id;
-    int width;
-    int height;
-} g2d_texture;
-
 // Context structure
 typedef struct {
     GLuint shader_program;
@@ -48,9 +41,7 @@ void g2d_draw_rect(g2d_context *ctx, float x, float y, float width, float height
 void g2d_draw_rounded_rect(g2d_context *ctx, float x, float y, float width, float height, float radius);
 
 // Texture functions
-bool g2d_load_texture(g2d_texture *tex, const unsigned char *data, int width, int height, int channels);
-void g2d_draw_texture(g2d_context *ctx, g2d_texture *tex, float x, float y, float width, float height);
-void g2d_free_texture(g2d_texture *tex);
+void g2d_draw_texture(g2d_context *ctx, GLuint texture_id, float x, float y, float width, float height);
 
 // Begin/End frame
 void g2d_begin_frame(g2d_context *ctx);

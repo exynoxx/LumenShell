@@ -2,6 +2,7 @@
 #define TEXTURE_H
 
 #include <GLES2/gl2.h>
+#define STB_IMAGE_IMPLEMENTATION
 
 typedef struct {
     int width;
@@ -19,6 +20,6 @@ typedef struct {
 
 Image load_icon(const char *path);
 GLuint Upload(Image image);
-
+void g2d_free_texture(GLuint id);
 
 #endif
