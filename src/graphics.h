@@ -24,6 +24,7 @@ typedef struct {
     GLuint vbo, vao;
     int screen_width;
     int screen_height;
+    dk_color background_color;
     dk_color current_color;
 } dk_context;
 
@@ -35,6 +36,7 @@ void dk_cleanup(dk_context *ctx);
 
 // Set drawing color
 void dk_set_color(dk_context *ctx, float r, float g, float b, float a);
+void dk_set_bg_color(dk_context *ctx, float r, float g, float b, float a);
 
 // Drawing functions
 void dk_draw_rect(dk_context *ctx, float x, float y, float width, float height);

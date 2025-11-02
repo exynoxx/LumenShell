@@ -128,9 +128,16 @@ void dk_set_color(dk_context *ctx, float r, float g, float b, float a) {
     ctx->current_color.a = a;
 }
 
+void dk_set_bg_color(dk_context *ctx, float r, float g, float b, float a) {
+    ctx->background_color.r = r;
+    ctx->background_color.g = g;
+    ctx->background_color.b = b;
+    ctx->background_color.a = a;
+}
+
 void dk_begin_frame(dk_context *ctx) {
     glViewport(0, 0, ctx->screen_width, ctx->screen_height);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(ctx->background_color.r, ctx->background_color.g, ctx->background_color.b, ctx->background_color.a);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
