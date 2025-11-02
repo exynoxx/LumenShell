@@ -15,9 +15,9 @@ typedef enum EDGE {
 
 int init_layer_shell(const char *layer_name, int width, int height, EDGE edge);
 
-EGLDisplay get_egl_display(void);
-EGLSurface get_egl_surface(void);
-EGLContext get_egl_context(void);
+EGLDisplay get_egl_display();
+EGLSurface get_egl_surface();
+EGLContext get_egl_context();
 struct wl_display *get_wl_display();
 
 // Cleanup

@@ -1,4 +1,4 @@
-[CCode (cheader_filename = "graphics.h")]
+[CCode (cheader_filename = "draw.h")]
 namespace DrawKit {
     [CCode (cname = "dk_color", has_type_member = false)]
     public struct Color {
@@ -66,10 +66,10 @@ namespace DrawKit.Texture {
         public unowned uint8[] data;
     }
 
-    [CCode (cname = "load_icon")]
+    [CCode (cname = "dk_image_load")]
     public Image load_icon(string path);
 
-    [CCode (cname = "dk_upload")]
+    [CCode (cname = "dk_texture_upload")]
     public GLES2.GLuint upload(Image image);
 
     [CCode (cname = "dk_free_texture")]

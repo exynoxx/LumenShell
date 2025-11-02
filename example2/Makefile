@@ -8,7 +8,9 @@ default:
 	-X -I/home/nicholas/Dokumenter/layer-shell-experiments/liblayershell \
 	-X -I/home/nicholas/Dokumenter/layer-shell-experiments/src \
 	-X -L/home/nicholas/Dokumenter/layer-shell-experiments/liblayershell/build \
+	-X -Wl,-rpath,/home/nicholas/Dokumenter/layer-shell-experiments/liblayershell/build \
 	-X -llayershell \
-	src/*.vala
-	
+	-X -lm \
+	src/*.vala \
+	../src/*.c
 	
