@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 #include "../liblayershell/liblayershell.h"
-#include "../liblayershell/seat.h"
 
 #include "../src/graphics.h"
 #include "../src/texture.h"

@@ -10,13 +10,6 @@ typedef struct {
     unsigned char *data;
 } Image;
 
-typedef struct {
-    GLuint id;
-    int width;
-    int height;
-} g2d_texture;
-
-
 Image load_icon(const char *path);
 GLuint dk_upload(Image image);
 void dk_free_texture(GLuint id);

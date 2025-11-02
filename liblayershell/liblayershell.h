@@ -3,6 +3,7 @@
 
 #include <EGL/egl.h>
 #include <wayland-client.h>
+#include "seat.h"
 
 #ifdef __cplusplus
 extern "C" {
