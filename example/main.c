@@ -7,7 +7,7 @@
 
 #include "../liblayershell/liblayershell.h"
 
-#include "../src/graphics.h"
+#include "../src/draw.h"
 #include "../src/texture.h"
 
 int main() {
@@ -29,8 +29,8 @@ int main() {
 
     const char *fedora = "/usr/share/icons/hicolor/32x32/apps/fedora-logo-icon.png";
 
-    Image img = load_icon(fedora);
-    GLuint icon_tex = dk_upload(img);
+    Image img = dk_image_load(fedora);
+    GLuint icon_tex = dk_texture_upload(img);
     
     // --- Render loop ---
     while (wl_display_dispatch(display) != -1) {

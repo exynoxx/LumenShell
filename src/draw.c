@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <EGL/egl.h>
-#include "graphics.h"
+#include "draw.h"
 
 static const char* default_vert_src =
     #include "shaders/default/vert.glsl"

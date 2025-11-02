@@ -10,8 +10,8 @@ typedef struct {
     unsigned char *data;
 } Image;
 
-Image load_icon(const char *path);
-GLuint dk_upload(Image image);
-void dk_free_texture(GLuint id);
+Image dk_image_load(const char *path);
+GLuint dk_texture_upload(Image image);
+void dk_texture_free(GLuint id);
 
 #endif

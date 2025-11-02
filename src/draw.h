@@ -1,6 +1,6 @@
 // graphics2d.h
-#ifndef GRAPHICS2D_H
-#define GRAPHICS2D_H
+#ifndef DRAW_H
+#define DRAW_H
 
 //h part
 #include <GLES2/gl2.h>
@@ -49,4 +49,4 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, float x, float y, float
 void dk_begin_frame(dk_context *ctx);
 void dk_end_frame();
 
-#endif // GRAPHICS2D_H
+#endif // DRAW_H

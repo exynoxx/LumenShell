@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-Image load_icon(const char *path) {
+Image dk_image_load(const char *path) {
     int width, height, channels;
     unsigned char *data = stbi_load(path, &width, &height, &channels, 0);
     
@@ -27,7 +27,7 @@ Image load_icon(const char *path) {
     return ret;
 }
 
-GLuint dk_upload(Image image){
+GLuint dk_texture_upload(Image image){
     GLuint id;
 
     glGenTextures(1, &id);
@@ -44,6 +44,6 @@ GLuint dk_upload(Image image){
     return id;
 }
 
-void dk_free_texture(GLuint id) {
+void dk_texture_free(GLuint id) {
     glDeleteTextures(1, &id);
 }
