@@ -14,6 +14,13 @@ static registry_handler handlers[MAX_HANDLERS];
 static int handler_count = 0;
 static struct wl_registry *global_registry = NULL;
 
+static char *strdup(const char *s) {
+    size_t len = strlen(s) + 1;
+    char *copy = malloc(len);
+    if (copy) memcpy(copy, s, len);
+    return copy;
+}
+
 void registry_add_handler(const char *interface_name,
                          registry_handler_fn handler,
                          void *user_data) {

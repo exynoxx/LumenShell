@@ -31,7 +31,7 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 // --- Layer surface listener ---
-static void layer_surface_handle_configure(void *data,
+static void layer_surface_config(void *data,
                                            struct zwlr_layer_surface_v1 *surface,
                                            uint32_t serial,
                                            uint32_t width,
@@ -46,11 +46,11 @@ static void layer_surface_handle_configure(void *data,
 
     wl_surface_commit((struct wl_surface*)data);
 }
-static void layer_surface_handle_closed(void *data,
+static void layer_surface_closed(void *data,
                                         struct zwlr_layer_surface_v1 *surface) { }
 static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-    .configure = layer_surface_handle_configure,
-    .closed = layer_surface_handle_closed
+    .configure = layer_surface_config,
+    .closed = layer_surface_closed
 };
 
 static void wl_init(){

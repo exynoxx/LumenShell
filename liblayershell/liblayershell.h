@@ -3,28 +3,11 @@
 
 #include <EGL/egl.h>
 #include <wayland-client.h>
-#include "seat.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef enum EDGE {
-    TOP, BOTTOM
-} EDGE;
+#include "wayland_modules/compositor.h"
+#include "wayland_modules/layershell.h"
+#include "wayland_modules/seat.h"
 
 int init_layer_shell(const char *layer_name, int width, int height, EDGE edge);
-
-EGLDisplay get_egl_display();
-EGLSurface get_egl_surface();
-EGLContext get_egl_context();
-struct wl_display *get_wl_display();
-
-// Cleanup
-void destroy_layer_shell(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // LIB_LAYER_SHELL_H

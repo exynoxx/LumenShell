@@ -1,5 +1,5 @@
 #include "registry.h"
-#include "modules.h"
+#include "compositor.h"
 
 static struct wl_compositor *compositor = NULL;
 
