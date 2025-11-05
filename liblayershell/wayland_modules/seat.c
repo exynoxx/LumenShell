@@ -1,5 +1,6 @@
 #include "seat.h"
 #include "registry.h"
+#include <stdio.h>
 
 static struct wl_seat *seat = NULL;
 static dk_mouse_info mouse_info = {0};
@@ -11,6 +12,10 @@ static void pointer_enter(void *data, struct wl_pointer *pointer,
     dk_mouse_info *info = data;
     info->mouse_x = wl_fixed_to_double(x);
     info->mouse_y = wl_fixed_to_double(y);
+}
+
+void pointer_leave(void *data, struct wl_pointer *wl_pointer,uint32_t serial, struct wl_surface *surface) {
+    printf("Pointer left\n");
 }
 
 static void pointer_motion(void *data, struct wl_pointer *pointer,
@@ -31,12 +36,22 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
     }
 }
 
+void pointer_axis(void *data, struct wl_pointer *wl_pointer,
+                        uint32_t time, uint32_t axis, wl_fixed_t value) {
+    // Scroll events - can be empty for now
+}
+
+void pointer_frame(void *data, struct wl_pointer *wl_pointer) {
+    // Frame complete - can be empty
+}
+
 static const struct wl_pointer_listener pointer_listener = {
     .enter = pointer_enter,
-    .leave = NULL,
+    .leave = pointer_leave,
     .motion = pointer_motion,
     .button = pointer_button,
-    .axis = NULL,
+    .axis = pointer_axis,
+    .frame = pointer_frame
 };
 
 static void seat_capabilities(void *data, struct wl_seat *seat,
@@ -47,9 +62,13 @@ static void seat_capabilities(void *data, struct wl_seat *seat,
     }
 }
 
+static void seat_name(void *data, struct wl_seat *seat, const char *name) {
+    printf("Seat name: %s\n", name);
+}
+
 static const struct wl_seat_listener seat_listener = {
     .capabilities = seat_capabilities,
-    .name = NULL,
+    .name = seat_name,
 };
 
 static void seat_registry_handler(void *data, struct wl_registry *registry,
@@ -60,8 +79,7 @@ static void seat_registry_handler(void *data, struct wl_registry *registry,
 }
 
 void seat_init(void) {
-    registry_add_handler(wl_seat_interface.name, 
-                        seat_registry_handler, NULL);
+    registry_add_handler(wl_seat_interface.name, seat_registry_handler, NULL);
 }
 
 dk_mouse_info *seat_mouse_info(void) {

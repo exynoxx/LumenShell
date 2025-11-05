@@ -15,7 +15,7 @@ int init_layer_shell(const char *layer_name, int width, int height, EDGE edge) {
 
     compositor_init();
     layer_shell_init();
-    //seat_init();
+    seat_init();
     //toplevel_init();
 
     registry_init(display);
