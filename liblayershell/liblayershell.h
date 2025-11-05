@@ -5,10 +5,10 @@
 #include <wayland-client.h>
 
 #include "egl.h"
-#include "wayland_modules/compositor.h"
-#include "wayland_modules/layershell.h"
-#include "wayland_modules/seat.h"
-#include "wayland_modules/toplevel.h"
+#include "wayland_features/compositor.h"
+#include "wayland_features/layershell.h"
+#include "wayland_features/seat.h"
+#include "wayland_features/toplevel.h"
 
 struct wl_display *display;
 

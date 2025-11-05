@@ -2,7 +2,7 @@
 #define TOPLEVEL_H
 
 #include <stdlib.h>
-#include "../wayland/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
+#include "../wayland_protocols/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 struct toplevel_info {
     struct zwlr_foreign_toplevel_handle_v1 *handle;

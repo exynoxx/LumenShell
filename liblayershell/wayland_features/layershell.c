@@ -3,7 +3,6 @@
 #include "compositor.h"
 #include <stdio.h>
 #include <string.h>
-#include "../wayland/wlr-layer-shell-unstable-v1-client-protocol.h"
 
 static struct zwlr_layer_shell_v1 *layer_shell = NULL;
 static struct wl_surface *surface = NULL;

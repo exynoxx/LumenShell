@@ -3,7 +3,7 @@
 
 #include <wayland-client.h>
 #include <wayland-egl.h>
-#include "../wayland/wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "../wayland_protocols/wlr-layer-shell-unstable-v1-client-protocol.h"
 
 typedef enum {
     TOP,
