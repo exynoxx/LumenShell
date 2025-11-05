@@ -21,7 +21,6 @@ int main() {
     EGLContext egl_context = get_egl_context();
     display = get_wl_display();
 
-    toplevel_print_all();
 
     dk_context ctx;
     dk_init(&ctx, width, height);
@@ -34,10 +33,12 @@ int main() {
     Image img = dk_image_load(fedora);
     GLuint icon_tex = dk_texture_upload(img);
     
+    toplevel_print_all();
+
     // --- Render loop ---
     while (wl_display_dispatch(display) != -1) {
 
-        printf("Mouse: %f, %f\n", mouse_info->mouse_x, mouse_info->mouse_y);
+        //printf("Mouse: %f, %f\n", mouse_info->mouse_x, mouse_info->mouse_y);
 
         dk_begin_frame(&ctx);
         

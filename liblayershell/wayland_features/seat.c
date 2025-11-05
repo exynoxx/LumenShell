@@ -10,6 +10,7 @@ static void pointer_enter(void *data, struct wl_pointer *pointer,
                          uint32_t serial, struct wl_surface *surface,
                          wl_fixed_t x, wl_fixed_t y) {
     dk_mouse_info *info = data;
+    printf("Pointer enter\n");
     info->mouse_x = wl_fixed_to_double(x);
     info->mouse_y = wl_fixed_to_double(y);
 }

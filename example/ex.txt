@@ -1,0 +1,10 @@
+=== Open Programs ===
+Seat name: default
+Toplevel title: Kontoassistent
+Toplevel app_id: org.kde.accountwizard, icon: no
+Toplevel title: Oversigt - Kontact
+Toplevel app_id: org.kde.kontact, icon: no
+Toplevel title: protocol — Dolphin
+Toplevel app_id: org.kde.dolphin, icon: no
+Toplevel title: nicholas@fedora:~/Dokumenter/layer-shell-experiments/example — Konsole
+Toplevel app_id: org.kde.konsole, icon: no

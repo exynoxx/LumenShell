@@ -212,8 +212,7 @@ static void toplevel_registry_handler(void *data, struct wl_registry *registry,
 
 // Public API
 void toplevel_init(void) {
-    registry_add_handler("zwlr_foreign_toplevel_manager_v1",
-                        toplevel_registry_handler, NULL);
+    registry_add_handler("zwlr_foreign_toplevel_manager_v1",toplevel_registry_handler, NULL);
 }
 
 void toplevel_cleanup(void) {
