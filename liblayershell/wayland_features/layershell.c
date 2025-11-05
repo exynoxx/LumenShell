@@ -50,7 +50,7 @@ void layer_shell_cleanup(void){
     }
 }
 
-struct wl_surface *layer_shell_create_surface(const char *layer_name, int width, int height, EDGE edge) {
+struct wl_surface *layer_shell_create_surface(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone) {
     if (!layer_shell) {
         fprintf(stderr, "Layer shell protocol not available\n");
         return NULL;
@@ -82,18 +82,9 @@ struct wl_surface *layer_shell_create_surface(const char *layer_name, int width,
         return NULL;
     }
 
-    enum zwlr_layer_surface_v1_anchor anchor_bits =
-        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-
-    if (edge == TOP) {
-        anchor_bits |= ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-    } else if (edge == BOTTOM) {
-        anchor_bits |= ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-    }
-
-    zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_bits);
+    zwlr_layer_surface_v1_set_anchor(layer_surface, (enum zwlr_layer_surface_v1_anchor) anchor);
     zwlr_layer_surface_v1_set_size(layer_surface, width, height);
-    zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, height);
+    if(exclusive_zone) zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, height);
     zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, surface);
     wl_surface_commit(surface);
 

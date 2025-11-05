@@ -12,7 +12,7 @@
 
 struct wl_display *display;
 
-int init_layer_shell(const char *layer_name, int width, int height, EDGE edge);
+int init_layer_shell(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone);
 void destroy_layer_shell();
 struct wl_display *get_wl_display();
 
