@@ -30,6 +30,10 @@ struct wl_display *get_wl_display(){
     return display;
 }
 
+int display_dispatch_blocking(){
+    return wl_display_dispatch(display);
+}
+
 void destroy_layer_shell(void) {
     compositor_cleanup();
     layer_shell_cleanup();
