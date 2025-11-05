@@ -8,7 +8,6 @@
 static struct zwlr_layer_shell_v1 *layer_shell = NULL;
 static struct wl_surface *surface = NULL;
 static struct zwlr_layer_surface_v1 *layer_surface = NULL;
-static struct wl_egl_window *egl_window = NULL;
 
 // --- Layer surface listener ---
 static void layer_surface_config(void *data,
@@ -17,9 +16,6 @@ static void layer_surface_config(void *data,
                                            uint32_t width,
                                            uint32_t height) {
     zwlr_layer_surface_v1_ack_configure(surface, serial);
-    if (egl_window) {
-        wl_egl_window_resize(egl_window, width, height, 0, 0);
-    }
     wl_surface_commit((struct wl_surface*)data);
 }
 
@@ -41,6 +37,18 @@ static void layer_shell_registry_handler(void *data, struct wl_registry *registr
 
 void layer_shell_init(void) {
     registry_add_handler("zwlr_layer_shell_v1", layer_shell_registry_handler, NULL);
+}
+
+void layer_shell_cleanup(void){
+    if (surface) { 
+        wl_surface_destroy(surface);
+        surface = NULL; 
+    }
+
+    if (layer_shell) { 
+        zwlr_layer_shell_v1_destroy(layer_shell); 
+        layer_shell = NULL; 
+    }
 }
 
 struct wl_surface *layer_shell_create_surface(const char *layer_name, int width, int height, EDGE edge) {

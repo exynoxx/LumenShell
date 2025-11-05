@@ -13,6 +13,11 @@ void compositor_init(void) {
     registry_add_handler("wl_compositor", compositor_registry_handler, NULL);
 }
 
+void compositor_cleanup(){
+    wl_compositor_destroy(compositor); 
+    compositor = NULL;
+}
+
 struct wl_compositor *get_compositor(void) {
     return compositor;
 }

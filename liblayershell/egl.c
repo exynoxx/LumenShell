@@ -34,6 +34,23 @@ void egl_init(struct wl_display *display, struct wl_surface *surface, int width,
     }
 }
 
+void egl_cleanup(){
+    if (egl_display != EGL_NO_DISPLAY) {
+        eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (egl_surface != EGL_NO_SURFACE) eglDestroySurface(egl_display, egl_surface);
+        if (egl_context != EGL_NO_CONTEXT) eglDestroyContext(egl_display, egl_context);
+        eglTerminate(egl_display);
+        egl_display = EGL_NO_DISPLAY;
+        egl_surface = EGL_NO_SURFACE;
+        egl_context = EGL_NO_CONTEXT;
+    }
+
+    if (egl_window) {
+        wl_egl_window_destroy(egl_window);
+        egl_window = NULL;
+    }
+}
+
 EGLDisplay get_egl_display() { return egl_display; }
 EGLSurface get_egl_surface() { return egl_surface; }
 EGLContext get_egl_context() { return egl_context; }

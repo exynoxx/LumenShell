@@ -21,6 +21,8 @@ int main() {
     EGLContext egl_context = get_egl_context();
     display = get_wl_display();
 
+    toplevel_print_all();
+
     dk_context ctx;
     dk_init(&ctx, width, height);
     dk_set_bg_color(&ctx, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -52,6 +54,6 @@ int main() {
     }
 
     // --- Cleanup ---
-    //destroy_layer_shell();
+    destroy_layer_shell();
     return 0;
 }

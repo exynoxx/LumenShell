@@ -1,6 +1,7 @@
 #include "registry.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define MAX_HANDLERS 32
 
@@ -37,15 +38,16 @@ static void registry_global(void *data, struct wl_registry *registry,
                            uint32_t version) {
     for (int i = 0; i < handler_count; i++) {
         if (strcmp(interface, handlers[i].interface_name) == 0) {
-            handlers[i].handler(handlers[i].user_data, registry, name, 
-                              interface, version);
+            printf("registry hit for %s\n", interface);
+            handlers[i].handler(handlers[i].user_data, registry, name, interface, version);
             return;
         }
     }
+
+    //fprintf(stderr, "registry strcmp miss for %s\n", interface);
 }
 
-static void registry_global_remove(void *data, struct wl_registry *registry,
-                                   uint32_t name) {
+static void registry_global_remove(void *data, struct wl_registry *registry,uint32_t name) {
     // Handle removal if needed
 }
 

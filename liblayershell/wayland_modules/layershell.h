@@ -10,7 +10,9 @@ typedef enum {
     BOTTOM
 } EDGE;
 
-void layer_shell_init(void);
+void layer_shell_init();
+void layer_shell_cleanup();
+
 struct wl_surface *layer_shell_create_surface(const char *layer_name, int width, int height, EDGE edge);
 struct wl_surface *layer_shell_get_surface(void);
 
