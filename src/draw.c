@@ -145,7 +145,7 @@ void dk_end_frame() {
     glFlush();
 }
 
-void dk_draw_rect(dk_context *ctx, float x, float y, float width, float height) {
+void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height) {
     glUseProgram(default_program);
     
     // Create projection matrix
@@ -181,7 +181,7 @@ void dk_draw_rect(dk_context *ctx, float x, float y, float width, float height) 
     glDisableVertexAttribArray(pos_loc);
 }
 
-void dk_draw_rounded_rect(dk_context *ctx, float x, float y, float width, float height, float radius) {
+/* void dk_draw_rounded_rect(dk_context *ctx, float x, float y, float width, float height, float radius) {
     glUseProgram(rounded_rect_program);
     
     // Create projection matrix
@@ -223,10 +223,10 @@ void dk_draw_rounded_rect(dk_context *ctx, float x, float y, float width, float 
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(pos_loc);
-}
+} */
 
 
-void dk_draw_texture(dk_context *ctx, GLuint texture_id, float x, float y, float width, float height) {
+void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width, int height) {
     glUseProgram(texture_program);
     
     float proj[16];

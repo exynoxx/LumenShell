@@ -39,11 +39,11 @@ void dk_set_color(dk_context *ctx, dk_color color);
 void dk_set_bg_color(dk_context *ctx, dk_color color);
 
 // Drawing functions
-void dk_draw_rect(dk_context *ctx, float x, float y, float width, float height);
-void dk_draw_rounded_rect(dk_context *ctx, float x, float y, float width, float height, float radius);
+void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height);
+//void dk_draw_rounded_rect(dk_context *ctx, int x, int y, int width, int height, int radius);
 
 // Texture functions
-void dk_draw_texture(dk_context *ctx, GLuint texture_id, float x, float y, float width, float height);
+void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width, int height);
 
 // Begin/End frame
 void dk_begin_frame(dk_context *ctx);

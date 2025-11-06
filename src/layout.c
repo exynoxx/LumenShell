@@ -41,8 +41,7 @@ void dk_ui_start_box(dk_ui_manager *mgr, int width, int height) {
     if (!box) return;
     
     box->type = ELEMENT_BOX;
-    box->width = width;
-    box->height = height;
+    
 
     box->data.style.padding_top = 0;
     box->data.style.padding_right = 0;
@@ -52,8 +51,16 @@ void dk_ui_start_box(dk_ui_manager *mgr, int width, int height) {
     box->data.style.float_mode = 0;
 
     if (mgr->current_parent) {
+
+        box->width = (width <= 0) ? mgr->current_parent->width : width;
+        box->height = (height <= 0) ? mgr->current_parent->height : height;
+
         add_child(mgr->current_parent, box);
     } else {
+
+        box->width = (width <= 0) ? mgr->ctx->screen_width : width;
+        box->height = (height <= 0) ? mgr->ctx->screen_height: height;
+
         mgr->root = box;
     }
     
@@ -136,6 +143,9 @@ static void calculate_layout(dk_ui_element *elem, float parent_x, float parent_y
     // Set element's absolute position
     elem->x = parent_x;
     elem->y = parent_y;
+
+    if(elem->width <= 0) elem->width = elem->parent->width;
+    if(elem->height <= 0) elem->height = elem->parent->height;
     
     if (elem->type == ELEMENT_BOX) {
         dk_box_style *style = &elem->data.style;
