@@ -32,24 +32,20 @@ int main() {
 
     int padding = (50-32)/2;
 
+    dk_ui_start_box(&ui, 0, 0);
+    dk_ui_box_set_padding(&ui,padding,padding,padding,50);
+    dk_ui_box_set_gap(&ui, 50);
+    dk_ui_box_float(&ui, FLOAT_LEFT);
+
+    dk_ui_texture(&ui, fedora_tex, 32, 32);
+    dk_ui_texture(&ui, fedora_tex, 32, 32);
+    dk_ui_texture(&ui, fedora_tex, 32, 32);
+    dk_ui_end_box(&ui);
+
     // --- Render loop ---
     while (display_dispatch_blocking() != -1) {
         //printf("Mouse: %f, %f\n", mouse_info->mouse_x, mouse_info->mouse_y);
         dk_begin_frame(&ctx);
-        
-        dk_ui_reset(&ui);
-        dk_ui_start_box(&ui, 0, 0);
-        dk_ui_box_set_padding(&ui,padding,padding,padding,50);
-        dk_ui_box_set_gap(&ui, 50);
-        dk_ui_box_float(&ui, FLOAT_LEFT);
-
-        dk_ui_texture(&ui, fedora_tex, 32, 32);
-        dk_ui_texture(&ui, fedora_tex, 32, 32);
-        dk_ui_texture(&ui, fedora_tex, 32, 32);
-
-        //dk_draw_texture(&ctx,fedora_tex, 10, 0, 32, 32);
-
-        //dk_ui_end_box(&ui);
         dk_ui_draw(&ui, 0, 0);
         dk_end_frame();
         egl_swap_buffers();
