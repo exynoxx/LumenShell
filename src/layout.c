@@ -27,6 +27,12 @@ static void add_child(dk_ui_node *parent, dk_ui_node *child) {
     }
 }
 
+void dk_ui_reset(dk_context *ctx){
+    ctx->node_mngr.element_count = 0;
+    ctx->node_mngr.current_parent = NULL;
+    ctx->node_mngr.root = NULL;
+}
+
 void dk_ui_start_box(dk_context *ctx, int width, int height) {
     dk_ui_node *box = allocate_element(ctx);
     if (!box) return;
@@ -79,11 +85,11 @@ void dk_ui_end_box(dk_context *ctx) {
     ctx->node_mngr.current_parent = ctx->node_mngr.current_parent->parent;
 }
 
-void dk_ui_rect(dk_context *ctx, int width, int height, dk_color color) {
-    if (!ctx->node_mngr.current_parent) return;
+dk_ui_node *dk_ui_rect(dk_context *ctx, int width, int height, dk_color color) {
+    if (!ctx->node_mngr.current_parent) return NULL;
     
     dk_ui_node *rect = allocate_element(ctx);
-    if (!rect) return;
+    if (!rect) return NULL;
     
     rect->type = ELEMENT_RECT;
     rect->width = width;
@@ -91,6 +97,7 @@ void dk_ui_rect(dk_context *ctx, int width, int height, dk_color color) {
     rect->data.color = color;
 
     add_child(ctx->node_mngr.current_parent, rect);
+    return rect;
 }
 
 /* void dk_ui_rounded_rect(dk_context *ctx, float width, float height, float radius) {
@@ -111,11 +118,11 @@ void dk_ui_rect(dk_context *ctx, int width, int height, dk_color color) {
     add_child(ctx->node_mngr.current_parent, rect);
 } */
 
-void dk_ui_texture(dk_context *ctx, GLuint texture_id, int width, int height) {
-    if (!ctx->node_mngr.current_parent) return;
+dk_ui_node *dk_ui_texture(dk_context *ctx, GLuint texture_id, int width, int height) {
+    if (!ctx->node_mngr.current_parent) return NULL;
     
     dk_ui_node *tex = allocate_element(ctx);
-    if (!tex) return;
+    if (!tex) return NULL;
     
     tex->type = ELEMENT_TEXTURE;
     tex->width = width;
@@ -123,6 +130,7 @@ void dk_ui_texture(dk_context *ctx, GLuint texture_id, int width, int height) {
     tex->data.texture_id = texture_id;
     
     add_child(ctx->node_mngr.current_parent, tex);
+    return tex;
 }
 
 // Layout calculation - recursive function to position all children
@@ -203,10 +211,6 @@ static void draw_element(dk_context *ctx, dk_ui_node *elem) {
 
             break;
     }
-}
-
-void dk_on_hover(dk_context *ctx, bool *hovered){
-    hit_add(ctx, ctx->node_mngr.current_parent->last_child, hovered);
 }
 
 void dk_ui_draw(dk_context *ctx, int root_x, int root_y) {

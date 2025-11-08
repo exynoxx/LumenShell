@@ -130,6 +130,10 @@ void dk_end_frame() {
     glFlush();
 }
 
+void dk_draw_node(dk_context *ctx, dk_ui_node *node){
+    dk_draw_rect(ctx,node->x,node->y,node->width,node->height,node->data.color);
+}
+
 void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color color) {
     glUseProgram(default_program);
     

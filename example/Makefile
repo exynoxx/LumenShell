@@ -1,6 +1,7 @@
 default:
 	gcc -o panel *.c ../src/*.c \
 	-lEGL \
+	-g \
 	-lGLESv2 \
 	-lwayland-client \
 	-lpng \
