@@ -2,17 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "hover.h"
+#include "draw.h"
 
-static dk_ui_element* allocate_element(dk_ui_manager *mgr) {
-    if (mgr->element_count >= MAX_UI_ELEMENTS) {
+static dk_ui_node* allocate_element(dk_context *ctx) {
+    if (ctx->node_mngr.element_count >= MAX_UI_ELEMENTS) {
         return NULL;
     }
-    dk_ui_element *elem = &mgr->elements[mgr->element_count++];
-    memset(elem, 0, sizeof(dk_ui_element));
+    dk_ui_node *elem = &ctx->node_mngr.nodes[ctx->node_mngr.element_count++];
+    memset(elem, 0, sizeof(dk_ui_node));
     return elem;
 }
 
-static void add_child(dk_ui_element *parent, dk_ui_element *child) {
+static void add_child(dk_ui_node *parent, dk_ui_node *child) {
     child->parent = parent;
     child->next_sibling = NULL;
     
@@ -25,19 +27,8 @@ static void add_child(dk_ui_element *parent, dk_ui_element *child) {
     }
 }
 
-void dk_ui_init(dk_ui_manager *mgr, dk_context *ctx) {
-    memset(mgr, 0, sizeof(dk_ui_manager));
-    mgr->ctx = ctx;
-}
-
-void dk_ui_reset(dk_ui_manager *mgr) {
-    mgr->element_count = 0;
-    mgr->root = NULL;
-    mgr->current_parent = NULL;
-}
-
-void dk_ui_start_box(dk_ui_manager *mgr, int width, int height) {
-    dk_ui_element *box = allocate_element(mgr);
+void dk_ui_start_box(dk_context *ctx, int width, int height) {
+    dk_ui_node *box = allocate_element(ctx);
     if (!box) return;
     
     box->type = ELEMENT_BOX;
@@ -48,50 +39,50 @@ void dk_ui_start_box(dk_ui_manager *mgr, int width, int height) {
     box->data.style.gap = 0;
     box->data.style.float_mode = 0;
 
-    if (mgr->current_parent) {
+    if (ctx->node_mngr.current_parent) {
 
-        box->width = (width <= 0) ? mgr->current_parent->width : width;
-        box->height = (height <= 0) ? mgr->current_parent->height : height;
+        box->width = (width <= 0) ? ctx->node_mngr.current_parent->width : width;
+        box->height = (height <= 0) ? ctx->node_mngr.current_parent->height : height;
 
-        add_child(mgr->current_parent, box);
+        add_child(ctx->node_mngr.current_parent, box);
     } else {
 
-        box->width = (width <= 0) ? mgr->ctx->screen_width : width;
-        box->height = (height <= 0) ? mgr->ctx->screen_height: height;
+        box->width = (width <= 0) ? ctx->screen_width : width;
+        box->height = (height <= 0) ? ctx->screen_height: height;
 
-        mgr->root = box;
+        ctx->node_mngr.root = box;
     }
     
-    mgr->current_parent = box;
+    ctx->node_mngr.current_parent = box;
 }
 
-void dk_ui_box_set_padding(dk_ui_manager *mgr, int top, int right, int bottom, int left) {
-    if (!mgr->current_parent || mgr->current_parent->type != ELEMENT_BOX) return;
-    mgr->current_parent->data.style.padding_top = top;
-    mgr->current_parent->data.style.padding_right = right;
-    mgr->current_parent->data.style.padding_bottom = bottom;
-    mgr->current_parent->data.style.padding_left = left;
+void dk_ui_box_set_padding(dk_context *ctx, int top, int right, int bottom, int left) {
+    if (!ctx->node_mngr.current_parent || ctx->node_mngr.current_parent->type != ELEMENT_BOX) return;
+    ctx->node_mngr.current_parent->data.style.padding_top = top;
+    ctx->node_mngr.current_parent->data.style.padding_right = right;
+    ctx->node_mngr.current_parent->data.style.padding_bottom = bottom;
+    ctx->node_mngr.current_parent->data.style.padding_left = left;
 }
 
-void dk_ui_box_set_gap(dk_ui_manager *mgr, int gap) {
-    if (!mgr->current_parent || mgr->current_parent->type != ELEMENT_BOX) return;
-    mgr->current_parent->data.style.gap = gap;
+void dk_ui_box_set_gap(dk_context *ctx, int gap) {
+    if (!ctx->node_mngr.current_parent || ctx->node_mngr.current_parent->type != ELEMENT_BOX) return;
+    ctx->node_mngr.current_parent->data.style.gap = gap;
 }
 
-void dk_ui_box_float(dk_ui_manager *mgr, dk_float_mode float_mode){
-    if (!mgr->current_parent || mgr->current_parent->type != ELEMENT_BOX) return;
-    mgr->current_parent->data.style.float_mode = float_mode;
+void dk_ui_box_float(dk_context *ctx, dk_float_mode float_mode){
+    if (!ctx->node_mngr.current_parent || ctx->node_mngr.current_parent->type != ELEMENT_BOX) return;
+    ctx->node_mngr.current_parent->data.style.float_mode = float_mode;
 }
 
-void dk_ui_end_box(dk_ui_manager *mgr) {
-    if (!mgr->current_parent || mgr->current_parent == mgr->root) return;
-    mgr->current_parent = mgr->current_parent->parent;
+void dk_ui_end_box(dk_context *ctx) {
+    if (!ctx->node_mngr.current_parent || ctx->node_mngr.current_parent == ctx->node_mngr.root) return;
+    ctx->node_mngr.current_parent = ctx->node_mngr.current_parent->parent;
 }
 
-void dk_ui_rect(dk_ui_manager *mgr, int width, int height, dk_color color) {
-    if (!mgr->current_parent) return;
+void dk_ui_rect(dk_context *ctx, int width, int height, dk_color color) {
+    if (!ctx->node_mngr.current_parent) return;
     
-    dk_ui_element *rect = allocate_element(mgr);
+    dk_ui_node *rect = allocate_element(ctx);
     if (!rect) return;
     
     rect->type = ELEMENT_RECT;
@@ -99,31 +90,31 @@ void dk_ui_rect(dk_ui_manager *mgr, int width, int height, dk_color color) {
     rect->height = height;
     rect->data.color = color;
 
-    add_child(mgr->current_parent, rect);
+    add_child(ctx->node_mngr.current_parent, rect);
 }
 
-/* void dk_ui_rounded_rect(dk_ui_manager *mgr, float width, float height, float radius) {
-    if (!mgr->current_parent) return;
+/* void dk_ui_rounded_rect(dk_context *ctx, float width, float height, float radius) {
+    if (!ctx->node_mngr.current_parent) return;
     
-    dk_ui_element *rect = allocate_element(mgr);
+    dk_ui_node *rect = allocate_element(mgr);
     if (!rect) return;
     
     rect->type = ELEMENT_ROUNDED_RECT;
     rect->width = width;
     rect->height = height;
-    rect->r = mgr->current_r;
-    rect->g = mgr->current_g;
-    rect->b = mgr->current_b;
-    rect->a = mgr->current_a;
+    rect->r = ctx->node_mngr.current_r;
+    rect->g = ctx->node_mngr.current_g;
+    rect->b = ctx->node_mngr.current_b;
+    rect->a = ctx->node_mngr.current_a;
     rect->data.rounded_rect.radius = radius;
     
-    add_child(mgr->current_parent, rect);
+    add_child(ctx->node_mngr.current_parent, rect);
 } */
 
-void dk_ui_texture(dk_ui_manager *mgr, GLuint texture_id, int width, int height) {
-    if (!mgr->current_parent) return;
+void dk_ui_texture(dk_context *ctx, GLuint texture_id, int width, int height) {
+    if (!ctx->node_mngr.current_parent) return;
     
-    dk_ui_element *tex = allocate_element(mgr);
+    dk_ui_node *tex = allocate_element(ctx);
     if (!tex) return;
     
     tex->type = ELEMENT_TEXTURE;
@@ -131,11 +122,11 @@ void dk_ui_texture(dk_ui_manager *mgr, GLuint texture_id, int width, int height)
     tex->height = height;
     tex->data.texture_id = texture_id;
     
-    add_child(mgr->current_parent, tex);
+    add_child(ctx->node_mngr.current_parent, tex);
 }
 
 // Layout calculation - recursive function to position all children
-static void calculate_layout(dk_ui_element *elem, float parent_x, float parent_y) {
+void evaluate_positions(dk_ui_node *elem, float parent_x, float parent_y) {
     if (!elem) return;
     
     // Set element's absolute position
@@ -156,7 +147,7 @@ static void calculate_layout(dk_ui_element *elem, float parent_x, float parent_y
         float available_width = elem->width - style->padding_left - style->padding_right;
         float available_height = elem->height - style->padding_top - style->padding_bottom;
         
-        dk_ui_element *child = elem->first_child;
+        dk_ui_node *child = elem->first_child;
 
         if(elem->type == ELEMENT_BOX){
             while (child) {
@@ -170,7 +161,7 @@ static void calculate_layout(dk_ui_element *elem, float parent_x, float parent_y
                             max_line_height = 0;
                         }
                         
-                        calculate_layout(child, content_x, content_y);
+                        evaluate_positions(child, content_x, content_y);
                         content_x += child->width + style->gap;
                         if (child->height > max_line_height) {
                             max_line_height = child->height;
@@ -179,7 +170,7 @@ static void calculate_layout(dk_ui_element *elem, float parent_x, float parent_y
                         
                     case FLOAT_NONE:
                         // For absolute, children define their own position
-                        calculate_layout(child, content_x, content_y);
+                        evaluate_positions(child, content_x, content_y);
                         break;
                 }
                 child = child->next_sibling;
@@ -189,43 +180,43 @@ static void calculate_layout(dk_ui_element *elem, float parent_x, float parent_y
         
 }
 
-static void draw_element(dk_ui_manager *mgr, dk_ui_element *elem) {
+static void draw_element(dk_context *ctx, dk_ui_node *elem) {
     if (!elem) return;
     
     switch (elem->type) {
         case ELEMENT_RECT:
-            dk_set_color(mgr->ctx, elem->data.color);
-            dk_draw_rect(mgr->ctx, elem->x, elem->y, elem->width, elem->height);
-            dk_set_color(mgr->ctx, (dk_color){1,1,1,1});
+            dk_draw_rect(ctx, elem->x, elem->y, elem->width, elem->height, elem->data.color);
             break;
             
         case ELEMENT_TEXTURE:
-            dk_draw_texture(mgr->ctx, elem->data.texture_id, elem->x, elem->y, elem->width, elem->height);
+            dk_draw_texture(ctx, elem->data.texture_id, elem->x, elem->y, elem->width, elem->height);
             break;
             
         case ELEMENT_BOX:
 
             // Draw all children
-            dk_ui_element *child = elem->first_child;
+            dk_ui_node *child = elem->first_child;
             while (child) {
-                draw_element(mgr, child);
+                draw_element(ctx, child);
                 child = child->next_sibling;
             }
 
             break;
     }
-    
-    
 }
 
-void dk_ui_draw(dk_ui_manager *mgr, int root_x, int root_y) {
-    if (!mgr->root) return;
+void dk_on_hover(dk_context *ctx, bool *hovered){
+    hit_add(ctx, ctx->node_mngr.current_parent->last_child, hovered);
+}
+
+void dk_ui_draw(dk_context *ctx, int root_x, int root_y) {
+    if (!ctx->node_mngr.root) return;
     
     // First pass: calculate all positions
-    calculate_layout(mgr->root, root_x, root_y);
+    evaluate_positions(ctx->node_mngr.root, root_x, root_y);
     
     // Second pass: draw everything
-    draw_element(mgr, mgr->root);
+    draw_element(ctx, ctx->node_mngr.root);
 }
 
 // Example usage:

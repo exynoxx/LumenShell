@@ -82,15 +82,7 @@ static void create_ortho_matrix(float *mat, float left, float right, float botto
     mat[15] = 1.0f;
 }
 
-bool dk_init(dk_context *ctx, int screen_width, int screen_height) {
-    ctx->screen_width = screen_width;
-    ctx->screen_height = screen_height;
-    ctx->current_color.r = 1.0f;
-    ctx->current_color.g = 1.0f;
-    ctx->current_color.b = 1.0f;
-    ctx->current_color.a = 1.0f;
-    
-    // Create shader programs
+bool dk_backend_init(dk_context *ctx) {
     default_program = create_program(default_vert_src, default_frag_src);
     //rounded_rect_program = create_program(rounded_rect_vertex_shader, rounded_rect_fragment_shader);
     texture_program = create_program(texture_vert_src, texture_frag_src);
@@ -114,18 +106,11 @@ bool dk_init(dk_context *ctx, int screen_width, int screen_height) {
     return true;
 }
 
-void dk_cleanup(dk_context *ctx) {
+void dk_backend_cleanup(dk_context *ctx) {
     glDeleteBuffers(1, &ctx->vbo);
     if (default_program) glDeleteProgram(default_program);
     if (rounded_rect_program) glDeleteProgram(rounded_rect_program);
     if (texture_program) glDeleteProgram(texture_program);
-}
-
-void dk_set_color(dk_context *ctx, dk_color color) {
-    ctx->current_color.r = color.r;
-    ctx->current_color.g = color.g;
-    ctx->current_color.b = color.b;
-    ctx->current_color.a = color.a;
 }
 
 void dk_set_bg_color(dk_context *ctx, dk_color color) {
@@ -145,7 +130,7 @@ void dk_end_frame() {
     glFlush();
 }
 
-void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height) {
+void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color color) {
     glUseProgram(default_program);
     
     // Create projection matrix
@@ -157,8 +142,8 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height) {
     
     // Set color
     GLint color_loc = glGetUniformLocation(default_program, "color");
-    glUniform4f(color_loc, ctx->current_color.r, ctx->current_color.g, 
-                ctx->current_color.b, ctx->current_color.a);
+    glUniform4f(color_loc, color.r, color.g, 
+                color.b, color.a);
     
     // Create rectangle vertices
     float vertices[] = {
@@ -238,8 +223,7 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
     
     GLint color_loc = glGetUniformLocation(texture_program, "color");
-    glUniform4f(color_loc, ctx->current_color.r, ctx->current_color.g, 
-                ctx->current_color.b, ctx->current_color.a);
+    glUniform4f(color_loc, 1,1,1,1);
     
     float vertices[] = {
         x, y, 0.0f, 0.0f,

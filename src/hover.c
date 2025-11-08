@@ -1,43 +1,39 @@
 #include "hover.h"
 #include <stdlib.h>
 
-static int inside(HitBox *o, int px, int py) {
-    return (px >= o->x && px <= o->x + o->w &&
-            py >= o->y && py <= o->y + o->h);
+static int inside(dk_ui_node *o, int px, int py) {
+    return (px >= o->x && px <= o->x + o->width &&
+            py >= o->y && py <= o->y + o->height);
 }
 
-void hit_init(HitRegistry *r, int capacity) {
-    r->objs = malloc(sizeof(HitBox)*capacity);
-    r->count = 0;
-    r->capacity = capacity;
-}
+void hit_add(dk_context *ctx, dk_ui_node *node, bool *hover) {
+    dk_hitbox_mngr mngr = ctx->hitbox_mngr;
 
-void hit_add(HitRegistry *r, int x, int y, int w, int h, bool *hover) {
-    if (r->count >= r->capacity)
-        return; // full
+    /* if (mngr.idx >= mngr.capacity)
+        return; // full */
 
-    HitBox *o = &r->objs[r->count++];
-    o->x = x;
-    o->y = y;
-    o->w = w;
-    o->h = h;
+
+    dk_hitbox *o = &mngr.hitboxes[mngr.count++];
+    o->node = node;
     o->hover = hover;
 }
 
-int hit_query(HitRegistry *r, int px, int py) {
+int hit_query(dk_context *ctx, int px, int py) {
+
+    dk_hitbox_mngr r = ctx->hitbox_mngr;
     int hit_any = 0;
 
     // Reset all hover flags
-    for (int i = 0; i < r->count; i++) {
-        if (r->objs[i].hover)
-            *(r->objs[i].hover) = false;
+    for (int i = 0; i < r.count; i++) {
+        if (r.hitboxes[i].hover)
+            *(r.hitboxes[i].hover) = false;
     }
 
     // Find the first that matches
-    for (int i = 0; i < r->count; i++) {
-        HitBox *o = &r->objs[i];
-        if (inside(o, px, py)) {
-            if (o->hover)
+    for (int i = 0; i < r.count; i++) {
+        dk_hitbox *o = &r.hitboxes[i];
+        if (inside(o->node, px, py)) {
+            if (o->hover) //TODO guard on registration
                 *(o->hover) = true;
             hit_any = 1;
             break; // stop after first match
