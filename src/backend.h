@@ -1,5 +1,5 @@
-#ifndef DRAW_H
-#define DRAW_H
+#ifndef BACKEND_H
+#define BACKEND_H
 
 #include <GLES2/gl2.h>
 #include <stdbool.h>
@@ -17,4 +17,4 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
 void dk_begin_frame(dk_context *ctx);
 void dk_end_frame();
 
-#endif // DRAW_H
+#endif
