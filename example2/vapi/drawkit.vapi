@@ -1,6 +1,6 @@
-[CCode (cheader_filename = "draw.h")]
+[CCode (cheader_filename = "structures.h,backend.h,layout.h,hover.h,texture.h", lower_case_cprefix = "dk_")]
 namespace DrawKit {
-    [CCode (cname = "dk_color", has_type_member = false)]
+    [CCode (cname = "dk_color", has_type_id = false)]
     public struct Color {
         public float r;
         public float g;
@@ -8,70 +8,152 @@ namespace DrawKit {
         public float a;
     }
 
-    [CCode (cname = "dk_vec2", has_type_member = false)]
-    public struct Vec2 {
-        public float x;
-        public float y;
+    [CCode (cname = "dk_float_mode", cprefix = "FLOAT_", has_type_id = false)]
+    public enum FloatMode {
+        LEFT,
+        NONE
     }
 
-    [CCode (cname = "dk_context", has_type_member = false)]
-    public struct Context {
-        public GLES2.GLuint shader_program;
-        public GLES2.GLuint rounded_rect_program;
-        public GLES2.GLuint texture_program;
-        public GLES2.GLuint vbo;
-        public GLES2.GLuint vao;
+    [CCode (cname = "dk_node_type", cprefix = "ELEMENT_", has_type_id = false)]
+    public enum NodeType {
+        BOX,
+        RECT,
+        TEXTURE
+    }
+
+    [CCode (cname = "dk_box_style", has_type_id = false)]
+    public struct BoxStyle {
+        public int padding_top;
+        public int padding_right;
+        public int padding_bottom;
+        public int padding_left;
+        public int gap;
+        public FloatMode float_mode;
+    }
+
+    [CCode (cname = "struct dk_ui_node", has_type_id = false)]
+    public struct UINode {
+        public NodeType type;
+        public float width;
+        public float height;
+        public float x;
+        public float y;
+        public bool hovered;
+        public UINode* parent;
+        public UINode* first_child;
+        public UINode* last_child;
+        public UINode* next_sibling;
+    }
+
+    [CCode (cname = "dk_node_mngr", has_type_id = false)]
+    public struct NodeManager {
+        public UINode* nodes;
+        public int element_count;
+        public UINode* root;
+        public UINode* current_parent;
+    }
+
+    [CCode (cname = "dk_context", free_function = "dk_cleanup", has_type_id = false)]
+    [Compact]
+    public class Context {
+        public GL.GLuint shader_program;
+        public GL.GLuint rounded_rect_program;
+        public GL.GLuint texture_program;
+        public GL.GLuint vbo;
+        public GL.GLuint vao;
         public int screen_width;
         public int screen_height;
         public Color background_color;
-        public Color current_color;
+        public NodeManager node_mngr;
+
+        [CCode (cname = "dk_init")]
+        public Context(int screen_width, int screen_height);
+
+        // Backend functions
+        [CCode (cname = "dk_backend_init")]
+        public bool backend_init();
+
+        [CCode (cname = "dk_backend_cleanup")]
+        public void backend_cleanup();
+
+        [CCode (cname = "dk_set_bg_color")]
+        public void set_bg_color(Color color);
+
+        [CCode (cname = "dk_draw_node")]
+        public void draw_node(UINode* node);
+
+        [CCode (cname = "dk_draw_rect")]
+        public void draw_rect(int x, int y, int width, int height, Color color);
+
+        [CCode (cname = "dk_draw_texture")]
+        public void draw_texture(GL.GLuint texture_id, int x, int y, int width, int height);
+
+        [CCode (cname = "dk_begin_frame")]
+        public void begin_frame();
+
+        [CCode (cname = "dk_end_frame")]
+        public static void end_frame();
+
+        // Layout functions
+        [CCode (cname = "dk_reset")]
+        public void reset();
+
+        [CCode (cname = "dk_start_box")]
+        public void start_box(int width, int height);
+
+        [CCode (cname = "dk_box_set_padding")]
+        public void box_set_padding(int top, int right, int bottom, int left);
+
+        [CCode (cname = "dk_box_set_gap")]
+        public void box_set_gap(int gap);
+
+        [CCode (cname = "dk_box_float")]
+        public void box_float(FloatMode float_mode);
+
+        [CCode (cname = "dk_end_box")]
+        public void end_box();
+
+        [CCode (cname = "dk_rect")]
+        public unowned UINode* rect(int width, int height, Color color);
+
+        [CCode (cname = "dk_texture")]
+        public unowned UINode* texture(GL.GLuint texture_id, int width, int height);
+
+        [CCode (cname = "evaluate_positions")]
+        public static void evaluate_positions(UINode* elem, float parent_x, float parent_y);
+
+        [CCode (cname = "dk_draw")]
+        public void draw(int root_x, int root_y);
+
+        // Hover/hitbox functions
+        [CCode (cname = "dk_hitbox_query")]
+        public int hitbox_query(int px, int py);
     }
 
-    [CCode (cname = "dk_init")]
-    public bool init(ref Context ctx, int screen_width, int screen_height);
-
-    [CCode (cname = "dk_cleanup")]
-    public void cleanup(ref Context ctx);
-
-    [CCode (cname = "dk_set_color")]
-    public void set_color(ref Context ctx, float r, float g, float b, float a);
-
-    [CCode (cname = "dk_set_bg_color")]
-    public void set_bg_color(ref Context ctx, float r, float g, float b, float a);
-
-    [CCode (cname = "dk_draw_rect")]
-    public void draw_rect(ref Context ctx, float x, float y, float width, float height);
-
-    [CCode (cname = "dk_draw_rounded_rect")]
-    public void draw_rounded_rect(ref Context ctx, float x, float y, float width, float height, float radius);
-
-    [CCode (cname = "dk_draw_texture")]
-    public void draw_texture(ref Context ctx, GLES2.GLuint texture_id, float x, float y, float width, float height);
-
-    [CCode (cname = "dk_begin_frame")]
-    public void begin_frame(ref Context ctx);
-
-    [CCode (cname = "dk_end_frame")]
-    public void end_frame();
-}
-
-[CCode (cheader_filename = "texture.h")]
-namespace DrawKit.Texture {
-    [CCode (cname = "Image")]
-    [SimpleType]
+    // Texture functions
+    [CCode (cname = "Image", destroy_function = "", has_type_id = false)]
     public struct Image {
         public int width;
         public int height;
         public int channels;
-        public unowned uint8[] data;
+        public uint8[] data;
     }
 
     [CCode (cname = "dk_image_load")]
-    public Image load_icon(string path);
+    public Image image_load(string path);
 
     [CCode (cname = "dk_texture_upload")]
-    public GLES2.GLuint upload(Image image);
+    public GL.GLuint texture_upload(Image image);
 
-    [CCode (cname = "dk_free_texture")]
-    public void free_texture(GLES2.GLuint id);
+    [CCode (cname = "dk_texture_free")]
+    public void texture_free(GL.GLuint id);
+}
+
+// OpenGL ES 2.0 bindings (minimal for DrawKit)
+[CCode (cheader_filename = "GLES2/gl2.h", lower_case_cprefix = "gl")]
+namespace GL {
+    [CCode (cname = "GLuint", has_type_id = false)]
+    [IntegerType (rank = 9)]
+    public struct GLuint : uint {
+    }
 }

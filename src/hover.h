@@ -4,6 +4,6 @@
 #include "structures.h"
 
 //void hit_add(dk_context *ctx, dk_ui_node *node, bool *hover);
-int hitbox_query(dk_context *ctx, int px, int py);
+int dk_hitbox_query(dk_context *ctx, int px, int py);
 
 #endif

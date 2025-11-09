@@ -34,6 +34,9 @@ namespace LayerShell {
     [CCode (cname = "display_dispatch_blocking")]
     public int display_dispatch_blocking();
 
+    [CCode (cname = "egl_swap_buffers")]
+    public void swap_buffers();
+
     [CCode (cname = "toplevel_get_list")]
     public unowned ToplevelInfo? toplevel_get_list();
 

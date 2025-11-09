@@ -1,9 +1,11 @@
 default:
 	valac --vapidir=vapi \
-	--pkg=graphene-gobject-1.0 \
 	--pkg=glesv2 \
 	--pkg=wayland-client \
+	--pkg glib-2.0 \
+	--pkg gee-0.8 \
 	--pkg=egl \
+	--pkg=drawkit \
 	--pkg=liblayershell \
 	-X -I/home/nicholas/Dokumenter/layer-shell-experiments/liblayershell \
 	-X -L/home/nicholas/Dokumenter/layer-shell-experiments/liblayershell/build \
