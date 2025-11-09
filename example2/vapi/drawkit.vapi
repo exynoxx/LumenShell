@@ -1,6 +1,9 @@
+using GLES2;
+
 [CCode (cheader_filename = "structures.h,backend.h,layout.h,hover.h,texture.h", lower_case_cprefix = "dk_")]
 namespace DrawKit {
     [CCode (cname = "dk_color", has_type_id = false)]
+    [SimpleType]
     public struct Color {
         public float r;
         public float g;
@@ -38,6 +41,17 @@ namespace DrawKit {
         public float height;
         public float x;
         public float y;
+
+        //onion translation
+        [CCode (cname = "data.style")]
+        public BoxStyle style;
+        
+        [CCode (cname = "data.texture_id")]
+        public uint texture_id;
+        
+        [CCode (cname = "data.color")]
+        public Color color;
+
         public bool hovered;
         public UINode* parent;
         public UINode* first_child;
@@ -56,11 +70,11 @@ namespace DrawKit {
     [CCode (cname = "dk_context", free_function = "dk_cleanup", has_type_id = false)]
     [Compact]
     public class Context {
-        public GL.GLuint shader_program;
-        public GL.GLuint rounded_rect_program;
-        public GL.GLuint texture_program;
-        public GL.GLuint vbo;
-        public GL.GLuint vao;
+        public GLuint shader_program;
+        public GLuint rounded_rect_program;
+        public GLuint texture_program;
+        public GLuint vbo;
+        public GLuint vao;
         public int screen_width;
         public int screen_height;
         public Color background_color;
@@ -86,7 +100,7 @@ namespace DrawKit {
         public void draw_rect(int x, int y, int width, int height, Color color);
 
         [CCode (cname = "dk_draw_texture")]
-        public void draw_texture(GL.GLuint texture_id, int x, int y, int width, int height);
+        public void draw_texture(GLuint texture_id, int x, int y, int width, int height);
 
         [CCode (cname = "dk_begin_frame")]
         public void begin_frame();
@@ -117,7 +131,7 @@ namespace DrawKit {
         public unowned UINode* rect(int width, int height, Color color);
 
         [CCode (cname = "dk_texture")]
-        public unowned UINode* texture(GL.GLuint texture_id, int width, int height);
+        public unowned UINode* texture(GLuint texture_id, int width, int height);
 
         [CCode (cname = "evaluate_positions")]
         public static void evaluate_positions(UINode* elem, float parent_x, float parent_y);
@@ -132,6 +146,7 @@ namespace DrawKit {
 
     // Texture functions
     [CCode (cname = "Image", destroy_function = "", has_type_id = false)]
+    [SimpleType]
     public struct Image {
         public int width;
         public int height;
@@ -143,17 +158,8 @@ namespace DrawKit {
     public Image image_load(string path);
 
     [CCode (cname = "dk_texture_upload")]
-    public GL.GLuint texture_upload(Image image);
+    public GLuint texture_upload(Image image);
 
     [CCode (cname = "dk_texture_free")]
-    public void texture_free(GL.GLuint id);
-}
-
-// OpenGL ES 2.0 bindings (minimal for DrawKit)
-[CCode (cheader_filename = "GLES2/gl2.h", lower_case_cprefix = "gl")]
-namespace GL {
-    [CCode (cname = "GLuint", has_type_id = false)]
-    [IntegerType (rank = 9)]
-    public struct GLuint : uint {
-    }
+    public void texture_free(GLuint id);
 }

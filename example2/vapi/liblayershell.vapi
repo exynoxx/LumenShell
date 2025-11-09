@@ -11,6 +11,7 @@ namespace LayerShell {
     }
 
     [CCode (cname = "dk_mouse_info", destroy_function = "", has_type_id = false)]
+    [SimpleType]
     public struct MouseInfo {
         public double mouse_x;
         public double mouse_y;

@@ -1,4 +1,5 @@
 using LayerShell;
+using GLES2;
 
 public static int main(string[] args) {
     
@@ -9,9 +10,13 @@ public static int main(string[] args) {
     var mouse_info = LayerShell.seat_mouse_info();
     var ctx = new DrawKit.Context(width, height);
 
+    var path = "/usr/share/icons/hicolor/32x32/apps/fedora-logo-icon.png";
+    var image = DrawKit.image_load(path);
+    GLuint fedora_tex = DrawKit.texture_upload(image);
+
     while (LayerShell.display_dispatch_blocking() != -1) {
 
-        UI.Draw(ctx, mouse_info);
+        UiLayout.Draw(ctx, mouse_info, fedora_tex);
         LayerShell.swap_buffers();
     }
 
