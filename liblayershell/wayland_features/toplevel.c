@@ -232,7 +232,7 @@ void toplevel_cleanup(void) {
 }
 
 // Get list of open programs
-struct toplevel_info *toplevel_get_list(void) {
+toplevel_info *toplevel_get_list(void) {
     return toplevels;
 }
 
