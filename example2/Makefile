@@ -16,9 +16,10 @@ VALA_PKGS = --pkg=glesv2 \
 CFLAGS = -X -I$(DRAWKIT_SRC) \
          -X -I$(LAYERSHELL_SRC) \
          -X -L$(LAYERSHELL_BUILD) \
-         -X -Wl,-rpath,$(LAYERSHELL_BUILD) \
          -X -llayershell \
-         -X -lm
+         -X -Wl,-rpath,$(LAYERSHELL_BUILD) \
+         -X -lm \
+         -o main
 
 # DrawKit C source files to compile
 DRAWKIT_SOURCES = $(DRAWKIT_SRC)/*.c

@@ -6,6 +6,8 @@
 #include "egl.h"
 #include "registry.h"
 
+struct wl_display *wl_display = NULL;
+
 int init_layer_shell(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone) {
     wl_display = wl_display_connect(NULL);
     if (!wl_display) { 
