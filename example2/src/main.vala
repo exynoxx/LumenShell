@@ -11,14 +11,24 @@ public static int main(string[] args) {
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
-    var path = "/usr/share/icons/hicolor/32x32/apps/fedora-logo-icon.png";
+    /*  var path = "/usr/share/icons/hicolor/32x32/apps/fedora-logo-icon.png";
     var image = DrawKit.image_load(path);
     GLuint fedora_tex = DrawKit.texture_upload(image);
 
     while (LayerShell.display_dispatch_blocking() != -1) {
         UiLayout.Draw(ctx, mouse_info, fedora_tex);
         LayerShell.swap_buffers();
-    }
+    }  */
+
+    var a = Utils.get_icon_path_from_app_id("org.kde.kontact");
+    var b = Utils.get_icon_path_from_app_id("org.kde.dolphin");
+    var c = Utils.get_icon_path_from_app_id("org.kde.konsole");
+    var d = Utils.get_icon_path_from_app_id("chromium-browser");
+
+    print("%s\n",a);
+    print("%s\n",b);
+    print("%s\n",c);
+    print("%s\n",d);
 
     return 0;
 }

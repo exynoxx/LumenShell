@@ -1,4 +1,4 @@
-/*  using GLib;
+using GLib;
 
 public class Utils {
     
@@ -92,8 +92,21 @@ public class Utils {
         return dirs.to_array();
     }
     
+    public static string get_current_icon_theme() {
+        var gtk_settings_file = Environment.get_home_dir() + "/.config/gtk-4.0/settings.ini";
+        var kde_settings_file = Environment.get_home_dir() + "/.config/kdeglobals";
+
+        string? theme = Ini.Get_key_value(gtk_settings_file, "gtk-icon-theme-name");
+        if (theme == null)
+            theme = Ini.Get_key_value(kde_settings_file, "Theme"); //TODO look in icons section
+        return theme ?? "hicolor";
+    }
+
     // Find icon file from icon name
-    public static string? find_icon_path(string icon_name, int size = 48, string theme = "hicolor") {
+    public static string? find_icon_path(string icon_name, int size = 48) {
+
+        var theme = get_current_icon_theme();
+
         // If it's already an absolute path, return it
         if (Path.is_absolute(icon_name)) {
             if (FileUtils.test(icon_name, FileTest.EXISTS)) {
@@ -144,7 +157,7 @@ public class Utils {
     }
     
     // Main function: get icon path from app_id
-    public static string? get_icon_path_from_app_id(string app_id, int size = 48) {
+    public static string? get_icon_path_from_app_id(string app_id, int size = 32) {
         // Find desktop file
         string? desktop_file = find_desktop_file(app_id);
         if (desktop_file == null) {
@@ -172,4 +185,4 @@ public class Utils {
         
         return icon_path;
     }
-}  */
+}
