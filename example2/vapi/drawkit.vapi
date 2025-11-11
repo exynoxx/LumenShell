@@ -162,4 +162,7 @@ namespace DrawKit {
 
     [CCode (cname = "dk_texture_free")]
     public void texture_free(GLuint id);
+
+    [CCode (cname = "rasterize_svg_to_rgba")]
+    public Image *image_from_svg(string filename, int target_width, int target_height);
 }

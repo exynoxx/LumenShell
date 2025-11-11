@@ -1,6 +1,8 @@
 using LayerShell;
 using GLES2;
 
+extern uint8* rasterize_svg_to_rgba(string filename, int target_width, int target_height);
+
 public static int main(string[] args) {
     
     int width = 1920;
@@ -29,6 +31,14 @@ public static int main(string[] args) {
     print("%s\n",b);
     print("%s\n",c);
     print("%s\n",d);
+
+    var image = DrawKit.image_from_svg(d,32,32);
+    GLuint fedora_tex = DrawKit.texture_upload(*image);
+    
+    while (LayerShell.display_dispatch_blocking() != -1) {
+        UiLayout.Draw(ctx, mouse_info, fedora_tex);
+        LayerShell.swap_buffers();
+    }
 
     return 0;
 }
