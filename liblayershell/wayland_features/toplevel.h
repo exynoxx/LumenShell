@@ -2,7 +2,7 @@
 #define TOPLEVEL_H
 
 #include <stdlib.h>
-#include "wayland_protocols/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
+#include "../wayland_protocols/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 typedef struct toplevel_info {
     char *app_id;
