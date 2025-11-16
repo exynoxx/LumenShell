@@ -8,7 +8,9 @@ static struct zwlr_foreign_toplevel_manager_v1 *toplevel_manager = NULL;
 static struct toplevel_info *toplevels = NULL;
 
 toplevel_window_new on_window_new = NULL;
+void *on_window_new_userdata = NULL;
 toplevel_window_remove on_window_rm = NULL;
+void *on_window_rm_userdata = NULL;
 
 static void toplevel_handle_title(void *data,
                                   struct zwlr_foreign_toplevel_handle_v1 *handle,
@@ -31,7 +33,8 @@ static void toplevel_handle_app_id(void *data,
     info->app_id = strdup(app_id);
     
     if(on_window_new){
-        on_window_new(app_id, info->title);
+        printf("executing callback on_window_new\n");
+        on_window_new(app_id, info->title, on_window_new_userdata);
     }
 }
 
@@ -71,7 +74,8 @@ static void toplevel_handle_closed(void *data,
     printf("Toplevel closed: %s\n", info->app_id ? info->app_id : "unknown");
 
     if(on_window_rm){
-        on_window_rm(info->app_id, info->title);
+        printf("executing callback on_window_rm\n");
+        on_window_rm(info->app_id, info->title, on_window_rm_userdata);
     }
     
     // Remove from linked list
@@ -183,10 +187,12 @@ void toplevel_print_all(void) {
     }
 }
 
-void register_on_window_new(toplevel_window_new cb) {
+void register_on_window_new(toplevel_window_new cb, void *user_data) {
     on_window_new = cb;
+    on_window_new_userdata = user_data;
 }
 
-void register_on_window_rm(toplevel_window_remove cb) {
+void register_on_window_rm(toplevel_window_remove cb, void *user_data) {
     on_window_rm = cb;
+    on_window_new_userdata = user_data;
 }

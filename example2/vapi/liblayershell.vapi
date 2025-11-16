@@ -45,17 +45,14 @@ namespace LayerShell {
     [CCode(cname="toplevel_get_list")]
     public unowned ToplevelInfo *toplevel_get_list();
 
-    [CCode (has_target = false)]
     public delegate void ToplevelWindowNew(string app_id, string title);
-
-    [CCode (has_target = false)]
     public delegate void ToplevelWindowRemove(string app_id, string title);
 
     [CCode(cname = "register_on_window_new")]
-    public void register_on_window_new(owned ToplevelWindowNew cb);
+    public void register_on_window_new(ToplevelWindowNew cb);
 
     [CCode(cname = "register_on_window_rm")]
-    public void register_on_window_rm(owned ToplevelWindowRemove cb);
+    public void register_on_window_rm(ToplevelWindowRemove cb);
 
     [CCode(cname="seat_mouse_info")]
     public unowned MouseInfo *seat_mouse_info();
