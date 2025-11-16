@@ -19,8 +19,6 @@ void toplevel_init();
 void toplevel_cleanup();
 
 toplevel_info *toplevel_get_list();
-void toplevel_print_all();
-
 void register_on_window_new(toplevel_window_new cb, void *user_data);
 void register_on_window_rm(toplevel_window_remove cb, void *user_data);
 

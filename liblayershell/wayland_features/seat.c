@@ -13,10 +13,13 @@ static void pointer_enter(void *data, struct wl_pointer *pointer,
     printf("Pointer enter\n");
     info->mouse_x = wl_fixed_to_double(x);
     info->mouse_y = wl_fixed_to_double(y);
+    info->pointer_inside = true;
 }
 
 void pointer_leave(void *data, struct wl_pointer *wl_pointer,uint32_t serial, struct wl_surface *surface) {
     printf("Pointer left\n");
+    dk_mouse_info *info = data;
+    info->pointer_inside = false;
 }
 
 static void pointer_motion(void *data, struct wl_pointer *pointer,

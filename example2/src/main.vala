@@ -36,11 +36,14 @@ public static int main(string[] args) {
 
     LayerShell.init("panel", width, height, BOTTOM, true);
     var mouse_info = LayerShell.seat_mouse_info();
+    mouse_info.pointer_inside = true;
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
+
     while (LayerShell.display_dispatch_blocking() != -1) {
 
+        if(!mouse_info.pointer_inside) continue;
         if(entries.size < 1) continue;
 
         UiLayout.Draw(ctx, mouse_info, entries);

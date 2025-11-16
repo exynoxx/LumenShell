@@ -3,11 +3,13 @@
 
 #include <wayland-client.h>
 #include <stdint.h>
+#include <stdbool.h>    
 
 typedef struct {
     double mouse_x;
     double mouse_y;
     uint32_t mouse_buttons;
+    bool pointer_inside;
 } dk_mouse_info;
 
 void seat_init();

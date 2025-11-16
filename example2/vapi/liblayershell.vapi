@@ -17,6 +17,7 @@ namespace LayerShell {
         public float mouse_x;
         public float mouse_y;
         public uint32 mouse_buttons;
+        public bool pointer_inside;
     }
 
     // toplevel_info struct with pointer to next
