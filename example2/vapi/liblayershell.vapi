@@ -17,7 +17,6 @@ namespace LayerShell {
         public float mouse_x;
         public float mouse_y;
         public uint32 mouse_buttons;
-        public bool pointer_inside;
     }
 
     // toplevel_info struct with pointer to next
@@ -42,10 +41,6 @@ namespace LayerShell {
     [CCode(cname="egl_swap_buffers")]
     public void swap_buffers();
 
-    // Functions returning pointers to structs
-    [CCode(cname="toplevel_get_list")]
-    public unowned ToplevelInfo *toplevel_get_list();
-
     public delegate void ToplevelWindowNew(string app_id, string title);
     public delegate void ToplevelWindowRemove(string app_id, string title);
 
@@ -55,6 +50,18 @@ namespace LayerShell {
     [CCode(cname = "register_on_window_rm")]
     public void register_on_window_rm(ToplevelWindowRemove cb);
 
+    [CCode(cname = "toplevel_focus_window")]
+    void toplevel_focus_window(string app_id, string title);
+
     [CCode(cname="seat_mouse_info")]
     public unowned MouseInfo *seat_mouse_info();
+
+    public delegate void SeatMouseEnter();
+    public delegate void SeatMouseLeave();
+
+    [CCode(cname = "register_on_mouse_enter")]
+    void register_on_mouse_enter(SeatMouseEnter cb);
+
+    [CCode(cname = "register_on_mouse_leave")]
+    void register_on_mouse_leave(SeatMouseLeave cb);
 }
