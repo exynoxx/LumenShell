@@ -43,12 +43,16 @@ namespace LayerShell {
 
     public delegate void ToplevelWindowNew(string app_id, string title);
     public delegate void ToplevelWindowRemove(string app_id, string title);
+    public delegate void ToplevelWindowFocus(string app_id, string title);
 
     [CCode(cname = "register_on_window_new")]
     public void register_on_window_new(ToplevelWindowNew cb);
 
     [CCode(cname = "register_on_window_rm")]
     public void register_on_window_rm(ToplevelWindowRemove cb);
+
+    [CCode(cname = "register_on_window_focus")]
+    public void register_on_window_focus(ToplevelWindowFocus cb);
 
     [CCode(cname = "toplevel_focus_window")]
     void toplevel_focus_window(string app_id, string title);

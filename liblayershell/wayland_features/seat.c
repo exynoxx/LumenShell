@@ -25,6 +25,9 @@ static void pointer_enter(void *data, struct wl_pointer *pointer,
 }
 
 void pointer_leave(void *data, struct wl_pointer *wl_pointer,uint32_t serial, struct wl_surface *surface) {
+    dk_mouse_info *info = data;
+    info->mouse_x = -1;
+    info->mouse_y = -1;
     if(mouse_leave_cb){
         mouse_leave_cb(mouse_leave_userdata);
     }

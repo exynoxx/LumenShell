@@ -8,7 +8,7 @@ public class UiLayout {
 
         var n_programs = programs.size;
 
-        print("drawing %d programs\n", n_programs);
+        //print("drawing %d programs\n", n_programs);
         if(n_programs > 100){
             print("too many\n");
             Process.exit(1);

@@ -103,7 +103,7 @@ public class Utils {
     }
 
     // Find icon file from icon name
-    public static string? find_icon_path(string icon_name, int size = 48) {
+    public static string? find_icon_path(string icon_name, int size = 32) {
 
         var theme = get_current_icon_theme();
 
@@ -122,11 +122,11 @@ public class Utils {
             // Try themed icon first
             string[] size_dirs = {
                 @"$(size)x$(size)",
-                "scalable",
                 "48x48",
                 "32x32",
                 "24x24",
-                "16x16"
+                "16x16",
+                "scalable",
             };
             
             foreach (string size_dir in size_dirs) {
