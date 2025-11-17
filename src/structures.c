@@ -17,11 +17,10 @@ dk_context *dk_init(int screen_width, int screen_height) {
     ctx->node_mngr.nodes = malloc(sizeof(dk_ui_node)*MAX_UI_ELEMENTS);
     ctx->node_mngr.root = NULL;
     ctx->node_mngr.current_parent = NULL;
-    ctx->node_mngr.element_count = 0;
+    ctx->node_mngr.count = 0;
 
-    /* ctx->hitbox_mngr.hitboxes = malloc(sizeof(dk_hitbox *)*MAX_UI_ELEMENTS);
+    ctx->hitbox_mngr.elements = malloc(sizeof(dk_hoverable *)*MAX_UI_ELEMENTS);
     ctx->hitbox_mngr.count = 0;
-    ctx->hitbox_mngr.capacity = MAX_UI_ELEMENTS; */
     
     return ctx;
 }

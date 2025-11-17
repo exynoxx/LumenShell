@@ -48,18 +48,19 @@ public static int main(string[] args) {
     LayerShell.register_on_window_new(on_window_new);
     LayerShell.register_on_window_rm((app_id, title) => print("rm: %s (%s)\n", title, app_id));
     LayerShell.register_on_window_focus(on_window_focus);
+    
 /*      LayerShell.register_on_mouse_enter(() => {
         print("mouse enter\n");
+    });  */
+
+    /*      LayerShell.register_on_mouse_leave(() => {
+        print("mouse leave\n");
     });  */
 
     LayerShell.init("panel", width, height, BOTTOM, true);
     var mouse_info = LayerShell.seat_mouse_info();
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
-
-/*      LayerShell.register_on_mouse_leave(() => {
-        print("mouse leave\n");
-    });  */
 
     while (LayerShell.display_dispatch_blocking() != -1) {
         //if(draw_count <= 0 || entries.size < 1) continue;

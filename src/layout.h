@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "structures.h"
+#include "hover.h"
 
 void dk_reset(dk_context *ctx);
 void dk_start_box(dk_context *ctx, int width, int height, int x, int y);

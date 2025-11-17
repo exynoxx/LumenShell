@@ -74,6 +74,7 @@ static toplevel_window_t* window_create(struct zwlr_foreign_toplevel_handle_v1 *
 
 // Find window by app_id and title
 static toplevel_window_t* window_find(const char *app_id, const char *title) {
+    printf("window_find");
     toplevel_window_t *window;
     wl_list_for_each(window, &windows, link) {
         if (window->app_id && window->title &&
@@ -131,7 +132,8 @@ static void toplevel_handle_closed(void *data,
 static void toplevel_handle_state(void *data,
                                   struct zwlr_foreign_toplevel_handle_v1 *handle,
                                   struct wl_array *state) {
-/*  */
+    printf("toplevel_handle_state");
+
     toplevel_window_t *window = data;
     bool is_activated = false;
     
@@ -257,6 +259,7 @@ void register_on_window_focus(toplevel_window_focus cb, void* user_data) {
 }
 
 void toplevel_focus_window(const char* app_id, const char* title) {
+    printf("toplevel_focus_window");
     if (!seat) {
         fprintf(stderr, "No seat available for window activation\n");
         return;
@@ -269,6 +272,6 @@ void toplevel_focus_window(const char* app_id, const char* title) {
     }
     
     // This activates (focuses) the window
+    printf("Focusing window: %s - %s\n", app_id, title);
     zwlr_foreign_toplevel_handle_v1_activate(window->handle, seat);
-    printf("Focused window: %s - %s\n", app_id, title);
 }

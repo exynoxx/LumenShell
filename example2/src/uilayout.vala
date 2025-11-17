@@ -12,12 +12,12 @@ public class UiLayout {
         int box_width = 70;
         int box_height = ctx.screen_height - underline_height;
 
-        //print("drawing %d programs\n", n_programs);
         if(n_programs > 100){
             print("too many\n");
             Process.exit(1);
         }
 
+        bool clicked = mouse->mouse_buttons > 0;
         ctx.begin_frame();
 
         ctx.reset();
@@ -27,9 +27,13 @@ public class UiLayout {
             ctx.start_box(0, 0);
                 ctx.box_float(DrawKit.FloatMode.LEFT);
 
-                var hitboxes = new DrawKit.UINode*[n_programs];
                 for(int i = 0; i < n_programs; i++){
-                    hitboxes[i] = ctx.rect(box_width, box_height, Color(){r=1,g=1,b=1,a=0f});
+                    var node = ctx.rect(box_width, box_height, Color(){r=1,g=1,b=1,a=0f});
+                    node.register_on_hover(node => node.color.a = 0.2f);
+                    node.register_on_clicked(node => {
+                        print("click");
+                        LayerShell.toplevel_focus_window(programs[i].id, programs[i].title);
+                    });
                 }
 
             ctx.end_box();
@@ -56,14 +60,8 @@ public class UiLayout {
             }
 
         ctx.end_box();
-
         DrawKit.Context.evaluate_positions(ctx.node_mngr.root,0,0);
-        ctx.hitbox_query((int)mouse->mouse_x, (int)mouse->mouse_y);
-
-        foreach (var hitbox in hitboxes){
-            if(hitbox.hovered) hitbox.color.a = 0.2f;
-        }
-
+        ctx.hover_query((int)mouse->mouse_x, (int)mouse->mouse_y, clicked);
         ctx.draw(0,0);
         ctx.end_frame();
     }

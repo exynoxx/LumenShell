@@ -27,6 +27,25 @@ typedef struct {
     dk_float_mode float_mode;
 } dk_box_style;
 
+typedef struct dk_ui_node dk_ui_node;
+
+typedef void (*dk_on_hover)(dk_ui_node *node, void* user_data);
+typedef void (*dk_on_clicked)(dk_ui_node *node, void* user_data);
+
+typedef struct dk_hoverable {
+    dk_on_hover cb_on_hover;
+    dk_on_clicked cb_on_clicked;
+    void *on_hover_user_data;
+    void *on_clicked_user_data;
+    bool hovered;
+    bool down;
+} dk_hoverable;
+
+typedef struct {
+    dk_hoverable *elements;
+    int count;
+} dk_hitbox_mngr;
+
 typedef struct dk_ui_node {
     dk_node_type type;
     
@@ -46,7 +65,7 @@ typedef struct dk_ui_node {
         dk_color color;
     } data;
 
-    bool hovered;
+    dk_hoverable *hoverable;
     
     struct dk_ui_node *parent;
     struct dk_ui_node *first_child;
@@ -56,21 +75,10 @@ typedef struct dk_ui_node {
 
 typedef struct {
     dk_ui_node *nodes;
-    int element_count;
     dk_ui_node *root;
     dk_ui_node *current_parent;
-} dk_node_mngr;
-/* 
-typedef struct {
-    dk_ui_node *node;
-    bool *hover;
-} dk_hitbox;
-
-typedef struct {
-    dk_hitbox *hitboxes;
     int count;
-    int capacity;
-} dk_hitbox_mngr; */
+} dk_node_mngr;
 
 typedef struct {
     GLuint shader_program;
@@ -81,7 +89,7 @@ typedef struct {
     int screen_height;
     dk_color background_color;
     dk_node_mngr node_mngr;
-    //dk_hitbox_mngr hitbox_mngr;
+    dk_hitbox_mngr hitbox_mngr;
 } dk_context;
 
 dk_context *dk_init(int screen_width, int screen_height);

@@ -26,13 +26,12 @@ namespace DrawKit {
 
     [CCode (cname = "dk_box_style", has_type_id = false)]
     public struct BoxStyle {
-        public int padding_top;
-        public int padding_right;
-        public int padding_bottom;
-        public int padding_left;
         public int gap;
         public FloatMode float_mode;
     }
+
+    public delegate void OnHover(UINode* node);
+    public delegate void OnClicked(UINode* node);
 
     [CCode (cname = "struct dk_ui_node", has_type_id = false)]
     public struct UINode {
@@ -52,19 +51,32 @@ namespace DrawKit {
         [CCode (cname = "data.color")]
         public Color color;
 
-        public bool hovered;
+        int padding_top;
+        int padding_right;
+        int padding_left;
+
         public UINode* parent;
         public UINode* first_child;
         public UINode* last_child;
         public UINode* next_sibling;
+
+        [CCode(cname = "dk_register_on_hover")]
+        public void register_on_hover(OnHover cb);
+        
+        [CCode(cname = "dk_register_on_clicked")]
+        public void register_on_clicked(OnClicked cb);
+    }
+
+    [CCode (cname = "dk_hitbox_mngr", has_type_id = false)]
+    public struct HitBoxManager{
     }
 
     [CCode (cname = "dk_node_mngr", has_type_id = false)]
     public struct NodeManager {
         public UINode* nodes;
-        public int element_count;
         public UINode* root;
         public UINode* current_parent;
+        public int count;
     }
 
     [CCode (cname = "dk_context", free_function = "dk_cleanup", has_type_id = false)]
@@ -140,8 +152,8 @@ namespace DrawKit {
         public void draw(int root_x, int root_y);
 
         // Hover/hitbox functions
-        [CCode (cname = "dk_hitbox_query")]
-        public int hitbox_query(int px, int py);
+        [CCode (cname = "dk_hover_query")]
+        public int hover_query(int px, int py, bool mouse_clicked);
     }
 
     // Texture functions

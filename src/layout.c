@@ -6,11 +6,16 @@
 #include "backend.h"
 
 static dk_ui_node* allocate_element(dk_context *ctx) {
-    if (ctx->node_mngr.element_count >= MAX_UI_ELEMENTS) {
+    if (ctx->node_mngr.count >= MAX_UI_ELEMENTS) {
         return NULL;
     }
-    dk_ui_node *elem = &ctx->node_mngr.nodes[ctx->node_mngr.element_count++];
+    dk_hoverable *hoverable = &ctx->hitbox_mngr.elements[ctx->hitbox_mngr.count++]; 
+    memset(hoverable, 0, sizeof(dk_hoverable));
+
+    dk_ui_node *elem = &ctx->node_mngr.nodes[ctx->node_mngr.count++];
     memset(elem, 0, sizeof(dk_ui_node));
+
+    elem->hoverable = hoverable;
     return elem;
 }
 
@@ -28,9 +33,11 @@ static void add_child(dk_ui_node *parent, dk_ui_node *child) {
 }
 
 void dk_reset(dk_context *ctx){
-    ctx->node_mngr.element_count = 0;
+    ctx->node_mngr.count = 0;
     ctx->node_mngr.current_parent = NULL;
     ctx->node_mngr.root = NULL;
+
+    ctx->hitbox_mngr.count = 0;
 }
 
 //TODO rework padding
