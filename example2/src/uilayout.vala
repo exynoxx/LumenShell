@@ -4,9 +4,13 @@ using GLES2;
 using Gee;
 
 public class UiLayout {
-    public static void Draw(DrawKit.Context ctx, MouseInfo *mouse, Gee.List<Program> programs){
+
+    public static void Draw(DrawKit.Context ctx, MouseInfo *mouse, Gee.List<Program> programs, int active_idx){
 
         var n_programs = programs.size;
+        int underline_height = 5;
+        int box_width = 70;
+        int box_height = ctx.screen_height - underline_height;
 
         //print("drawing %d programs\n", n_programs);
         if(n_programs > 100){
@@ -25,15 +29,15 @@ public class UiLayout {
 
                 var hitboxes = new DrawKit.UINode*[n_programs];
                 for(int i = 0; i < n_programs; i++){
-                    hitboxes[i] = ctx.rect(70, 52, Color(){r=1,g=1,b=1,a=0f});
+                    hitboxes[i] = ctx.rect(box_width, box_height, Color(){r=1,g=1,b=1,a=0f});
                 }
 
             ctx.end_box();
 
             ctx.start_box(0, 0);
                 ctx.box_float(DrawKit.FloatMode.LEFT);
-                var padding_side = (70-32)/2;
-                var padding_top = (52-32)/2;
+                var padding_side = (box_width-32)/2;
+                var padding_top = (box_height-32)/2;
 
                 foreach (var item in programs)
                 {
@@ -42,11 +46,14 @@ public class UiLayout {
                 }
             ctx.end_box();
                     
-            ctx.start_box(0, 8);
-                float shade = 0.15f;
-                ctx.rect(0, 0, Color(){r=shade,g=shade,b=shade,a=1});
-                ctx.set_padding(0, 0, ctx.screen_height-8);
-            ctx.end_box();
+            float shade = 0.15f;
+            ctx.rect(0, underline_height, Color(){r=shade,g=shade,b=shade,a=1});
+            ctx.set_padding(0, 0, box_height);
+
+            if(active_idx >= 0){
+                ctx.rect(box_width, underline_height, Color(){r=0,g=0.17f,b=0.9f,a=1});
+                ctx.set_padding(active_idx*box_width, 0, box_height);
+            }
 
         ctx.end_box();
 

@@ -9,6 +9,7 @@ public class Program {
 }
 
 static Gee.List<Program> entries = null;
+static int active_idx = -1;
 
 public void on_window_new(string app_id, string title){
     print("on_window_new: %s (%s)\n", title, app_id);
@@ -29,6 +30,15 @@ public void on_window_new(string app_id, string title){
     entries.add(new Program(){id=app_id, title=title, tex=tex});
 }
 
+public static void on_window_focus(string app_id, string title){
+    for(int i = 0; i < entries.size; i++){
+        if(entries[i].id == app_id && entries[i].title == title){
+            active_idx = i;
+            return;
+        }
+    }
+}
+
 public static int main(string[] args) {
     
     int width = 1920;
@@ -37,29 +47,25 @@ public static int main(string[] args) {
     entries = new ArrayList<Program>();
     LayerShell.register_on_window_new(on_window_new);
     LayerShell.register_on_window_rm((app_id, title) => print("rm: %s (%s)\n", title, app_id));
-    LayerShell.register_on_window_focus((app_id, title) => print("focus: %s (%s)\n", title, app_id));
-    LayerShell.register_on_mouse_enter(() => {
+    LayerShell.register_on_window_focus(on_window_focus);
+/*      LayerShell.register_on_mouse_enter(() => {
         print("mouse enter\n");
-    });
+    });  */
 
     LayerShell.init("panel", width, height, BOTTOM, true);
     var mouse_info = LayerShell.seat_mouse_info();
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
-    LayerShell.register_on_mouse_leave(() => {
+/*      LayerShell.register_on_mouse_leave(() => {
         print("mouse leave\n");
-    });
+    });  */
 
     while (LayerShell.display_dispatch_blocking() != -1) {
         //if(draw_count <= 0 || entries.size < 1) continue;
 
-        //if(inside) draw_count ++;
-
-        UiLayout.Draw(ctx, mouse_info, entries);
+        UiLayout.Draw(ctx, mouse_info, entries, active_idx);
         LayerShell.swap_buffers();
-
-        //draw_count--;
     }
 
     return 0;
