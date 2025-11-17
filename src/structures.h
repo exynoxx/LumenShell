@@ -23,10 +23,6 @@ typedef enum {
 } dk_node_type;
 
 typedef struct {
-    int padding_top;
-    int padding_right;
-    int padding_bottom;
-    int padding_left;
     int gap;              // Space between children
     dk_float_mode float_mode;
 } dk_box_style;
@@ -39,6 +35,10 @@ typedef struct dk_ui_node {
     
     float x;
     float y;
+
+    int padding_top;
+    int padding_right;
+    int padding_left;
     
     union {
         dk_box_style style;

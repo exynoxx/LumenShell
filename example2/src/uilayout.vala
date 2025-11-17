@@ -22,7 +22,6 @@ public class UiLayout {
 
             ctx.start_box(0, 0);
                 ctx.box_float(DrawKit.FloatMode.LEFT);
-                ctx.box_set_gap(32);
 
                 var hitboxes = new DrawKit.UINode*[n_programs];
                 for(int i = 0; i < n_programs; i++){
@@ -34,14 +33,18 @@ public class UiLayout {
             ctx.start_box(0, 0);
                 ctx.box_float(DrawKit.FloatMode.LEFT);
                 var padding = (50-32)/2;
-                ctx.box_set_padding(padding, padding, padding, padding);
-                ctx.box_set_gap(50);
 
                 foreach (var item in programs)
                 {
                     ctx.texture(item.tex, 32, 32);
+                    ctx.set_padding(padding, padding, padding);
                 }
-
+            ctx.end_box();
+                    
+            ctx.start_box(0, 8);
+                float shade = 0.15f;
+                ctx.rect(0, 0, Color(){r=shade,g=shade,b=shade,a=1});
+                ctx.set_padding(0, 0, 50);
             ctx.end_box();
 
         ctx.end_box();

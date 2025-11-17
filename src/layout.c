@@ -40,10 +40,8 @@ void dk_start_box(dk_context *ctx, int width, int height, int x, int y) {
     if (!box) return;
     
     box->type = ELEMENT_BOX;
-    box->data.style.padding_top = 0;
-    box->data.style.padding_right = 0;
-    box->data.style.padding_bottom = 0;
-    box->data.style.padding_left = 0;
+    box->padding_top = 0;
+    box->padding_left = 0;
     box->data.style.gap = 0;
     box->data.style.float_mode = 0;
     box->x = x;
@@ -66,12 +64,12 @@ void dk_start_box(dk_context *ctx, int width, int height, int x, int y) {
     ctx->node_mngr.current_parent = box;
 }
 
-void dk_box_set_padding(dk_context *ctx, int top, int right, int bottom, int left) {
+//box padding does not work
+void dk_set_padding(dk_context *ctx, int left, int right, int top) {
     if (!ctx->node_mngr.current_parent || ctx->node_mngr.current_parent->type != ELEMENT_BOX) return;
-    ctx->node_mngr.current_parent->data.style.padding_top = top;
-    ctx->node_mngr.current_parent->data.style.padding_right = right;
-    ctx->node_mngr.current_parent->data.style.padding_bottom = bottom;
-    ctx->node_mngr.current_parent->data.style.padding_left = left;
+    ctx->node_mngr.current_parent->last_child->padding_top = top;
+    ctx->node_mngr.current_parent->last_child->padding_left = left;
+    ctx->node_mngr.current_parent->last_child->padding_right = right;
 }
 
 void dk_box_set_gap(dk_context *ctx, int gap) {
@@ -147,8 +145,8 @@ void evaluate_positions(dk_ui_node *elem, float parent_x, float parent_y) {
     if (!elem) return;
     
     // Set element's absolute position
-    elem->x = parent_x + ;
-    elem->y += parent_y;
+    elem->x = parent_x + elem->padding_left;
+    elem->y = parent_y + elem->padding_top;
 
     if(elem->width <= 0) elem->width = elem->parent->width;
     if(elem->height <= 0) elem->height = elem->parent->height;
@@ -156,42 +154,35 @@ void evaluate_positions(dk_ui_node *elem, float parent_x, float parent_y) {
     if (elem->type == ELEMENT_BOX) {
         dk_box_style *style = &elem->data.style;
         
-        float content_x = elem->x + style->padding_left;
-        float content_y = elem->y + style->padding_top;
+        float content_x = elem->x;
+        float content_y = elem->y;
         float max_line_height = 0;
         float line_start_x = content_x;
         
-        float available_width = elem->width - style->padding_left - style->padding_right;
-        float available_height = elem->height - style->padding_top - style->padding_bottom;
-        
         dk_ui_node *child = elem->first_child;
-
-        if(elem->type == ELEMENT_BOX){
-            while (child) {
-                switch (elem->data.style.float_mode) {
-                    case FLOAT_LEFT:
-                        // Check if we need to wrap
-                        if (content_x + child->width > elem->x + elem->width - style->padding_right && 
-                            content_x > line_start_x) {
-                            content_y += max_line_height + style->gap;
-                            content_x = line_start_x;
-                            max_line_height = 0;
-                        }
-                        
-                        evaluate_positions(child, content_x, content_y);
-                        content_x += child->width + style->gap;
-                        if (child->height > max_line_height) {
-                            max_line_height = child->height;
-                        }
-                        break;
-                        
-                    case FLOAT_NONE:
-                        // For absolute, children define their own position
-                        evaluate_positions(child, content_x, content_y);
-                        break;
-                }
-                child = child->next_sibling;
+        while (child) {
+            switch (elem->data.style.float_mode) {
+                case FLOAT_LEFT:
+                    // Check if we need to wrap
+                    /* if (content_x + child->width > elem->x + elem->width && content_x > line_start_x) {
+                        content_y += max_line_height + style->gap;
+                        content_x = line_start_x;
+                        max_line_height = 0;
+                    } */
+                    
+                    evaluate_positions(child, content_x, content_y);
+                    content_x += child->width + child->padding_left + child->padding_right + style->gap;
+                    if (child->height > max_line_height) {
+                        max_line_height = child->height;
+                    }
+                    break;
+                    
+                case FLOAT_NONE:
+                    // For absolute, children define their own position
+                    evaluate_positions(child, content_x, content_y);
+                    break;
             }
+            child = child->next_sibling;
         }
     }
         

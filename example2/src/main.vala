@@ -32,7 +32,7 @@ public void on_window_new(string app_id, string title){
 public static int main(string[] args) {
     
     int width = 1920;
-    int height = 50;
+    int height = 58;
 
     entries = new ArrayList<Program>();
     LayerShell.register_on_window_new(on_window_new);
