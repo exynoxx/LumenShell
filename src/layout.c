@@ -33,7 +33,9 @@ void dk_reset(dk_context *ctx){
     ctx->node_mngr.root = NULL;
 }
 
-void dk_start_box(dk_context *ctx, int width, int height) {
+//TODO rework padding
+
+void dk_start_box(dk_context *ctx, int width, int height, int x, int y) {
     dk_ui_node *box = allocate_element(ctx);
     if (!box) return;
     
@@ -44,6 +46,8 @@ void dk_start_box(dk_context *ctx, int width, int height) {
     box->data.style.padding_left = 0;
     box->data.style.gap = 0;
     box->data.style.float_mode = 0;
+    box->x = x;
+    box->y = y;
 
     if (ctx->node_mngr.current_parent) {
 
@@ -92,8 +96,11 @@ dk_ui_node *dk_rect(dk_context *ctx, int width, int height, dk_color color) {
     if (!rect) return NULL;
     
     rect->type = ELEMENT_RECT;
-    rect->width = width;
-    rect->height = height;
+    rect->x = 0;
+    rect->y = 0;
+    rect->width = (width <= 0) ? ctx->node_mngr.current_parent->width : width;
+    rect->height = (height <= 0) ? ctx->node_mngr.current_parent->height : height;
+
     rect->data.color = color;
 
     add_child(ctx->node_mngr.current_parent, rect);
@@ -125,6 +132,8 @@ dk_ui_node *dk_texture(dk_context *ctx, GLuint texture_id, int width, int height
     if (!tex) return NULL;
     
     tex->type = ELEMENT_TEXTURE;
+    tex->x = 0;
+    tex->y = 0;
     tex->width = width;
     tex->height = height;
     tex->data.texture_id = texture_id;
@@ -138,8 +147,8 @@ void evaluate_positions(dk_ui_node *elem, float parent_x, float parent_y) {
     if (!elem) return;
     
     // Set element's absolute position
-    elem->x = parent_x;
-    elem->y = parent_y;
+    elem->x = parent_x + ;
+    elem->y += parent_y;
 
     if(elem->width <= 0) elem->width = elem->parent->width;
     if(elem->height <= 0) elem->height = elem->parent->height;

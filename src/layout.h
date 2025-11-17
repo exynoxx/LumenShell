@@ -5,7 +5,7 @@
 #include "structures.h"
 
 void dk_reset(dk_context *ctx);
-void dk_start_box(dk_context *ctx, int width, int height);
+void dk_start_box(dk_context *ctx, int width, int height, int x, int y);
 
 void dk_box_set_padding(dk_context *ctx, int top, int right, int bottom, int left);
 void dk_box_set_gap(dk_context *ctx, int gap);

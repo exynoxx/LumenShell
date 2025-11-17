@@ -113,7 +113,7 @@ namespace DrawKit {
         public void reset();
 
         [CCode (cname = "dk_start_box")]
-        public void start_box(int width, int height);
+        public void start_box(int width, int height, int x = 0, int y = 0);
 
         [CCode (cname = "dk_box_set_padding")]
         public void box_set_padding(int top, int right, int bottom, int left);
