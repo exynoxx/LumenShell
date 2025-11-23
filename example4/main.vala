@@ -57,7 +57,6 @@ public class LayerShellBar : Gtk.ApplicationWindow {
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         );
 
-
         drawing_area = new DrawingArea();
         set_child(drawing_area);
     }
@@ -71,11 +70,24 @@ public class Application : Gtk.Application {
     protected override void activate() {
         var window = new LayerShellBar(this);
         window.present();
+        window.realize();
+
+        var gdk_display = window.get_display();
+        if (gdk_display == null) {
+            print("gdk_display null\n");
+            return;
+        }
+
+        var toplevel_mngr = new TopLevelManager();
+        toplevel_mngr.init(gdk_display);
     }
 
+
     public static int main(string[] args) {
+
+        Environment.set_variable("GDK_BACKEND", "wayland", true);
+        
         var app = new Application();
-    
         return app.run(args);
     }
 }

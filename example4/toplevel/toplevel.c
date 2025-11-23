@@ -177,10 +177,42 @@ static void toplevel_registry_handler(void *data, struct wl_registry *registry,
     }
 }
 
+static void toplevel_registry_remove(void *data, struct wl_registry *registry,uint32_t name) {
+    // Handle removal if needed
+}
+
+static const struct wl_registry_listener registry_listener = {
+    .global = toplevel_registry_handler,
+    .global_remove = toplevel_registry_remove,
+};
+
 // Public API
-void toplevel_init(void) {
+void toplevel_init(GdkDisplay *display) {
+    // Ensure Wayland
+    GdkWaylandDisplay *wayland_display = GDK_WAYLAND_DISPLAY(display);
+    if (!wayland_display) {
+        fprintf(stderr, "Not running on Wayland\n");
+        return;
+    }
+
+    struct wl_display *wl_display = gdk_wayland_display_get_wl_display(wayland_display);
+    if (!wl_display) {
+        fprintf(stderr, "Failed to get wl_display\n");
+        return;
+    }
+
+    // Initialize window list
     wl_list_init(&windows);
-   }
+
+    // Get registry
+    struct wl_registry *wl_registry = wl_display_get_registry(wl_display);
+    wl_registry_add_listener(wl_registry, &registry_listener, NULL);
+
+    // Roundtrip to make globals available
+    wl_display_roundtrip(wl_display);
+
+    printf("Wayland toplevel initialized\n");
+}
 
 void toplevel_cleanup(void) {
     toplevel_window_t *window, *tmp;

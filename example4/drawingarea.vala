@@ -10,7 +10,7 @@ public class DrawingArea : Gtk.DrawingArea {
     private const int BOX_WIDTH = 64;
     private const int BOX_HEIGHT = 48;
     private const int ICON_SIZE = 32;
-    private const int UNDERLINE_HEIGHT = 3;
+    private const int UNDERLINE_HEIGHT = 5;
 
     Gdk.Texture tex;
     
