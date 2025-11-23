@@ -36,7 +36,7 @@ public class UiLayout {
 
         //underline
         float shade = 0.15f;
-        ctx.draw_rect(0, box_height, 0, underline_height, Color(){r=shade,g=shade,b=shade,a=1});
+        ctx.draw_rect(0, box_height, width, underline_height, Color(){r=shade,g=shade,b=shade,a=1});
 
         //active
         if(active_idx >= 0){

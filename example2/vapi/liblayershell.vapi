@@ -65,6 +65,8 @@ namespace LayerShell {
 
     public delegate void SeatMouseEnter();
     public delegate void SeatMouseLeave();
+    public delegate void SeatMouseDown();
+    public delegate void SeatMouseUp();
     public delegate void SeatMouseMotion(double x, double y);
 
     [CCode(cname = "register_on_mouse_enter")]
@@ -72,6 +74,12 @@ namespace LayerShell {
 
     [CCode(cname = "register_on_mouse_leave")]
     void register_on_mouse_leave(SeatMouseLeave cb);
+
+    [CCode(cname = "register_on_mouse_down")]
+    void register_on_mouse_down(SeatMouseDown cb);
+
+    [CCode(cname = "register_on_mouse_up")]
+    void register_on_mouse_up(SeatMouseUp cb);
 
     [CCode(cname = "register_on_mouse_motion")]
     void register_on_mouse_motion(SeatMouseMotion cb);

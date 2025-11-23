@@ -14,6 +14,12 @@ static void *mouse_leave_userdata = NULL;
 static seat_mouse_motion mouse_motion_cb;
 static void *mouse_motion_userdata = NULL;
 
+static seat_mouse_down mouse_down_cb;
+static void *mouse_down_userdata = NULL;
+
+static seat_mouse_up mouse_up_cb;
+static void *mouse_up_userdata = NULL;
+
 // Your existing seat listener code
 static void pointer_enter(void *data, struct wl_pointer *pointer,
                          uint32_t serial, struct wl_surface *surface,
@@ -52,8 +58,14 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
     dk_mouse_info *info = data;
     if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
         info->mouse_buttons |= (1 << button);
+        if(mouse_down_cb){
+            mouse_down_cb(mouse_down_userdata);
+        }
     } else {
         info->mouse_buttons &= ~(1 << button);
+        if(mouse_up_cb){
+            mouse_up_cb(mouse_up_userdata);
+        }
     }
 }
 
@@ -123,4 +135,14 @@ void register_on_mouse_leave(seat_mouse_leave cb, void* user_data){
 void register_on_mouse_motion(seat_mouse_motion cb, void* user_data){
     mouse_motion_cb = cb;
     mouse_motion_userdata = user_data;
+}
+
+void register_on_mouse_down(seat_mouse_down cb, void* user_data){
+    mouse_down_cb = cb;
+    mouse_down_userdata = user_data;
+}
+
+void register_on_mouse_up(seat_mouse_up cb, void* user_data){
+    mouse_up_cb = cb;
+    mouse_up_userdata = user_data;
 }

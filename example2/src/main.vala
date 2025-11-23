@@ -34,13 +34,15 @@ public void on_window_new(string app_id, string title){
         tex = DrawKit.texture_upload(image);
     }
 
-    entries.add(new Node(){id=app_id, title=title, tex=tex, x = entries.size * box_width, y = 0});
+    entries.add(new Node(){id=app_id, title=title, tex=tex, x = entries.size * box_width, y = 0, hovered = false, clicked = false});
+    redraw = true;
 }
 
 public static void on_window_focus(string app_id, string title){
     for(int i = 0; i < entries.size; i++){
         if(entries[i].id == app_id && entries[i].title == title){
             active_idx = i;
+            redraw = true;
             return;
         }
     }
@@ -58,20 +60,35 @@ public static int main(string[] args) {
     LayerShell.register_on_window_rm((app_id, title) => print("rm: %s (%s)\n", title, app_id));
     LayerShell.register_on_window_focus(on_window_focus);
 
+    LayerShell.register_on_mouse_down(()=>{
+        print("mouse_down\n");
+        foreach(var box in entries){
+            if(box.hovered && !box.clicked){
+                box.clicked = true;
+                print("clicked activate %s\n", box.title);
+                LayerShell.toplevel_activate_by_id(box.id, box.title);
+            }
+        }
+    });
+    LayerShell.register_on_mouse_up(()=>{
+        print("mouse_up\n");
+        foreach(var box in entries){
+            box.clicked = false;
+        }
+    });
+
     LayerShell.register_on_mouse_motion((x,y) => {
         foreach(var box in entries){
             var box_x = box.x;
             var box_y = box.y;
             var oldval = box.hovered;
-            if(
-                x >= box_x && x <= box_x + box_width &&
-                y >= box_y && y <= box_y + box_height) {
-                box.hovered = true;
-            } else {
-                box.hovered = false;
-            }
-            if(box.hovered != oldval) redraw = true;
+            box.hovered = (
+                x >= box_x && 
+                x <= box_x + box_width &&
+                y >= box_y && 
+                y <= box_y + box_height);
 
+            if(box.hovered != oldval) redraw = true;
             box_x += box_width;
         }
     });
