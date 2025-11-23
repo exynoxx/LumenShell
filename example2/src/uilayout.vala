@@ -32,7 +32,7 @@ public class UiLayout {
         Draw_box(ctx, entries[0], ref content_x);
 
         //sep
-        ctx.draw_rect(content_x, 10, 2, box_height-20, Color(){r=1,g=1,b=1,a=0.7f});
+        ctx.draw_rect(content_x, 10, 2, box_height-20, Color(){r=0,g=0,b=0,a=1});
         content_x +=2;
 
         //open programs

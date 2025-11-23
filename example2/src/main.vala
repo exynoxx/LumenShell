@@ -67,7 +67,6 @@ public static int main(string[] args) {
     int box_height = height - underline_height;
 
     entries = new ArrayList<Node>();
-    add_launcher_item();
     
     LayerShell.register_on_window_new(on_window_new);
     LayerShell.register_on_window_rm((app_id, title) => {
@@ -123,6 +122,8 @@ public static int main(string[] args) {
     });
 
     LayerShell.init("panel", width, height, BOTTOM, true);
+
+    add_launcher_item();
 
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
