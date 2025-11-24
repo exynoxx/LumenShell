@@ -1,5 +1,5 @@
 [CCode(cheader_filename="libwayland_unstable.h")]
-namespace LayerShell { //TODO fix
+namespace WLUnstable { //TODO fix
 
     [CCode(cname="Anchor", cprefix="", has_type_id=false)]
     public enum Anchor {

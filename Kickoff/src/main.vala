@@ -1,5 +1,5 @@
 using DrawKit;
-using LayerShell;
+using WLUnstable;
 using GLES2;
 
 const int GRID_COLS = 6;
@@ -159,20 +159,20 @@ public static int main(string[] args) {
 
     layncher = new AppLauncher();
 
-    LayerShell.register_on_mouse_down(layncher.mouse_down);
-    LayerShell.register_on_mouse_up(layncher.mouse_up);
-    LayerShell.register_on_mouse_motion(layncher.mouse_move);
+    WLUnstable.register_on_mouse_down(layncher.mouse_down);
+    WLUnstable.register_on_mouse_up(layncher.mouse_up);
+    WLUnstable.register_on_mouse_motion(layncher.mouse_move);
 
-    LayerShell.init("Kickoff-overlay", 0, 0, TOP | BOTTOM | LEFT | RIGHT, false);
+    WLUnstable.init("Kickoff-overlay", 0, 0, TOP | BOTTOM | LEFT | RIGHT, false);
 
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){ 0.15f, 0.15f, 0.15f, 0.95f });
     
-    while (LayerShell.display_dispatch_blocking() != -1) {
+    while (WLUnstable.display_dispatch_blocking() != -1) {
         
         if(layncher.redraw){
             layncher.render();
-            LayerShell.swap_buffers();
+            WLUnstable.swap_buffers();
             layncher.redraw = false;
         }
     }
