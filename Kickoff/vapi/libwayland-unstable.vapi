@@ -1,5 +1,5 @@
 [CCode(cheader_filename="libwayland_unstable.h")]
-namespace WLUnstable { //TODO fix
+namespace WLUnstable {
 
     [CCode(cname="Anchor", cprefix="", has_type_id=false)]
     public enum Anchor {
