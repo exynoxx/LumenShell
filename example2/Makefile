@@ -1,7 +1,7 @@
 ROOT_DIR = /home/nicholas/Dokumenter/layer-shell-experiments
 DRAWKIT_SRC = $(ROOT_DIR)/src
-LAYERSHELL_SRC = $(ROOT_DIR)/liblayershell
-LAYERSHELL_BUILD = $(ROOT_DIR)/liblayershell/build
+LAYERSHELL_SRC = $(ROOT_DIR)/libwayland-unstable
+LAYERSHELL_BUILD = $(ROOT_DIR)/libwayland-unstable/build
 
 # Vala packages
 VALA_PKGS = --pkg=glesv2 \
@@ -10,13 +10,13 @@ VALA_PKGS = --pkg=glesv2 \
             --pkg=gee-0.8 \
             --pkg=egl \
             --pkg=drawkit \
-            --pkg=liblayershell
+            --pkg=libwayland-unstable
 
 # C compiler flags for external libraries
 CFLAGS = -X -I$(DRAWKIT_SRC) \
          -X -I$(LAYERSHELL_SRC) \
          -X -L$(LAYERSHELL_BUILD) \
-         -X -llayershell \
+         -X -lwayland-unstable \
          -X -Wl,-rpath,$(LAYERSHELL_BUILD) \
          -X -lm \
          -o main
