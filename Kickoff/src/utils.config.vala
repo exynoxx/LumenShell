@@ -2,7 +2,7 @@ using Gee;
 
 namespace Utils {
 
-    public static Config {
+    public class Config {
         public static HashMap<string, string>? parse(string file_path, string section){
             string target = "["+section+"]";
             if (!FileUtils.test(file_path, FileTest.EXISTS))
@@ -30,7 +30,7 @@ namespace Utils {
                     }
     
                     string[] parts = l.split("=", 2);
-                    result[parts[0]] = parts[1]
+                    result[parts[0]] = parts[1];
                 }
     
                 return result;
@@ -41,7 +41,7 @@ namespace Utils {
             return result;
         }
 
-        public static string? valueOrDefault (this HashMap<string, string> lookup, string key){
+        public static string? valueOrDefault (HashMap<string, string> lookup, string key){
             return lookup.has_key(lookup) ? lookup[key] : null;
         }
     }

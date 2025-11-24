@@ -1,4 +1,4 @@
-public interface Transition {
+/*  public interface Transition {
     public abstract bool finished { get; }
     public abstract void update(double dt);
     public abstract void draw();
@@ -83,4 +83,4 @@ animation_manager.add(
     new MoveTransition(0, 0, 400, 0, 0.5)
 );
 
-*/
+*/  */

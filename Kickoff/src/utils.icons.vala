@@ -2,7 +2,7 @@ using GLib;
 
 namespace Utils {
 
-    public static class System {
+    public class System {
         public static string[] get_xdg_data_dirs() {
             var dirs = new Gee.ArrayList<string>();
             
@@ -48,11 +48,11 @@ namespace Utils {
             var gtk_settings_file = Environment.get_home_dir() + "/.config/gtk-4.0/settings.ini";
             var kde_settings_file = Environment.get_home_dir() + "/.config/kdeglobals";
     
-            var gtk_settings = Utils.Config.parse(gtk_settings_file, "Settings")
+            var gtk_settings = Utils.Config.parse(gtk_settings_file, "Settings");
             if( gtk_settings != null && gtk_settings.has_key("gtk-icon-theme-name"))
                 return gtk_settings["gtk-icon-theme-name"];
             
-            var kde_settings = Utils.Config.parse(kde_settings_file "Icons")
+            var kde_settings = Utils.Config.parse(kde_settings_file, "Icons");
             if (kde_settings != null && kde_settings.has_key("Theme"))
                 return kde_settings["Theme"];
 
@@ -73,13 +73,13 @@ namespace Utils {
                         continue;
 
                     string filepath = Path.build_filename(apps_dir, name);
-                    yield filepath;
+                    yield filepath; //TODO not possible
                 }
             }
         }
     }
 
-    public static class Find {
+    public class Find {
         public static string? find_icon_theme_base(string theme_name) {
             foreach (var base_dir in System.get_icon_theme_dirs()) {
                 string theme_dir = Path.build_filename(base_dir, theme_name);
