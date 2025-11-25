@@ -109,11 +109,12 @@ namespace Main {
 
                 // Highlight if hovered
                 if (apps[i].hovered) {
-                    ctx.draw_rect(
+                    ctx.dk_draw_rect_rounded(
                         apps[i].grid_x - ICON_HOVER_PADDING, 
                         apps[i].grid_y - ICON_HOVER_PADDING, 
                         ICON_SIZE + 2*ICON_HOVER_PADDING,
                         ICON_SIZE + 2*ICON_HOVER_PADDING, 
+                        15.0f,
                         { 1.0f, 1.0f, 1.0f, 0.3f });
                 }
 

@@ -13,6 +13,14 @@ static const char* default_frag_src =
     #include "shaders/default/frag.glsl"
     "";
 
+static const char* rounded_frag_src =
+    #include "shaders/rounded/frag.glsl"
+    "";
+
+static const char* rounded_vert_src =
+    #include "shaders/rounded/vert.glsl"
+    "";
+
 static const char* texture_vert_src =
     #include "shaders/texture/vert.glsl"
     "";
@@ -84,7 +92,7 @@ static void create_ortho_matrix(float *mat, float left, float right, float botto
 
 bool dk_backend_init(dk_context *ctx) {
     default_program = create_program(default_vert_src, default_frag_src);
-    //rounded_rect_program = create_program(rounded_rect_vertex_shader, rounded_rect_fragment_shader);
+    rounded_rect_program = create_program(rounded_vert_src, rounded_frag_src);
     texture_program = create_program(texture_vert_src, texture_frag_src);
     
     if (!default_program || !texture_program /*  || !rounded_rect_program || !texture_program */) {
@@ -93,7 +101,7 @@ bool dk_backend_init(dk_context *ctx) {
     }
     
     ctx->shader_program = default_program;
-    //ctx->rounded_rect_program = rounded_rect_program;
+    ctx->rounded_rect_program = rounded_rect_program;
     ctx->texture_program = texture_program;
     
     // Create VBO
@@ -142,8 +150,7 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     
     // Set color
     GLint color_loc = glGetUniformLocation(default_program, "color");
-    glUniform4f(color_loc, color.r, color.g, 
-                color.b, color.a);
+    glUniform4f(color_loc, color.r, color.g, color.b, color.a);
     
     // Create rectangle vertices
     float vertices[] = {
@@ -166,7 +173,7 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     glDisableVertexAttribArray(pos_loc);
 }
 
-/* void dk_draw_rounded_rect(dk_context *ctx, float x, float y, float width, float height, float radius) {
+void dk_draw_rect_rounded(dk_context *ctx, float x, float y, float width, float height, float radius, dk_color color) {
     glUseProgram(rounded_rect_program);
     
     // Create projection matrix
@@ -176,16 +183,12 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     GLint proj_loc = glGetUniformLocation(rounded_rect_program, "projection");
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
     
-    // Set color
     GLint color_loc = glGetUniformLocation(rounded_rect_program, "color");
-    glUniform4f(color_loc, ctx->current_color.r, ctx->current_color.g, 
-                ctx->current_color.b, ctx->current_color.a);
+    glUniform4f(color_loc, color.r, color.g, color.b, color.a);
     
-    // Set rectangle parameters
     GLint rect_loc = glGetUniformLocation(rounded_rect_program, "rect");
     glUniform4f(rect_loc, x, y, width, height);
     
-    // Set radius
     GLint radius_loc = glGetUniformLocation(rounded_rect_program, "radius");
     glUniform1f(radius_loc, radius);
     
@@ -208,7 +211,7 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(pos_loc);
-} */
+}
 
 
 void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width, int height) {
