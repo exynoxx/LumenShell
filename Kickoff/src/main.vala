@@ -1,7 +1,6 @@
 using DrawKit;
 using WLUnstable;
 using GLES2;
-using Utils;
 
 namespace Main {
 
@@ -42,24 +41,25 @@ namespace Main {
             padding_h = (width - GRID_COLS*ICON_SIZE-PADDING_EDGES*2) / (gaps_h);
             padding_v = (height - GRID_ROWS*ICON_SIZE-PADDING_EDGES*2) / (gaps_v);
 
-            var icon_theme = System.get_current_theme();
-            var icon_paths = Find.find_icon_paths(icon_theme, 96);
+            var icon_theme = SystemUtils.get_current_theme();
+            var icon_paths = IconUtils.find_icon_paths(icon_theme, 96);
             print("using icon theme: %s. Num icons: %i\n", icon_theme, icon_paths.size);
 
-            var desktop_files = System.get_desktop_files();
+            var desktop_files = SystemUtils.get_desktop_files();
             print("Apps %i\n", desktop_files.length);
 
             foreach (var desktop in desktop_files){
-                var entries = Config.parse(desktop, "Desktop Entry");
+                var entries = ConfigUtils.parse(desktop, "Desktop Entry");
                 var icon = entries["Icon"];
                 var exec = entries["Exec"];
                 var name = entries["Name"];
 
-                if(icon == null){
+                //TODO rm has key later
+                if(icon == null || !icon_paths.has_key(icon)){
                     continue;
                 }
 
-                var icon_path = Config.valueOrDefault(icon_paths, icon, icon);
+                var icon_path = icon_paths[icon];
                 apps += AppEntry(){name = name, icon_path = icon_path, exec = exec};
             }
 
