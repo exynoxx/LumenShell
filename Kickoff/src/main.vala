@@ -41,6 +41,7 @@ namespace Main {
             int gaps_h = GRID_COLS + 1;
             int gaps_v = GRID_ROWS + 1;
 
+            //TODO KDE is 2 DPI
             padding_h = (width - GRID_COLS*ICON_SIZE - 3*PADDING_EDGES) / gaps_h;
             padding_v = (height - GRID_ROWS*ICON_SIZE - 3*PADDING_EDGES) / gaps_v;
 
