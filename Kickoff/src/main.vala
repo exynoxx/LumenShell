@@ -41,8 +41,8 @@ namespace Main {
             int gaps_h = GRID_COLS + 1;
             int gaps_v = GRID_ROWS + 1;
 
-            padding_h = (width - GRID_COLS*ICON_SIZE-PADDING_EDGES*2) / (gaps_h);
-            padding_v = (height - GRID_ROWS*ICON_SIZE-PADDING_EDGES*2) / (gaps_v);
+            padding_h = (width - GRID_COLS*ICON_SIZE - 3*PADDING_EDGES) / gaps_h;
+            padding_v = (height - GRID_ROWS*ICON_SIZE - 3*PADDING_EDGES) / gaps_v;
 
             var icon_theme = SystemUtils.get_current_theme();
             var icon_paths = IconUtils.find_icon_paths(icon_theme, 96);
