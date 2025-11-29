@@ -41,8 +41,7 @@ private void on_window_new(string app_id, string title){
 private void on_click(Node node){
 
     if(node == entries[0]){
-        print("launching apps");
-        return;
+        Process.spawn_command_line_sync("../Kickoff/main");
     } 
 
     WLUnstable.toplevel_activate_by_id(node.id, node.title);

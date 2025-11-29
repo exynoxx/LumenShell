@@ -23,6 +23,8 @@ namespace Main {
     
     class AppLauncher {
     
+        DrawKit.Context ctx;
+
         private int hovered_index = -1;
         private bool clicked = false;
         public bool redraw = true;
@@ -38,6 +40,9 @@ namespace Main {
             screen_width = width;
             screen_height = height;
     
+            ctx = new DrawKit.Context(/*  size.width, size.height  */1920, 1080);
+            ctx.set_bg_color(DrawKit.Color(){ r = 0, g =  0, b = 0, a = 0.70f });
+
             int gaps_h = GRID_COLS + 1;
             int gaps_v = GRID_ROWS + 1;
 
@@ -103,7 +108,7 @@ namespace Main {
             }
         }
     
-        public void render(DrawKit.Context ctx) {
+        public void render() {
             ctx.begin_frame();
             
             for (int i = 0; i < visible_apps; i++) {
@@ -161,14 +166,11 @@ namespace Main {
     
     static int main(string[] args) {
     
-        WLUnstable.init_layer_shell("Kickoff-overlay", 1920, 1080, UP | DOWN | LEFT | RIGHT, false);
+        WLUnstable.init_layer_shell("Kickoff-overlay", 1920, 1080, UP | LEFT | RIGHT | DOWN, false);
     
         var size = WLUnstable.get_layer_shell_size();
         print("layer shell size: %i %i\n", size.width, size.height);
 
-        var ctx = new DrawKit.Context(/*  size.width, size.height  */1920, 1080);
-        ctx.set_bg_color(DrawKit.Color(){ r = 0, g =  0, b = 0, a = 0.50f });
-    
         launcher = new AppLauncher(/*  size.width, size.height  */1920, 1080);
     
         WLUnstable.register_on_mouse_down(() => launcher.mouse_down());
@@ -184,7 +186,7 @@ namespace Main {
         while (WLUnstable.display_dispatch_blocking() != -1) {
             
             if(launcher.redraw){
-                launcher.render(ctx);
+                launcher.render();
                 WLUnstable.swap_buffers();
                 launcher.redraw = false;
             }
