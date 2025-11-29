@@ -24,7 +24,9 @@ CFLAGS = \
     -X -lwayland-client \
     -X -lEGL \
     -X -lGLESv2 \
-    -X -lm
+    -X -lm \
+    -X -lfreetype \
+    -X -lxkbcommon
 
 default:
 	valac --vapidir=vapi $(VALA_PKGS) $(CFLAGS) -o main src/*.vala

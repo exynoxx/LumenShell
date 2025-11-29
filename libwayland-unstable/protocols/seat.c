@@ -84,8 +84,7 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
     }
 }
 
-void pointer_axis(void *data, struct wl_pointer *wl_pointer,
-                        uint32_t time, uint32_t axis, wl_fixed_t value) {
+void pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time, uint32_t axis, wl_fixed_t value) {
     // Scroll events - can be empty for now
 }
 
@@ -93,13 +92,22 @@ void pointer_frame(void *data, struct wl_pointer *wl_pointer) {
     // Frame complete - can be empty
 }
 
+static void pointer_axis_source(void *data, struct wl_pointer *wl_pointer, uint32_t source) {
+    // empty
+}
+
+static void pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer, uint32_t axis, int32_t discrete) {
+    // empty
+}
 static const struct wl_pointer_listener pointer_listener = {
     .enter = pointer_enter,
     .leave = pointer_leave,
     .motion = pointer_motion,
     .button = pointer_button,
     .axis = pointer_axis,
-    .frame = pointer_frame
+    .frame = pointer_frame,
+    .axis_source = pointer_axis_source,
+    .axis_discrete = pointer_axis_discrete
 };
 
 /* ### KEYBOARD ### */
@@ -158,12 +166,15 @@ static void keyboard_modifiers(void *data, struct wl_keyboard *keyboard,
     xkb_state_update_mask(xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
 
+static void repeat_info(void *data, struct wl_keyboard *wl_keyboard,int32_t rate, int32_t delay){}
+
 static const struct wl_keyboard_listener keyboard_listener = {
     .keymap = keyboard_keymap,
     .enter = keyboard_enter,
     .leave = keyboard_leave,
     .key = keyboard_key,
     .modifiers = keyboard_modifiers,
+    .repeat_info = repeat_info
 };
 
 
