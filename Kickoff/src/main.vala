@@ -111,7 +111,7 @@ namespace Main {
         public void render() {
             ctx.begin_frame();
             
-            /*  for (int i = 0; i < visible_apps; i++) {
+            for (int i = 0; i < visible_apps; i++) {
 
                 // Highlight if hovered
                 if (apps[i].hovered) {
@@ -137,12 +137,8 @@ namespace Main {
                 } else {
                     ctx.draw_rect(apps[i].grid_x, apps[i].grid_y, ICON_SIZE, ICON_SIZE, { 1f, 1f, 1f, 1.0f });
                 }
-            }  */
+            }
 
-            ctx.draw_rect(100,100, 100, 100, { 1f, 1f, 1f, 1.0f });
-
-            ctx.draw_text("!!centered text!!", 150,100, 30);
-            
             ctx.end_frame();
         }
     
