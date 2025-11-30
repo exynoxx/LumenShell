@@ -138,7 +138,7 @@ namespace Main {
                     ctx.draw_rect(apps[i].grid_x, apps[i].grid_y, ICON_SIZE, ICON_SIZE, { 1f, 1f, 1f, 1.0f });
                 }
             }
-            ctx.draw_text("####################3", 100, 100, 50);
+            ctx.draw_text("HELLO!!hello", 100, 100, 30);
             ctx.end_frame();
         }
     

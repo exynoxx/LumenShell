@@ -167,15 +167,14 @@ bool dk_backend_init(dk_context *ctx) {
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    // ----- FIX #2: modern single–channel texture -----
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
-        GL_LUMINANCE,               // internal format
+        GL_LUMINANCE,
         atlas_w,
         atlas_h,
         0,
-        GL_LUMINANCE,              // data format
+        GL_LUMINANCE,
         GL_UNSIGNED_BYTE,
         NULL
     );
@@ -197,7 +196,7 @@ bool dk_backend_init(dk_context *ctx) {
             x, 0,
             g->bitmap.width,
             g->bitmap.rows,
-            GL_LUMINANCE,              // FIX #2
+            GL_LUMINANCE,
             GL_UNSIGNED_BYTE,
             g->bitmap.buffer
         );
@@ -210,11 +209,10 @@ bool dk_backend_init(dk_context *ctx) {
         gg->bl = g->bitmap_left;
         gg->bt = g->bitmap_top;
 
-        // ----- FIX #3: flipped V coordinates -----
         gg->tx0 = (float)x / atlas_w;
-        gg->ty0 = 0.0f;                  // top of glyph in bitmap
+        gg->ty0 = 0.0f;
         gg->tx1 = (float)(x + g->bitmap.width) / atlas_w;
-        gg->ty1 = (float)g->bitmap.rows / atlas_h;  // bottom
+        gg->ty1 = (float)g->bitmap.rows / atlas_h;
 
         x += g->bitmap.width + 1;
     }
@@ -407,11 +405,10 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
         float x1 = x0 + gw;
         float y1 = y0 + gh;
 
-        // ----- FIX #3: flip V coordinates -----
         float u0 = g->tx0;
-        float v0 = g->ty1;
+        float v0 = g->ty0;
         float u1 = g->tx1;
-        float v1 = g->ty0;
+        float v1 = g->ty1;
 
         float vertices[] = {
             x0, y0, u0, v0,
@@ -435,9 +432,7 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
 
         glActiveTexture(GL_TEXTURE0);
 
-        // ----- FIX #1: bind correct atlas texture -----
         glBindTexture(GL_TEXTURE_2D, ctx->font_atlas_tex);
-
         glUniform1i(glGetUniformLocation(ctx->text_program, "u_tex"), 0);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
