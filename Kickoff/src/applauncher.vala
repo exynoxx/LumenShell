@@ -6,7 +6,8 @@ const int GRID_COLS = 6;
 const int GRID_ROWS = 4;
 const int ICON_SIZE = 96;
 const int ICON_HOVER_PADDING = 8;
-const int PADDING_EDGES = 100;
+const int PADDING_EDGES_Y = 80;
+const int PADDING_EDGES_X = 150;
 
 class AppEntry {
     private string name;
@@ -16,7 +17,7 @@ class AppEntry {
     private  GLuint texture_id;
     private  bool texture_loaded;
     private bool hovered;
-    private int icon_x_offset;
+    private int icon_offset_x;
     private int padding_h;
     private int padding_v;
     public int grid_x;
@@ -37,15 +38,15 @@ class AppEntry {
 
         
         width = max(ICON_SIZE, ctx.width_of(name_short, 20)) + 2*ICON_HOVER_PADDING;
-        icon_x_offset = (width-ICON_SIZE) / 2;
+        icon_offset_x = (width-ICON_SIZE) / 2;
         height = 15 + ICON_SIZE + 2*ICON_HOVER_PADDING;
 
         //position
         int row = i / GRID_COLS;
         int col = i % GRID_COLS;
         
-        grid_x = PADDING_EDGES + padding_h * col + col * ICON_SIZE - (width/2);
-        grid_y = PADDING_EDGES + padding_v * row + row * ICON_SIZE;
+        grid_x = PADDING_EDGES_X + padding_h * col + col * ICON_SIZE - (width/2);
+        grid_y = PADDING_EDGES_Y + padding_v * row + row * ICON_SIZE;
     }
 
     public void mouse_move(double mouse_x, double mouse_y, bool clicked, ref bool redraw){
@@ -79,9 +80,9 @@ class AppEntry {
         
         // Draw icon or placeholder
         if (texture_id > 0) {
-            ctx.draw_texture(texture_id, grid_x+icon_x_offset, grid_y+ICON_HOVER_PADDING, ICON_SIZE, ICON_SIZE);
+            ctx.draw_texture(texture_id, grid_x+icon_offset_x, grid_y+ICON_HOVER_PADDING, ICON_SIZE, ICON_SIZE);
         } else {
-            ctx.draw_rect(grid_x+icon_x_offset, grid_y, ICON_SIZE, ICON_SIZE, { 1f, 1f, 1f, 1.0f });
+            ctx.draw_rect(grid_x+icon_offset_x, grid_y, ICON_SIZE, ICON_SIZE, { 1f, 1f, 1f, 1.0f });
         }
 
         //label
@@ -132,8 +133,8 @@ class AppLauncher {
         int gaps_v = GRID_ROWS + 1;
 
         //TODO KDE is 2 DPI
-        padding_h = (width - GRID_COLS*ICON_SIZE - 2*PADDING_EDGES) / gaps_h;
-        padding_v = (height - GRID_ROWS*ICON_SIZE - 2*PADDING_EDGES) / gaps_v;
+        padding_h = (width - GRID_COLS*ICON_SIZE) / gaps_h;
+        padding_v = (height - GRID_ROWS*ICON_SIZE) / gaps_v;
 
         var icon_theme = SystemUtils.get_current_theme();
         var icon_paths = IconUtils.find_icon_paths(icon_theme, 96);
