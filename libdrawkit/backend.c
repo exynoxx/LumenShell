@@ -250,7 +250,10 @@ void dk_end_frame() {
 }
 
 void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color color) {
-    glUseProgram(ctx->shader_program);
+    glUseProgram(ctx->rounded_rect_program);
+
+    GLint mode_loc = glGetUniformLocation(ctx->shader_program, "mode");
+    glUniform1i(mode_loc, 1);
     
     // Create projection matrix
     float proj[16];
@@ -286,6 +289,9 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
 
 void dk_draw_rect_rounded(dk_context *ctx, float x, float y, float width, float height, float radius, dk_color color) {
     glUseProgram(ctx->rounded_rect_program);
+
+    GLint mode_loc = glGetUniformLocation(ctx->rounded_rect_program, "mode");
+    glUniform1i(mode_loc, 1);
     
     // Create projection matrix
     float proj[16];
@@ -320,6 +326,57 @@ void dk_draw_rect_rounded(dk_context *ctx, float x, float y, float width, float 
     glEnableVertexAttribArray(pos_loc);
     glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 0, 0);
     
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDisableVertexAttribArray(pos_loc);
+}
+
+void dk_draw_circle(dk_context *ctx, int cx, int cy, int radius, dk_color color) {
+    glUseProgram(ctx->rounded_rect_program);
+
+    GLint mode_loc = glGetUniformLocation(ctx->rounded_rect_program, "mode");
+    glUniform1i(mode_loc, 2);
+
+    // --- Projection ---
+    float proj[16];
+    create_ortho_matrix(proj, 0, ctx->screen_width, ctx->screen_height, 0);
+    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projection");
+    glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
+
+    GLint color_loc = glGetUniformLocation(ctx->rounded_rect_program, "color");
+    glUniform4f(color_loc, color.r, color.g, color.b, color.a);
+
+    // --- Rectangle covering the circle ---
+    // In the shader, rect.xy + rect.zw * 0.5 = center
+    float x = cx - radius;
+    float y = cy - radius;
+    float w = radius * 2.0f;
+    float h = radius * 2.0f;
+
+    GLint rect_loc = glGetUniformLocation(ctx->rounded_rect_program, "rect");
+    glUniform4f(rect_loc, x, y, w, h);
+
+    // --- Radius uniform ---
+    GLint radius_loc = glGetUniformLocation(ctx->rounded_rect_program, "radius");
+    glUniform1f(radius_loc, radius);
+
+    // --- Create quad vertices ---
+    float vertices[] = {
+        x,     y,
+        x + w, y,
+        x + w, y + h,
+        x,     y,
+        x + w, y + h,
+        x,     y + h
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+
+    GLint pos_loc = glGetAttribLocation(ctx->rounded_rect_program, "position");
+    glEnableVertexAttribArray(pos_loc);
+    glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    // --- Draw ---
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(pos_loc);
 }

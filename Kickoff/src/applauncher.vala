@@ -199,6 +199,17 @@ class AppLauncher {
             app.render(ctx);
         }
 
+        int middle = (int) screen_width/2;
+        int y = screen_height - 200;
+
+        ctx.draw_circle(middle - 50,y, 15, {0.3f,0.3f,0.3f,1f});
+        ctx.draw_circle(middle - 0,y, 15, {0.3f,0.3f,0.3f,1f});
+        ctx.draw_circle(middle + 50,y, 15, {0.3f,0.3f,0.3f,1f});
+
+        ctx.draw_text("1", middle - 50,y+5, 15);
+        ctx.draw_text("2", middle - 0,y+5, 15);
+        ctx.draw_text("3", middle + 50,y+5, 15);
+
         ctx.end_frame();
     }
 }

@@ -43,6 +43,9 @@ namespace DrawKit {
         [CCode (cname = "dk_draw_rect_rounded")]
         public void dk_draw_rect_rounded(int x, int y, int width, int height, float radius, Color color);
 
+        [CCode (cname = "dk_draw_circle")]
+        public void draw_circle(int cx, int cy, int radius, Color color);
+
         [CCode (cname = "dk_draw_texture")]
         public void draw_texture(GLuint texture_id, int x, int y, int width, int height);
 
