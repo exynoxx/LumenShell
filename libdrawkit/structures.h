@@ -12,7 +12,6 @@ typedef struct {
 
 
 typedef struct {
-    GLuint shader_program;
     GLuint rounded_rect_program;
     GLuint texture_program;
     GLuint text_program;

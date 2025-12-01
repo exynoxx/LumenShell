@@ -22,14 +22,6 @@ static Glyph glyphs[NUM_CHARS];
 static int atlas_w = 0, atlas_h = 0;
 static int base_px_height = 48; // rasterization baseline used to build atlas
 
-static const char* default_vert_src =
-    #include "shaders/default/vert.glsl"
-    "";
-
-static const char* default_frag_src =
-    #include "shaders/default/frag.glsl"
-    "";
-
 static const char* rounded_frag_src =
     #include "shaders/rounded/frag.glsl"
     "";
@@ -111,12 +103,11 @@ static void create_ortho_matrix(float *mat, float left, float right, float botto
 }
 
 bool dk_backend_init(dk_context *ctx) {  
-    ctx->shader_program = create_program(default_vert_src, default_frag_src);
     ctx->rounded_rect_program = create_program(rounded_vert_src, rounded_frag_src);
     ctx->texture_program = create_program(texture_vert_src, texture_frag_src);
     ctx->text_program = create_program(text_vert_src, text_frag_src);
     
-    if (!ctx->shader_program || !ctx->rounded_rect_program  || !ctx->texture_program || !ctx->text_program) {
+    if (!ctx->rounded_rect_program  || !ctx->texture_program || !ctx->text_program) {
         fprintf(stderr, "Failed to create shader programs\n");
         return false;
     }
@@ -226,7 +217,6 @@ bool dk_backend_init(dk_context *ctx) {
 
 void dk_backend_cleanup(dk_context *ctx) {
     glDeleteBuffers(1, &ctx->vbo);
-    if (ctx->shader_program) glDeleteProgram(ctx->shader_program);
     if (ctx->rounded_rect_program) glDeleteProgram(ctx->rounded_rect_program);
     if (ctx->texture_program) glDeleteProgram(ctx->texture_program);
     if (ctx->text_program) glDeleteProgram(ctx->text_program);
@@ -252,18 +242,18 @@ void dk_end_frame() {
 void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color color) {
     glUseProgram(ctx->rounded_rect_program);
 
-    GLint mode_loc = glGetUniformLocation(ctx->shader_program, "mode");
-    glUniform1i(mode_loc, 1);
+    GLint mode_loc = glGetUniformLocation(ctx->rounded_rect_program, "mode");
+    glUniform1i(mode_loc, 0);
     
     // Create projection matrix
     float proj[16];
     create_ortho_matrix(proj, 0, ctx->screen_width, ctx->screen_height, 0);
     
-    GLint proj_loc = glGetUniformLocation(ctx->shader_program, "projection");
+    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projection");
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
     
     // Set color
-    GLint color_loc = glGetUniformLocation(ctx->shader_program, "color");
+    GLint color_loc = glGetUniformLocation(ctx->rounded_rect_program, "color");
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
     
     // Create rectangle vertices
@@ -279,7 +269,7 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
     
-    GLint pos_loc = glGetAttribLocation(ctx->shader_program, "position");
+    GLint pos_loc = glGetAttribLocation(ctx->rounded_rect_program, "position");
     glEnableVertexAttribArray(pos_loc);
     glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 0, 0);
     
