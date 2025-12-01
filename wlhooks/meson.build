@@ -1,4 +1,4 @@
-project('wayland-unstable', 'c',
+project('wlhooks', 'c',
   version : '1.0'
 )
 
@@ -24,7 +24,7 @@ sources = [
 ]
 
 wayland_unstable = static_library(
-  'wayland-unstable',
+  'wlhooks',
   sources,
   dependencies: [wayland_client_dep, wayland_egl_dep, egl_dep, glesv2_dep, xkb_dep],
   include_directories: include_directories('.')

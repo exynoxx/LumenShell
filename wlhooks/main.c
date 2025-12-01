@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "libwayland_unstable.h"
+#include "wlhooks.h"
 #include "egl.h"
 #include "registry.h"
 

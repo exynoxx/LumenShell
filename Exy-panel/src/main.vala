@@ -1,4 +1,4 @@
-using WLUnstable;
+using WLHooks;
 using GLES2;
 using Gee;
 
@@ -44,7 +44,7 @@ private void on_click(Node node){
         Process.spawn_command_line_sync("../Kickoff/main");
     } 
 
-    WLUnstable.toplevel_activate_by_id(node.id, node.title);
+    WLHooks.toplevel_activate_by_id(node.id, node.title);
 }
 
 private void add_launcher_item(){
@@ -67,8 +67,8 @@ public static int main(string[] args) {
 
     entries = new ArrayList<Node>();
     
-    WLUnstable.register_on_window_new(on_window_new);
-    WLUnstable.register_on_window_rm((app_id, title) => {
+    WLHooks.register_on_window_new(on_window_new);
+    WLHooks.register_on_window_rm((app_id, title) => {
         for (var i = 0; i < entries.size ; i++){
             var entry = entries[i];
             if(entry.id == app_id && entry.title == title){
@@ -78,7 +78,7 @@ public static int main(string[] args) {
             }
         }
     });
-    WLUnstable.register_on_window_focus((app_id, title)=>{
+    WLHooks.register_on_window_focus((app_id, title)=>{
         var i = 0;
         foreach(var entry in entries){
             if(entry.id == app_id && entry.title == title){
@@ -90,7 +90,7 @@ public static int main(string[] args) {
         }
     });
 
-    WLUnstable.register_on_mouse_down(()=>{
+    WLHooks.register_on_mouse_down(()=>{
         foreach(var box in entries){
             if(box.hovered && !box.clicked){
                 box.clicked = true;
@@ -98,13 +98,13 @@ public static int main(string[] args) {
             }
         }
     });
-    WLUnstable.register_on_mouse_up(()=>{
+    WLHooks.register_on_mouse_up(()=>{
         foreach(var box in entries){
             box.clicked = false;
         }
     });
 
-    WLUnstable.register_on_mouse_motion((x,y) => {
+    WLHooks.register_on_mouse_motion((x,y) => {
         foreach(var box in entries){
             var box_x = box.x;
             var box_y = box.y;
@@ -120,23 +120,23 @@ public static int main(string[] args) {
         }
     });
 
-    WLUnstable.init_layer_shell("panel", width, height, BOTTOM, true);
+    WLHooks.init_layer_shell("panel", width, height, BOTTOM, true);
 
     add_launcher_item();
 
     var ctx = new DrawKit.Context(width, height);
     ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
-    while (WLUnstable.display_dispatch_blocking() != -1) {
+    while (WLHooks.display_dispatch_blocking() != -1) {
         if(!redraw) continue;
 
         UiLayout.Draw(ctx, entries, active_idx);
-        WLUnstable.swap_buffers();
+        WLHooks.swap_buffers();
 
         redraw = false;
     }
 
-    WLUnstable.destroy();
+    WLHooks.destroy();
     return 0;
 }
 

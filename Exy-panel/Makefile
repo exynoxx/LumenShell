@@ -1,13 +1,13 @@
 ROOT_DIR       = $(CURDIR)
 DRAWKIT_SRC    = $(ROOT_DIR)/../libdrawkit
 DRAWKIT_BUILD  = $(ROOT_DIR)/../libdrawkit/build
-LAYERSHELL_SRC = $(ROOT_DIR)/../libwayland-unstable
-LAYERSHELL_BUILD = $(ROOT_DIR)/../libwayland-unstable/build
+WLHOOKS_SRC = $(ROOT_DIR)/../wlhooks
+WLHOOKS_BUILD = $(ROOT_DIR)/../wlhooks/build
 
 # Vala packages
 VALA_PKGS = \
     --pkg=libdrawkit \
-    --pkg=libwayland-unstable \
+    --pkg=libwlhooks \
     --pkg=glesv2 \
     --pkg=wayland-client \
     --pkg=glib-2.0 \
@@ -18,8 +18,8 @@ VALA_PKGS = \
 CFLAGS = \
     -X -I$(DRAWKIT_SRC) \
     -X $(DRAWKIT_BUILD)/libdrawkit.a \
-    -X -I$(LAYERSHELL_SRC) \
-    -X $(LAYERSHELL_BUILD)/libwayland-unstable.a \
+    -X -I$(WLHOOKS_SRC) \
+    -X $(WLHOOKS_BUILD)/libwlhooks.a \
     -X -lwayland-egl \
     -X -lwayland-client \
     -X -lEGL \
