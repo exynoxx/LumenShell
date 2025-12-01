@@ -45,8 +45,6 @@ public class MoveTransition : Object, Transition {
         entry.grid_x = start_x + (int)((end_x - start_x) * e);
         entry.grid_y = start_y + (int)((end_y - start_y) * e);
 
-        print("animation: %i %i\n", entry.grid_x, entry.grid_y);
-
         if (k >= 1.0)
             _finished = true;
     }
@@ -79,11 +77,15 @@ public class AnimationManager : Object {
         foreach (var t in transitions) {
             t.update(dt);
             if (t.finished)
+            {
+                Main.draw_lock = false;
                 to_remove.add(t);
+            }
         }
         
         // Remove finished transitions
         foreach (var t in to_remove)
             transitions.remove(t);
+
     }
 }

@@ -3,6 +3,12 @@ using WLHooks;
 using GLES2;
 
 namespace Main {
+
+    public static bool redraw = true;
+    public static bool draw_lock = false;
+    public static void queue_redraw(){
+        redraw = true;
+    }
     
     static AppLauncher? launcher = null;
     
@@ -29,15 +35,11 @@ namespace Main {
         
         while (WLHooks.display_dispatch_blocking() != -1) {
             
-            /*  if(launcher.redraw){
+            if(redraw || Main.draw_lock){
                 launcher.render();
                 WLHooks.swap_buffers();
-                launcher.redraw = false;
-            }  */
-
-
-            launcher.render();
-            WLHooks.swap_buffers();
+                redraw = false;
+            }
         }
     
         WLHooks.destroy();

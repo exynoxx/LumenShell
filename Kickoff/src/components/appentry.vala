@@ -48,23 +48,24 @@ public class AppEntry {
         grid_y = PADDING_EDGES_Y + padding_v * row + row * ICON_SIZE;
     }
 
-    public void mouse_up (ref bool redraw){
+    public void mouse_up (){
         clicked = false;
-        redraw = true;
         if(hovered) {
             //launch_app()
+            Main.draw_lock = true;
             mngr.add(new MoveTransition(this, 10,10, 0.9));
         };
+        Main.queue_redraw();
     }
 
-    public void mouse_down(ref bool redraw){
+    public void mouse_down(){
         if(hovered) {
-            if(!clicked) redraw = true;
+            if(!clicked) Main.queue_redraw();
             clicked = true;
         }
     }
 
-    public void mouse_move(double mouse_x, double mouse_y, ref bool redraw){
+    public void mouse_move(double mouse_x, double mouse_y){
         int x = grid_x;
         int y = grid_y;
         int w = grid_x + width;
@@ -73,11 +74,11 @@ public class AppEntry {
         var hover_initial = hovered;
 
         hovered = (mouse_x >= x && mouse_x <= w && mouse_y >= y && mouse_y <= h);
-        if(hovered != hover_initial) redraw = true;
+        if(hovered != hover_initial) Main.queue_redraw();
     }
 
     public void render(Context ctx){
-        
+
         mngr.update();
 
         if (hovered) {

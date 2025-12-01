@@ -13,8 +13,6 @@ public class AppLauncher {
 
     DrawKit.Context ctx;
 
-    public bool redraw = true;
-
     private AppEntry[] apps;
     private int screen_width;
     private int screen_height;
@@ -68,16 +66,16 @@ public class AppLauncher {
 
     public void mouse_down() {
         foreach (var app in apps)
-            app.mouse_down(ref redraw);
+            app.mouse_down();
     }
     public void mouse_up() {
         foreach (var app in apps)
-            app.mouse_up(ref redraw);
+            app.mouse_up();
     }
 
     public void mouse_move(double mouse_x, double mouse_y) {
         foreach (var app in apps)
-            app.mouse_move(mouse_x, mouse_y, ref redraw);
+            app.mouse_move(mouse_x, mouse_y);
     }
 
     public void render() {
