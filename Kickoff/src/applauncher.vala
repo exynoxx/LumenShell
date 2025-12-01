@@ -16,20 +16,36 @@ class AppEntry {
     private  GLuint texture_id;
     private  bool texture_loaded;
     private bool hovered;
+    private int icon_x_offset;
+    private int padding_h;
+    private int padding_v;
     public int grid_x;
     public int grid_y;
 
     public int width;
     public int height;
 
-    public AppEntry(string name, string icon_path, string exec){
+    private int max(int a, int b) {
+        return a > b ? a : b;
+    }
+
+    public AppEntry(DrawKit.Context ctx, int i, string name, string icon_path, string exec, int padding_h, int padding_v){
         this.name = name;
         this.name_short = name.char_count() > 20 ? name.substring(0, 20) + "..." : name;
         this.icon_path = icon_path;
         this.exec = exec;
 
-        width = ICON_SIZE + 2*ICON_HOVER_PADDING;
+        
+        width = max(ICON_SIZE, ctx.width_of(name_short, 20)) + 2*ICON_HOVER_PADDING;
+        icon_x_offset = (width-ICON_SIZE) / 2;
         height = 15 + ICON_SIZE + 2*ICON_HOVER_PADDING;
+
+        //position
+        int row = i / GRID_COLS;
+        int col = i % GRID_COLS;
+        
+        grid_x = PADDING_EDGES + padding_h * col + col * ICON_SIZE - (width/2);
+        grid_y = PADDING_EDGES + padding_v * row + row * ICON_SIZE;
     }
 
     public void mouse_move(double mouse_x, double mouse_y, bool clicked, ref bool redraw){
@@ -63,9 +79,9 @@ class AppEntry {
         
         // Draw icon or placeholder
         if (texture_id > 0) {
-            ctx.draw_texture(texture_id, grid_x+ICON_HOVER_PADDING, grid_y+ICON_HOVER_PADDING, ICON_SIZE, ICON_SIZE);
+            ctx.draw_texture(texture_id, grid_x+icon_x_offset, grid_y+ICON_HOVER_PADDING, ICON_SIZE, ICON_SIZE);
         } else {
-            ctx.draw_rect(grid_x, grid_y, ICON_SIZE, ICON_SIZE, { 1f, 1f, 1f, 1.0f });
+            ctx.draw_rect(grid_x+icon_x_offset, grid_y, ICON_SIZE, ICON_SIZE, { 1f, 1f, 1f, 1.0f });
         }
 
         //label
@@ -126,6 +142,7 @@ class AppLauncher {
         var desktop_files = SystemUtils.get_desktop_files(GRID_COLS*GRID_ROWS);
         print("Apps %i\n", desktop_files.length);
 
+        int i = 0;
         foreach (var desktop in desktop_files){
             var entries = ConfigUtils.parse(desktop, "Desktop Entry");
             var icon = entries["Icon"];
@@ -138,20 +155,7 @@ class AppLauncher {
             }
 
             var icon_path = icon_paths[icon];
-            apps += new AppEntry(name, icon_path, exec);
-        }
-
-        calculate_grid_positions();
-    }
-
-    private void calculate_grid_positions() {
-        
-        for (int i = 0; i < apps.length; i++) {
-            int row = i / GRID_COLS;
-            int col = i % GRID_COLS;
-            
-            apps[i].grid_x = PADDING_EDGES + padding_h * col + col * ICON_SIZE;
-            apps[i].grid_y = PADDING_EDGES + padding_v * row + row * ICON_SIZE;
+            apps += new AppEntry(ctx, i++, name, icon_path, exec, padding_h, padding_v);
         }
     }
 

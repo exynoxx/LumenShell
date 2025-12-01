@@ -370,6 +370,36 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
     glDisableVertexAttribArray(tex_loc);
 }
 
+int dk_width_of(dk_context *ctx, const char *text, float font_size){
+    float scale = font_size / (float)base_px_height;
+    size_t len = strlen(text);
+
+    int total_w = 0;
+    for (size_t i = 0; i < len; ++i){
+        unsigned char c = (unsigned char)text[i];
+        if (c < FIRST_CHAR || c > LAST_CHAR) continue;
+        Glyph *g = &glyphs[c - FIRST_CHAR];
+        total_w += g->ax * scale;
+    }
+
+    return total_w;
+}
+
+int dk_height_of(dk_context *ctx, const char *text, float font_size){
+    float scale = font_size / (float)base_px_height;
+    size_t len = strlen(text);
+
+    int total_h = 0;
+    for (size_t i = 0; i < len; ++i){
+        unsigned char c = (unsigned char)text[i];
+        if (c < FIRST_CHAR || c > LAST_CHAR) continue;
+        Glyph *g = &glyphs[c - FIRST_CHAR];
+        total_h += g->ay * scale;
+    }
+
+    return total_h;
+}
+
 void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_size) {
     if (!ctx->font_atlas_tex) return;
     if (!text) return;
@@ -387,14 +417,7 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
     float scale = font_size / (float)base_px_height;
     size_t len = strlen(text);
 
-    int total_w = 0;
-    for (size_t i = 0; i < len; ++i){
-        unsigned char c = (unsigned char)text[i];
-        if (c < FIRST_CHAR || c > LAST_CHAR) continue;
-        Glyph *g = &glyphs[c - FIRST_CHAR];
-        total_w += g->ax * scale;
-    }
-
+    int total_w = dk_width_of(ctx, text, font_size);
     int pen_x = x-(total_w/2);
     int pen_y = y;
 

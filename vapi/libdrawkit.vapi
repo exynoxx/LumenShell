@@ -46,6 +46,12 @@ namespace DrawKit {
         [CCode (cname = "dk_draw_texture")]
         public void draw_texture(GLuint texture_id, int x, int y, int width, int height);
 
+        [CCode (cname = "dk_width_of")]
+        public int width_of(string text, float font_size);
+
+        [CCode (cname = "dk_height_of")]
+        public int height_of(string text, float font_size);
+
         [CCode (cname = "dk_draw_text")]
         public void draw_text(string text, int x, int y, float font_size);
 
