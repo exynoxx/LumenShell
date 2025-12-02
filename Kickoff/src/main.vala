@@ -5,12 +5,12 @@ using GLES2;
 namespace Main {
 
     public static bool redraw = true;
-    public static bool draw_lock = false;
     public static void queue_redraw(){
         redraw = true;
     }
-    
+
     static AppLauncher? launcher = null;
+    public static AnimationManager animations;
     
     static int main(string[] args) {
     
@@ -21,7 +21,8 @@ namespace Main {
         print("layer shell size: %i %i\n", size.width, size.height);
 
         launcher = new AppLauncher(/*  size.width, size.height  */1920, 1080);
-    
+        animations = new AnimationManager();
+
         WLHooks.register_on_mouse_down(launcher.mouse_down);
         WLHooks.register_on_mouse_up(launcher.mouse_up);
         WLHooks.register_on_mouse_motion(launcher.mouse_move); //fix double
@@ -34,8 +35,8 @@ namespace Main {
         });
         
         while (WLHooks.display_dispatch_blocking() != -1) {
-            
-            if(redraw || Main.draw_lock){
+            if(redraw || animations.has_active()){
+                animations.update();
                 launcher.render();
                 WLHooks.swap_buffers();
                 redraw = false;

@@ -22,8 +22,6 @@ public class AppEntry {
     public int width;
     public int height;
 
-    private AnimationManager mngr;
-
     private int max(int a, int b) {
         return a > b ? a : b;
     }
@@ -33,8 +31,6 @@ public class AppEntry {
         this.name_short = name.char_count() > 20 ? name.substring(0, 20) + "..." : name;
         this.icon_path = icon_path;
         this.exec = exec;
-
-        mngr = new AnimationManager();
 
         width = max(ICON_SIZE, ctx.width_of(name_short, 20)) + 2*ICON_HOVER_PADDING;
         icon_offset_x = (width-ICON_SIZE) / 2;
@@ -52,8 +48,7 @@ public class AppEntry {
         clicked = false;
         if(hovered) {
             //launch_app()
-            Main.draw_lock = true;
-            mngr.add(new MoveTransition(this, 10,10, 0.9));
+            Main.animations.add(new MoveTransition(this, 10,10, 0.9));
         };
         Main.queue_redraw();
     }
@@ -78,8 +73,6 @@ public class AppEntry {
     }
 
     public void render(Context ctx){
-
-        mngr.update();
 
         if (hovered) {
 

@@ -77,15 +77,16 @@ public class AnimationManager : Object {
         foreach (var t in transitions) {
             t.update(dt);
             if (t.finished)
-            {
-                Main.draw_lock = false;
                 to_remove.add(t);
-            }
         }
         
         // Remove finished transitions
         foreach (var t in to_remove)
             transitions.remove(t);
 
+    }
+
+    public bool has_active(){
+        return transitions.size > 0;
     }
 }
