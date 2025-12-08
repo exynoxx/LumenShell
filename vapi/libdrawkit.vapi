@@ -24,7 +24,7 @@ namespace DrawKit {
         public Color background_color;
 
         [CCode (cname = "dk_init")]
-        public Context(int screen_width, int screen_height);
+        public Context(int screen_width, int screen_height, int p);
 
         // Backend functions
         /*  
@@ -58,6 +58,9 @@ namespace DrawKit {
         [CCode (cname = "dk_draw_text")]
         public void draw_text(string text, int x, int y, float font_size);
 
+        /*[  CCode (cname = "group_matrix")]
+        void group_matrix(int group, float* mat);
+  */
         [CCode (cname = "dk_begin_frame")]
         public void begin_frame();
 
@@ -68,6 +71,16 @@ namespace DrawKit {
         [CCode (cname = "dk_reset")]
         public void reset();
     }
+
+    [CCode (cname = "dk_begin_group")]
+    public void begin_group(int group);
+
+    [CCode (cname = "dk_end_group")]
+    public void end_group(int group);
+
+    [CCode (cname = "dk_group_location")]
+    public void group_location(int group, int x, int y);
+
 
     // Texture functions
     [CCode (cname = "Image", destroy_function = "", has_type_id = false)]

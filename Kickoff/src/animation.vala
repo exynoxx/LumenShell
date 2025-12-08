@@ -5,7 +5,8 @@ public interface Transition : Object {
 
 public class MoveTransition : Object, Transition {
 
-    private AppEntry entry;
+    private int *ref_x;
+    private int *ref_y;
 
     public int start_x;
     public int start_y;
@@ -19,11 +20,12 @@ public class MoveTransition : Object, Transition {
         get { return _finished; }
     }
 
-    public MoveTransition(AppEntry entry, int end_x, int end_y, double duration) {
-        this.entry = entry;
+    public MoveTransition(int* x, int* y, int end_x, int end_y, double duration) {
+        ref_x = x;
+        ref_y = y;
 
-        this.start_x = entry.grid_x;
-        this.start_y = entry.grid_y;
+        this.start_x = *x;
+        this.start_y = *y;
         this.end_x = end_x;
         this.end_y = end_y;
         this.duration = duration;
@@ -42,8 +44,8 @@ public class MoveTransition : Object, Transition {
             e = 1.0 - Math.pow(2.0, -10.0 * k);
 
         // compute eased float values and convert to int
-        entry.grid_x = start_x + (int)((end_x - start_x) * e);
-        entry.grid_y = start_y + (int)((end_y - start_y) * e);
+        *ref_x = start_x + (int)((end_x - start_x) * e);
+        *ref_y = start_y + (int)((end_y - start_y) * e);
 
         if (k >= 1.0)
             _finished = true;

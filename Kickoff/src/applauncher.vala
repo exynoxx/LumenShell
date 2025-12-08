@@ -18,12 +18,14 @@ public class AppLauncher {
     private int screen_height;
     private int padding_h;
     private int padding_v;
+    private int page_x;
+    private int page_y;
 
     public AppLauncher(int width, int height) {
         screen_width = width;
         screen_height = height;
 
-        ctx = new DrawKit.Context(width, height);
+        ctx = new DrawKit.Context(width, height, 2);
         ctx.set_bg_color(DrawKit.Color(){ r = 0, g =  0, b = 0, a = 0.70f });
 
         int gaps_h = GRID_COLS + 1;
@@ -78,16 +80,12 @@ public class AppLauncher {
     public void key_down(uint64 key){
         if(key == 65361){
             //arrow l
-            foreach (var app in apps){
-                Main.animations.add(new MoveTransition(app, app.grid_x-screen_width, app.grid_y, 1.5));
-            }
+            Main.animations.add(new MoveTransition(&page_x, &page_y, page_x-screen_width, page_y, 1.5));
         }
 
         if(key == 65363){
             //arrow r
-            foreach (var app in apps){
-                Main.animations.add(new MoveTransition(app, app.grid_x+screen_width, app.grid_y, 1.5));
-            }
+            Main.animations.add(new MoveTransition(&page_x, &page_y, page_x+screen_width, page_y, 1.5));
         }
     }
 
@@ -99,9 +97,14 @@ public class AppLauncher {
     public void render() {
         ctx.begin_frame();
         
+        DrawKit.begin_group(1);
+        DrawKit.group_location(1, page_x, page_y);
         foreach (var app in apps) {
             app.render(ctx);
         }
+        DrawKit.end_group(1);
+
+        //ctx.draw_rect(10,10,50,50,{1f,1f,1f,1f});
 
         int middle = (int) screen_width/2;
         int y = screen_height - 200;

@@ -22,7 +22,8 @@ typedef struct {
     dk_color background_color;
 } dk_context;
 
-dk_context *dk_init(int screen_width, int screen_height);
+dk_context *dk_init_default(int screen_width, int screen_height);
+dk_context *dk_init(int screen_width, int screen_height, int p);
 void dk_cleanup(dk_context *ctx);
 
 #endif

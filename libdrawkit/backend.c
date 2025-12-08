@@ -5,6 +5,7 @@
 #include <EGL/egl.h>
 #include "backend.h"
 #include <ft2build.h>
+#include "shaders.h"
 #include FT_FREETYPE_H  // this defines FT_Library, FT_Face, etc.
 
 typedef struct {
@@ -22,74 +23,12 @@ static Glyph glyphs[NUM_CHARS];
 static int atlas_w = 0, atlas_h = 0;
 static int base_px_height = 48; // rasterization baseline used to build atlas
 
-static const char* rounded_frag_src =
-    #include "shaders/rounded/frag.glsl"
-    "";
+static float projections[5][16];
+static bool active[5];
+static int num_projections = 0;
 
-static const char* rounded_vert_src =
-    #include "shaders/rounded/vert.glsl"
-    "";
-
-static const char* texture_vert_src =
-    #include "shaders/texture/vert.glsl"
-    "";
-
-static const char* texture_frag_src =
-    #include "shaders/texture/frag.glsl"
-    "";
-
-static const char* text_vert_src =
-    #include "shaders/text/vert.glsl"
-    "";
-
-static const char* text_frag_src =
-    #include "shaders/text/frag.glsl"
-    "";
-
-// Helper function to compile shader
-static GLuint compile_shader(GLenum type, const char *source) {
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-    
-    GLint success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char log[512];
-        glGetShaderInfoLog(shader, 512, NULL, log);
-        fprintf(stderr, "Shader compilation failed: %s\n", log);
-        return 0;
-    }
-    
-    return shader;
-}
-
-// Helper function to create shader program
-static GLuint create_program(const char *vs_source, const char *fs_source) {
-    GLuint vs = compile_shader(GL_VERTEX_SHADER, vs_source);
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fs_source);
-    
-    if (!vs || !fs) return 0;
-    
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    
-    GLint success;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        char log[512];
-        glGetProgramInfoLog(program, 512, NULL, log);
-        fprintf(stderr, "Program linking failed: %s\n", log);
-        return 0;
-    }
-    
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    
-    return program;
-}
+static float identity[16];
+static float ortho[16];
 
 // Create orthographic projection matrix
 static void create_ortho_matrix(float *mat, float left, float right, float bottom, float top) {
@@ -101,16 +40,37 @@ static void create_ortho_matrix(float *mat, float left, float right, float botto
     mat[13] = -(top + bottom) / (top - bottom);
     mat[15] = 1.0f;
 }
+static void create_identity_matrix(float *mat) {
+    memset(mat, 0, 16 * sizeof(float));
 
-bool dk_backend_init(dk_context *ctx) {  
-    ctx->rounded_rect_program = create_program(rounded_vert_src, rounded_frag_src);
-    ctx->texture_program = create_program(texture_vert_src, texture_frag_src);
-    ctx->text_program = create_program(text_vert_src, text_frag_src);
-    
-    if (!ctx->rounded_rect_program  || !ctx->texture_program || !ctx->text_program) {
-        fprintf(stderr, "Failed to create shader programs\n");
-        return false;
-    }
+    mat[0]  = 1.0f;
+    mat[5]  = 1.0f;
+    mat[10] = 1.0f;
+    mat[15] = 1.0f;
+}
+
+static void create_translation_matrix(float *mat, float x, float y) {
+    create_identity_matrix(mat);
+    mat[12] = x;
+    mat[13] = y;
+}
+
+bool dk_backend_init_default(dk_context *ctx) {
+    dk_backend_init(ctx, 1);
+}
+
+bool dk_backend_init(dk_context *ctx, int groups) {  
+
+    printf("init with group count %d\n", groups);
+    num_projections = groups;
+
+    init_shaders(ctx, num_projections);
+    create_identity_matrix(identity);
+    create_ortho_matrix(ortho, 0, ctx->screen_width, ctx->screen_height, 0);
+
+    active[0] = true;
+    memcpy(projections[0], ortho, 16*sizeof(float));
+    for(int i = 1; i < num_projections;i++) memcpy(projections[i], identity, 16*sizeof(float));
 
     // Create VBO
     glGenBuffers(1, &ctx->vbo);
@@ -245,13 +205,15 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     GLint mode_loc = glGetUniformLocation(ctx->rounded_rect_program, "mode");
     glUniform1i(mode_loc, 0);
     
-    // Create projection matrix
-    float proj[16];
-    create_ortho_matrix(proj, 0, ctx->screen_width, ctx->screen_height, 0);
-    
-    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projection");
-    glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
-    
+    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projections");
+    for(int i = 0; i < num_projections; i++) {
+        if(!active[i]) {
+            glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, identity);
+            continue;
+        }
+        glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, projections[i]);
+    }
+
     // Set color
     GLint color_loc = glGetUniformLocation(ctx->rounded_rect_program, "color");
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
@@ -283,13 +245,14 @@ void dk_draw_rect_rounded(dk_context *ctx, float x, float y, float width, float 
     GLint mode_loc = glGetUniformLocation(ctx->rounded_rect_program, "mode");
     glUniform1i(mode_loc, 1);
     
-    // Create projection matrix
-    float proj[16];
-    create_ortho_matrix(proj, 0, ctx->screen_width, ctx->screen_height, 0);
-    
-    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projection");
-    glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
-    
+    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projections");
+    for(int i = 0; i < num_projections; i++) {
+        if(!active[i]) {
+            glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, identity);
+            continue;
+        }
+        glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, projections[i]);
+    }
     GLint color_loc = glGetUniformLocation(ctx->rounded_rect_program, "color");
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
     
@@ -382,6 +345,8 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
     
     GLint proj_loc = glGetUniformLocation(ctx->texture_program, "projection");
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
+
+    
     
     GLint color_loc = glGetUniformLocation(ctx->texture_program, "color");
     glUniform4f(color_loc, 1,1,1,1);
@@ -521,3 +486,37 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
     }
 }
 
+void dk_begin_group(int group){
+    if (group >= num_projections) {
+        printf("group out of bouds");
+        return;
+    }
+
+    active[group] = true;
+}
+
+void dk_end_group(int group){
+    if (group >= num_projections) {
+        printf("group out of bouds");
+        return;
+    }
+
+    active[group] = false;
+}
+
+void dk_group_location(int group, int x, int y){
+    if (group >= num_projections) {
+        printf("group out of bouds");
+        return;
+    }
+    create_translation_matrix(projections[group], x, y);
+}
+
+void dk_group_matrix(int group, float* mat){
+    if (group >= num_projections) {
+        printf("group out of bouds");
+        return;
+    }
+
+    memcpy(projections[group], mat, 16*sizeof(float));
+}
