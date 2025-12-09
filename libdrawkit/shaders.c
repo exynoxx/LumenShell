@@ -8,10 +8,6 @@ static const char* rounded_frag_src =
     #include "shaders/rounded/frag.glsl"
     "";
 
-static const char* rounded_vert2_src =
-    #include "shaders/rounded/vert2.glsl"
-    "";
-
 static const char* rounded_vert_src =
     #include "shaders/rounded/vert.glsl"
     "";
@@ -24,7 +20,7 @@ static const char* texture_frag_src =
     #include "shaders/texture/frag.glsl"
     "";
 
-char* gen_vertex_shader(int num_projections) {
+char* gen_vertex_shader(const char* shader_template, int num_projections) {
     int n = num_projections;
     // Calculate the size needed for the projection chain
     // Format: "projections[0] * projections[1] * ... * projections[n-1]"
@@ -50,18 +46,7 @@ char* gen_vertex_shader(int num_projections) {
             pos += sprintf(pos, " * ");
         }
     }
-    
-    // Format the complete shader
-    const char* shader_template = 
-        "#version 100\n"
-        "    attribute vec2 position;\n"
-        "    uniform mat4 projections[%d];\n"
-        "    varying vec2 fragCoord;\n"
-        "    void main() {\n"
-        "        fragCoord = position;\n"
-        "        gl_Position = %s * vec4(position, 0.0, 1.0);\n"
-        "    }\n";
-    
+   
     // Calculate size needed for final output
     int size = snprintf(NULL, 0, shader_template, n, chain) + 1;
     char* output = (char*)malloc(size);
@@ -123,15 +108,17 @@ static GLuint create_program(const char *vs_source, const char *fs_source) {
 }
 
 void init_shaders(dk_context *ctx, int num_projections){
-    char *vert = gen_vertex_shader(num_projections);
+    char *vert_shapes = gen_vertex_shader(rounded_vert_src, num_projections);
+    char *vert_texture = gen_vertex_shader(texture_vert_src, num_projections);
 
-    ctx->rounded_rect_program = create_program(vert, rounded_frag_src);
-    ctx->texture_program = create_program(texture_vert_src, texture_frag_src);
+    ctx->rounded_rect_program = create_program(vert_shapes, rounded_frag_src);
+    ctx->texture_program = create_program(vert_texture, texture_frag_src);
     
     if (!ctx->rounded_rect_program  || !ctx->texture_program) {
         fprintf(stderr, "Failed to create shader programs\n");
         return;
     }
 
-    free(vert);
+    free(vert_shapes);
+    free(vert_texture);
 }

@@ -346,20 +346,14 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
     GLint mode_loc = glGetUniformLocation(ctx->texture_program, "mode");
     glUniform1i(mode_loc, 0);
     
-    float proj[16];
-    create_ortho_matrix(proj, 0, ctx->screen_width, ctx->screen_height, 0);
-    
-    GLint proj_loc = glGetUniformLocation(ctx->texture_program, "projection");
-    glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj);
-
-    /* GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projections");
+    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projections");
     for(int i = 0; i < num_projections; i++) {
         if(!active[i]) {
             glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, identity);
             continue;
         }
         glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, projections[i]);
-    } */
+    }
     
     GLint color_loc = glGetUniformLocation(ctx->texture_program, "color");
     glUniform4f(color_loc, 1,1,1,1);
@@ -434,18 +428,14 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
     GLint mode_loc = glGetUniformLocation(ctx->texture_program, "mode");
     glUniform1i(mode_loc, 1);
 
-    float proj[16];
-    create_ortho_matrix(proj, 0, ctx->screen_width, ctx->screen_height, 0);
-    glUniformMatrix4fv(glGetUniformLocation(ctx->texture_program, "projection"), 1, GL_FALSE, proj);
-
-    /* GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projections");
+    GLint proj_loc = glGetUniformLocation(ctx->rounded_rect_program, "projections");
     for(int i = 0; i < num_projections; i++) {
         if(!active[i]) {
             glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, identity);
             continue;
         }
         glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, projections[i]);
-    } */
+    }
 
     glUniform4f(glGetUniformLocation(ctx->texture_program, "color"), 1,1,1,1);
 
