@@ -1,6 +1,6 @@
 using GLES2;
 
-[CCode (cheader_filename = "structures.h,backend.h,texture.h,nanosvg.h", lower_case_cprefix = "dk_")]
+[CCode (cheader_filename = "structures.h,backend.h,texture.h,font.h,nanosvg.h", lower_case_cprefix = "dk_")]
 namespace DrawKit {
     [CCode (cname = "dk_color", has_type_id = false)]
     [SimpleType]

@@ -9,7 +9,8 @@ sources = [
   'nanosvg.c',
   'structures.c',
   'texture.c',
-  'shaders.c'
+  'shaders.c',
+  'font.c'
 ]
 
 drawkit = static_library(

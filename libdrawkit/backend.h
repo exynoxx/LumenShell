@@ -17,8 +17,7 @@ void dk_draw_circle(dk_context *ctx, int cx, int cy, int radius, dk_color color)
 
 void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width, int height);
 
-int dk_width_of(dk_context *ctx, const char *text, float font_size);
-int dk_height_of(dk_context *ctx, const char *text, float font_size);
+
 void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_size);
 
 void dk_populate_projections(GLuint program);
