@@ -68,16 +68,21 @@ public class AnimationManager : Object {
     }
 
     public void update() {
-        var to_remove = new Gee.ArrayList<Transition>();
-
+        
         // Get current time in microseconds
         int64 current_time_us = get_monotonic_time();
-        
-        // Calculate delta time in seconds (convert from microseconds)
-        double dt = (current_time_us - last_time_us) / 1000000.0;
-        
+        //print("update %lld\n", current_time_us-last_time_us);
+        int64 dt_us = current_time_us-last_time_us;
         last_time_us = current_time_us;
+        if(dt_us > 100000){
+            //wait for framerate to warmup
+            return;
+        }
 
+        // Calculate delta time in seconds (convert from microseconds)
+        double dt = dt_us / 1000000.0;
+        
+        var to_remove = new Gee.ArrayList<Transition>();
         foreach (var t in transitions) {
             t.update(dt);
             if (t.finished)
