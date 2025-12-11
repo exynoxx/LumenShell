@@ -38,11 +38,13 @@ int display_dispatch_blocking(){
     return wl_display_dispatch(wl_display);
 }
 
-void destroy_layer_shell(void) {
+void destroy(void) {
     compositor_cleanup();
     layer_shell_cleanup();
     seat_cleanup();
     toplevel_cleanup();
     egl_cleanup();
     registry_cleanup();
+
+    wl_display_disconnect(wl_display);
 }

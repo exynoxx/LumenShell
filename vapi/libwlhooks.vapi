@@ -41,7 +41,7 @@ namespace WLHooks {
     [CCode(cname="init_layer_shell")]
     public int init_layer_shell(string layer_name, int width, int height, Anchor anchor, bool exclusive_zone);
 
-    [CCode(cname="destroy_layer_shell")]
+    [CCode(cname="destroy")]
     public void destroy();
 
     [CCode(cname="display_dispatch_blocking")]

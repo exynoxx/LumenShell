@@ -8,6 +8,8 @@
 
 static struct wl_seat *seat = NULL;
 struct wl_keyboard *keyboard;
+struct wl_pointer *pointer;
+
 static dk_mouse_info mouse_info = {0};
 struct xkb_context *xkb_context;
 struct xkb_keymap *xkb_keymap;
@@ -221,6 +223,10 @@ void seat_cleanup(void){
     xkb_state_unref(xkb_state);
     xkb_keymap_unref(xkb_keymap);
     xkb_context_unref(xkb_context);
+
+    wl_keyboard_release(keyboard);
+    wl_pointer_release(pointer);
+    wl_seat_release(seat);
 }
 
 void set_grab_keyboard(bool value){

@@ -13,7 +13,7 @@
 extern struct wl_display *wl_display;
 
 int init_layer_shell(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone);
-void destroy_layer_shell();
+void destroy();
 struct wl_display *get_wl_display();
 int display_dispatch_blocking();
 
