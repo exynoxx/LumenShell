@@ -74,8 +74,8 @@ public class AppLauncher {
             apps += new AppEntry(ctx, i++, name, icon_path, exec, padding_h, padding_v);
         }
 
-        Main.animations.add(new Transition1Df(&bg_a, 0.85f, 3));
-        Main.animations.add(new Transition1Df(&grid_zoom_factor, 1, 3));
+        Main.animations.add(new Transition1Df(&bg_a, 0.85f, 4));
+        Main.animations.add(new Transition1Df(&grid_zoom_factor, 1, 2));
         //Main.animations.add(new Transition1Df(&grid_zoom_factor, 1, 3));
         /*  Main.animations.add(new Transition1D(&page_x, 0, 3));
         Main.animations.add(new Transition1D(&page_y, 0, 3));  */

@@ -40,7 +40,7 @@ public class Transition1D : Object, Transition {
         // Apply incremental movement
         *ref_x += (int)(total_dx * delta_e);
 
-        if (k >= 0.99){
+        if (k >= 1){
             *ref_x = end_x;
             _finished = true;
         }

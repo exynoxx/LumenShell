@@ -190,7 +190,7 @@ static const struct wl_keyboard_listener keyboard_listener = {
 
 static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabilities) {
     if (capabilities & WL_SEAT_CAPABILITY_POINTER) {
-        struct wl_pointer *pointer = wl_seat_get_pointer(seat);
+        pointer = wl_seat_get_pointer(seat);
         wl_pointer_add_listener(pointer, &pointer_listener, data);
     }
 
