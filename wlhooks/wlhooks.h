@@ -9,6 +9,7 @@
 #include "protocols/layershell.h"
 #include "protocols/seat.h"
 #include "protocols/toplevel.h"
+#include "protocols/screencopy.h"
 
 extern struct wl_display *wl_display;
 

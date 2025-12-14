@@ -103,4 +103,24 @@ namespace WLHooks {
 
     [CCode(cname = "set_grab_keyboard")]
     void grab_keyboard(bool value);
+
+    [CCode (cname = "screencopy_buffer_t", destroy_function = "screencopy_buffer_free", has_type_id = false)]
+    [Compact]
+    public class Buffer {
+        public uint32 width;
+        public uint32 height;
+        public uint32 stride;
+        public uint32 format;
+        [CCode (array_length = false)]
+        public uint8[] data;
+    }
+
+    [CCode (cname = "screencopy_ready_callback")]
+    public delegate void ReadyCallback (Buffer buffer);
+
+    [CCode (cname = "screencopy_failed_callback")]
+    public delegate void FailedCallback ();
+
+    [CCode (cname = "screencopy_capture")]
+    public void capture (ReadyCallback ready_cb, FailedCallback failed_cb);
 }

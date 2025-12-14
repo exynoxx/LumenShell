@@ -21,6 +21,7 @@ int init_layer_shell(const char *layer_name, int width, int height, Anchor ancho
     layer_shell_init();
     seat_init();
     toplevel_init();
+    //screencopy_init();
 
     registry_init(wl_display);
 
@@ -45,6 +46,7 @@ void destroy(void) {
     toplevel_cleanup();
     egl_cleanup();
     registry_cleanup();
+    //screencopy_cleanup();
 
     wl_display_disconnect(wl_display);
 }
