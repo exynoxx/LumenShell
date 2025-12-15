@@ -18,15 +18,12 @@ namespace Main {
         WLHooks.init();
 
         var size = WLHooks.get_screen_size();
-        print("layer shell size: %i %i\n", size.width, size.height);
+        print("WLHooks - screen size: %i %i\n", size.width, size.height);
         
-        WLHooks.init_layer_shell("Kickoff-overlay", 1920, 1080, UP | LEFT | RIGHT | DOWN, false);
-    
-        size = WLHooks.get_screen_size();
-        print("layer shell size: %i %i\n", size.width, size.height);
-        
+        WLHooks.init_layer_shell("Kickoff-overlay", size.width, size.height, UP | LEFT | RIGHT | DOWN, false);
+  
         animations = new AnimationManager();
-        launcher = new AppLauncher(/*  size.width, size.height  */1920, 1080);
+        launcher = new AppLauncher(size.width, size.height);
 
         WLHooks.register_on_mouse_down(launcher.mouse_down);
         WLHooks.register_on_mouse_up(launcher.mouse_up);
@@ -37,8 +34,6 @@ namespace Main {
                 Process.exit (0);
             }
             launcher.key_down(key);
-
-            print("Key %d\n", (int) key);
         });
         
         while (WLHooks.display_dispatch_blocking() != -1) {
