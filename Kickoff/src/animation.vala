@@ -17,11 +17,11 @@ public class Transition1D : Object, Transition {
     private float* ref_x;
     private float start_x;
     private float end_x;
+    private float total_dx;
 
     private double duration;
     private double t = 0.0;
-
-    private float last_distance_progress = 0f;
+    private float last_progress = 0f;
 
     private bool _finished = false;
     public bool finished { get { return _finished; } }
@@ -30,6 +30,7 @@ public class Transition1D : Object, Transition {
         _id = id;
         ref_x = x;
         start_x = *x;
+        total_dx = end_x - *x;
         this.end_x = end_x;
         this.duration = duration;
     }
@@ -38,17 +39,15 @@ public class Transition1D : Object, Transition {
         if (finished) return;
 
         t += dt;
-        float time_progress = float.min((float)(t / duration), 1.0f);
-        float distance_progress = easeOutExpo(time_progress);
-        float delta_progress = distance_progress - last_distance_progress;
-        last_distance_progress = distance_progress;
+        var k = float.min((float)(t / duration), 1.0f);
+        var e = easeOutExpo(k);
+
+        var ex = start_x + total_dx * e;
 
         // apply
-        float total_distance = end_x - start_x;
-        float dx = total_distance * delta_progress;
-        *ref_x += dx;
+        *ref_x += ex-(*ref_x);
 
-        if (time_progress >= 1.0) {
+        if (k >= 1.0) {
             *ref_x = end_x;
             _finished = true;
         }

@@ -15,6 +15,7 @@ VALA_PKGS = \
 
 # Compiler and linker flags (static libraries)
 CFLAGS = \
+    -X -O2 \
     -X -I$(DRAWKIT_SRC) \
     -X $(DRAWKIT_BUILD)/libdrawkit.a \
     -X -I$(WLHOOKS_SRC) \
@@ -25,7 +26,7 @@ CFLAGS = \
     -X -lGLESv2 \
     -X -lm \
     -X -lfreetype \
-    -X -lxkbcommon
+    -X -lxkbcommon 
 
 default:
 	valac --vapidir=../vapi $(VALA_PKGS) $(CFLAGS) -o main src/*.vala src/components/*.vala

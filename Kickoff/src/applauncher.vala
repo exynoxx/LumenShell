@@ -16,13 +16,12 @@ public class AppLauncher {
     private AppEntry[] apps;
     private int screen_width;
     private int screen_height;
-    private int padding_h;
-    private int padding_v;
-    private int page_x;
-    private int page_y;
-
+    
     private int screen_center_x;
     private int screen_center_y;
+    
+    private float page_x;
+    private int active_page;
 
     private float bg_a = 0;
     private float grid_zoom[16];
@@ -71,7 +70,7 @@ public class AppLauncher {
             var pos = grid_positions[i++];
             apps += new AppEntry(ctx, name, icon_path, exec, pos.x, pos.y);
 
-            if(i>GRID_COLS*GRID_ROWS) break;
+            //if(i>GRID_COLS*GRID_ROWS) break;
         }
 
         print("Apps after filter %i\n", apps.length);
@@ -94,13 +93,13 @@ public class AppLauncher {
 
     public void key_down(uint64 key){
         if(key == 65363){
-            //arrow r
-            Main.animations.add(new Transition1D(2, &page_x, page_x-screen_width, 1.5));
+            active_page--;
+            Main.animations.add(new Transition1D(2, &page_x, active_page*screen_width, 1.5));
         }
 
         if(key == 65361){
-            //arrow l
-            Main.animations.add(new Transition1D(3, &page_x, page_x+screen_width, 1.5));
+            active_page++;
+            Main.animations.add(new Transition1D(3, &page_x, active_page*screen_width, 1.5));
         }
     }
 
@@ -125,7 +124,7 @@ public class AppLauncher {
         DrawKit.begin_group(1);
         DrawKit.begin_group(2);
         DrawKit.group_matrix(2,grid_zoom);
-        DrawKit.group_location(1, page_x, page_y);
+        DrawKit.group_location(1, (int)page_x, 0);
         foreach (var app in apps) {
             app.render(ctx);
         }
