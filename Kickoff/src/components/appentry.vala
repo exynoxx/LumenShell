@@ -6,27 +6,25 @@ public class AppEntry {
     private string name;
     private string name_short;
     private string icon_path;
-    private  string exec;
-    private  GLuint texture_id;
-    private  bool texture_loaded;
+    private string exec;
+    private GLuint texture_id;
+    private bool texture_loaded;
 
     private bool hovered;
     private bool clicked;
     
     private int icon_offset_x;
-    private int padding_h;
-    private int padding_v;
-    public int grid_x;
-    public int grid_y;
+    private int grid_x;
+    private int grid_y;
 
-    public int width;
-    public int height;
+    private int width;
+    private int height;
 
     private int max(int a, int b) {
         return a > b ? a : b;
     }
 
-    public AppEntry(DrawKit.Context ctx, int i, string name, string icon_path, string exec, int padding_h, int padding_v){
+    public AppEntry(DrawKit.Context ctx, string name, string icon_path, string exec, int x, int y){
         this.name = name;
         this.name_short = name.char_count() > 20 ? name.substring(0, 20) + "..." : name;
         this.icon_path = icon_path;
@@ -36,12 +34,8 @@ public class AppEntry {
         icon_offset_x = (width-ICON_SIZE) / 2;
         height = 15 + ICON_SIZE + 2*ICON_HOVER_PADDING;
 
-        //position
-        int row = i / GRID_COLS;
-        int col = i % GRID_COLS;
-        
-        grid_x = PADDING_EDGES_X + padding_h * col + col * ICON_SIZE - (width/2);
-        grid_y = PADDING_EDGES_Y + padding_v * row + row * ICON_SIZE;
+        grid_x = x - (width/2);
+        grid_y = y;
     }
 
     public void mouse_up (){

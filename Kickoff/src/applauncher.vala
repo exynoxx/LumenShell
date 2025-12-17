@@ -37,23 +37,22 @@ public class AppLauncher {
 
         ctx = Context.Init_with_groups(width, height, 3);
 
-        int gaps_h = GRID_COLS + 1;
-        int gaps_v = GRID_ROWS + 1;
-
-        //TODO KDE is 2 DPI
-        padding_h = (width - GRID_COLS*ICON_SIZE) / gaps_h;
-        padding_v = (height - GRID_ROWS*ICON_SIZE) / gaps_v;
-
         var icon_theme = SystemUtils.get_current_theme();
         var icon_paths = IconUtils.find_icon_paths(icon_theme, 96);
-        print("using icon theme: %s. Num icons: %i. Displaying: %i\n", icon_theme, icon_paths.size, GRID_COLS*GRID_ROWS);
+        print("using icon theme: %s. Num icons: %i\n", icon_theme, icon_paths.size);
 
-        var desktop_files = SystemUtils.get_desktop_files(GRID_COLS*GRID_ROWS);
+        var desktop_files = SystemUtils.get_desktop_files();
         print("Apps %i\n", desktop_files.length);
+
+        var grid_positions = MathUtils.Calculate_grid_positions(screen_width, screen_height, desktop_files.length);
 
         int i = 0;
         foreach (var desktop in desktop_files){
             var entries = ConfigUtils.parse(desktop, "Desktop Entry");
+
+            if (entries["Icon"] == null || entries["Exec"] == null || entries["Name"] == null) continue;
+
+            var name = entries["Name"];
             var icon = entries["Icon"];
             var exec = entries["Exec"]
                 .replace("%f", "")
@@ -63,16 +62,19 @@ public class AppLauncher {
                 .replace("%i", "")
                 .replace("%c", "")
                 .strip();
-            var name = entries["Name"];
 
-            //TODO rm has key later
-            if(icon == null || !icon_paths.has_key(icon)){
+            if(!icon_paths.has_key(icon)){
                 continue;
             }
 
             var icon_path = icon_paths[icon];
-            apps += new AppEntry(ctx, i++, name, icon_path, exec, padding_h, padding_v);
+            var pos = grid_positions[i++];
+            apps += new AppEntry(ctx, name, icon_path, exec, pos.x, pos.y);
+
+            if(i>GRID_COLS*GRID_ROWS) break;
         }
+
+        print("Apps after filter %i\n", apps.length);
 
         Main.animations.add(new Transition1Df(&bg_a, 0.9f, 3));
         Main.animations.add(new Transition1Df(&grid_zoom_factor, 1, 1.5));
@@ -91,13 +93,13 @@ public class AppLauncher {
     }
 
     public void key_down(uint64 key){
-        if(key == 65361){
-            //arrow l
+        if(key == 65363){
+            //arrow r
             Main.animations.add(new Transition1D(&page_x, page_x-screen_width, 1.5));
         }
 
-        if(key == 65363){
-            //arrow r
+        if(key == 65361){
+            //arrow l
             Main.animations.add(new Transition1D(&page_x, page_x+screen_width, 1.5));
         }
     }

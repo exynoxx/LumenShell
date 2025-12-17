@@ -55,7 +55,7 @@ public class SystemUtils {
         return "hicolor";
     }
 
-    public static string[] get_desktop_files(int max_count) {
+    public static string[] get_desktop_files() {
         var files = new Gee.ArrayList<string>();
         foreach (var data_dir in get_xdg_data_dirs()) {
             string apps_dir = Path.build_filename(data_dir, "applications");
@@ -74,9 +74,6 @@ public class SystemUtils {
 
                     string filepath = Path.build_filename(apps_dir, name);
                     files.add(filepath);
-
-                    if(files.size >= max_count) 
-                        return files.to_array();
                 }
             } catch(FileError e){
                 continue;
