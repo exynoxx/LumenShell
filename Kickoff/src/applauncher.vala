@@ -14,6 +14,7 @@ public class AppLauncher {
     DrawKit.Context ctx;
 
     private AppEntry[] apps;
+    private Navigation navigation;
     private int screen_width;
     private int screen_height;
     
@@ -76,6 +77,8 @@ public class AppLauncher {
 
         print("Apps after filter %i\n", apps.length);
 
+        navigation = new Navigation(apps.length/(GRID_COLS*GRID_ROWS), screen_width, screen_height);
+
         init_transition = new Transition1D(1, &grid_zoom_factor, 1, 1.5);
         Main.animations.add(new Transition1D(0, &bg_a, 0.9f, 3));
         Main.animations.add(init_transition);
@@ -125,18 +128,8 @@ public class AppLauncher {
         DrawKit.end_group(1);
         DrawKit.end_group(2);
 
-        //ctx.draw_rect(10,10,50,50,{1f,1f,1f,1f});
-
-        int y = screen_height - 200;
-
-        ctx.draw_circle(screen_center_x - 50,y, 15, {0.3f,0.3f,0.3f,1f});
-        ctx.draw_circle(screen_center_x - 0,y, 15, {0.3f,0.3f,0.3f,1f});
-        ctx.draw_circle(screen_center_x + 50,y, 15, {0.3f,0.3f,0.3f,1f});
-
-        ctx.draw_text("1", screen_center_x - 50,y+5, 15);
-        ctx.draw_text("2", screen_center_x - 0,y+5, 15);
-        ctx.draw_text("3", screen_center_x + 50,y+5, 15);
-
+        navigation.render(ctx);
+    
         ctx.end_frame();
     }
 

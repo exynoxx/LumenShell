@@ -36,8 +36,6 @@ public class AppEntry {
 
         grid_x = x - (width/2);
         grid_y = y;
-
-        print("appentry (%s) %d, %d\n", name, grid_x, grid_y);
     }
 
     public void mouse_up (){
