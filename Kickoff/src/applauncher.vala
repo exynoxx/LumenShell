@@ -26,6 +26,7 @@ public class AppLauncher {
     private float bg_a = 0;
     private float grid_zoom[16];
     private float grid_zoom_factor = 10;
+    private Transition1D init_transition;
 
     public AppLauncher(int width, int height) {
         screen_width = width;
@@ -34,7 +35,7 @@ public class AppLauncher {
         screen_center_x = screen_width/2;
         screen_center_y = screen_height/2;
 
-        ctx = Context.Init_with_groups(width, height, 3);
+        ctx = Context.Init_with_groups(width, height, 2);
 
         var icon_theme = SystemUtils.get_current_theme();
         var icon_paths = IconUtils.find_icon_paths(icon_theme, 96);
@@ -70,16 +71,14 @@ public class AppLauncher {
             var pos = grid_positions[i++];
             apps += new AppEntry(ctx, name, icon_path, exec, pos.x, pos.y);
 
-            //if(i>GRID_COLS*GRID_ROWS) break;
+            if(i>GRID_COLS*GRID_ROWS*3) break;
         }
 
         print("Apps after filter %i\n", apps.length);
 
+        init_transition = new Transition1D(1, &grid_zoom_factor, 1, 1.5);
         Main.animations.add(new Transition1D(0, &bg_a, 0.9f, 3));
-        Main.animations.add(new Transition1D(1, &grid_zoom_factor, 1, 1.5));
-        //Main.animations.add(new Transition1Df(&grid_zoom_factor, 1, 3));
-        /*  Main.animations.add(new Transition1D(&page_x, 0, 3));
-        Main.animations.add(new Transition1D(&page_y, 0, 3));  */
+        Main.animations.add(init_transition);
     }
 
     public void mouse_down() {
@@ -109,21 +108,16 @@ public class AppLauncher {
     }
     
     public void render() {
-        
-        //translate(x,y) * zoom(factor) * translate(-x,-y)
-        grid_zoom[0] = grid_zoom_factor;
-        grid_zoom[5] = grid_zoom_factor;
-        grid_zoom[10] = 1;
-        grid_zoom[12] = screen_center_x * (1 - grid_zoom_factor);
-        grid_zoom[13] = screen_center_y * (1 - grid_zoom_factor);
-        grid_zoom[15] = 1;
-
         ctx.set_bg_color(DrawKit.Color(){ r = 0, g =  0, b = 0, a = bg_a });
         ctx.begin_frame();
+
+        if(!init_transition.finished){
+            MathUtils.centered_zoom_marix(grid_zoom, screen_center_x, screen_center_y, grid_zoom_factor);
+            DrawKit.begin_group(2);
+            DrawKit.group_matrix(2,grid_zoom);
+        }
         
         DrawKit.begin_group(1);
-        DrawKit.begin_group(2);
-        DrawKit.group_matrix(2,grid_zoom);
         DrawKit.group_location(1, (int)page_x, 0);
         foreach (var app in apps) {
             app.render(ctx);
@@ -133,16 +127,15 @@ public class AppLauncher {
 
         //ctx.draw_rect(10,10,50,50,{1f,1f,1f,1f});
 
-        int middle = (int) screen_width/2;
         int y = screen_height - 200;
 
-        ctx.draw_circle(middle - 50,y, 15, {0.3f,0.3f,0.3f,1f});
-        ctx.draw_circle(middle - 0,y, 15, {0.3f,0.3f,0.3f,1f});
-        ctx.draw_circle(middle + 50,y, 15, {0.3f,0.3f,0.3f,1f});
+        ctx.draw_circle(screen_center_x - 50,y, 15, {0.3f,0.3f,0.3f,1f});
+        ctx.draw_circle(screen_center_x - 0,y, 15, {0.3f,0.3f,0.3f,1f});
+        ctx.draw_circle(screen_center_x + 50,y, 15, {0.3f,0.3f,0.3f,1f});
 
-        ctx.draw_text("1", middle - 50,y+5, 15);
-        ctx.draw_text("2", middle - 0,y+5, 15);
-        ctx.draw_text("3", middle + 50,y+5, 15);
+        ctx.draw_text("1", screen_center_x - 50,y+5, 15);
+        ctx.draw_text("2", screen_center_x - 0,y+5, 15);
+        ctx.draw_text("3", screen_center_x + 50,y+5, 15);
 
         ctx.end_frame();
     }
