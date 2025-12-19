@@ -72,3 +72,44 @@ public class MathUtils {
     }
 
 }
+
+//O(1) app hover algo
+/*  public Tile? find_hovered_tile_grid(Gee.ArrayList<Tile> tiles,
+    int mouse_x, int mouse_y,
+    int screen_width, int screen_height) {
+// Calculate which grid cell the mouse is in
+int gaps_h = GRID_COLS + 1;
+int gaps_v = GRID_ROWS + 1;
+
+var padding_h = (screen_width - GRID_COLS * ICON_SIZE) / gaps_h;
+var padding_v = (screen_height - GRID_ROWS * ICON_SIZE) / gaps_v;
+
+int cell_width = ICON_SIZE + padding_h;
+int cell_height = ICON_SIZE + padding_v;
+
+// Determine page
+int page = mouse_x / screen_width;
+int page_x = mouse_x % screen_width;
+
+// Calculate row and column
+int col = (page_x - PADDING_EDGES_X) / cell_width;
+int row = (mouse_y - PADDING_EDGES_Y) / cell_height;
+
+// Bounds check
+if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) {
+return null;
+}
+
+// Calculate tile index
+int tile_index = page * (GRID_ROWS * GRID_COLS) + row * GRID_COLS + col;
+
+if (tile_index >= tiles.size) return null;
+
+// Verify the point is actually inside (not in padding)
+var tile = tiles[tile_index];
+if (tile.contains_point(mouse_x, mouse_y)) {
+return tile;
+}
+
+return null;
+}  */
