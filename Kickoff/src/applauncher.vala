@@ -98,9 +98,9 @@ public class AppLauncher {
     }
 
     public void mouse_move(double mouse_x, double mouse_y) {
-        var start = active_page*PER_PAGE;
-        for(int i = start; i < start+PER_PAGE; i++)
-            apps[i].mouse_move(mouse_x, mouse_y);
+        var absolut_x = mouse_x + active_page*screen_width;
+        for(int i = 0; i < PER_PAGE; i++)
+            apps[active_page*PER_PAGE+i].mouse_move(absolut_x, mouse_y);
     }
 
     public void mouse_down() {
