@@ -39,6 +39,8 @@ public class AppLauncher {
         screen_center_x = screen_width/2;
         screen_center_y = screen_height/2;
 
+        show_overlay();
+
         ctx = Context.Init_with_groups(width, height, 2);
 
         var icon_theme = SystemUtils.get_current_theme();
@@ -95,6 +97,10 @@ public class AppLauncher {
         Main.animations.add(init_transition);
 
         move_transition = new TransitionEmpty();
+    }
+
+    public void show_overlay (){
+        WLHooks.init_layer_shell("Kickoff-overlay", screen_width, screen_height, UP | LEFT | RIGHT | DOWN, false);
     }
 
     public void mouse_move(double mouse_x, double mouse_y) {

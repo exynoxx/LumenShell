@@ -20,8 +20,6 @@ namespace Main {
         var size = WLHooks.get_screen_size();
         print("WLHooks - screen size: %i %i\n", size.width, size.height);
         
-        WLHooks.init_layer_shell("Kickoff-overlay", size.width, size.height, UP | LEFT | RIGHT | DOWN, false);
-  
         animations = new AnimationManager();
         launcher = new AppLauncher(size.width, size.height);
 
@@ -37,7 +35,7 @@ namespace Main {
             if(key == 97){
                 WLHooks.destroy_layer_shell();
             }
-            
+
             launcher.key_up(key);
         });
         
