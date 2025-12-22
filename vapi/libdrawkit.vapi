@@ -44,7 +44,7 @@ namespace DrawKit {
         public void draw_rect(int x, int y, int width, int height, Color color);
 
         [CCode (cname = "dk_draw_rect_rounded")]
-        public void dk_draw_rect_rounded(int x, int y, int width, int height, float radius, Color color);
+        public void draw_rect_rounded(int x, int y, int width, int height, float radius, Color color);
 
         [CCode (cname = "dk_draw_circle")]
         public void draw_circle(int cx, int cy, int radius, Color color);

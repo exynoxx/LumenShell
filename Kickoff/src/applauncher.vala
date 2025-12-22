@@ -31,6 +31,7 @@ public class AppLauncher {
     private DrawKit.Context ctx;
     private AppEntry[] apps;
     private Navigation navigation;
+    private SearchBar searchbar;
 
     public AppLauncher(int width, int height) {
         screen_width = width;
@@ -84,6 +85,7 @@ public class AppLauncher {
         print("Pages: %i\n", page_count);
 
         navigation = new Navigation(page_count, screen_width, screen_height);
+        searchbar = new SearchBar(ctx, screen_center_x);
 
         init_transition = new Transition1D(1, &grid_zoom_factor, 1, 1.5);
         Main.animations.add(new Transition1D(0, &bg_a, 0.9f, 3));
@@ -161,7 +163,8 @@ public class AppLauncher {
         DrawKit.end_group(2);
 
         navigation.render(ctx, active_page);
-    
+        searchbar.render(ctx);
+
         ctx.end_frame();
     }
 }
