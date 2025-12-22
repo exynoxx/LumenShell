@@ -4,7 +4,7 @@ using GLES2;
 
 const int GRID_COLS = 6;
 const int GRID_ROWS = 4;
-static int PER_PAGE = GRID_COLS*GRID_ROWS;
+const int PER_PAGE = GRID_COLS*GRID_ROWS;
 const int ICON_SIZE = 96;
 const int ICON_HOVER_PADDING = 8;
 const int PADDING_EDGES_Y = 80;
@@ -96,6 +96,7 @@ public class AppLauncher {
         WLHooks.init_layer_shell("Kickoff-overlay", screen_width, screen_height, UP | LEFT | RIGHT | DOWN, false);
     }
 
+    //TODO int mouse pos
     public void mouse_move(double mouse_x, double mouse_y) {
         var absolut_x = mouse_x + active_page*screen_width;
         for(int i = 0; i < PER_PAGE; i++)

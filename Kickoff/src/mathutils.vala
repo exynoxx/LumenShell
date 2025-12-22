@@ -10,12 +10,11 @@ public class Position {
     }
 }
 
+//consts in applauncher.vala
 public class MathUtils {
 
-    //consts in applauncher.vala
-
     public static HashMap<int, Position> Calculate_grid_positions(int screen_width, int screen_height, int num_grid_positions) {
-        
+
         var r = new HashMap<int,Position>();
 
         int gaps_h = GRID_COLS + 1;
@@ -70,7 +69,7 @@ public class MathUtils {
     }
 
     //O(1) mouse hover
-    public static int tile_index_from_mouse(int mouse_x, int mouse_y, int padding_h, int padding_v, int page_offset)
+    /*  public static int tile_index_from_mouse(int mouse_x, int mouse_y, int active_page)
     {
         int gx = mouse_x - PADDING_EDGES_X;
         int gy = mouse_y - PADDING_EDGES_Y;
@@ -85,14 +84,14 @@ public class MathUtils {
             return -1;
         if (row < 0 || row >= GRID_ROWS)
             return -1;
-    /*  
+      
         int inside_x = gx % (ICON_SIZE + padding_h);
         int inside_y = gy % (ICON_SIZE + padding_v);
     
         if (inside_x >= ICON_SIZE || inside_y >= ICON_SIZE)
             return -1;
-      */
-        return /*  page * page_size  */page_offset + row * GRID_COLS + col;
-    }
+      
+        return active_page * PER_PAGE + row * GRID_COLS + col;
+    }  */
 
 }
