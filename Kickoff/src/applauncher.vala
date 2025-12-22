@@ -54,7 +54,7 @@ public class AppLauncher {
 
         int i = 0;
         foreach (var desktop in desktop_files){
-            var entries = ConfigUtils.parse(desktop, "Desktop Entry");
+            var entries = Utils.Config.parse(desktop, "Desktop Entry");
 
             if (entries["Icon"] == null || entries["Exec"] == null || entries["Name"] == null) continue;
 

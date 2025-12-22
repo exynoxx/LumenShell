@@ -44,11 +44,11 @@ public class SystemUtils {
         var gtk_settings_file = Environment.get_home_dir() + "/.config/gtk-4.0/settings.ini";
         var kde_settings_file = Environment.get_home_dir() + "/.config/kdeglobals";
 
-        var gtk_settings = ConfigUtils.parse(gtk_settings_file, "Settings");
+        var gtk_settings = Utils.Config.parse(gtk_settings_file, "Settings");
         if( gtk_settings != null && gtk_settings.has_key("gtk-icon-theme-name"))
             return gtk_settings["gtk-icon-theme-name"];
         
-        var kde_settings = ConfigUtils.parse(kde_settings_file, "Icons");
+        var kde_settings = Utils.Config.parse(kde_settings_file, "Icons");
         if (kde_settings != null && kde_settings.has_key("Theme"))
             return kde_settings["Theme"];
 
