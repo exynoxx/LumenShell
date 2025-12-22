@@ -39,7 +39,7 @@ public class AppLauncher {
         screen_center_x = screen_width/2;
         screen_center_y = screen_height/2;
 
-        show_overlay();
+        show();
 
         ctx = Context.Init_with_groups(width, height, 2);
 
@@ -60,14 +60,7 @@ public class AppLauncher {
 
             var name = entries["Name"];
             var icon = entries["Icon"];
-            var exec = entries["Exec"]
-                .replace("%f", "")
-                .replace("%F", "")
-                .replace("%u", "")
-                .replace("%U", "")
-                .replace("%i", "")
-                .replace("%c", "")
-                .strip();
+            var exec = entries["Exec"];
 
             if(!icon_paths.has_key(icon)){
                 continue;
@@ -99,7 +92,7 @@ public class AppLauncher {
         move_transition = new TransitionEmpty();
     }
 
-    public void show_overlay (){
+    public void show (){
         WLHooks.init_layer_shell("Kickoff-overlay", screen_width, screen_height, UP | LEFT | RIGHT | DOWN, false);
     }
 

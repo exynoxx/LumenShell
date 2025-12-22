@@ -82,4 +82,12 @@ public class SystemUtils {
 
         return files.to_array();
     }
+
+    public static string get_socket_path(string name){
+        string xdg_runtime = Environment.get_variable ("XDG_RUNTIME_DIR");
+        if (xdg_runtime == null)
+            xdg_runtime = "/tmp";
+        var socket_path = Path.build_filename(xdg_runtime, name);
+        return socket_path;
+    }
 }

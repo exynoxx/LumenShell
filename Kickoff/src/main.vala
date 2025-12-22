@@ -13,6 +13,25 @@ namespace Main {
     public static AnimationManager animations;
     
     static int main(string[] args) {
+
+        var socket_path = SystemUtils.get_socket_path ("kickoff.sock");
+        var socket = new SocketUtils (socket_path);
+
+        if (socket.bind_socket ()) {
+            print ("No existing instance, running as main\n");
+
+            socket.listen_forever ((cmd) => {
+                switch (cmd) {
+                    case "show":
+                        launcher.show ();
+                        break;
+                }
+            });
+        } else {
+            print ("Existing instance detected, sending command\n");
+            socket.send_command ("show");
+            return 0;
+        }
     
         WLHooks.grab_keyboard(true);
         WLHooks.init();
