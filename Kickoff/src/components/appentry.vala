@@ -91,7 +91,7 @@ public class AppEntry {
         }
 
         //label
-        ctx.draw_text(name_short, grid_x + width/2, grid_y + ICON_SIZE + 2*ICON_HOVER_PADDING+5, 20);
+        ctx.draw_text(name_short, grid_x + width/2, grid_y + ICON_SIZE + 2*ICON_HOVER_PADDING+5, 20, {1,1,1,1});
     }
 
     public async void load_texture(){

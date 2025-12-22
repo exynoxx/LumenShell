@@ -38,12 +38,6 @@ static void create_identity_matrix(float *mat) {
     mat[15] = 1.0f;
 }
 
-static void create_translation_matrix(float *mat, float x, float y) {
-    create_identity_matrix(mat);
-    mat[12] = x;
-    mat[13] = y;
-}
-
 bool dk_backend_init_default(dk_context *ctx) {
     return dk_backend_init(ctx, 1);
 }
@@ -264,7 +258,7 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
 }
 
 //closely related to font.h
-void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_size) {
+void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_size, dk_color color) {
     if (!ctx->font_atlas_tex) {
         printf("Error no font_atlas_tex\n");
         return;
@@ -278,7 +272,8 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
 
     dk_populate_projections(ctx->shapes_program);
 
-    glUniform4f(glGetUniformLocation(ctx->texture_program, "color"), 1,1,1,1);
+    GLint color_loc = glGetUniformLocation(ctx->shapes_program, "color");
+    glUniform4f(color_loc, color.r, color.g, color.b, color.a);
 
     glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
 
@@ -375,15 +370,6 @@ void dk_end_group(int group){
     dirty[group] = true;
 }
 
-void dk_group_location(int group, int x, int y){
-    if (group == 0 || group >= num_projections) {
-        printf("group out of bouds");
-        return;
-    }
-
-    dirty[group] = true;
-    create_translation_matrix(projections[group], x, y);
-}
 
 void dk_group_matrix(int group, float* mat){
     if (group == 0 || group >= num_projections) {

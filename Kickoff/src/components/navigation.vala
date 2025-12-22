@@ -20,7 +20,7 @@ public class PageButton {
     public void render(Context ctx, int active_idx) {
         var color = (i==active_idx)? color_active : color;
         ctx.draw_circle(x,y, 15, color);
-        ctx.draw_text(label, x, y+5, 15);
+        ctx.draw_text(label, x, y+5, 15, {1,1,1,1});
     }
 }
 

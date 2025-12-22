@@ -25,6 +25,7 @@ public class AppLauncher {
     private float bg_a = 0;
     private float grid_zoom[16];
     private float grid_zoom_factor = 10;
+    private float grid_move[16];
     private Transition init_transition;
     private Transition move_transition;
 
@@ -92,6 +93,7 @@ public class AppLauncher {
         Main.animations.add(init_transition);
 
         move_transition = new TransitionEmpty();
+        Utils.Math.translation_matrix_new(grid_move, 0, 0);
     }
 
     public void show_overlay (){
@@ -145,7 +147,8 @@ public class AppLauncher {
         }
         
         DrawKit.begin_group(1);
-        DrawKit.group_location(1, (int)page_x, 0);
+        Utils.Math.translation_matrix(grid_move, page_x, 0);
+        DrawKit.group_matrix(1, grid_move);
 
         //main
         var start = active_page*PER_PAGE;

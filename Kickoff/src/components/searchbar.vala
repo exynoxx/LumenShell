@@ -16,6 +16,6 @@ public class SearchBar {
 
     public void render(Context ctx){
         ctx.draw_rect_rounded(x, y, width, height, 4f, {1f,1f,1f,0.6f});
-        ctx.draw_text("Search", this.label_x, y+20, 18);
+        ctx.draw_text("Search", this.label_x, y+20, 18, {0f,0f,0f,1f});
     }
 }
