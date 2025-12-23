@@ -27,8 +27,8 @@ namespace Utils {
 
             for (int i = 0; i < num_grid_positions; i++)
             {
-                int page = i / (GRID_ROWS * GRID_COLS);
-                int page_i = i % (GRID_ROWS * GRID_COLS);
+                int page = i / PER_PAGE;
+                int page_i = i % PER_PAGE;
 
                 int row = page_i / GRID_COLS;
                 int col = page_i % GRID_COLS;
