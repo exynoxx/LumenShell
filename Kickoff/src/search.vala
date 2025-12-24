@@ -6,17 +6,17 @@ public class SearchDb {
     private string[] last_search;
 
     public SearchDb(AppEntry[] apps) {
-        for (var app in apps){
+        foreach (var app in apps){
             strings += app.name;
         }
     }
 
-    public string[] query_all(string pattern){
+    /*  public string[] query_all(string pattern){
 
     }
 
     public string[] query_cummulative(string pattern){
 
-    }
+    }  */
 
 }

@@ -3,7 +3,7 @@ using WLHooks;
 using GLES2;
 
 public class AppEntry {
-    private string name;
+    public string name {get; private set;}
     private string name_short;
     private string icon_path;
     private string exec;

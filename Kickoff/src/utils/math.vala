@@ -19,11 +19,11 @@ namespace Utils {
 
             var r = new HashMap<int,Position>();
 
-            int gaps_h = GRID_COLS + 1;
-            int gaps_v = GRID_ROWS + 1;
+            int gaps_h = GRID_COLS - 1;
+            int gaps_v = GRID_ROWS - 1;
 
-            var padding_h = (screen_width - GRID_COLS*ICON_SIZE) / gaps_h;
-            var padding_v = (screen_height - GRID_ROWS*ICON_SIZE) / gaps_v;
+            var padding_h = (screen_width - PADDING_EDGES_X*2 - GRID_COLS*ICON_SIZE) / gaps_h;
+            var padding_v = (screen_height - PADDING_EDGES_Y*2 - GRID_ROWS*ICON_SIZE) / gaps_v;
 
             for (int i = 0; i < num_grid_positions; i++)
             {
@@ -33,8 +33,8 @@ namespace Utils {
                 int row = page_i / GRID_COLS;
                 int col = page_i % GRID_COLS;
 
-                var grid_x = page*screen_width +    PADDING_EDGES_X + col * (ICON_SIZE+padding_h);
-                var grid_y =                        PADDING_EDGES_Y + row * (ICON_SIZE+padding_v);
+                var grid_x = page*screen_width + THE_MAGIC_CONST + PADDING_EDGES_X + col * (ICON_SIZE+padding_h);
+                var grid_y = PADDING_EDGES_Y + row * (ICON_SIZE+padding_v);
                 
                 r[i] = new Position(grid_x, grid_y); 
             }

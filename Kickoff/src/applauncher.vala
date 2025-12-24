@@ -7,8 +7,9 @@ const int GRID_ROWS = 4;
 const int PER_PAGE = GRID_COLS*GRID_ROWS;
 const int ICON_SIZE = 96;
 const int ICON_HOVER_PADDING = 8;
-const int PADDING_EDGES_Y = 80;
-const int PADDING_EDGES_X = 150;
+const int THE_MAGIC_CONST = (ICON_SIZE+2*ICON_HOVER_PADDING)/2; //icons are drawn with x coord in center
+const int PADDING_EDGES_Y = 130;
+const int PADDING_EDGES_X = 200;
 
 public class AppLauncher {
     private int screen_width;
@@ -142,6 +143,10 @@ public class AppLauncher {
     public void render() {
         ctx.set_bg_color(DrawKit.Color(){ r = 0, g =  0, b = 0, a = bg_a });
         ctx.begin_frame();
+
+        ctx.draw_rect(0,30,100, 10, {1,1,1,1});
+        ctx.draw_rect(0,60,200, 10, {1,1,0.8f,1});
+        ctx.draw_rect(0,120,screen_center_x, 10, {1,1,0,1});
 
         if(!init_transition.finished){
             Utils.Math.centered_zoom_marix(grid_zoom, screen_center_x, screen_center_y, grid_zoom_factor);
