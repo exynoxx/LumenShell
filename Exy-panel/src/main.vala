@@ -41,14 +41,14 @@ private void on_window_new(string app_id, string title){
 private void on_click(Node node){
 
     if(node == entries[0]){
-        Process.spawn_command_line_sync("../Kickoff/main");
+        Process.spawn_command_line_sync("/home/nicholas/Dokumenter/layer-shell-experiments/Kickoff/main");
     } 
 
     WLHooks.toplevel_activate_by_id(node.id, node.title);
 }
 
 private void add_launcher_item(){
-    var image = DrawKit.image_from_svg("src/res/app.svg",32,32);
+    var image = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/app.svg",32,32);
     if(image == null){
         print("Launcher icon not found");
         return;
@@ -60,7 +60,10 @@ private void add_launcher_item(){
 
 public static int main(string[] args) {
 
-    int width = 1920;
+    WLHooks.init();
+    var size = WLHooks.get_screen_size();
+
+    int width = size.width;
     int height = 60;
     int underline_height = 5;
     int box_height = height - underline_height;
