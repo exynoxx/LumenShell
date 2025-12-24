@@ -31,9 +31,9 @@ public class Navigation {
 
     public Navigation(int count, int screen_width, int screen_height){
         pages = new ArrayList<PageButton>();
-        int y = screen_height - 100;
+        int y = screen_height - 50;
         var total_width = 50*count;
-        var offset = (screen_width/2) - (total_width/2);
+        var offset = (screen_width/2) - (total_width/2) + 20;
 
         for (int i = 0; i < count; i++){
             pages.add(new PageButton(offset+50*i, y, i));
