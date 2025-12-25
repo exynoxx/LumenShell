@@ -11,6 +11,7 @@ namespace Main {
 
     static AppLauncher? launcher = null;
     public static AnimationManager animations;
+    public static KeyboardManager keyboardMngr;
     
     static int main(string[] args) {
     
@@ -20,29 +21,30 @@ namespace Main {
         var size = WLHooks.get_screen_size();
         print("WLHooks - screen size: %i %i\n", size.width, size.height);
         
+        keyboardMngr = new KeyboardManager();
         animations = new AnimationManager();
         launcher = new AppLauncher(size.width, size.height);
+
 
         WLHooks.register_on_mouse_down(launcher.mouse_down);
         WLHooks.register_on_mouse_up(launcher.mouse_up);
         WLHooks.register_on_mouse_motion(launcher.mouse_move); //fix double
-        WLHooks.register_on_key_down(launcher.key_down);
-        WLHooks.register_on_key_up(key=> {
+        WLHooks.register_on_key_down(key=>{
             if(key == 65307){
                 WLHooks.destroy();
                 Process.exit (0);
             }
 
-           /*   if(key == 97){
-                WLHooks.destroy_layer_shell();
-            }
-  */
-            launcher.key_up(key);
+            keyboardMngr.key_down(key);
+            launcher.key_down(key);
+        });
+        WLHooks.register_on_key_up(key=> {
+            keyboardMngr.key_up(key);
         });
         
         while (WLHooks.display_dispatch_blocking() != -1) {
-            if(launcher.searchDb.key_is_down){
-                launcher.searchDb.main_loop();
+            if(keyboardMngr.key_is_down){
+                keyboardMngr.main_loop();
             }
             if(redraw || animations.has_active){
                 animations.update();

@@ -123,10 +123,6 @@ public class AppLauncher {
     }
 
     public void key_down(uint32 key){
-        searchDb.key_down(key);
-    }
-
-    public void key_up(uint32 key){
         if(key == 65363){ //r
             if(active_page == page_count-1) return;
             prev_page = active_page;
@@ -144,8 +140,6 @@ public class AppLauncher {
             Main.animations.add(move_transition);
             return;
         }
-
-        searchDb.key_up(key);
     }
     
     public void render() {
