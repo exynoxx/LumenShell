@@ -34,7 +34,7 @@ public class AppLauncher {
     private AppEntry[] apps;
     private Navigation navigation;
     private SearchBar searchbar;
-    private SearchDb searchDb;
+    public SearchDb searchDb;
 
     public AppLauncher(int width, int height) {
         screen_width = width;
@@ -93,7 +93,7 @@ public class AppLauncher {
         searchbar = new SearchBar(ctx, screen_center_x);
 
         init_transition = new Transition1D(1, &grid_zoom_factor, 1, 1.5);
-        Main.animations.add(new Transition1D(0, &bg_a, 0.9f, 3));
+        Main.animations.add(new Transition1D(0, &bg_a, 0.5f, 3));
         Main.animations.add(init_transition);
 
         move_transition = new TransitionEmpty();

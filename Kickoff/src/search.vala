@@ -2,15 +2,20 @@ using GLib;
 
 public class SearchDb {
 
+    const int64 INITIAL_INTERVAL_MS = 150;
     const int64 REPEAT_INTERVAL_MS = 50;
     const int BACKSPACE_KEYCODE = 8;
 
-    int64 last_erase_time = 0; // in milliseconds
-    bool first_press = true;
+    int64 last_time = 0; // in milliseconds
+
+    private Gee.HashSet<char> key_down_set;
+    private bool initial_delayed = false;
 
     private string[] strings;
-    public StringBuilder current_search;
     private const string standard_label = "Search";
+    
+    public StringBuilder current_search;
+    public bool key_is_down = false;
 
     public SearchDb(AppEntry[] apps) {
         foreach (var app in apps){
@@ -18,39 +23,56 @@ public class SearchDb {
         }
 
         current_search = new StringBuilder();
+        key_down_set = new Gee.HashSet<char>();
     }
 
     public void key_down(char key){
-        print("key down\n");
-        if (first_press) {
-            first_press = false;
+        initial_delayed = false;
 
-            on_key(key);
-            return;
-        }
-
-        if (get_elapsed() < REPEAT_INTERVAL_MS) {
-            return; // too early, skip
-        }
+        key_down_set.add(key);
+        key_is_down = true;
 
         on_key(key);
-
+        last_time = get_monotonic_time();
     }
 
     public void key_up(char key){
-        print("key up\n");
+        key_down_set.remove(key);
 
-        first_press = true;
+        if(key_down_set.size == 0) {
+            key_is_down = false;
+            initial_delayed = false;
+        }
+        last_time = get_monotonic_time();
+    }
+
+    public void main_loop(){
+        var delay = (initial_delayed) ? REPEAT_INTERVAL_MS : INITIAL_INTERVAL_MS;
+        if (get_elapsed_ms() < delay) {
+            Main.queue_redraw(); //keep compositor from sleeping??
+            return; // too early, skip
+        }
+        initial_delayed = true;
+
+        foreach(var key in key_down_set){
+            on_key(key);
+        }
+        last_time = get_monotonic_time();
     }
 
     private void on_key(char key){
-        if(key == 8) //backspace
-            if(current_search.len > 0)
-                current_search.erase(current_search.len - 1, 1);
-        else 
+        if(key == 8 && current_search.len > 0) //backspace
+        {
+            current_search.erase(current_search.len - 1, 1);
+            Main.queue_redraw();
+            return;
+        }
+
+        if(key != 8){
             current_search.append_c(key);
-        
-        Main.queue_redraw();
+            Main.queue_redraw();
+            return;
+        }
     }
 
     public string get_search(){
@@ -60,10 +82,9 @@ public class SearchDb {
         return current_search.str;
     }
 
-    private int64 get_elapsed(){
-        int64 now = get_monotonic_time() / 1000; // microseconds → ms
-        var elapsed = now - last_erase_time;
-        last_erase_time = now;
-        return elapsed;
+    private int64 get_elapsed_ms(){
+        int64 now = get_monotonic_time();
+        var elapsed = now - last_time;
+        return elapsed / 1000; // microseconds → ms;
     }
 }

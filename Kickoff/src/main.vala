@@ -41,6 +41,9 @@ namespace Main {
         });
         
         while (WLHooks.display_dispatch_blocking() != -1) {
+            if(launcher.searchDb.key_is_down){
+                launcher.searchDb.main_loop();
+            }
             if(redraw || animations.has_active){
                 animations.update();
                 launcher.render();
