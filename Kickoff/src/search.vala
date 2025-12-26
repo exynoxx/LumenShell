@@ -9,6 +9,7 @@ public class SearchDb {
     public int size;
 
     private unowned AppEntry[] all_apps;
+    private unowned Context ctx;
     private AppEntry[] grid_apps;
 
     private const string standard_label = "Search";
@@ -18,6 +19,7 @@ public class SearchDb {
 
 
     public SearchDb(Context ctx, AppEntry[] apps, int screen_width, int screen_height) {
+        this.ctx = ctx;
         this.all_apps = apps;
 
         var grid_positions = Utils.Math.Calculate_grid_positions(screen_width, screen_height, PER_PAGE);
@@ -78,7 +80,7 @@ public class SearchDb {
         for(int i = 0; i < all_apps.length; i++){
             if(j>= PER_PAGE) break;
             if(q.match_string(all_apps[i].name.ascii_down())){
-                grid_apps[j++].populate_from(all_apps[i]);
+                grid_apps[j++].populate_from(ctx, all_apps[i]);
                 size++;
             }
         }

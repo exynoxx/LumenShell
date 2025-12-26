@@ -37,11 +37,14 @@ public class AppEntry {
         grid_y = y;
     }
 
-    public void populate_from(AppEntry other){
+    public void populate_from(Context ctx, AppEntry other){
         this.name = other.name;
         this.name_short = other.name_short;
         this.exec = other.exec;
         this.texture_id = other.texture_id;
+
+        width = max(ICON_SIZE, ctx.width_of(name_short, 20)) + 2*ICON_HOVER_PADDING;
+        icon_offset_x = (width-ICON_SIZE) / 2;
     }
 
     public void mouse_up (){
