@@ -259,82 +259,99 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
 
 //closely related to font.h
 void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_size, dk_color color) {
-    if (!ctx->font_atlas_tex) {
-        printf("Error no font_atlas_tex\n");
-        return;
-    };
-    if (!text) return;
+    if (!ctx->font_atlas_tex || !text) return;
 
     glUseProgram(ctx->texture_program);
+    
+    // Cache uniform locations (do this ONCE, ideally at initialization)
+    static GLint mode_loc = -1;
+    static GLint color_loc = -1;
+    static GLint pos_loc = -1;
+    static GLint texCoord_loc = -1;
+    static GLint texture_loc = -1;
+    
+    if (mode_loc == -1) {
+        mode_loc = glGetUniformLocation(ctx->texture_program, "mode");
+        color_loc = glGetUniformLocation(ctx->texture_program, "color");
+        pos_loc = glGetAttribLocation(ctx->texture_program, "position");
+        texCoord_loc = glGetAttribLocation(ctx->texture_program, "texCoord");
+        texture_loc = glGetUniformLocation(ctx->texture_program, "texture0");
+    }
 
-    GLint mode_loc = glGetUniformLocation(ctx->texture_program, "mode");
     glUniform1i(mode_loc, 1);
-
-    dk_populate_projections(ctx->shapes_program);
-
-    GLint color_loc = glGetUniformLocation(ctx->texture_program, "color");
+    dk_populate_projections(ctx->texture_program);
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
-
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
+    
+    // Bind texture ONCE
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ctx->font_atlas_tex);
+    glUniform1i(texture_loc, 0);
 
     float scale = font_size / (float)base_px_height;
     size_t len = strlen(text);
-
     int total_w = dk_width_of(ctx, text, font_size);
-    int pen_x = x-(total_w/2);
+    int pen_x = x - (total_w / 2);
     int pen_y = y;
 
+    // Pre-allocate vertex buffer for ALL characters
+    size_t max_vertices = len * 6 * 4; // 6 vertices, 4 floats each
+    float *all_vertices = (float*)malloc(max_vertices * sizeof(float));
+    size_t vertex_count = 0;
+
+    // Build ALL vertices in CPU memory
     for (size_t i = 0; i < len; ++i) {
         unsigned char c = (unsigned char)text[i];
         if (c < FIRST_CHAR || c > LAST_CHAR) continue;
 
         Glyph *g = &glyphs[c - FIRST_CHAR];
-
         float gw = g->bw * scale;
         float gh = g->bh * scale;
-
         float x0 = pen_x + g->bl * scale;
         float y0 = pen_y - g->bt * scale;
         float x1 = x0 + gw;
         float y1 = y0 + gh;
+        float u0 = g->tx0, v0 = g->ty0;
+        float u1 = g->tx1, v1 = g->ty1;
 
-        float u0 = g->tx0;
-        float v0 = g->ty0;
-        float u1 = g->tx1;
-        float v1 = g->ty1;
+        // Triangle 1
+        all_vertices[vertex_count++] = x0; all_vertices[vertex_count++] = y0;
+        all_vertices[vertex_count++] = u0; all_vertices[vertex_count++] = v0;
+        
+        all_vertices[vertex_count++] = x1; all_vertices[vertex_count++] = y0;
+        all_vertices[vertex_count++] = u1; all_vertices[vertex_count++] = v0;
+        
+        all_vertices[vertex_count++] = x1; all_vertices[vertex_count++] = y1;
+        all_vertices[vertex_count++] = u1; all_vertices[vertex_count++] = v1;
 
-        float vertices[] = {
-            x0, y0, u0, v0,
-            x1, y0, u1, v0,
-            x1, y1, u1, v1,
-            x0, y0, u0, v0,
-            x1, y1, u1, v1,
-            x0, y1, u0, v1
-        };
-
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-
-        GLint pos_loc = glGetAttribLocation(ctx->texture_program, "position");
-        GLint texCoord_loc  = glGetAttribLocation(ctx->texture_program, "texCoord");
-
-        glEnableVertexAttribArray(pos_loc);
-        glEnableVertexAttribArray(texCoord_loc);
-
-        glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void*)0);
-        glVertexAttribPointer(texCoord_loc, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void*)(2*sizeof(float)));
-
-        glActiveTexture(GL_TEXTURE0);
-
-        glBindTexture(GL_TEXTURE_2D, ctx->font_atlas_tex);
-        glUniform1i(glGetUniformLocation(ctx->texture_program, "texture0"), 0);
-
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        glDisableVertexAttribArray(pos_loc);
-        glDisableVertexAttribArray(texCoord_loc);
+        // Triangle 2
+        all_vertices[vertex_count++] = x0; all_vertices[vertex_count++] = y0;
+        all_vertices[vertex_count++] = u0; all_vertices[vertex_count++] = v0;
+        
+        all_vertices[vertex_count++] = x1; all_vertices[vertex_count++] = y1;
+        all_vertices[vertex_count++] = u1; all_vertices[vertex_count++] = v1;
+        
+        all_vertices[vertex_count++] = x0; all_vertices[vertex_count++] = y1;
+        all_vertices[vertex_count++] = u0; all_vertices[vertex_count++] = v1;
 
         pen_x += g->ax * scale;
     }
+
+    // Upload ALL vertices in ONE buffer operation
+    glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
+    glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(float), all_vertices, GL_DYNAMIC_DRAW);
+    
+    glEnableVertexAttribArray(pos_loc);
+    glEnableVertexAttribArray(texCoord_loc);
+    glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void*)0);
+    glVertexAttribPointer(texCoord_loc, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void*)(2*sizeof(float)));
+
+    // ONE draw call for entire string
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count / 4);
+
+    glDisableVertexAttribArray(pos_loc);
+    glDisableVertexAttribArray(texCoord_loc);
+    
+    free(all_vertices);
 }
 
 void dk_populate_projections(GLuint program){
