@@ -9,32 +9,20 @@ public class SearchDb {
     public int size;
 
     private unowned AppEntry[] all_apps;
-    private unowned Context ctx;
-    private AppEntry[] grid_apps;
+    public AppEntry[] filtered;
 
     private const string standard_label = "Search";
 
     const int KEY_BACKSPACE = 65288;
     const int KEY_CTRL = 65507;
 
-
-    public SearchDb(Context ctx, AppEntry[] apps, int screen_width, int screen_height) {
-        this.ctx = ctx;
+    public SearchDb(AppEntry[] apps, int screen_width, int screen_height) {
         this.all_apps = apps;
 
-        var grid_positions = Utils.Math.Calculate_grid_positions(screen_width, screen_height, PER_PAGE);
-        grid_apps = new AppEntry[]{};
-        for(int i = 0; i < PER_PAGE; i++){
-            grid_apps += new AppEntry(ctx, "..", "..", "..", grid_positions[i].x, grid_positions[i].y);
-        }
+        filtered = new AppEntry[PER_PAGE];
 
         current_search = new StringBuilder();
         technical_search = new StringBuilder("*");
-        Main.keyboardMngr.on_key = on_key;
-    }
-
-    public AppEntry get(int i){
-        return grid_apps[i];
     }
     
     public void on_key(uint32 key){
@@ -69,23 +57,21 @@ public class SearchDb {
     }
 
     private void index(){
-
         if(current_search.len == 0) return;
+
         var q = new PatternSpec(technical_search.str);
         
         size = 0;
-        int j = 0;
 
         //TODO show matched part
         for(int i = 0; i < all_apps.length; i++){
-            if(j>= PER_PAGE) break;
+            if(size>= PER_PAGE) break;
             if(q.match_string(all_apps[i].name.ascii_down())){
-                grid_apps[j++].populate_from(ctx, all_apps[i]);
+                filtered[size] = all_apps[i];
                 size++;
             }
         }
     }
-
 
     public string get_search(){
         if(current_search.len == 0) {

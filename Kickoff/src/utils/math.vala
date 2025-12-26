@@ -1,23 +1,11 @@
-using Gee;
-
 namespace Utils {
-
-    public class Position {
-        public int x;
-        public int y;
-
-        public Position(int x, int y){
-            this.x = x;
-            this.y = y;
-        }
-    }
 
     //consts in applauncher.vala
     public class Math {
 
-        public static HashMap<int, Position> Calculate_grid_positions(int screen_width, int screen_height, int num_grid_positions) {
+        public static Position[] calculate_grid_positions(int screen_width, int screen_height, int num_grid_positions) {
 
-            var r = new HashMap<int,Position>();
+            var r = new Position[num_grid_positions];
 
             int gaps_h = GRID_COLS - 1;
             int gaps_v = GRID_ROWS - 1;
@@ -41,6 +29,7 @@ namespace Utils {
 
             return r;
         }
+
 
         public static void identity_matrix(float *mat) {
             mat[0]  = 1.0f;

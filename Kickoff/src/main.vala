@@ -9,7 +9,7 @@ namespace Main {
         redraw = true;
     }
 
-    static AppLauncher? launcher = null;
+    private static Processor processor;
     public static AnimationManager animations;
     public static KeyboardManager keyboardMngr;
     
@@ -23,24 +23,17 @@ namespace Main {
         
         keyboardMngr = new KeyboardManager();
         animations = new AnimationManager();
-        launcher = new AppLauncher(size.width, size.height);
+        processor = new Processor(size.width, size.height);
 
+        WLHooks.register_on_mouse_down(processor.mouse_down);
+        WLHooks.register_on_mouse_up(processor.mouse_up);
+        WLHooks.register_on_mouse_motion(processor.mouse_move); //fix double
+        WLHooks.register_on_key_down(keyboardMngr.key_down);
+        WLHooks.register_on_key_up(keyboardMngr.key_up);
 
-        WLHooks.register_on_mouse_down(launcher.mouse_down);
-        WLHooks.register_on_mouse_up(launcher.mouse_up);
-        WLHooks.register_on_mouse_motion(launcher.mouse_move); //fix double
-        WLHooks.register_on_key_down(key=>{
-            if(key == 65307){
-                WLHooks.destroy();
-                Process.exit (0);
-            }
-
-            keyboardMngr.key_down(key);
-            launcher.key_down(key);
-        });
-        WLHooks.register_on_key_up(key=> {
-            keyboardMngr.key_up(key);
-        });
+        //wlhooks -> keybordMngdr -> processor -> ...
+        keyboardMngr.on_key_down = processor.key_down;
+        //keyboardMngr.on_key_up = processor.key_up;
         
         while (WLHooks.display_dispatch_blocking() != -1) {
             if(keyboardMngr.key_is_down){
@@ -48,7 +41,7 @@ namespace Main {
             }
             if(redraw || animations.has_active){
                 animations.update();
-                launcher.render();
+                processor.render();
                 WLHooks.swap_buffers();
                 redraw = false;
             }

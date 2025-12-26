@@ -34,8 +34,9 @@ namespace DrawKit {
         [CCode (cname = "dk_backend_init")]
         public bool backend_init();  */
 
-        [CCode (cname = "dk_backend_cleanup")]
-        public void backend_cleanup();
+        // Context has destructor
+        /*  [CCode (cname = "dk_backend_cleanup")]
+        public void backend_cleanup();  */
 
         [CCode (cname = "dk_set_bg_color")]
         public void set_bg_color(Color color);

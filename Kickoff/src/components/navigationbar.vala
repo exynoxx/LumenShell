@@ -25,11 +25,14 @@ public class PageButton {
 }
 
 
-public class Navigation {
+public class NavigationBar {
 
     private ArrayList<PageButton> pages;
+    private unowned Context ctx;
+    public int active_page;
 
-    public Navigation(int count, int screen_width, int screen_height){
+    public NavigationBar(Context ctx, int screen_width, int screen_height, int count){
+        this.ctx = ctx;
         pages = new ArrayList<PageButton>();
         int y = screen_height - 50;
         var total_width = 50*count;
@@ -40,9 +43,9 @@ public class Navigation {
         }
     }
 
-    public void render(Context ctx, int active_idx) {
+    public void render() {
         foreach (var page in pages){
-            page.render(ctx, active_idx);
+            page.render(ctx, active_page);
         }
     } 
 

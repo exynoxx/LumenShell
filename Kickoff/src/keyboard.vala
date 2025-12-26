@@ -17,8 +17,10 @@ public class KeyboardManager {
     private bool initial_delayed = false;
 
     public bool key_is_down = false;
-    public OnKeyCallback on_key = () => 1+1;
     public bool ctrl_down = false;
+
+    public OnKeyCallback on_key_down = () => 1+1;
+    public OnKeyCallback on_key_up = () => 1+1;
 
     public KeyboardManager() {
         key_down_set = new HashSet<uint32>();
@@ -32,7 +34,7 @@ public class KeyboardManager {
 
         if(key == KEY_CTRL) ctrl_down = true;
 
-        on_key(key);
+        on_key_down(key);
         last_time = get_monotonic_time();
     }
 
@@ -46,6 +48,7 @@ public class KeyboardManager {
             initial_delayed = false;
         }
         last_time = get_monotonic_time();
+        on_key_up(key);
     }
     
     public void main_loop(){
@@ -57,7 +60,7 @@ public class KeyboardManager {
         initial_delayed = true;
 
         foreach(var key in key_down_set){
-            on_key(key);
+            on_key_down(key);
         }
         last_time = get_monotonic_time();
     }
