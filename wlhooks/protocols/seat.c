@@ -55,7 +55,7 @@ void pointer_leave(void *data, struct wl_pointer *wl_pointer,uint32_t serial, st
 static void pointer_motion(void *data, struct wl_pointer *pointer,
                           uint32_t time, wl_fixed_t x, wl_fixed_t y) {
     if(mouse_motion_cb){
-        mouse_motion_cb(x, y, mouse_motion_userdata);
+        mouse_motion_cb(wl_fixed_to_int(x), wl_fixed_to_int(y), mouse_motion_userdata);
     }
 }
 
