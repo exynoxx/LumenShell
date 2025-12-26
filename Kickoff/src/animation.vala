@@ -21,7 +21,6 @@ public class Transition1D : Object, Transition {
 
     private double duration;
     private double t = 0.0;
-    private float last_progress = 0f;
 
     private bool _finished = false;
     public bool finished { get { return _finished; } }
