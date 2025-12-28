@@ -1,6 +1,8 @@
 using DrawKit;
 using Gee;
 
+public const uint KICKOFF_ID = uint.MAX;
+
 public class Panel {
 
     public const int HEIGHT = 60;
@@ -22,10 +24,10 @@ public class Panel {
         ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
         entries = new HashMap<uint, App>();
-        entries[0] = new App(0,"--","--",0);
+        entries[KICKOFF_ID] = new App(KICKOFF_ID,"--","--",0);
 
         ordering = new LinkedList<uint>();
-        ordering.add(0);
+        ordering.add(KICKOFF_ID);
     }
 
     public void on_window_new(uint id, string app_id, string title){
@@ -33,12 +35,13 @@ public class Panel {
         entries[id] = new App(id, app_id, title, order);
         ordering.add(id);
         redraw = true;
-        print("on_window_new %u: %s\n", id, app_id);
-        foreach (var i in ordering)
-            print("  - %u\n", i);
     }
 
     public void on_window_rm(uint window_id){
+        if(entries[window_id].order == active_idx) {
+            active_idx = 0;
+        }
+
         ordering.remove(window_id);
 
         entries[window_id].free();

@@ -60,7 +60,7 @@ public class App {
 
     public void on_click(){
 
-        if(order == 0){
+        if(id == KICKOFF_ID){
             Process.spawn_command_line_sync("/home/nicholas/Dokumenter/layer-shell-experiments/Kickoff/main");
         } 
     
@@ -73,7 +73,7 @@ public class App {
     }
 
     private void load_icon(){
-        if (order == 0){
+        if (id == KICKOFF_ID){
             var image = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/app.svg",32,32);
             if(image == null){
                 print("Launcher icon not found");
