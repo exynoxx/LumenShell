@@ -23,6 +23,7 @@ namespace WLHooks {
     // toplevel_info struct with pointer to next
     [CCode(cname="toplevel_info", has_type_id=false)]
     public struct ToplevelInfo {
+        public uint32 id;
         public string app_id;
         public string title;
         public uint32 state;
@@ -48,9 +49,9 @@ namespace WLHooks {
     [CCode(cname="egl_swap_buffers")]
     public void swap_buffers();
 
-    public delegate void ToplevelWindowNew(string app_id, string title);
-    public delegate void ToplevelWindowRemove(string app_id, string title);
-    public delegate void ToplevelWindowFocus(string app_id, string title);
+    public delegate void ToplevelWindowNew(uint id, string app_id, string title);
+    public delegate void ToplevelWindowRemove(uint id);
+    public delegate void ToplevelWindowFocus(uint id);
 
     [CCode(cname = "register_on_window_new")]
     public void register_on_window_new(ToplevelWindowNew cb);
@@ -62,10 +63,10 @@ namespace WLHooks {
     public void register_on_window_focus(ToplevelWindowFocus cb);
 
     [CCode(cname = "toplevel_activate_by_id")]
-    void toplevel_activate_by_id(string app_id, string title);
+    void toplevel_activate_by_id(uint id);
 
     [CCode(cname = "toplevel_minimize_by_id")]
-    void toplevel_minimize_by_id(string app_id, string title);
+    void toplevel_minimize_by_id(uint id);
 
     public delegate void SeatMouseEnter();
     public delegate void SeatMouseLeave();

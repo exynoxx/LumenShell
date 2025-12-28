@@ -9,6 +9,7 @@
 // Window tracking structure
 typedef struct toplevel_window {
     struct zwlr_foreign_toplevel_handle_v1 *handle;
+    uint32_t id;
     char *app_id;
     char *title;
     bool activated;
@@ -18,6 +19,7 @@ typedef struct toplevel_window {
 // Global state
 static struct zwlr_foreign_toplevel_manager_v1 *toplevel_manager = NULL;
 static struct wl_list windows;
+static uint32_t global_window_id;
 
 static toplevel_window_new callback_new = NULL;
 static void* callback_new_data = NULL;
@@ -64,6 +66,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_lis
 // Create new window entry
 static toplevel_window_t* window_create(struct zwlr_foreign_toplevel_handle_v1 *handle) {
     toplevel_window_t *window = calloc(1, sizeof(toplevel_window_t));
+    window->id = global_window_id++;
     window->handle = handle;
     window->app_id = NULL;
     window->title = NULL;
@@ -74,7 +77,7 @@ static toplevel_window_t* window_create(struct zwlr_foreign_toplevel_handle_v1 *
 // Destroy window entry
 static void window_destroy(toplevel_window_t *window) {
     if (callback_rm && window->app_id && window->title) {
-        callback_rm(window->app_id, window->title, callback_rm_data);
+        callback_rm(window->id, callback_rm_data);
     }
     
     wl_list_remove(&window->link);
@@ -100,7 +103,7 @@ static void toplevel_handle_app_id(void *data,
     window->app_id = strdup(app_id);
 
     if (callback_new && window->app_id && window->title) {
-        callback_new(window->app_id, window->title, callback_new_data);
+        callback_new(window->id, window->app_id, window->title, callback_new_data);
     }
 }
 
@@ -117,8 +120,6 @@ static void toplevel_handle_closed(void *data,
 static void toplevel_handle_state(void *data,
                                   struct zwlr_foreign_toplevel_handle_v1 *handle,
                                   struct wl_array *state) {
-    printf("toplevel_handle_state\n");
-
     toplevel_window_t *window = data;
     bool is_activated = false;
     
@@ -134,11 +135,11 @@ static void toplevel_handle_state(void *data,
     if (is_activated && !window->activated) {
         window->activated = true;
         if (callback_focus && window->app_id && window->title) {
-            callback_focus(window->app_id, window->title, callback_focus_data);
+            callback_focus(window->id, callback_focus_data);
         }
     } else if (!is_activated && window->activated) {
         window->activated = false;
-        //TODO call callback
+        //TODO unfocus cb if exists
     }
 }
 
@@ -191,7 +192,6 @@ static void toplevel_registry_handler(void *data, struct wl_registry *registry,
 void toplevel_init(void) {
     wl_list_init(&windows);
     registry_add_handler("zwlr_foreign_toplevel_manager_v1", toplevel_registry_handler, NULL);
-    registry_add_handler("wl_seat", toplevel_registry_handler, NULL);
 }
 
 void toplevel_cleanup(void) {
@@ -221,13 +221,11 @@ void register_on_window_focus(toplevel_window_focus cb, void* user_data) {
     callback_focus_data = user_data;
 }
 
-static toplevel_window_t* window_find(const char *app_id, const char *title) {
+static toplevel_window_t* window_find(uint32_t id) {
     printf("window_find");
     toplevel_window_t *window;
     wl_list_for_each(window, &windows, link) {
-        if (window->app_id && window->title &&
-            strcmp(window->app_id, app_id) == 0 &&
-            strcmp(window->title, title) == 0) {
+        if (window->id == id) {
             return window;
         }
     }
@@ -250,11 +248,11 @@ void toplevel_activate(toplevel_window_t *window, struct wl_seat *seat) {
     zwlr_foreign_toplevel_handle_v1_activate(window->handle, seat);
 }
 
-void toplevel_activate_by_id(const char* app_id, const char* title) {
+void toplevel_activate_by_id(uint32_t id) {
     //printf("enter toplevel_activate_by_id");
-    toplevel_window_t *window = window_find(app_id, title);
+    toplevel_window_t *window = window_find(id);
     if (!window) {
-        fprintf(stderr, "Window not found: %s - %s\n", app_id, title);
+        fprintf(stderr, "Window not found: %u\n", id);
         return;
     }
     
@@ -272,11 +270,11 @@ void toplevel_minimize(toplevel_window_t *window){
     zwlr_foreign_toplevel_handle_v1_set_minimized(window->handle);
 }
 
-void toplevel_minimize_by_id(const char* app_id, const char* title){
+void toplevel_minimize_by_id(uint32_t id){
     //printf("enter toplevel_minimize_by_id");
-    toplevel_window_t *window = window_find(app_id, title);
+    toplevel_window_t *window = window_find(id);
     if (!window) {
-        fprintf(stderr, "Window not found: %s - %s\n", app_id, title);
+        fprintf(stderr, "Window not found: %u\n", id);
         return;
     }
 

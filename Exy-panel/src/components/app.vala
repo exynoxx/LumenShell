@@ -5,8 +5,8 @@ public class App {
     public const int WIDTH = 70;
     public const int HEIGHT = 55;
 
-   
-    public int idx;
+    public int order;
+    public uint id;
     public string app_id;
     public string title;
     public GLuint tex;
@@ -20,17 +20,18 @@ public class App {
     const int padding_side = (App.WIDTH - 32)/2;
     const int padding_top = (App.HEIGHT - 32)/2;
 
-    public App (string app_id, string title, int i){
+    public App (uint id, string app_id, string title, int order){
+        this.id = id;
         this.app_id = app_id;
         this.title = title;
         this.y = 0;
 
-        reset_order(i);
+        reset_order(order);
         load_icon();
     }
 
     public void reset_order(int i){
-        this.idx = i;
+        this.order = i;
         this.x = i*WIDTH+2; //2 from seperator
         this.tex_x = x + padding_side;
         this.tex_y = y + padding_top;
@@ -59,11 +60,11 @@ public class App {
 
     public void on_click(){
 
-        if(idx == 0){
+        if(order == 0){
             Process.spawn_command_line_sync("/home/nicholas/Dokumenter/layer-shell-experiments/Kickoff/main");
         } 
     
-        WLHooks.toplevel_activate_by_id(app_id, title);
+        WLHooks.toplevel_activate_by_id(id);
         redraw = true;
     }
 
@@ -72,7 +73,7 @@ public class App {
     }
 
     private void load_icon(){
-        if (idx == 0){
+        if (order == 0){
             var image = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/app.svg",32,32);
             if(image == null){
                 print("Launcher icon not found");

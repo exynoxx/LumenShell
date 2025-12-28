@@ -8,7 +8,9 @@ public class Panel {
     public const int APP_UNDERLINE_HEIGHT = HEIGHT-UNDERLINE_HEIGHT;
 
     private int width;
-    private Gee.List<App> entries;
+    private HashMap<uint, App> entries;
+    private LinkedList<uint> ordering;
+
     private int active_idx;
 
     private Context ctx;
@@ -19,44 +21,44 @@ public class Panel {
         ctx = new DrawKit.Context(screen_width, HEIGHT);
         ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
-        entries = new ArrayList<App>();
-        entries.add(new App("--","--",0));
+        entries = new HashMap<uint, App>();
+        entries[0] = new App(0,"--","--",0);
 
+        ordering = new LinkedList<uint>();
+        ordering.add(0);
     }
 
-    public void on_window_new(string app_id, string title){
-        entries.add(new App(app_id, title, entries.size));
+    public void on_window_new(uint id, string app_id, string title){
+        var order = entries.size;
+        entries[id] = new App(id, app_id, title, order);
+        ordering.add(id);
+        redraw = true;
+        print("on_window_new %u: %s\n", id, app_id);
+        foreach (var i in ordering)
+            print("  - %u\n", i);
     }
 
-    public void on_window_rm(string app_id, string title){
-        for (var i = 0; i < entries.size ; i++){
-            var entry = entries[i];
-            if(entry.app_id == app_id && entry.title == title){
-                entry.free();
-                entries.remove (entry);
-                redraw = true;
-            }
-        }
+    public void on_window_rm(uint window_id){
+        ordering.remove(window_id);
 
-        for (var i = 1; i < entries.size ; i++){
-            entries[i].reset_order(i);
-        }
-    }
+        entries[window_id].free();
+        entries.unset(window_id);
 
-    public void on_window_focus(string app_id, string title){
         var i = 0;
-        foreach(var entry in entries){
-            if(entry.app_id == app_id && entry.title == title){
-                active_idx = i;
-                redraw = true;
-                return;
-            }
-            i++;
+        foreach (var id in ordering){
+            entries[id].reset_order(i++);
         }
+
+        redraw = true;  
+    }
+
+    public void on_window_focus(uint id){
+        active_idx = entries[id].order;
+        redraw = true;
     }
 
     public void on_mouse_down(){
-        foreach(var app in entries){
+        foreach(var app in entries.values){
             if(app.hovered && !app.clicked){
                 app.clicked = true;
                 app.on_click();
@@ -65,19 +67,19 @@ public class Panel {
     }
 
     public void on_mouse_up(){
-        foreach(var app in entries){
+        foreach(var app in entries.values){
             app.clicked = false;
         }
     }
     
     public void on_mouse_motion(int x, int y){
-        foreach(var app in entries){
+        foreach(var app in entries.values){
             app.mouse_motion(x,y);
         }
     }
 
     public void on_mouse_leave(){
-        foreach(var app in entries){
+        foreach(var app in entries.values){
             app.hovered = false;
         }
         redraw = true;
@@ -86,25 +88,21 @@ public class Panel {
     public void render(){
         ctx.begin_frame();
 
-        //launcher
-        entries[0].render(ctx);
-
         //sep
         ctx.draw_rect(App.WIDTH, 10, 2, App.HEIGHT-20, Color(){r=0,g=0,b=0,a=1});
 
-        //open programs
-        for(var i = 1; i<entries.size; i++){
-            entries[i].render(ctx);
-        }
+        //launcher + open programs
+        foreach(var app in entries.values)
+            app.render(ctx);
 
         //underline
         float shade = 0.15f;
         ctx.draw_rect(0, App.HEIGHT, App.WIDTH, APP_UNDERLINE_HEIGHT, Color(){r=shade,g=shade,b=shade,a=1});
 
         //active
-        if(active_idx >= 0){
+        if(active_idx > 0){
             var color = Color(){r=0,g=0.17f,b=0.9f,a=1};
-            ctx.draw_rect(active_idx*App.WIDTH, App.HEIGHT, App.WIDTH, APP_UNDERLINE_HEIGHT, color);
+            ctx.draw_rect(active_idx*App.WIDTH+2, App.HEIGHT, App.WIDTH, APP_UNDERLINE_HEIGHT, color);
         }
 
         ctx.end_frame();
