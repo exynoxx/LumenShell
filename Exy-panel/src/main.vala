@@ -2,9 +2,10 @@ using WLHooks;
 using GLES2;
 using Gee;
 
-static bool redraw = true;
-
+public static bool redraw = true;
 public static Panel panel;
+public const uint KICKOFF_ID = uint.MAX;
+
 public static int main(string[] args) {
 
     WLHooks.init();

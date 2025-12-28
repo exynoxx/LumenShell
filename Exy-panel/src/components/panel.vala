@@ -1,8 +1,6 @@
 using DrawKit;
 using Gee;
 
-public const uint KICKOFF_ID = uint.MAX;
-
 public class Panel {
 
     public const int HEIGHT = 60;
