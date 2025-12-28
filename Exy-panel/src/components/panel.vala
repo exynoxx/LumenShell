@@ -90,15 +90,11 @@ public class Panel {
         ctx.begin_frame();
 
         //sep
-        ctx.draw_rect(App.WIDTH, 10, 2, App.HEIGHT-20, Color(){r=0,g=0,b=0,a=1});
+        //ctx.draw_rect(App.WIDTH, 10, 2, App.HEIGHT-20, Color(){r=0,g=0,b=0,a=1});
 
         //launcher + open programs
         foreach(var app in entries.values)
             app.render(ctx);
-
-        //underline
-        float shade = 0.15f;
-        ctx.draw_rect(0, App.HEIGHT, App.WIDTH, APP_UNDERLINE_HEIGHT, Color(){r=shade,g=shade,b=shade,a=1});
 
         //active
         if(active_idx > 0){
