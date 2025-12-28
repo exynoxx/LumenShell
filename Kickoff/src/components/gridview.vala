@@ -59,7 +59,7 @@ public class GridView : IGrid {
         current_page = new Utils.Span<AppView>(this.apps);
         prev_page = new Utils.Span<AppView>(this.apps);
 
-        init_transition = new Transition1D(1, &grid_zoom_factor, 1, 1.5);
+        init_transition = new Transition1D(1, &grid_zoom_factor, 1, 0.8f);
         Main.animations.add(new Transition1D(0, &bg_a, 0.8f, 3));
         Main.animations.add(init_transition);
 

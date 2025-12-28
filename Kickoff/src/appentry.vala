@@ -10,7 +10,7 @@ public class AppEntry {
         this.short_name = name.char_count() > 20 ? name.substring(0, 20) + "..." : name;
         this.name = name;
         this.exec = exec;
-        this.tex = Utils.Image.Upload_texture(icon_path, ICON_SIZE);
+        load_icon(icon_path);
     }
 
     public void launch_app() {
@@ -24,5 +24,9 @@ public class AppEntry {
 
         WLHooks.destroy();
         Process.exit (0);
+    }
+
+    private async void load_icon(string icon_path){
+        this.tex = Utils.Image.Upload_texture(icon_path, ICON_SIZE);
     }
 }
