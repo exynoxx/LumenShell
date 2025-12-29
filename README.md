@@ -1,14 +1,20 @@
 ### Work in progress!!
 
 # Introduction
-ExyShell is a early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, a custom panel (ExyPanel) and application launcher (Kickoff) for navigation. Both ExyPanel and kickoff avoids QT or other heavy UI toolkits and instead utilize **Drawkit** for harware accelerated rendering. Interaction with wayland is done through **WLHooks** a slim wayland client lib. Both the panel and Kickoff are implemented in vala.
+ExyShell is a early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, a custom panel (ExyPanel) and application launcher (Kickoff) for navigation. Both ExyPanel and kickoff avoids QT or other heavy UI toolkits and instead utilize **Drawkit** for hardware accelerated rendering, both implemented in vala. Wayland interactions are handled via **WLHooks**, a lightweight Wayland client library.
 
 ### DrawKit
-Is a small lightweight 2d graphics library made in C using GLES2 and EGL as backend. It can draw rectangles, circles, textures and text.
+Is a minimal, high-performance 2D graphics library written in C, using GLES2 and EGL as its backend. It supports rendering rectangles, circles, textures, and text. Source is included in this repo.
 
 ### WLHooks
-Is a small wayland client lib implementing protocols:
-- 
+Is a lightweight Wayland client library implementing the following protocols:
+-  ``` wl_compositor ```
+- ``` wl_seat ```
+- ``` wl_output ```
+- ``` wlr-layer-shell-unstable-v1 ```
+- ``` wlr-foreign-toplevel-management-unstable-v1 ```
+
+Source also included in this repo.
 
 # Show case
 Bottom panel
