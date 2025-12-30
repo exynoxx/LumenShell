@@ -1,16 +1,20 @@
 using GLib;
 using Gee;
 
+public const int KEY_BACKSPACE = 65288;
+public const int KEY_CTRL = 65507;
+public const int KEY_ENTER = 65293;
+
+public const int KEY_1 = 49;
+public const int KEY_2 = 50;
+public const int KEY_3 = 51;
+
 public delegate void OnKeyCallback(uint32 key);
 
 public class KeyboardManager {
 
     const int64 INITIAL_INTERVAL_MS = 200;
     const int64 REPEAT_INTERVAL_MS = 50;
-
-    const int KEY_BACKSPACE = 65288;
-    const int KEY_CTRL = 65507;
-
     int64 last_time = 0; // in milliseconds
 
     private HashSet<uint32> key_down_set;

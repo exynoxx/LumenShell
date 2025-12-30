@@ -53,9 +53,8 @@ public class AppView {
 
     public void mouse_up (){
         clicked = false;
-        if(hovered) {
-            app.launch_app();
-        };
+        if(hovered)
+            click();
     }
 
     public void mouse_down(){
@@ -63,6 +62,10 @@ public class AppView {
             if(!clicked) Main.queue_redraw();
             clicked = true;
         }
+    }
+
+    public void click(){
+        app.launch_app();
     }
 
     public void mouse_move(double mouse_x, double mouse_y){

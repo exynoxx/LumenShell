@@ -33,7 +33,22 @@ public class SearchGridView : IGrid {
             apps[i].mouse_up();
     }
 
-    public void key_down(uint32 key){}
+    public void key_down(uint32 key){
+        switch (key){
+            case KEY_ENTER: 
+                apps[0].click();
+                break;
+            case KEY_1:
+                apps[0].click();
+                break;
+            case KEY_2:
+                apps[1].click();
+                break;
+            case KEY_3:
+                apps[2].click();
+                break;
+        }
+    }
 
     public void render(){
         for(int i = 0; i < size; i++)
