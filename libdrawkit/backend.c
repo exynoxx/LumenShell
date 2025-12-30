@@ -10,14 +10,11 @@
 //font.h
 extern Glyph glyphs[NUM_CHARS];
 extern int base_px_height;
-
-static float projections[5][16];
-static bool active[5];
-static bool dirty[5];
-static int num_projections = 0;
-
 static float identity[16];
 static float ortho[16];
+
+
+void dk_populate_projections(GLuint program, dk_context *ctx);
 
 // Create orthographic projection matrix
 static void create_ortho_matrix(float *mat, float left, float right, float bottom, float top) {
@@ -45,19 +42,19 @@ bool dk_backend_init_default(dk_context *ctx) {
 bool dk_backend_init(dk_context *ctx, int groups) {  
 
     printf("init with group count %d\n", groups);
-    num_projections = groups+1;
+    ctx->num_projections = groups+1;
 
-    init_shaders(ctx, num_projections);
+    init_shaders(ctx, ctx->num_projections);
     create_identity_matrix(identity);
     create_ortho_matrix(ortho, 0, ctx->screen_width, ctx->screen_height, 0);
 
-    active[0] = true;
-    dirty[0] = true;
-    memcpy(projections[0], ortho, 16*sizeof(float));
-    for(int i = 1; i < num_projections;i++) {
-        active[i] = false;
-        dirty[i] = true;
-        memcpy(projections[i], identity, 16*sizeof(float));
+    ctx->active[0] = true;
+    ctx->dirty[0] = true;
+    memcpy(ctx->projections[0], ortho, 16*sizeof(float));
+    for(int i = 1; i < ctx->num_projections;i++) {
+        ctx->active[i] = false;
+        ctx->dirty[i] = true;
+        memcpy(ctx->projections[i], identity, 16*sizeof(float));
     }
 
     // Create VBO
@@ -100,7 +97,7 @@ void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color
     GLint mode_loc = glGetUniformLocation(ctx->shapes_program, "mode");
     glUniform1i(mode_loc, 0);
     
-    dk_populate_projections(ctx->shapes_program);
+    dk_populate_projections(ctx->shapes_program, ctx);
 
     // Set color
     GLint color_loc = glGetUniformLocation(ctx->shapes_program, "color");
@@ -133,7 +130,7 @@ void dk_draw_rect_rounded(dk_context *ctx, float x, float y, float width, float 
     GLint mode_loc = glGetUniformLocation(ctx->shapes_program, "mode");
     glUniform1i(mode_loc, 1);
     
-    dk_populate_projections(ctx->shapes_program);
+    dk_populate_projections(ctx->shapes_program, ctx);
 
     GLint color_loc = glGetUniformLocation(ctx->shapes_program, "color");
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
@@ -171,7 +168,7 @@ void dk_draw_circle(dk_context *ctx, int cx, int cy, int radius, dk_color color)
     GLint mode_loc = glGetUniformLocation(ctx->shapes_program, "mode");
     glUniform1i(mode_loc, 2);
 
-    dk_populate_projections(ctx->shapes_program);
+    dk_populate_projections(ctx->shapes_program, ctx);
 
     GLint color_loc = glGetUniformLocation(ctx->shapes_program, "color");
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
@@ -221,7 +218,7 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
     GLint mode_loc = glGetUniformLocation(ctx->texture_program, "mode");
     glUniform1i(mode_loc, 0);
     
-    dk_populate_projections(ctx->shapes_program);
+    dk_populate_projections(ctx->shapes_program, ctx);
     
     GLint color_loc = glGetUniformLocation(ctx->texture_program, "color");
     glUniform4f(color_loc, 1,1,1,1);
@@ -279,7 +276,7 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
     }
 
     glUniform1i(mode_loc, 1);
-    dk_populate_projections(ctx->texture_program);
+    dk_populate_projections(ctx->texture_program, ctx);
     glUniform4f(color_loc, color.r, color.g, color.b, color.a);
     
     // Bind texture ONCE
@@ -354,46 +351,46 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
     free(all_vertices);
 }
 
-void dk_populate_projections(GLuint program){
+void dk_populate_projections(GLuint program, dk_context *ctx){
     GLint proj_loc = glGetUniformLocation(program, "projections");
-    for(int i = 0; i < num_projections; i++) {
+    for(int i = 0; i < ctx->num_projections; i++) {
 
         //TODO does not work
         //if(!dirty[i]) continue;
 
-        float *mat = (active[i]) ? projections[i] : identity;
+        float *mat = (ctx->active[i]) ? ctx->projections[i] : identity;
         glUniformMatrix4fv(proj_loc+i, 1, GL_FALSE, mat);
-        dirty[i] = false;
+        ctx->dirty[i] = false;
     }
 }
 
-void dk_begin_group(int group){
-    if (group == 0 || group >= num_projections) {
+void dk_begin_group(dk_context *ctx, int group){
+    if (group == 0 || group >= ctx->num_projections) {
         printf("group out of bouds");
         return;
     }
 
-    active[group] = true;
-    dirty[group] = true;
+    ctx->active[group] = true;
+    ctx->dirty[group] = true;
 }
 
-void dk_end_group(int group){
-    if (group == 0 || group >= num_projections) {
+void dk_end_group(dk_context *ctx, int group){
+    if (group == 0 || group >= ctx->num_projections) {
         printf("group out of bouds");
         return;
     }
 
-    active[group] = false;
-    dirty[group] = true;
+    ctx->active[group] = false;
+    ctx->dirty[group] = true;
 }
 
 
-void dk_group_matrix(int group, float* mat){
-    if (group == 0 || group >= num_projections) {
+void dk_group_matrix(dk_context *ctx, int group, float* mat){
+    if (group == 0 || group >= ctx->num_projections) {
         printf("group out of bouds");
         return;
     }
 
-    dirty[group] = true;
-    memcpy(projections[group], mat, 16*sizeof(float));
+    ctx->dirty[group] = true;
+    memcpy(ctx->projections[group], mat, 16*sizeof(float));
 }

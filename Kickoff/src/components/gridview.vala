@@ -109,13 +109,13 @@ public class GridView : IGrid {
     public void render() {
         if(!init_transition.finished){
             Utils.Math.centered_zoom_marix(grid_zoom, screen_center_x, screen_center_y, grid_zoom_factor);
-            DrawKit.begin_group(2);
-            DrawKit.group_matrix(2,grid_zoom);
+            ctx.begin_group(2);
+            ctx.group_matrix(2,grid_zoom);
         }
         
-        DrawKit.begin_group(1);
+        ctx.begin_group(1);
         Utils.Math.translation_matrix(grid_move, page_x, 0);
-        DrawKit.group_matrix(1, grid_move);
+        ctx.group_matrix(1, grid_move);
 
         //main
         for(int i = 0; i < PER_PAGE; i++)
@@ -126,8 +126,8 @@ public class GridView : IGrid {
             for(int i = 0; i < PER_PAGE; i++)
                 prev_page[i].render(ctx);
         }
-        DrawKit.end_group(1);
-        DrawKit.end_group(2);
+        ctx.end_group(1);
+        ctx.end_group(2);
 
         navigation.render();
     }

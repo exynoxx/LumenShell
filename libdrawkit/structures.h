@@ -19,6 +19,10 @@ typedef struct {
     int screen_width;
     int screen_height;
     dk_color background_color;
+    float projections[5][16];
+    bool active[5];
+    bool dirty[5];
+    int num_projections;
 } dk_context;
 
 dk_context *dk_init_default(int screen_width, int screen_height);
