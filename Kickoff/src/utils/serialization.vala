@@ -22,20 +22,29 @@ namespace Utils {
             
             // Write each key-value pair
             foreach (var entry in map.entries) {
-                // Key length + key
-                uint32 key_len = (uint32)entry.key.length;
+                // Key length (excluding null terminator) + key bytes
+                uint8[] key_bytes = entry.key.data;
+                uint32 key_len = (uint32)(key_bytes.length); // Exclude null terminator
                 buffer.append(uint32_to_bytes(key_len));
-                buffer.append((uint8[])entry.key.data);
                 
-                // Value length + value
-                uint32 val_len = (uint32)entry.value.length;
+                // Append only the actual string data (without null terminator)
+                for (uint32 i = 0; i < key_len; i++) {
+                    buffer.append({key_bytes[i]});
+                }
+                
+                // Value length + value bytes
+                uint8[] val_bytes = entry.value.data;
+                uint32 val_len = (uint32)(val_bytes.length); // Exclude null terminator
                 buffer.append(uint32_to_bytes(val_len));
-                buffer.append((uint8[])entry.value.data);
+                
+                for (uint32 i = 0; i < val_len; i++) {
+                    buffer.append({val_bytes[i]});
+                }
             }
             
             return buffer.data;
         }
-        
+
         public static HashMap<string, string>? deserialize(uint8[] data) {
             if (data.length < 10) {
                 stderr.printf("Data too small\n");
@@ -45,16 +54,24 @@ namespace Utils {
             uint32 pos = 0;
             
             // Read and verify magic number
-            uint32 magic = bytes_to_uint32(data[pos:pos+4]);
+            uint8[] magic_bytes = new uint8[4];
+            for (int i = 0; i < 4; i++) {
+                magic_bytes[i] = data[pos + i];
+            }
+            uint32 magic = bytes_to_uint32(magic_bytes);
             pos += 4;
             
             if (magic != 0x48534D50) {
-                stderr.printf("Invalid magic number\n");
+                stderr.printf("Invalid magic number: 0x%08X\n", magic);
                 return null;
             }
             
             // Read version
-            uint16 version = bytes_to_uint16(data[pos:pos+2]);
+            uint8[] version_bytes = new uint8[2];
+            for (int i = 0; i < 2; i++) {
+                version_bytes[i] = data[pos + i];
+            }
+            uint16 version = bytes_to_uint16(version_bytes);
             pos += 2;
             
             if (version != 1) {
@@ -63,29 +80,69 @@ namespace Utils {
             }
             
             // Read count
-            uint32 count = bytes_to_uint32(data[pos:pos+4]);
+            uint8[] count_bytes = new uint8[4];
+            for (int i = 0; i < 4; i++) {
+                count_bytes[i] = data[pos + i];
+            }
+            uint32 count = bytes_to_uint32(count_bytes);
             pos += 4;
             
             var map = new HashMap<string, string>();
             
             // Read each key-value pair
             for (uint32 i = 0; i < count; i++) {
-                // Read key
-                if (pos + 4 > data.length) break;
-                uint32 key_len = bytes_to_uint32(data[pos:pos+4]);
+                // Read key length
+                if (pos + 4 > data.length) {
+                    stderr.printf("Unexpected end of data reading key length\n");
+                    return null;
+                }
+                
+                uint8[] key_len_bytes = new uint8[4];
+                for (int j = 0; j < 4; j++) {
+                    key_len_bytes[j] = data[pos + j];
+                }
+                uint32 key_len = bytes_to_uint32(key_len_bytes);
                 pos += 4;
                 
-                if (pos + key_len > data.length) break;
-                string key = (string)data[pos:pos+key_len];
+                // Read key data
+                if (pos + key_len > data.length) {
+                    stderr.printf("Unexpected end of data reading key\n");
+                    return null;
+                }
+                
+                uint8[] key_bytes = new uint8[key_len + 1]; // +1 for null terminator
+                for (uint32 j = 0; j < key_len; j++) {
+                    key_bytes[j] = data[pos + j];
+                }
+                key_bytes[key_len] = 0; // Add null terminator
+                string key = (string)key_bytes;
                 pos += key_len;
                 
-                // Read value
-                if (pos + 4 > data.length) break;
-                uint32 val_len = bytes_to_uint32(data[pos:pos+4]);
+                // Read value length
+                if (pos + 4 > data.length) {
+                    stderr.printf("Unexpected end of data reading value length\n");
+                    return null;
+                }
+                
+                uint8[] val_len_bytes = new uint8[4];
+                for (int j = 0; j < 4; j++) {
+                    val_len_bytes[j] = data[pos + j];
+                }
+                uint32 val_len = bytes_to_uint32(val_len_bytes);
                 pos += 4;
                 
-                if (pos + val_len > data.length) break;
-                string val = (string)data[pos:pos+val_len];
+                // Read value data
+                if (pos + val_len > data.length) {
+                    stderr.printf("Unexpected end of data reading value\n");
+                    return null;
+                }
+                
+                uint8[] val_bytes = new uint8[val_len + 1]; // +1 for null terminator
+                for (uint32 j = 0; j < val_len; j++) {
+                    val_bytes[j] = data[pos + j];
+                }
+                val_bytes[val_len] = 0; // Add null terminator
+                string val = (string)val_bytes;
                 pos += val_len;
                 
                 map.set(key, val);

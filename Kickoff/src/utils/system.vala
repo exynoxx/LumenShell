@@ -59,6 +59,20 @@ namespace Utils {
             return "hicolor";
         }
 
+        public delegate void action(string name);
+        public static void enumerate_dir_action(string path, action f){
+            try {
+                Dir? dir = Dir.open(path);
+
+                if (dir == null)
+                    return; // skip non-existent dirs
+                string? name;
+                while ((name = dir.read_name()) != null) {
+                    f(name);
+                }
+            } catch(FileError e){}
+        }
+
         public delegate bool filter(string name);
         public static string[] enumerate_dir(string path, filter f){
             var files = new Gee.ArrayList<string>();

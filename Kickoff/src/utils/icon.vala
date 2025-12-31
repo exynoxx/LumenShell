@@ -112,18 +112,8 @@ namespace Utils {
                     if (!FileUtils.test(dir_path, FileTest.IS_DIR)) {
                         continue;
                     }
-                    
-                    try {
-                        var directory = Dir.open(dir_path);
-                        string? filename;
-                        
-                        while ((filename = directory.read_name()) != null) {
-                            add_if_icon(dir_path, filename, result);
-                        }
-                    } catch (FileError e) {
-                        // Skip directories we can't read
-                        continue;
-                    }
+
+                    System.enumerate_dir_action(dir_path, filename=>add_if_icon(dir_path, filename, result));
                 }
             }
             

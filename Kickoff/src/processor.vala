@@ -27,12 +27,6 @@ public class Processor {
         var desktop_files = Utils.System.get_desktop_files();
         print("#desktop files: %i\n", desktop_files.length);
 
-        /*  print("icons paths: \n");
-        foreach(var key in icon_paths.keys){
-            print("%s -> %s\n", key, icon_paths[key]);
-        }
-        return;  */
-
         var deduplication = new HashSet<string>();
 
         foreach (var desktop in desktop_files){
