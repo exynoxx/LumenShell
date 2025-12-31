@@ -13,30 +13,29 @@ namespace Utils {
             buffer.append(uint32_to_bytes(magic));
             
             // Write version (2 bytes)
-            uint16 version = 1;
-            buffer.append(uint16_to_bytes(version));
+            buffer.append(uint16_to_bytes((uint16)1));
             
             // Write count (4 bytes)
-            uint32 count = (uint32)map.size;
-            buffer.append(uint32_to_bytes(count));
+            buffer.append(uint32_to_bytes((uint32)map.size));
             
             // Write each key-value pair
             foreach (var entry in map.entries) {
-                // Key length (excluding null terminator) + key bytes
-                uint8[] key_bytes = entry.key.data;
-                uint32 key_len = (uint32)(key_bytes.length); // Exclude null terminator
+
+                //key
+                var key_bytes = entry.key.data;
+                var key_len = (uint32)key_bytes.length;
                 buffer.append(uint32_to_bytes(key_len));
                 
-                // Append only the actual string data (without null terminator)
                 for (uint32 i = 0; i < key_len; i++) {
                     buffer.append({key_bytes[i]});
                 }
-                
-                // Value length + value bytes
-                uint8[] val_bytes = entry.value.data;
-                uint32 val_len = (uint32)(val_bytes.length); // Exclude null terminator
+
+                //value
+                var val_bytes = entry.value.data;
+                var val_len = (uint32)val_bytes.length;
+
                 buffer.append(uint32_to_bytes(val_len));
-                
+
                 for (uint32 i = 0; i < val_len; i++) {
                     buffer.append({val_bytes[i]});
                 }

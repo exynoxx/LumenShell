@@ -1,11 +1,11 @@
 using DrawKit;
 using Gee;
 
-public class Panel {
+public const int HEIGHT = 60;
+public const int UNDERLINE_HEIGHT = 5;
+public const int APP_UNDERLINE_HEIGHT = HEIGHT-UNDERLINE_HEIGHT;
 
-    public const int HEIGHT = 60;
-    public const int UNDERLINE_HEIGHT = 5;
-    public const int APP_UNDERLINE_HEIGHT = HEIGHT-UNDERLINE_HEIGHT;
+public class Panel {
 
     private int width;
     private HashMap<uint, App> entries;
@@ -14,6 +14,7 @@ public class Panel {
     private int active_idx;
 
     private Context ctx;
+    private Tray tray;
 
     public Panel(int screen_width){
         WLHooks.init_layer_shell("panel", screen_width, HEIGHT, BOTTOM, true);
@@ -26,6 +27,8 @@ public class Panel {
 
         ordering = new LinkedList<uint>();
         ordering.add(KICKOFF_ID);
+
+        tray = new Tray(ctx, screen_width);
     }
 
     public void on_window_new(uint id, string app_id, string title){
@@ -101,6 +104,8 @@ public class Panel {
             var color = Color(){r=0,g=0.17f,b=0.9f,a=1};
             ctx.draw_rect(active_idx*App.WIDTH+2, App.HEIGHT, App.WIDTH, APP_UNDERLINE_HEIGHT, color);
         }
+
+        tray.render();
 
         ctx.end_frame();
     }
