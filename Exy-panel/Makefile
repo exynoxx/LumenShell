@@ -30,4 +30,4 @@ CFLAGS = \
     -X -lxkbcommon
 
 default:
-	valac --vapidir=../vapi $(VALA_PKGS) $(CFLAGS) -o main src/*.vala src/components/*.vala
+	valac --vapidir=../vapi $(VALA_PKGS) $(CFLAGS) -o main src/*.vala src/components/*.vala src/components/trays/*.vala

@@ -1,36 +1,44 @@
 using DrawKit;
 using GLES2;
 
-public class TrayIcon {
+public interface ITray {
+    public abstract int get_width();
+    public abstract void set_position(int x, int y);
+    public abstract void mouse_down();
+    public abstract void mouse_up();
+    public abstract void mouse_motion(int mouse_x, int mouse_y);
+}
+
+public abstract class TrayIcon : ITray {
 
     private const string base_path = "/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/";
     private const int ICON_SIZE = 32;
-    private const int NARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
+    private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
 
-    private string id;
     private GLuint tex;
-    private bool hovered;
+    protected bool hovered;
     
     private int x;
     private int y;
     private int hover_x;
     private int hover_y;
 
-    public int width {get; private set;}
+    private int width;
 
-    public TrayIcon(string id, int y, string icon){
-        this.id = id;
-        this.x = x;
-        this.y = y + NARGIN_TOP;
-        this.hover_x = x + ICON_SIZE/2;
-        this.hover_y = this.y + ICON_SIZE/2;
+    protected TrayIcon(string icon){
         load(icon);
-        width = ICON_SIZE;
+        width = 24*2;
     }
 
-    public void set_position(int x){
+    public int get_width() {
+        return 24*2;
+    }
+
+    public void set_position(int x, int y){
         this.x = x;
-        this.hover_x = x + ICON_SIZE/2;
+        this.y = y + MARGIN_TOP;
+        this.hover_x = this.x + ICON_SIZE/2;
+        this.hover_y = this.y + ICON_SIZE/2;
     }
 
     public void load(string icon){
@@ -61,6 +69,9 @@ public class TrayIcon {
             redraw = true;
     }
 
+    public abstract void mouse_down();
+    public abstract void mouse_up();
+
     public void render(Context ctx){
         
         if(hovered){
@@ -73,5 +84,47 @@ public class TrayIcon {
         } 
 
         ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
+    }
+}
+
+public class WifiTray : TrayIcon {
+
+    public WifiTray() {
+        base ("wifi");
+    }
+
+    public override void mouse_down(){
+
+    }
+    public override void mouse_up(){
+
+    }
+}
+
+public class ExitTray : TrayIcon {
+
+    public ExitTray() {
+        base ("close");
+    }
+
+    public override void mouse_down(){
+        if(base.hovered) 
+            Process.spawn_command_line_async("pkill wayfire");
+    }
+    public override void mouse_up(){
+
+    }
+}
+
+public class BatteryTray : TrayIcon {
+
+    public BatteryTray() {
+        base ("mid");
+    }
+
+    public override void mouse_down(){
+    }
+    public override void mouse_up(){
+
     }
 }

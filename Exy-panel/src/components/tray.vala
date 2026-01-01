@@ -40,22 +40,27 @@ public class Tray {
         this.height = TRAY_HEIGHT;
 
         //calc width
-        string[] names = {"wifi", "mid", "close"};
-        foreach (var name in names) {
-            var tray = new TrayIcon(name, TRAY_Y, name);
-            base_width += SPACING + tray.width;
-            trays += tray;
-        }
-        base_width += SPACING;
+        var wifi = new WifiTray();
+        var battery = new BatteryTray();
+        var exit = new ExitTray();
+
+        trays += wifi;
+        trays += battery;
+        trays += exit;
+
+        foreach(var t in trays) 
+            base_width += wifi.get_width();
+
+        base_width+=4*SPACING;
         width = base_width;
-        
+
         //calc x's
         this.x = screen_width - width - MARGIN_RIGHT;
 
         var current_x = this.x + SPACING;
         foreach (var tray in trays){
-            tray.set_position(current_x);
-            current_x += tray.width + SPACING;
+            tray.set_position(current_x, TRAY_Y);
+            current_x += tray.get_width() + SPACING;
         }
 
         expand_animation = new TransitionEmpty();
@@ -63,11 +68,13 @@ public class Tray {
 
 
     public void on_mouse_down(){
-        
+        foreach(var t in trays)
+            t.mouse_down();
     }
 
     public void on_mouse_up(){
-        
+        foreach(var t in trays)
+            t.mouse_up();
     }
     
     public void on_mouse_motion(int mouse_x, int mouse_y){

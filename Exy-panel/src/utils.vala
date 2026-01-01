@@ -185,4 +185,14 @@ public class Utils {
         
         return icon_path;
     }
+
+    public static int64 last_time = 0;
+    public static int64 elapsed_ms() {
+        
+        int64 current_time = get_monotonic_time();
+        int64 dt = current_time-last_time;
+        last_time = current_time;
+
+        return dt / 1000;
+    }
 }
