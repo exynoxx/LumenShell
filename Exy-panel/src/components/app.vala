@@ -2,9 +2,6 @@ using GLES2;
 using DrawKit;
 
 public class App {
-    public const int WIDTH = 70;
-    public const int HEIGHT = 55;
-
     public int order;
     public uint id;
     public string app_id;
@@ -17,14 +14,14 @@ public class App {
     public int tex_x;
     public int tex_y;
 
-    const int padding_side = (App.WIDTH - 32)/2;
-    const int padding_top = (App.HEIGHT - 32)/2;
+    const int padding_side = (APP_WIDTH - 32)/2;
+    const int padding_top = (APP_HEIGHT - 32)/2;
 
     public App (uint id, string app_id, string title, int order){
         this.id = id;
         this.app_id = app_id;
         this.title = title;
-        this.y = 0;
+        this.y = APP_Y;
 
         reset_order(order);
         load_icon();
@@ -32,7 +29,7 @@ public class App {
 
     public void reset_order(int i){
         this.order = i;
-        this.x = i*WIDTH+2; //2 from seperator
+        this.x = i*APP_WIDTH+2; //2 from seperator
         this.tex_x = x + padding_side;
         this.tex_y = y + padding_top;
     }
@@ -43,9 +40,9 @@ public class App {
         var oldval = hovered;
         hovered = (
             x >= box_x && 
-            x <= box_x + WIDTH &&
+            x <= box_x + APP_WIDTH &&
             y >= box_y && 
-            y <= box_y + HEIGHT);
+            y <= box_y + APP_HEIGHT);
 
         if(hovered != oldval) redraw = true;
     }
@@ -54,7 +51,7 @@ public class App {
         var color = Color(){r=1,g=1,b=1,a=0f};
         if (hovered) color.a = 0.2f; 
 
-        ctx.draw_rect(this.x, this.y, WIDTH, HEIGHT, color);
+        ctx.draw_rect(this.x, this.y, APP_WIDTH, APP_HEIGHT, color);
         ctx.draw_texture(tex, tex_x, tex_y, 32, 32);
     }
 

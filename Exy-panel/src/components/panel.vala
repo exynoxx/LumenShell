@@ -1,9 +1,15 @@
 using DrawKit;
 using Gee;
 
-public const int HEIGHT = 60;
+public const int HEIGHT = 300;
+public const int EXCLUSIVE_HEIGHT = 60;
 public const int UNDERLINE_HEIGHT = 5;
-public const int APP_UNDERLINE_HEIGHT = HEIGHT-UNDERLINE_HEIGHT;
+
+public const int APP_UNDERLINE_Y = HEIGHT-UNDERLINE_HEIGHT;
+public const int APP_Y = HEIGHT-EXCLUSIVE_HEIGHT;
+public const int APP_WIDTH = 70;
+public const int APP_HEIGHT = EXCLUSIVE_HEIGHT;
+
 
 public class Panel {
 
@@ -17,7 +23,7 @@ public class Panel {
     private Tray tray;
 
     public Panel(int screen_width){
-        WLHooks.init_layer_shell("panel", screen_width, HEIGHT, BOTTOM, true);
+        WLHooks.init_layer_shell("panel", screen_width, HEIGHT, BOTTOM, true, EXCLUSIVE_HEIGHT);
 
         ctx = new DrawKit.Context(screen_width, HEIGHT);
         ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
@@ -106,7 +112,7 @@ public class Panel {
         //active
         if(active_idx > 0){
             var color = Color(){r=0,g=0.17f,b=0.9f,a=1};
-            ctx.draw_rect(active_idx*App.WIDTH+2, App.HEIGHT, App.WIDTH, APP_UNDERLINE_HEIGHT, color);
+            ctx.draw_rect(active_idx*APP_WIDTH+2, APP_UNDERLINE_Y, APP_WIDTH, UNDERLINE_HEIGHT, color);
         }
 
         tray.render();

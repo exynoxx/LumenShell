@@ -13,8 +13,10 @@ nmcli device status*/
 public class Tray {
 
     public const int MARGIN_RIGHT = 20;
-    public const int TRAY_HEIGHT = HEIGHT - 12;
-    public const int MARGIN_TOP = (HEIGHT - TRAY_HEIGHT)/2;
+    public const int TRAY_HEIGHT = EXCLUSIVE_HEIGHT - 12;
+    public const int MARGIN_TOP = (EXCLUSIVE_HEIGHT - TRAY_HEIGHT)/2;
+    public const int TRAY_Y = HEIGHT - TRAY_HEIGHT - MARGIN_TOP;
+    public const int TRAY_MAX_HEIGHT = HEIGHT - MARGIN_TOP;
     public const int SPACING = 20;
 
     private unowned Context ctx;
@@ -22,7 +24,9 @@ public class Tray {
 
     private TrayIcon[] trays;
     private int base_width;
+
     private int width;
+    private int height;
     private int x;
     private int y;
     private bool hovered;
@@ -32,11 +36,13 @@ public class Tray {
     public Tray(Context ctx, int screen_width){
         this.ctx = ctx;
         this.screen_width = screen_width;
+        this.y = TRAY_Y;
+        this.height = TRAY_HEIGHT;
 
         //calc width
         string[] names = {"wifi", "mid", "close"};
         foreach (var name in names) {
-            var tray = new TrayIcon(name, MARGIN_TOP, name);
+            var tray = new TrayIcon(name, TRAY_Y, name);
             base_width += SPACING + tray.width;
             trays += tray;
         }
@@ -67,25 +73,42 @@ public class Tray {
     public void on_mouse_motion(int mouse_x, int mouse_y){
         var hover_initial = hovered;
 
-        hovered = (mouse_x >= x && mouse_y >= 0);
-        if(hovered != hover_initial) 
-        {
-            expand_animation = (hovered) 
-            ? new Transition1D(0, &width, 300, 1)
-            : new Transition1D(0, &width, base_width, 1);
+        hovered = (
+            mouse_x >= this.x && 
+            mouse_x <= this.x + width &&
+            mouse_y >= this.y && 
+            mouse_y <= this.y + height);
 
-            animations.add(expand_animation);
+        if(hovered){
+            foreach(var tray in trays)
+                tray.mouse_motion(mouse_x,mouse_y);
+            
+            if (!hover_initial) 
+                expand();
         }
 
-        foreach(var tray in trays){
-            tray.mouse_motion(mouse_x,mouse_y);
-        }
+        if(hover_initial && !hovered)
+            contract();
+        
+    }
+
+    private void expand(){
+        expand_animation = new Transition1D(0, &width, 400, 1d);
+        var height_animation = new Transition1D(1, &height, TRAY_MAX_HEIGHT, 1d);
+        animations.add(expand_animation);
+        animations.add(height_animation);
+    }
+
+    private void contract(){
+        expand_animation = new Transition1D(0, &width, base_width, 1d);
+        var height_animation = new Transition1D(1, &height, TRAY_HEIGHT, 1d);
+        animations.add(expand_animation);
+        animations.add(height_animation);
     }
 
     public void on_mouse_leave(){
         if(width > base_width){
-            expand_animation = new Transition1D(0, &width, base_width, 1);
-            animations.add(expand_animation);
+            contract();
         }
         redraw = true;
     }
@@ -93,9 +116,10 @@ public class Tray {
     public void render(){
         if(!expand_animation.finished){
             this.x = screen_width - width - MARGIN_RIGHT;
+            this.y = HEIGHT - height - MARGIN_TOP;
         }
 
-        ctx.draw_rect_rounded(this.x, MARGIN_TOP, width, TRAY_HEIGHT, 24, {0.15f,0.15f,0.15f,1});
+        ctx.draw_rect_rounded(this.x, this.y, width, height, 24, {0.15f,0.15f,0.15f,1});
         foreach(var t in trays){
             t.render(ctx);
         }
