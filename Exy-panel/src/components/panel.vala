@@ -80,6 +80,7 @@ public class Panel {
         foreach(var app in entries.values){
             app.mouse_motion(x,y);
         }
+        tray.on_mouse_motion(x,y);
     }
 
     public void on_mouse_leave(){

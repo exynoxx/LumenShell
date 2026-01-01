@@ -365,13 +365,13 @@ void dk_stencil_push(dk_context *ctx){
 
 void dk_stencil_apply(dk_context *ctx) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
     glStencilFunc(GL_EQUAL, 1, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glStencilMask(0x00);
 }
 
 void dk_stencil_pop(dk_context *ctx){
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glDisable(GL_STENCIL_TEST);
 }
 
