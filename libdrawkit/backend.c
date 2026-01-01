@@ -48,6 +48,8 @@ bool dk_backend_init(dk_context *ctx, int groups) {
     create_identity_matrix(identity);
     create_ortho_matrix(ortho, 0, ctx->screen_width, ctx->screen_height, 0);
 
+    ctx->tex_color = (dk_color){1,1,1,1};
+
     ctx->active[0] = true;
     ctx->dirty[0] = true;
     memcpy(ctx->projections[0], ortho, 16*sizeof(float));
@@ -79,6 +81,13 @@ void dk_set_bg_color(dk_context *ctx, dk_color color) {
     ctx->background_color.g = color.g;
     ctx->background_color.b = color.b;
     ctx->background_color.a = color.a;
+}
+
+void dk_set_tex_color(dk_context *ctx, dk_color color){
+    ctx->tex_color.r = color.r;
+    ctx->tex_color.g = color.g;
+    ctx->tex_color.b = color.b;
+    ctx->tex_color.a = color.a;
 }
 
 void dk_begin_frame(dk_context *ctx) {
@@ -222,7 +231,7 @@ void dk_draw_texture(dk_context *ctx, GLuint texture_id, int x, int y, int width
     dk_populate_projections(ctx->shapes_program, ctx);
     
     GLint color_loc = glGetUniformLocation(ctx->texture_program, "color");
-    glUniform4f(color_loc, 1,1,1,1);
+    glUniform4f(color_loc, ctx->tex_color.r, ctx->tex_color.g, ctx->tex_color.b, ctx->tex_color.a);
     
     float vertices[] = {
         x, y, 0.0f, 0.0f,

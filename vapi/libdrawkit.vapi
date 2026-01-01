@@ -32,6 +32,9 @@ namespace DrawKit {
         [CCode (cname = "dk_set_bg_color")]
         public void set_bg_color(Color color);
 
+        [CCode (cname = "dk_set_tex_color")]
+        public void set_tex_color(Color color);
+
         [CCode (cname = "dk_draw_rect")]
         public void draw_rect(int x, int y, int width, int height, Color color);
 

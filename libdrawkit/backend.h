@@ -11,6 +11,7 @@ bool dk_backend_init(dk_context *ctx, int projection_count);
 void dk_backend_cleanup(dk_context *ctx);
 
 void dk_set_bg_color(dk_context *ctx, dk_color color);
+void dk_set_tex_color(dk_context *ctx, dk_color color);
 
 void dk_draw_rect(dk_context *ctx, int x, int y, int width, int height, dk_color color);
 void dk_draw_rect_rounded(dk_context *ctx, float x, float y, float width, float height, float radius, dk_color color);

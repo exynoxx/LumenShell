@@ -19,6 +19,7 @@ typedef struct {
     int screen_width;
     int screen_height;
     dk_color background_color;
+    dk_color tex_color;
     float projections[5][16];
     bool active[5];
     bool dirty[5];
