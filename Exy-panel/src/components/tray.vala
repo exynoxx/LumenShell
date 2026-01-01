@@ -82,12 +82,12 @@ public class Tray {
         if(hovered){
             foreach(var tray in trays)
                 tray.mouse_motion(mouse_x,mouse_y);
-            
-            if (!hover_initial) 
-                expand();
         }
 
-        if(hover_initial && !hovered)
+        if (hovered && !hover_initial) 
+            expand();
+
+        if(!hovered && hover_initial)
             contract();
         
     }
