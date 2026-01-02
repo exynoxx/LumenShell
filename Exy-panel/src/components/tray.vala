@@ -15,7 +15,7 @@ public class Tray {
     public const int MARGIN_RIGHT = 20;
     public const int TRAY_HEIGHT = EXCLUSIVE_HEIGHT - 12;
     public const int MARGIN_TOP = (EXCLUSIVE_HEIGHT - TRAY_HEIGHT)/2;
-    public const int TRAY_Y = HEIGHT - TRAY_HEIGHT;
+    public const int TRAY_Y = HEIGHT - TRAY_HEIGHT - MARGIN_TOP;
     public const int TRAY_MAX_HEIGHT = HEIGHT - MARGIN_TOP;
     public const int SPACING = 20;
 

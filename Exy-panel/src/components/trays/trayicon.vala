@@ -14,6 +14,7 @@ public abstract class TrayIcon : Object, ITray {
 
     private const string base_path = "/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/";
     private const int ICON_SIZE = 32;
+    private const int HOVER_RADIUS = 24;
     private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
 
     private GLuint tex;
@@ -21,14 +22,14 @@ public abstract class TrayIcon : Object, ITray {
     
     private int x;
     private int y;
-    private int hover_x;
-    private int hover_y;
+    private int circle_x;
+    private int circle_y;
 
     private int width;
 
     protected TrayIcon(string icon){
         load(icon);
-        width = 24*2;
+        width = HOVER_RADIUS*2;
     }
 
     public int get_width() {
@@ -37,9 +38,9 @@ public abstract class TrayIcon : Object, ITray {
 
     public void set_position(int x, int y){
         this.x = x;
-        this.y = y;
-        this.hover_x = this.x + ICON_SIZE/2;
-        this.hover_y = this.y + ICON_SIZE/2;
+        this.y = y + MARGIN_TOP;
+        this.circle_x = this.x + ICON_SIZE/2;
+        this.circle_y = this.y + ICON_SIZE/2;
     }
 
     public void load(string icon){
@@ -60,12 +61,14 @@ public abstract class TrayIcon : Object, ITray {
     }
 
     public void mouse_motion(int mouse_x, int mouse_y){
-        int w = x + width;
-        int h = y + width;
-        
         var hover_initial = hovered;
 
-        hovered = (mouse_x >= x && mouse_x <= w && mouse_y >= y && mouse_y <= h);
+        hovered = (
+            mouse_x >= circle_x - HOVER_RADIUS && 
+            mouse_x <= circle_x + HOVER_RADIUS && 
+            mouse_y >= circle_y - HOVER_RADIUS && 
+            mouse_y <= circle_y + HOVER_RADIUS);
+
         if(hovered != hover_initial) 
             redraw = true;
     }
@@ -76,7 +79,7 @@ public abstract class TrayIcon : Object, ITray {
     public void render(Context ctx){
         
         if(hovered){
-            ctx.draw_circle(hover_x, hover_y, 24, {1,1,1,1});
+            ctx.draw_circle(circle_x, circle_y, 24, {1,1,1,1});
             ctx.set_tex_color({0,0,0,1});
             ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
             ctx.set_tex_color({1,1,1,1});

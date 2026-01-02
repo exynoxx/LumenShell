@@ -25,7 +25,7 @@ public class ClockTray : Object, ITray {
 
     public void set_position(int x, int y){
         this.x = x+margin_left;
-        this.y = y+margin_top;
+        this.y = y+margin_top+5;
     }
 
     public void mouse_down(){}
