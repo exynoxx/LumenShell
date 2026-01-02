@@ -17,7 +17,7 @@ public abstract class TrayIcon : Object, ITray {
     private const int HOVER_RADIUS = 24;
     private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
 
-    private GLuint tex;
+    protected GLuint tex;
     protected bool hovered;
     
     private int x;
