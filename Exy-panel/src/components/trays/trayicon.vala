@@ -60,7 +60,7 @@ public abstract class TrayIcon : Object, ITray {
         DrawKit.texture_free(tex);
     }
 
-    public void mouse_motion(int mouse_x, int mouse_y){
+    public virtual void mouse_motion(int mouse_x, int mouse_y){
         var hover_initial = hovered;
 
         hovered = (
@@ -76,7 +76,7 @@ public abstract class TrayIcon : Object, ITray {
     public abstract void mouse_down();
     public abstract void mouse_up();
 
-    public void render(Context ctx){
+    public virtual void render(Context ctx){
         
         if(hovered){
             ctx.draw_circle(circle_x, circle_y, 24, {1,1,1,1});
@@ -88,60 +88,5 @@ public abstract class TrayIcon : Object, ITray {
         } 
 
         ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
-    }
-}
-
-/*  # Overall connectivity state
-nmcli networking connectivity
-# Wi-Fi status
-nmcli device status
-  */
-
-public class WifiTray : TrayIcon {
-
-    public WifiTray() {
-        base ("wifi");
-    }
-
-    public override void mouse_down(){
-
-    }
-    public override void mouse_up(){
-
-    }
-}
-
-public class ExitTray : TrayIcon {
-
-    public ExitTray() {
-        base ("close");
-    }
-
-    public override void mouse_down(){
-        if(base.hovered) 
-            Process.spawn_command_line_async("pkill wayfire");
-    }
-    public override void mouse_up(){
-
-    }
-}
-
-/*  /sys/class/power_supply/BAT0/
-capacity → battery percentage (0–100)
-
-status → Charging, Discharging, Full
-
-voltage_now, current_now → detailed info  */
-
-public class BatteryTray : TrayIcon {
-
-    public BatteryTray() {
-        base ("mid");
-    }
-
-    public override void mouse_down(){
-    }
-    public override void mouse_up(){
-
     }
 }

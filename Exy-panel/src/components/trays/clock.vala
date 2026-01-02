@@ -1,6 +1,6 @@
 using DrawKit;
 
-public class ClockTray : Object, ITray {
+public class Clock : Object, ITray {
     
     private int x;
     private int y;
@@ -12,7 +12,7 @@ public class ClockTray : Object, ITray {
     private int margin_top;
     private int margin_left;
 
-    public ClockTray(Context ctx){
+    public Clock(Context ctx){
         update();
         width = ctx.width_of(text, FONT_SIZE);
         margin_top = (Tray.TRAY_HEIGHT - ctx.height_of(text, FONT_SIZE))/2;

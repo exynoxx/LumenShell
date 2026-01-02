@@ -42,7 +42,7 @@ public class Tray {
         //calc width
         var wifi = new WifiTray();
         var battery = new BatteryTray();
-        var clock = new ClockTray(ctx);
+        var clock = new Clock(ctx);
         var exit = new ExitTray();
 
         trays += wifi;
