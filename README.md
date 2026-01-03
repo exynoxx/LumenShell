@@ -1,7 +1,7 @@
 ### Work in progress!!
 
 # Introduction
-ExyShell is a early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, a custom panel (ExyPanel) and application launcher (Kickoff) for navigation. Both ExyPanel and Kickoff avoids QT or other heavy UI toolkits and instead utilize **Drawkit** for hardware accelerated rendering, both implemented in vala. Wayland interactions are handled via **WLHooks**, a lightweight Wayland client library.
+Lumen is an early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, a custom panel (unnamed for now) and application launcher (Kickoff) for navigation. Both the panel and Kickoff avoids QT or other heavy UI toolkits and instead utilize **Drawkit** for hardware accelerated rendering, both implemented in vala. Wayland interactions are handled via **WLHooks**, a lightweight Wayland client library.
 
 ### DrawKit
 Is a minimal, high-performance 2D graphics library written in C, using GLES2 and EGL as backend. 
@@ -19,7 +19,7 @@ Is a lightweight Wayland client library implementing the following protocols:
 Source also included in this repo.
 
 ### Disclaimer
-Drawkit and WLHooks is tailored exclusively for this project.
+Drawkit and WLHooks are tailored exclusively for this project. So not general purpose.
 
 # Show case
 Bottom panel
