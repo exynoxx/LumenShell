@@ -1,103 +1,77 @@
-
-/*  /sys/class/power_supply/BAT0/
-capacity → battery percentage (0–100)
-
-status → Charging, Discharging, Full
-
-voltage_now, current_now → detailed info  */
-
 using DrawKit;
 
-public class BatteryTray : IconAndText, IClickable, IUpdateable {
+/**
+ * BatteryTray — icon that lives in the tray bar.
+ *
+ * Displays the appropriate battery icon tinted to charge level.
+ * Clicking it tells the Tray to open/close the BatteryPage expansion.
+ * All detailed rendering has moved to BatteryPage.
+ */
+public class BatteryTray : IconAndText, IUpdateable, IHasPage {
 
-    public string status;
+    private BatteryPage _page;
+    public  string status = "";
 
     public BatteryTray(Context ctx) {
-        base (ctx, new HoverableIcon("nobattery"), "N/A %");
+        base(ctx, new HoverableIcon("nobattery"), "N/A");
+        _page = new BatteryPage();
+        update();
     }
 
-    public void mouse_down(){
-    }
-    public void mouse_up(){
+    // ── IHasPage ──────────────────────────────────────────────────────────
 
-    }
+    public ITrayPage get_page()        { return _page; }
+    public bool      is_icon_hovered() { return icon.hovered; }
 
-    public string get_status(){
-        return status;
-    }
+    // ── IUpdateable ───────────────────────────────────────────────────────
 
-    public void update(){
-        var raw_status = exec("cat /sys/class/power_supply/BAT0/status");
+    public string get_status() { return status; }
 
+    public void update() {
+        var raw = sysfs("status").down().strip();
         var new_icon = "nobattery";
-        if (raw_status == "discharging" || raw_status.contains("full")) {
 
-            var full    = exec_int("cat /sys/class/power_supply/BAT0/charge_full");
-            var current = exec_int("cat /sys/class/power_supply/BAT0/charge_now");
-
+        if (raw == "discharging" || raw.contains("full")) {
+            var full = sysfs_int("charge_full");
+            var curr = sysfs_int("charge_now");
             if (full > 0) {
-                var percent = (int)((current / (float) full) * 100);
-                percent = int.min(100, int.max(0, percent));
-                status  = "%d%%".printf(percent);
-
-                if (percent >= 70)
-                    new_icon = "high";
-                else if (percent < 30)
-                    new_icon = "low";
-                else
-                    new_icon = "mid";
-
+                var pct = (int)((curr / (float) full) * 100);
+                pct    = int.min(100, int.max(0, pct));
+                status = "%d%%".printf(pct);
+                new_icon = pct >= 70 ? "high" : pct >= 30 ? "mid" : "low";
                 set_text(status);
             }
-
-        } else if (raw_status == "charging") {
+        } else if (raw == "charging") {
             new_icon = "charging";
-            // also show percentage while charging
-            var full    = exec_int("cat /sys/class/power_supply/BAT0/charge_full");
-            var current = exec_int("cat /sys/class/power_supply/BAT0/charge_now");
+            var full = sysfs_int("charge_full");
+            var curr = sysfs_int("charge_now");
             if (full > 0) {
-                var percent = (int)((current / (float) full) * 100);
-                percent = int.min(100, int.max(0, percent));
-                status  = "%d%% ⚡".printf(percent);
+                var pct = (int)((curr / (float) full) * 100);
+                pct    = int.min(100, int.max(0, pct));
+                status = "%d%% ⚡".printf(pct);
                 set_text(status);
             }
         } else {
-            print("battery: status unknown: >%s<\n", raw_status);
             set_text("N/A");
             return;
         }
 
-        base.icon.free();
-        base.icon.load(new_icon);
+        icon.free();
+        icon.load(new_icon);
     }
 
-    private static int exec_int(string cmd){
-        var result = exec(cmd);
-        return int.parse(result);
-    }
-
-    private static string exec(string cmd) {
-        string stdout;
-        string stderr;
-
+    private static string sysfs(string name) {
+        string out_str, err;
         try {
-            int exit_status;
+            int exit;
+            Process.spawn_command_line_sync(
+                "cat /sys/class/power_supply/BAT0/" + name,
+                out out_str, out err, out exit);
+            return exit == 0 ? out_str.strip() : "";
+        } catch (Error e) { return ""; }
+    }
 
-            Process.spawn_command_line_sync(cmd,
-                out stdout,
-                out stderr,
-                out exit_status
-            );
-
-            if (exit_status != 0) {
-                warning("cat failed: %s", stderr);
-                return stderr;
-            }
-
-            return stdout.strip().ascii_down();
-        } catch (Error e) {
-            warning("Exception running cat: %s", e.message);
-            return "";
-        }
+    private static int sysfs_int(string name) {
+        return int.parse(sysfs(name));
     }
 }

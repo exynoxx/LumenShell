@@ -24,6 +24,17 @@ public interface IExpandable {
     public abstract void contract();
 }
 
+/**
+ * Implemented by tray icons that own an expansion page.
+ * The Tray class uses this to map icon hovers to page indices.
+ */
+public interface IHasPage : GLib.Object {
+    /** Return the page this icon opens. */
+    public abstract ITrayPage get_page();
+    /** Return true when this icon's hover circle is currently hovered. */
+    public abstract bool is_icon_hovered();
+}
+
 public interface IUpdateable {
     public abstract void update();
     public abstract string get_status();
