@@ -78,13 +78,13 @@ public class Tray {
     public void on_mouse_down(){
         foreach(var t in trays)
             if (t is IClickable)
-                (t as IClickable).mouse_down();
+                ((IClickable) t).mouse_down();
     }
 
     public void on_mouse_up(){
         foreach(var t in trays)
             if (t is IClickable)
-                (t as IClickable).mouse_up();
+                ((IClickable) t).mouse_up();
     }
     
     public void on_mouse_motion(int mouse_x, int mouse_y){
@@ -99,7 +99,7 @@ public class Tray {
         if(hovered){
             foreach(var tray in trays)
                 if (tray is IHoverable)
-                    (tray as IHoverable).mouse_motion(mouse_x,mouse_y);
+                    ((IHoverable) tray).mouse_motion(mouse_x,mouse_y);
         }
 
         if (hovered && !hover_initial) 
@@ -120,7 +120,7 @@ public class Tray {
   */
         foreach(var t in trays) 
             if (t is IExpandable)
-                (t as IExpandable).expand();
+                ((IExpandable) t).expand();
 
         //var height_animation = new Transition1D(1, &height, TRAY_MAX_HEIGHT, 1d);
         //animations.add(height_animation);
@@ -133,7 +133,7 @@ public class Tray {
         //animations.add(height_animation);
         foreach(var t in trays) 
             if (t is IExpandable)
-                (t as IExpandable).contract();
+                ((IExpandable) t).contract();
     }
 
     public void on_mouse_leave(){

@@ -13,7 +13,6 @@ public const int APP_HEIGHT = EXCLUSIVE_HEIGHT;
 
 public class Panel {
 
-    private int width;
     private HashMap<uint, App> entries;
     private LinkedList<uint> ordering;
 
@@ -117,6 +116,6 @@ public class Panel {
 
         tray.render();
 
-        ctx.end_frame();
+        DrawKit.Context.end_frame();
     }
 }
