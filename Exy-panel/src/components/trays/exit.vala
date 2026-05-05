@@ -1,15 +1,15 @@
+using DrawKit;
 
-public class ExitTray : TrayIcon {
+public class ExitTray : IconAndText,  IClickable {
 
-    public ExitTray() {
-        base ("close");
+    public ExitTray(Context ctx) {
+        base (ctx, new HoverableIcon("close"), "close");
     }
 
-    public override void mouse_down(){
-        if(base.hovered) 
+    public void mouse_down(){
+        if(base.icon.hovered) 
             Process.spawn_command_line_async("pkill wayfire");
     }
-    public override void mouse_up(){
+    public void mouse_up(){}
 
-    }
 }

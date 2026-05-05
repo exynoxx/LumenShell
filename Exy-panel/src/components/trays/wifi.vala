@@ -6,8 +6,9 @@ nmcli device status
   */
 using Gee;
 using GLib;
+using DrawKit;
 
-public class WifiTray : TrayIcon {
+public class WifiTray : IconAndText, IClickable, IUpdateable {
 
     private class Endpoint {
         public string device;
@@ -23,19 +24,23 @@ public class WifiTray : TrayIcon {
         }
     }
 
-    public WifiTray() {
-        base ("wifi-unknown");
-        status();
+    public WifiTray(Context ctx) {
+        base (ctx, new HoverableIcon("wifi-unknown"), "???");
     }
 
-    public override void mouse_down(){
+    public void mouse_down(){
 
     }
-    public override void mouse_up(){
+    public void mouse_up(){
 
     }
 
-    private async void status(){
+    public string get_status()
+    {
+        return "todo";
+    }
+
+    public void update(){
         bool wifi_connected = false;
 
         var endpoints = get_wifi_endpoints();
@@ -51,8 +56,8 @@ public class WifiTray : TrayIcon {
 
         var new_icon = (wifi_connected) ? "wifi" : "nowifi";
         
-        free();
-        base.load(new_icon);
+        base.icon.free();
+        base.icon.load(new_icon);
     }
 
     private static Endpoint[] get_wifi_endpoints() {

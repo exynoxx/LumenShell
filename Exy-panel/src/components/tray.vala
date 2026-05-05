@@ -10,6 +10,8 @@ nmcli networking connectivity
 # Wi-Fi status
 nmcli device status*/
 
+public const int FONT_SIZE = 16;
+
 public class Tray {
 
     public const int MARGIN_RIGHT = 20;
@@ -40,43 +42,49 @@ public class Tray {
         this.height = TRAY_HEIGHT;
 
         //calc width
-        var wifi = new WifiTray();
-        var battery = new BatteryTray();
+        var wifi = new WifiTray(ctx);
+        var battery = new BatteryTray(ctx);
         var clock = new Clock(ctx);
-        var exit = new ExitTray();
+        var exit = new ExitTray(ctx);
 
         trays += wifi;
         trays += battery;
         trays += clock;
         trays += exit;
 
-        foreach(var t in trays) 
-            base_width += t.get_width();
+        base_width = width = get_children_width();
 
-        base_width+=4*SPACING;
-        width = base_width;
-
-        //calc x's
         this.x = screen_width - width - MARGIN_RIGHT;
-
-        var current_x = this.x + SPACING;
-        foreach (var tray in trays){
-            tray.set_position(current_x, TRAY_Y);
-            current_x += tray.get_width() + SPACING;
-        }
-
+        set_children_positions();
         expand_animation = new TransitionEmpty();
+    }
+
+    private int get_children_width(){
+        var w = trays.length*SPACING;
+        foreach(var t in trays) 
+            w += t.get_width();
+        return w;
+    }
+
+    private void set_children_positions(){
+        var current_x = this.x + SPACING;
+        foreach (var t in trays){
+            t.set_position(current_x, TRAY_Y);
+            current_x += t.get_width() + SPACING;
+        }
     }
 
 
     public void on_mouse_down(){
         foreach(var t in trays)
-            t.mouse_down();
+            if (t is IClickable)
+                (t as IClickable).mouse_down();
     }
 
     public void on_mouse_up(){
         foreach(var t in trays)
-            t.mouse_up();
+            if (t is IClickable)
+                (t as IClickable).mouse_up();
     }
     
     public void on_mouse_motion(int mouse_x, int mouse_y){
@@ -90,7 +98,8 @@ public class Tray {
 
         if(hovered){
             foreach(var tray in trays)
-                tray.mouse_motion(mouse_x,mouse_y);
+                if (tray is IHoverable)
+                    (tray as IHoverable).mouse_motion(mouse_x,mouse_y);
         }
 
         if (hovered && !hover_initial) 
@@ -102,30 +111,45 @@ public class Tray {
     }
 
     private void expand(){
-        expand_animation = new Transition1D(0, &width, 400, 1d);
-        var height_animation = new Transition1D(1, &height, TRAY_MAX_HEIGHT, 1d);
+        /*  var max_width = 0;
+        foreach(var t in trays) 
+            max_width += t.get_max_width();
+
+        expand_animation = new Transition1D(0, &width, max_width, 1d);
         animations.add(expand_animation);
-        animations.add(height_animation);
+  */
+        foreach(var t in trays) 
+            if (t is IExpandable)
+                (t as IExpandable).expand();
+
+        //var height_animation = new Transition1D(1, &height, TRAY_MAX_HEIGHT, 1d);
+        //animations.add(height_animation);
     }
 
     private void contract(){
         expand_animation = new Transition1D(0, &width, base_width, 1d);
-        var height_animation = new Transition1D(1, &height, TRAY_HEIGHT, 1d);
         animations.add(expand_animation);
-        animations.add(height_animation);
+        //var height_animation = new Transition1D(1, &height, TRAY_HEIGHT, 1d);
+        //animations.add(height_animation);
+        foreach(var t in trays) 
+            if (t is IExpandable)
+                (t as IExpandable).contract();
     }
 
     public void on_mouse_leave(){
         if(width > base_width){
             contract();
         }
+        on_mouse_motion(-1,-1);
         redraw = true;
     }
 
     public void render(){
-        if(!expand_animation.finished){
+        if(animations.has_active){
+            width = get_children_width();
             this.x = screen_width - width - MARGIN_RIGHT;
-            this.y = HEIGHT - height - MARGIN_TOP;
+            //this.y = HEIGHT - height - MARGIN_TOP;
+            //set_children_positions();
         }
 
         ctx.draw_rect_rounded(this.x, this.y, width, height, 24, {0.15f,0.15f,0.15f,1});

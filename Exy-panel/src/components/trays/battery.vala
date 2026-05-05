@@ -6,30 +6,38 @@ status → Charging, Discharging, Full
 
 voltage_now, current_now → detailed info  */
 
-public class BatteryTray : TrayIcon {
+using DrawKit;
 
-    public BatteryTray() {
-        base ("nobattery");
-        status();
+public class BatteryTray : IconAndText, IClickable, IUpdateable {
+
+    public string status;
+
+    public BatteryTray(Context ctx) {
+        base (ctx, new HoverableIcon("nobattery"), "N/A %");
     }
 
-    public override void mouse_down(){
+    public void mouse_down(){
     }
-    public override void mouse_up(){
+    public void mouse_up(){
 
     }
 
-    private async void status(){
-        var status = exec("cat /sys/class/power_supply/BAT0/status");
+    public string get_status(){
+        return status;
+    }
+
+    public void update(){
+        var raw_status = exec("cat /sys/class/power_supply/BAT0/status");
 
         var new_icon = "nobattery";
-        if(status == "discharging" || status.contains("full")){
+        if(raw_status == "discharging" || raw_status.contains("full")){
 
             var full = exec_int("cat /sys/class/power_supply/BAT0/charge_full");
             var current = exec_int("cat /sys/class/power_supply/BAT0/charge_now");
 
             var percent = (current/(float)full)*100;
             print("Battery: %f\n", percent);
+            status = percent.to_string();
 
             if(percent >= 70) 
                 new_icon = "high";
@@ -38,15 +46,15 @@ public class BatteryTray : TrayIcon {
             else
                 new_icon = "mid";
 
-        } else if (status == "charging"){
+        } else if (raw_status == "charging"){
             new_icon = "charging";
         } else {
             print("battery: status unknown: >%s<\n", status);
             return;
         }
 
-        free();
-        base.load(new_icon);
+        base.icon.free();
+        base.icon.load(new_icon);
     }
 
     private static int exec_int(string cmd){
