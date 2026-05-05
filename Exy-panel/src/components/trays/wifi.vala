@@ -41,23 +41,29 @@ public class WifiTray : IconAndText, IClickable, IUpdateable {
     }
 
     public void update(){
-        bool wifi_connected = false;
-
         var endpoints = get_wifi_endpoints();
-        if (endpoints.length == 0){
+        if (endpoints.length == 0) {
+            set_text("No WiFi");
             return;
         }
 
-        foreach(var endpoint in endpoints){
-            if(endpoint.state == "connected"){
-                wifi_connected = true;
+        string? ssid = null;
+        foreach (var endpoint in endpoints) {
+            if (endpoint.type == "wifi" && endpoint.state == "connected") {
+                ssid = endpoint.connection;
+                break;
             }
         }
 
-        var new_icon = (wifi_connected) ? "wifi" : "nowifi";
-        
-        base.icon.free();
-        base.icon.load(new_icon);
+        if (ssid != null && ssid != "--") {
+            base.icon.free();
+            base.icon.load("wifi");
+            set_text(ssid);
+        } else {
+            base.icon.free();
+            base.icon.load("nowifi");
+            set_text("No WiFi");
+        }
     }
 
     private static Endpoint[] get_wifi_endpoints() {

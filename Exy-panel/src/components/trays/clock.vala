@@ -32,15 +32,21 @@ public class Clock : Object, ITray {
     public void mouse_up(){}
     public void mouse_motion(int mouse_x, int mouse_y) {}
 
+    private int64 last_update_us = 0;
+
     private void update() {
         var now = new DateTime.now_local();
-        text = now.format("%Y-%m-%d %H:%M:%S");
+        text = now.format("%Y-%m-%d  %H:%M:%S");
+        last_update_us = GLib.get_monotonic_time();
     }
 
     public void render(Context ctx){
-        if(Utils.elapsed_ms() >= 5000)
+        // update the clock text every second
+        if (GLib.get_monotonic_time() - last_update_us >= 1000000) {
             update();
+            redraw = true;
+        }
 
-        ctx.draw_text(text, x, y, FONT_SIZE, {1,1,1,1});
+        ctx.draw_text(text, x, y, FONT_SIZE, {1, 1, 1, 1});
     }
 }

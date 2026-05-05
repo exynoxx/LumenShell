@@ -30,26 +30,40 @@ public class BatteryTray : IconAndText, IClickable, IUpdateable {
         var raw_status = exec("cat /sys/class/power_supply/BAT0/status");
 
         var new_icon = "nobattery";
-        if(raw_status == "discharging" || raw_status.contains("full")){
+        if (raw_status == "discharging" || raw_status.contains("full")) {
 
-            var full = exec_int("cat /sys/class/power_supply/BAT0/charge_full");
+            var full    = exec_int("cat /sys/class/power_supply/BAT0/charge_full");
             var current = exec_int("cat /sys/class/power_supply/BAT0/charge_now");
 
-            var percent = (current/(float)full)*100;
-            print("Battery: %f\n", percent);
-            status = percent.to_string();
+            if (full > 0) {
+                var percent = (int)((current / (float) full) * 100);
+                percent = int.min(100, int.max(0, percent));
+                status  = "%d%%".printf(percent);
 
-            if(percent >= 70) 
-                new_icon = "high";
-            else if(percent < 30)
-                new_icon = "low";
-            else
-                new_icon = "mid";
+                if (percent >= 70)
+                    new_icon = "high";
+                else if (percent < 30)
+                    new_icon = "low";
+                else
+                    new_icon = "mid";
 
-        } else if (raw_status == "charging"){
+                set_text(status);
+            }
+
+        } else if (raw_status == "charging") {
             new_icon = "charging";
+            // also show percentage while charging
+            var full    = exec_int("cat /sys/class/power_supply/BAT0/charge_full");
+            var current = exec_int("cat /sys/class/power_supply/BAT0/charge_now");
+            if (full > 0) {
+                var percent = (int)((current / (float) full) * 100);
+                percent = int.min(100, int.max(0, percent));
+                status  = "%d%% ⚡".printf(percent);
+                set_text(status);
+            }
         } else {
-            print("battery: status unknown: >%s<\n", status);
+            print("battery: status unknown: >%s<\n", raw_status);
+            set_text("N/A");
             return;
         }
 

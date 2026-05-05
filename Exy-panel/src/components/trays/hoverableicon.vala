@@ -26,8 +26,11 @@ public class HoverableIcon : IHoverable, ITray, Object {
     public void mouse_motion(int mouse_x, int mouse_y){
         var hover_initial = hovered;
 
-        hovered = IHoverable.is_hover(circle_x-HOVER_RADIUS, circle_y-HOVER_RADIUS, circle_x+HOVER_RADIUS, circle_y+HOVER_RADIUS, mouse_x, mouse_y);
-        if(hovered != hover_initial) 
+        hovered = IHoverable.is_hover(
+            circle_x - HOVER_RADIUS, circle_y - HOVER_RADIUS,
+            HOVER_RADIUS * 2,        HOVER_RADIUS * 2,
+            mouse_x, mouse_y);
+        if (hovered != hover_initial)
             redraw = true;
     }
 
