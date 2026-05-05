@@ -15,6 +15,7 @@ public class IconAndText : Object, ITray, IHoverable, IExpandable {
 
     protected int text_x;
     protected int text_y;
+    private int text_margin_top;   // vertical offset to centre text in tray bar
 
     private unowned Context ctx;
     public HoverableIcon icon;
@@ -32,6 +33,9 @@ public class IconAndText : Object, ITray, IHoverable, IExpandable {
         base_width = icon.get_width();
         _recalc_max_width();
         width = base_width;
+
+        // Centre text vertically inside the tray pill (same logic as Clock)
+        text_margin_top = (Tray.TRAY_HEIGHT - ctx.height_of(label, FONT_SIZE)) / 2;
     }
 
     private void _recalc_max_width() {
@@ -59,7 +63,7 @@ public class IconAndText : Object, ITray, IHoverable, IExpandable {
         icon.set_position(x + (width - base_width), y);
         // text appears on the left side of the expanded area
         text_x = x + 4;
-        text_y = y + 10;
+        text_y = y + text_margin_top + 5;   // +5 matches the Clock baseline nudge
     }
 
     public int get_width(){
