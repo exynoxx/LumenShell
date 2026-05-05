@@ -13,28 +13,31 @@ public interface ITray : GLib.Object{
 public abstract class TrayIcon : Object, ITray {
 
     private const string base_path = "/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/";
-    private const int ICON_SIZE = 32;
+    protected const int ICON_SIZE = 32;
     private const int HOVER_RADIUS = 24;
-    private const int COLLAPSED_WIDTH = HOVER_RADIUS * 2;
+    protected const int COLLAPSED_WIDTH = HOVER_RADIUS * 2;
     private const int EXPANDED_WIDTH = 180;
+    // Minimum expansion in pixels before detail content is drawn (avoids a one-frame flash).
+    protected const int MIN_EXPAND_THRESHOLD = 4;
     private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
 
     // Each TrayIcon instance gets a unique animation slot ID.
     // Start at 100 to avoid collisions with Tray's own animation IDs (0, 1).
     private static int anim_id_counter = 100;
-    private int anim_id;
+    protected int anim_id;
 
     protected GLuint tex;
     protected bool hovered;
     protected bool expanded = false;
 
-    private int x;
-    private int y;
+    // Adjusted drawing position (after MARGIN_TOP is applied).
+    protected int render_x;
+    protected int render_y;
     private int circle_x;
     private int circle_y;
 
-    // Animated width: starts collapsed, grows to EXPANDED_WIDTH on click.
-    private int current_width;
+    // Animated width: starts collapsed, grows to get_expanded_width() on click.
+    protected int current_width;
 
     protected TrayIcon(string icon){
         load(icon);
@@ -47,10 +50,16 @@ public abstract class TrayIcon : Object, ITray {
     }
 
     public void set_position(int x, int y){
-        this.x = x;
-        this.y = y + MARGIN_TOP;
-        this.circle_x = this.x + ICON_SIZE/2;
-        this.circle_y = this.y + ICON_SIZE/2;
+        this.render_x = x;
+        this.render_y = y + MARGIN_TOP;
+        this.circle_x = render_x + ICON_SIZE/2;
+        this.circle_y = render_y + ICON_SIZE/2;
+    }
+
+    // Returns the target width when this icon is expanded.
+    // Subclasses can override for a wider slot.
+    protected virtual int get_expanded_width() {
+        return EXPANDED_WIDTH;
     }
 
     public void load(string icon){
@@ -94,7 +103,7 @@ public abstract class TrayIcon : Object, ITray {
     public virtual void mouse_down(){
         if(hovered && get_detail_text() != "") {
             expanded = !expanded;
-            int target = expanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
+            int target = expanded ? get_expanded_width() : COLLAPSED_WIDTH;
             animations.add(new Transition1D(anim_id, &current_width, target, 0.4));
             redraw = true;
         }
@@ -102,31 +111,36 @@ public abstract class TrayIcon : Object, ITray {
 
     public virtual void mouse_up(){}
 
-    public virtual void render(Context ctx){
-        
+    // Draw the icon and its hover highlight; available for subclasses that override render()
+    // but still want the standard icon appearance.
+    protected void render_icon(Context ctx){
         if(hovered){
             ctx.draw_circle(circle_x, circle_y, 24, {1,1,1,1});
             ctx.set_tex_color({0,0,0,1});
-            ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
+            ctx.draw_texture(tex, render_x, render_y, ICON_SIZE, ICON_SIZE);
             ctx.set_tex_color({1,1,1,1});
         } else {
-            ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
+            ctx.draw_texture(tex, render_x, render_y, ICON_SIZE, ICON_SIZE);
         }
+    }
+
+    public virtual void render(Context ctx){
+        render_icon(ctx);
 
         // Draw detail text to the right of the icon as the slot expands.
         // Wait for a small amount of expansion before drawing to avoid a one-frame flash.
-        if(current_width > COLLAPSED_WIDTH + 4) {
+        if(current_width > COLLAPSED_WIDTH + MIN_EXPAND_THRESHOLD) {
             float progress = float.min(
-                (float)(current_width - COLLAPSED_WIDTH) / (float)(EXPANDED_WIDTH - COLLAPSED_WIDTH),
+                (float)(current_width - COLLAPSED_WIDTH) / (float)(get_expanded_width() - COLLAPSED_WIDTH),
                 1.0f);
 
             string detail = get_detail_text();
             if(detail != "") {
                 // Centre the text in the expanded area to the right of the icon.
-                int text_area_left = x + ICON_SIZE + 8;
+                int text_area_left = render_x + ICON_SIZE + 8;
                 int text_area_width = current_width - ICON_SIZE - 8;
                 int text_center_x = text_area_left + text_area_width / 2;
-                int text_y = y + ICON_SIZE / 2 + 4;
+                int text_y = render_y + ICON_SIZE / 2 + 4;
                 ctx.draw_text(detail, text_center_x, text_y, 13, {1, 1, 1, progress});
             }
         }
