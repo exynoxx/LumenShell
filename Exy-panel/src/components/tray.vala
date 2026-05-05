@@ -231,7 +231,7 @@ public class Tray {
             // During a slide transition two pages will be partially visible.
             for (int p = 0; p < pages.length; p++) {
                 int px = this.x + p * this.width + page_slide_x;
-                if (px + this.width < this.x || px > this.x + this.width) continue;
+                if (px + this.width <= this.x || px >= this.x + this.width) continue;
                 pages[p].render(ctx, px, ct, this.width, ch);
             }
 
