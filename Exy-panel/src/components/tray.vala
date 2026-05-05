@@ -23,7 +23,6 @@ public class Tray {
     private int screen_width;
 
     private ITray[] trays;
-    private int base_width;
 
     private int width;
     private int height;
@@ -31,15 +30,11 @@ public class Tray {
     private int y;
     private bool hovered;
 
-    private Transition expand_animation;
-
     public Tray(Context ctx, int screen_width){
         this.ctx = ctx;
         this.screen_width = screen_width;
-        this.y = TRAY_Y;
         this.height = TRAY_HEIGHT;
 
-        //calc width
         var wifi = new WifiTray();
         var battery = new BatteryTray();
         var clock = new Clock(ctx);
@@ -50,22 +45,8 @@ public class Tray {
         trays += clock;
         trays += exit;
 
-        foreach(var t in trays) 
-            base_width += t.get_width();
-
-        base_width+=4*SPACING;
-        width = base_width;
-
-        //calc x's
-        this.x = screen_width - width - MARGIN_RIGHT;
-
-        var current_x = this.x + SPACING;
-        foreach (var tray in trays){
-            tray.set_position(current_x, TRAY_Y);
-            current_x += tray.get_width() + SPACING;
-        }
-
-        expand_animation = new TransitionEmpty();
+        // Initial layout (recalculate() will keep it up to date every frame).
+        recalculate();
     }
 
 
@@ -102,31 +83,41 @@ public class Tray {
     }
 
     private void expand(){
-        expand_animation = new Transition1D(0, &width, 400, 1d);
-        var height_animation = new Transition1D(1, &height, TRAY_MAX_HEIGHT, 1d);
-        animations.add(expand_animation);
-        animations.add(height_animation);
+        animations.add(new Transition1D(1, &height, TRAY_MAX_HEIGHT, 1d));
     }
 
     private void contract(){
-        expand_animation = new Transition1D(0, &width, base_width, 1d);
-        var height_animation = new Transition1D(1, &height, TRAY_HEIGHT, 1d);
-        animations.add(expand_animation);
-        animations.add(height_animation);
+        animations.add(new Transition1D(1, &height, TRAY_HEIGHT, 1d));
     }
 
     public void on_mouse_leave(){
-        if(width > base_width){
-            contract();
-        }
+        contract();
         redraw = true;
     }
 
-    public void render(){
-        if(!expand_animation.finished){
-            this.x = screen_width - width - MARGIN_RIGHT;
-            this.y = HEIGHT - height - MARGIN_TOP;
+    // Recompute total width from current item widths and reposition all items.
+    // Called every render frame so item expansion and contraction are reflected instantly.
+    private void recalculate(){
+        int total = 0;
+        foreach(var t in trays)
+            total += t.get_width();
+        total += trays.length * SPACING;
+        width = total;
+
+        // Right-align the tray; left edge moves left as items expand.
+        x = screen_width - width - MARGIN_RIGHT;
+        // Tray container top; icons are always pinned to TRAY_Y.
+        y = HEIGHT - height - MARGIN_TOP;
+
+        var current_x = x + SPACING;
+        foreach(var t in trays){
+            t.set_position(current_x, TRAY_Y);
+            current_x += t.get_width() + SPACING;
         }
+    }
+
+    public void render(){
+        recalculate();
 
         ctx.draw_rect_rounded(this.x, this.y, width, height, 24, {0.15f,0.15f,0.15f,1});
         foreach(var t in trays){

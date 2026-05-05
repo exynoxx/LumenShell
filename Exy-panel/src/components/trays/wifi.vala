@@ -23,16 +23,15 @@ public class WifiTray : TrayIcon {
         }
     }
 
+    private string wifi_connection = "";
+
     public WifiTray() {
         base ("wifi-unknown");
         status();
     }
 
-    public override void mouse_down(){
-
-    }
-    public override void mouse_up(){
-
+    protected override string get_detail_text() {
+        return wifi_connection;
     }
 
     private async void status(){
@@ -46,8 +45,12 @@ public class WifiTray : TrayIcon {
         foreach(var endpoint in endpoints){
             if(endpoint.state == "connected"){
                 wifi_connected = true;
+                wifi_connection = endpoint.connection != "--" ? endpoint.connection : endpoint.device;
             }
         }
+
+        if(!wifi_connected)
+            wifi_connection = "Not Connected";
 
         var new_icon = (wifi_connected) ? "wifi" : "nowifi";
         
