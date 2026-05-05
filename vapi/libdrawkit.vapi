@@ -71,6 +71,9 @@ namespace DrawKit {
         [CCode (cname = "dk_end_frame", has_target=false)]
         public static void end_frame();
 
+        [CCode (cname = "dk_set_scale")]
+        public void set_scale(int scale);
+
         [CCode (cname = "dk_begin_group")]
         public void begin_group(int group);
 

@@ -18,6 +18,7 @@ typedef struct {
     GLuint vbo, vao;
     int screen_width;
     int screen_height;
+    int pixel_scale;   // HiDPI scale factor (1 = normal, 2 = 2x, etc.)
     dk_color background_color;
     dk_color tex_color;
     float projections[5][16];
@@ -29,5 +30,6 @@ typedef struct {
 dk_context *dk_init_default(int screen_width, int screen_height);
 dk_context *dk_init(int screen_width, int screen_height, int p);
 void dk_cleanup(dk_context *ctx);
+void dk_set_scale(dk_context *ctx, int scale);
 
 #endif

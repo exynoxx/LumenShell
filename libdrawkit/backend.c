@@ -43,6 +43,7 @@ bool dk_backend_init(dk_context *ctx, int groups) {
 
     printf("init with group count %d\n", groups);
     ctx->num_projections = groups+1;
+    ctx->pixel_scale = 1;
 
     init_shaders(ctx, ctx->num_projections);
     create_identity_matrix(identity);
@@ -91,7 +92,7 @@ void dk_set_tex_color(dk_context *ctx, dk_color color){
 }
 
 void dk_begin_frame(dk_context *ctx) {
-    glViewport(0, 0, ctx->screen_width, ctx->screen_height);
+    glViewport(0, 0, ctx->screen_width * ctx->pixel_scale, ctx->screen_height * ctx->pixel_scale);
     glClearColor(ctx->background_color.r, ctx->background_color.g, ctx->background_color.b, ctx->background_color.a);
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -359,6 +360,11 @@ void dk_draw_text(dk_context *ctx, const char *text, int x, int y, float font_si
     glDisableVertexAttribArray(texCoord_loc);
     
     free(all_vertices);
+}
+
+void dk_set_scale(dk_context *ctx, int scale) {
+    if (scale < 1) scale = 1;
+    ctx->pixel_scale = scale;
 }
 
 void dk_stencil_push(dk_context *ctx){

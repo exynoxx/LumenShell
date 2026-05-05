@@ -27,7 +27,14 @@ int wlhooks_init(){
 
 int init_layer_shell(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone, int exclusive_zone_height) {
     struct wl_surface *surface = layer_shell_create_surface(layer_name, width, height, anchor, exclusive_zone, exclusive_zone_height);
-    egl_init(wl_display, surface, width, height);
+
+    int32_t scale = get_output_scale();
+    if (scale < 1) scale = 1;
+    wl_surface_set_buffer_scale(surface, scale);
+    wl_surface_commit(surface);
+    wl_display_roundtrip(wl_display);
+
+    egl_init(wl_display, surface, width * scale, height * scale);
 
     return 0;
 }

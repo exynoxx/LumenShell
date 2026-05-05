@@ -6,6 +6,7 @@
 
 struct wl_output *wl_output;
 static surface_size_t *surface_size;
+static int32_t scale_factor = 1;
 
 static void output_geometry(void *data, struct wl_output *wl_output,
                            int32_t x, int32_t y,
@@ -32,7 +33,7 @@ static void output_done(void *data, struct wl_output *wl_output) {
 
 static void output_scale(void *data, struct wl_output *wl_output,
                         int32_t factor) {
-    // Handle scale if needed
+    scale_factor = factor;
 }
 
 static void name(void *data, struct wl_output *wl_output,const char *name) {
@@ -68,3 +69,4 @@ void output_destroy(){
 }
 
 surface_size_t *get_screen_size(){ return surface_size; }
+int32_t get_output_scale(){ return scale_factor; }
