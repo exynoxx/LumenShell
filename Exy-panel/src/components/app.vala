@@ -12,6 +12,7 @@ public class App {
     public bool is_launcher;
     public bool hovered;
     public bool clicked;
+    public bool launching;
     public int x;
     public int y;
     public int tex_x;
@@ -61,6 +62,7 @@ public class App {
     public void add_window(uint id){
         if(!window_ids.contains(id)) {
             window_ids.add(id);
+            launching = false;
         }
     }
 
@@ -112,6 +114,11 @@ public class App {
 
         ctx.draw_rect(this.x, this.y, APP_WIDTH, APP_HEIGHT, color);
         ctx.draw_texture(tex, tex_x, tex_y, 32, 32);
+
+        if(launching){
+            var launch_color = Color(){r=0.98f,g=0.66f,b=0.20f,a=1f};
+            ctx.draw_rect(this.x + 9, APP_UNDERLINE_Y, APP_WIDTH - 18, UNDERLINE_HEIGHT, launch_color);
+        }
     }
 
     public void on_click(){
@@ -125,6 +132,11 @@ public class App {
             redraw = true;
             return;
         } 
+
+        if(launching){
+            redraw = true;
+            return;
+        }
 
         if(has_open_windows()){
             var id = next_window_for_focus();
@@ -142,7 +154,9 @@ public class App {
 
         try {
             Process.spawn_command_line_async(launch_cmd);
+            if(is_pinned) launching = true;
         } catch (Error e) {
+            launching = false;
             stderr.printf("Launch failed for %s: %s\n", app_id, e.message);
         }
 
