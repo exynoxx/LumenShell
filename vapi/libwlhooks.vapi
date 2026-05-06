@@ -76,6 +76,7 @@ namespace WLHooks {
     public delegate void SeatMouseDown(uint32 button);
     public delegate void SeatMouseUp(uint32 button);
     public delegate void SeatMouseMotion(int x, int y);
+    public delegate void SeatMouseScroll(int amount);
     public delegate void SeatKeyDown(uint32 key);
     public delegate void SeatKeyUp(uint32 key);
 
@@ -93,6 +94,9 @@ namespace WLHooks {
 
     [CCode(cname = "register_on_mouse_motion")]
     void register_on_mouse_motion(SeatMouseMotion cb);
+
+    [CCode(cname = "register_on_mouse_scroll")]
+    void register_on_mouse_scroll(SeatMouseScroll cb);
 
     [CCode(cname = "register_on_key_down")]
     void register_on_key_down(SeatKeyDown? cb);

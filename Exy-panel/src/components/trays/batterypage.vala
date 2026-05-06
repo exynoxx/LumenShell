@@ -35,6 +35,7 @@ public class BatteryPage : GLib.Object, ITrayPage {
     public void mouse_down(int mx, int my) {}
     public void mouse_up  (int mx, int my) {}
     public void mouse_motion(int mx, int my) {}
+    public void mouse_scroll(int mx, int my, int amount) {}
 
     // ─────────────────────────────────────────────────────────────────────
     // Rendering

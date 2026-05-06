@@ -57,8 +57,7 @@ public class BatteryTray : IconAndText, IUpdateable, IHasPage {
             return;
         }
 
-        icon.free();
-        icon.load(new_icon);
+        icon.set_icon(new_icon);
     }
 
     private static string sysfs(string name) {

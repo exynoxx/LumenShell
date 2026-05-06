@@ -210,6 +210,14 @@ public class Tray {
         on_mouse_motion(-1, -1);
     }
 
+    public void on_mouse_scroll(int amount) {
+        if (active_page_idx < 0 || amount == 0) return;
+
+        int ct = content_top();
+        if (last_my >= ct && last_my <= TRAY_Y)
+            pages[active_page_idx].mouse_scroll(last_mx, last_my, amount);
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Rendering
     // ─────────────────────────────────────────────────────────────────────

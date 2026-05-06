@@ -205,6 +205,10 @@ public class Panel {
                 tray.on_mouse_leave();
             }
 
+            public void on_mouse_scroll(int amount){
+                tray.on_mouse_scroll(amount);
+            }
+
             public void render(){
                 ctx.begin_frame();
 

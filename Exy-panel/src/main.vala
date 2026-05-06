@@ -23,6 +23,7 @@ public static int main(string[] args) {
     WLHooks.register_on_mouse_up(panel.on_mouse_up);
     WLHooks.register_on_mouse_motion(panel.on_mouse_motion);
     WLHooks.register_on_mouse_leave(panel.on_mouse_leave);
+    WLHooks.register_on_mouse_scroll(panel.on_mouse_scroll);
 
     while (WLHooks.display_dispatch_blocking() != -1) {
         if(redraw || animations.has_active){

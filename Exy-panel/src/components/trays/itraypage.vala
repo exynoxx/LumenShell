@@ -43,6 +43,9 @@ public interface ITrayPage : GLib.Object {
 
     /** Mouse-motion forwarded from Tray. */
     public abstract void mouse_motion(int mx, int my);
+
+    /** Mouse scroll forwarded from Tray (positive = scroll down). */
+    public abstract void mouse_scroll(int mx, int my, int amount);
 }
 
 // ─── Shared rendering helpers ─────────────────────────────────────────────────

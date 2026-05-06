@@ -30,6 +30,9 @@ static void *mouse_down_userdata = NULL;
 static seat_mouse_up mouse_up_cb;
 static void *mouse_up_userdata = NULL;
 
+static seat_mouse_scroll mouse_scroll_cb;
+static void *mouse_scroll_userdata = NULL;
+
 static seat_key_down key_down_cb;
 static void *key_down_userdata = NULL;
 
@@ -74,7 +77,23 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
 }
 
 void pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time, uint32_t axis, wl_fixed_t value) {
-    // Scroll events - can be empty for now
+    if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL) {
+        return;
+    }
+
+    if (mouse_scroll_cb) {
+        double amount = wl_fixed_to_double(value);
+        int32_t step = 0;
+        if (amount > 0.0) {
+            step = 1;
+        } else if (amount < 0.0) {
+            step = -1;
+        }
+
+        if (step != 0) {
+            mouse_scroll_cb(step, mouse_scroll_userdata);
+        }
+    }
 }
 
 void pointer_frame(void *data, struct wl_pointer *wl_pointer) {
@@ -246,6 +265,11 @@ void register_on_mouse_down(seat_mouse_down cb, void* user_data){
 void register_on_mouse_up(seat_mouse_up cb, void* user_data){
     mouse_up_cb = cb;
     mouse_up_userdata = user_data;
+}
+
+void register_on_mouse_scroll(seat_mouse_scroll cb, void* user_data){
+    mouse_scroll_cb = cb;
+    mouse_scroll_userdata = user_data;
 }
 
 void register_on_key_down(seat_key_down cb, void* user_data){

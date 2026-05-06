@@ -24,7 +24,6 @@ public class WifiPage : GLib.Object, ITrayPage {
     private const int HEADER_H  = 44;
     private const int ROW_H     = 36;
     private const int PASS_H    = 54;
-    private const int MAX_NETS  = 8;
 
     // ── WiFi network record ───────────────────────────────────────────────
     private class Net {
@@ -46,6 +45,7 @@ public class WifiPage : GLib.Object, ITrayPage {
     private bool   connect_hov   = false;
     private bool   scanning      = false;
     private bool   ctrl_down     = false;
+    private WifiListViewport list_view = new WifiListViewport();
 
     // Bounds from last render() call — used for hit-testing
     private int px;
@@ -68,6 +68,7 @@ public class WifiPage : GLib.Object, ITrayPage {
         connect_hov  = false;
         scanning    = true;
         connected   = "";
+        list_view.reset();
         refresh_nets_async(false);
     }
 
@@ -114,7 +115,10 @@ public class WifiPage : GLib.Object, ITrayPage {
         int list_top = sep_y + 6;
         int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
         int list_avail   = h - HEADER_H - 6 - pass_reserve;
-        int max_rows     = list_avail / ROW_H;
+        list_view.update_layout(x + 6, list_top, w - 12, list_avail, ROW_H, nets.length);
+
+        if (selected_row >= 0)
+            list_view.ensure_visible(selected_row);
 
         if (scanning && nets.length == 0) {
             // Scanning indicator
@@ -126,9 +130,14 @@ public class WifiPage : GLib.Object, ITrayPage {
                 x + w / 2, list_top + (list_avail - 14) / 2,
                 14f, Color(){r=0.45f, g=0.46f, b=0.52f, a=1f});
         } else {
-            for (int i = 0; i < nets.length && i < max_rows; i++) {
-                render_row(ctx, i, x, list_top + i * ROW_H, w, ROW_H);
+            int first = list_view.first_visible_row();
+            int rows  = list_view.visible_rows();
+            for (int rel = 0; rel < rows; rel++) {
+                int i = first + rel;
+                if (i >= nets.length) break;
+                render_row(ctx, i, x, list_top + rel * ROW_H, w, ROW_H);
             }
+            list_view.render_scrollbar(ctx);
         }
 
         // ── Password area ─────────────────────────────────────────────────
@@ -287,18 +296,8 @@ public class WifiPage : GLib.Object, ITrayPage {
         hovered_row = -1;
         connect_hov = false;
 
-        int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
-        int list_avail   = ph - HEADER_H - 6 - pass_reserve;
-        int max_rows     = list_avail / ROW_H;
-        int list_top     = py + HEADER_H + 6;
-
-        for (int i = 0; i < nets.length && i < max_rows; i++) {
-            int ry = list_top + i * ROW_H;
-            if (mx >= px + 6 && mx <= px + pw - 6 && my >= ry && my < ry + ROW_H) {
-                hovered_row = i;
-                break;
-            }
-        }
+        update_list_viewport_geometry();
+        hovered_row = list_view.row_at(mx, my);
 
         if (selected_row >= 0) {
             bool is_conn_row = selected_row < nets.length
@@ -342,27 +341,39 @@ public class WifiPage : GLib.Object, ITrayPage {
         }
 
         // Network row click
-        int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
-        int list_avail   = ph - HEADER_H - 6 - pass_reserve;
-        int max_rows     = list_avail / ROW_H;
-        int list_top     = py + HEADER_H + 6;
+        update_list_viewport_geometry();
+        int i = list_view.row_at(mx, my);
+        if (i >= 0) {
+            if (selected_row == i) {
+                dismiss_pass();
+            } else {
+                selected_row = i;
+                password     = "";
+                pass_focused = true;
+                ctrl_down    = false;
+                WLHooks.register_on_key_down(key_handler);
+                WLHooks.register_on_key_up(key_up_handler);
 
-        for (int i = 0; i < nets.length && i < max_rows; i++) {
-            int ry = list_top + i * ROW_H;
-            if (mx >= px + 6 && mx <= px + pw - 6 && my >= ry && my < ry + ROW_H) {
-                if (selected_row == i) {
-                    dismiss_pass();
-                } else {
-                    selected_row = i;
-                    password     = "";
-                    pass_focused = true;
-                    ctrl_down    = false;
-                    WLHooks.register_on_key_down(key_handler);
-                    WLHooks.register_on_key_up(key_up_handler);
-                }
-                redraw = true;
-                return;
+                update_list_viewport_geometry();
+                list_view.ensure_visible(selected_row);
             }
+            redraw = true;
+            return;
+        }
+    }
+
+    public void mouse_scroll(int mx, int my, int amount) {
+        if (amount == 0) return;
+
+        update_list_viewport_geometry();
+        if (!list_view.contains(mx, my) || !list_view.can_scroll()) return;
+
+        int old_first = list_view.first_visible_row();
+        list_view.scroll_lines(amount);
+
+        if (list_view.first_visible_row() != old_first) {
+            hovered_row = list_view.row_at(mx, my);
+            redraw = true;
         }
     }
 
@@ -546,6 +557,10 @@ public class WifiPage : GLib.Object, ITrayPage {
                 }
             }
 
+            update_list_viewport_geometry();
+            if (selected_row >= 0)
+                list_view.ensure_visible(selected_row);
+
             state_changed();
             redraw = true;
             if (DEBUG_WIFI) print("[wifi] refresh apply done (selected_row=%d)\n", selected_row);
@@ -583,10 +598,16 @@ public class WifiPage : GLib.Object, ITrayPage {
             if (!int.try_parse(p[1], out signal))
                 continue;
             result += new Net(ssid, signal, p[2]);
-            if (result.length >= MAX_NETS) break;
         }
         if (DEBUG_WIFI) print("[wifi] fetch_nets parsed=%d bad_rows=%d\n", result.length, bad_rows);
         return result;
+    }
+
+    private void update_list_viewport_geometry() {
+        int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
+        int list_top     = py + HEADER_H + 6;
+        int list_avail   = ph - HEADER_H - 6 - pass_reserve;
+        list_view.update_layout(px + 6, list_top, pw - 12, list_avail, ROW_H, nets.length);
     }
 
     /**

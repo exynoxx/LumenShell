@@ -8,7 +8,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
     private const int HOVER_RADIUS = 24;
     private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
 
-    protected GLuint tex;
+    protected GLuint tex = 0;
     private int x;
     private int y;
     private int circle_x;
@@ -17,7 +17,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
     public bool selected;
 
     public HoverableIcon(string icon){
-        load(icon);
+        set_icon(icon);
     }
 
     public int get_width(){
@@ -42,30 +42,47 @@ public class HoverableIcon : IHoverable, ITray, Object {
         this.circle_y = this.y + ICON_SIZE/2;
     }
 
-    public void load(string icon){
+    public bool set_icon(string icon){
 
         var path = Path.build_filename(base_path, icon+".svg");
 
         var image = DrawKit.image_from_svg(path,ICON_SIZE,ICON_SIZE);
         if(image == null){
-            print("Launcher icon not found\n");
-            return;
+            print("Icon file not found: %s\n", path);
+            return false;
         }
 
-        tex = DrawKit.texture_upload(*image);
+        var next_tex = DrawKit.texture_upload(*image);
+        if (next_tex == 0) {
+            print("Failed to upload icon texture: %s\n", path);
+            return false;
+        }
+
+        if (tex != 0)
+            DrawKit.texture_free(tex);
+
+        tex = next_tex;
+        return true;
+    }
+
+    public void load(string icon){
+        set_icon(icon);
     }
 
     public void free(){
-        DrawKit.texture_free(tex);
+        if (tex != 0) {
+            DrawKit.texture_free(tex);
+            tex = 0;
+        }
     }
 
     public void render(Context ctx){
+        if (tex == 0) return;
         
         if(hovered || selected){
-            ctx.draw_circle(circle_x, circle_y, 24, {1,1,1,1});
-            ctx.set_tex_color({0,0,0,1});
+            ctx.draw_circle(circle_x, circle_y, 24, {0.16f,0.18f,0.26f,1f});
+            ctx.set_tex_color({1f,1f,1f,1f});
             ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
-            ctx.set_tex_color({1,1,1,1});
             return;
         } 
 
