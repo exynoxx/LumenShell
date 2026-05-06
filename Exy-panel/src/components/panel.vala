@@ -21,12 +21,13 @@ public class Panel {
     private Context ctx;
     private Tray tray;
 
-    public Panel(int screen_width){
+    public Panel(){
+        var size = WLHooks.get_screen_size();
+        var screen_width = size.width;
+
         WLHooks.init_layer_shell("panel", screen_width, HEIGHT, BOTTOM, true, EXCLUSIVE_HEIGHT);
 
-        var scale = WLHooks.get_output_scale();
         ctx = new DrawKit.Context(screen_width, HEIGHT);
-        ctx.set_scale(scale);
         ctx.set_bg_color(DrawKit.Color(){r=0,g=0,b=0,a=0});
 
         entries = new HashMap<uint, App>();
