@@ -14,7 +14,7 @@ public const uint32 BTN_RIGHT = 273;
 
 public const int POPUP_ANIM_ID = 200;
 public const int POPUP_W = 220;
-public const int POPUP_H = 86;
+public const int POPUP_ROW_H = 32;
 public const int POPUP_GAP = 8;
 public const int POPUP_TITLE_H = 42;
 
@@ -39,8 +39,8 @@ public class Panel {
     private int popup_x = 0;
     private int popup_y = 0;
     private int popup_h = 0;
-    private bool popup_action_hovered = false;
-    private bool popup_action_pressed = false;
+    private int popup_action_hovered = -1;
+    private int popup_action_pressed = -1;
 
     public Panel(){
         var size = WLHooks.get_screen_size();
@@ -125,13 +125,14 @@ public class Panel {
                 }
 
                 if(is_popup_open()){
-                    if(point_in_popup_action(last_mouse_x, last_mouse_y)){
-                        popup_action_pressed = true;
+                    var action_idx = popup_action_index_at(last_mouse_x, last_mouse_y);
+                    if(action_idx >= 0){
+                        popup_action_pressed = action_idx;
                         redraw = true;
                         return;
                     }
 
-                    popup_action_pressed = false;
+                    popup_action_pressed = -1;
 
                     if(point_in_popup(last_mouse_x, last_mouse_y)){
                         redraw = true;
@@ -158,10 +159,11 @@ public class Panel {
 
                 if(button == BTN_LEFT && is_popup_open()){
                     var was_pressed = popup_action_pressed;
-                    popup_action_pressed = false;
+                    popup_action_pressed = -1;
 
-                    if(was_pressed && point_in_popup_action(last_mouse_x, last_mouse_y)){
-                        if(click_popup_action(last_mouse_x, last_mouse_y)){
+                    var action_idx = popup_action_index_at(last_mouse_x, last_mouse_y);
+                    if(was_pressed >= 0 && was_pressed == action_idx){
+                        if(click_popup_action(action_idx)){
                             hide_popup();
                             redraw = true;
                             return;
@@ -182,7 +184,7 @@ public class Panel {
                 last_mouse_y = y;
 
                 var old_popup_hover = popup_action_hovered;
-                popup_action_hovered = point_in_popup_action(x, y);
+                popup_action_hovered = popup_action_index_at(x, y);
                 if(old_popup_hover != popup_action_hovered){
                     redraw = true;
                 }
@@ -301,9 +303,9 @@ public class Panel {
 
                 popup_x = target_x;
                 popup_h = 0;
-                popup_action_hovered = false;
-                popup_action_pressed = false;
-                animations.add(new Transition1D(POPUP_ANIM_ID, &popup_h, POPUP_H, 0.18d));
+                popup_action_hovered = -1;
+                popup_action_pressed = -1;
+                animations.add(new Transition1D(POPUP_ANIM_ID, &popup_h, popup_target_height(), 0.18d));
                 update_popup_y();
                 update_input_region();
             }
@@ -312,8 +314,8 @@ public class Panel {
                 if(!is_popup_open()) return;
                 popup_app = null;
                 popup_h = 0;
-                popup_action_hovered = false;
-                popup_action_pressed = false;
+                popup_action_hovered = -1;
+                popup_action_pressed = -1;
                 update_input_region();
             }
 
@@ -331,25 +333,70 @@ public class Panel {
                 return x >= popup_x && x <= popup_x + POPUP_W && y >= popup_y && y <= popup_y + popup_h;
             }
 
-            private bool point_in_popup_action(int x, int y){
-                if(!point_in_popup(x, y)) return false;
-                return y >= popup_y + POPUP_TITLE_H;
+            private int popup_action_count(){
+                if(popup_app == null) return 0;
+                return popup_app.has_open_windows() ? 3 : 2;
             }
 
-            private bool click_popup_action(int x, int y){
+            private int popup_target_height(){
+                return POPUP_TITLE_H + popup_action_count() * POPUP_ROW_H;
+            }
+
+            private int popup_action_index_at(int x, int y){
+                if(!point_in_popup(x, y)) return -1;
+                if(y < popup_y + POPUP_TITLE_H) return -1;
+
+                var idx = (y - (popup_y + POPUP_TITLE_H)) / POPUP_ROW_H;
+                if(idx < 0 || idx >= popup_action_count()) return -1;
+                return idx;
+            }
+
+            private bool click_popup_action(int action_idx){
                 if(!is_popup_open() || popup_app == null) return false;
-                if(!point_in_popup_action(x, y)) return false;
+                if(action_idx < 0) return false;
 
-                popup_app.set_pinned(!popup_app.is_pinned);
-                save_pins();
+                if(action_idx == 0){
+                    popup_app.set_pinned(!popup_app.is_pinned);
+                    save_pins();
 
-                if(!popup_app.is_pinned && !popup_app.has_open_windows()){
-                    remove_app(popup_app);
+                    if(!popup_app.is_pinned && !popup_app.has_open_windows()){
+                        remove_app(popup_app);
+                    }
+
+                    relayout();
+                    redraw = true;
+                    return true;
                 }
 
-                relayout();
-                redraw = true;
-                return true;
+                if(action_idx == 1){
+                    popup_app.launch_new_window();
+                    redraw = true;
+                    return true;
+                }
+
+                if(action_idx == 2 && popup_app.has_open_windows()){
+                    popup_app.close_all_windows();
+                    redraw = true;
+                    return true;
+                }
+
+                return false;
+            }
+
+            private string popup_action_label(int idx){
+                if(popup_app == null) return "";
+
+                if(idx == 0){
+                    return popup_app.is_pinned ? "Unpin" : "Pin";
+                }
+                if(idx == 1){
+                    return "New window";
+                }
+                if(idx == 2 && popup_app.has_open_windows()){
+                    return "Close windows";
+                }
+
+                return "";
             }
 
             private void render_popup(){
@@ -364,12 +411,6 @@ public class Panel {
                 var action = Color(){r=0.74f,g=0.80f,b=1f,a=1f};
                 var action_bg = Color(){r=0.16f,g=0.20f,b=0.30f,a=0f};
 
-                if(popup_action_pressed){
-                    action_bg.a = 0.45f;
-                } else if(popup_action_hovered){
-                    action_bg.a = 0.30f;
-                }
-
                 ctx.draw_rect_rounded(popup_x, popup_y, POPUP_W, popup_h, 10f, bg);
                 ctx.draw_rect_rounded(popup_x, popup_y, POPUP_W, 1, 10f, border);
 
@@ -381,10 +422,27 @@ public class Panel {
                 var title_y = popup_y + 26;
                 ctx.draw_text(title, popup_x + POPUP_W / 2, title_y, 16f, text);
 
-                if(popup_h > POPUP_TITLE_H + 8){
-                    ctx.draw_rect(popup_x + 4, popup_y + POPUP_TITLE_H + 2, POPUP_W - 8, int.max(0, popup_h - POPUP_TITLE_H - 6), action_bg);
-                    var action_text = popup_app.is_pinned ? "Unpin" : "Pin";
-                    var action_y = popup_y + POPUP_TITLE_H + 26;
+                var action_count = popup_action_count();
+                for(int i = 0; i < action_count; i++){
+                    var row_y = popup_y + POPUP_TITLE_H + i * POPUP_ROW_H;
+
+                    action_bg.a = 0f;
+                    if(popup_action_pressed == i){
+                        action_bg.a = 0.45f;
+                    } else if(popup_action_hovered == i){
+                        action_bg.a = 0.30f;
+                    }
+
+                    if(action_bg.a > 0f){
+                        ctx.draw_rect(popup_x + 4, row_y + 2, POPUP_W - 8, POPUP_ROW_H - 4, action_bg);
+                    }
+
+                    if(i > 0){
+                        ctx.draw_rect(popup_x + 14, row_y, POPUP_W - 28, 1, sep);
+                    }
+
+                    var action_text = popup_action_label(i);
+                    var action_y = row_y + 22;
                     ctx.draw_text(action_text, popup_x + POPUP_W / 2, action_y, 15f, action);
                 }
             }
