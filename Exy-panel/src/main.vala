@@ -9,7 +9,7 @@ public static AnimationManager animations;
 
 public static int main(string[] args) {
 
-    WLHooks.grab_keyboard(true);   // must be set before init so seat binds keyboard
+    WLHooks.grab_keyboard(false);   // must be set before init so seat binds keyboard
     WLHooks.init();
     
     panel = new Panel();
