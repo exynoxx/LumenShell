@@ -56,8 +56,7 @@ public class BatteryPage : BaseTrayPage {
         int cur = y + PAD;
 
         // ── Title ─────────────────────────────────────────────────────────
-        pdt(ctx, "Battery", x + PAD, cur, 16f,
-            Color(){r=0.62f, g=0.64f, b=0.72f, a=1f});
+        pdt(ctx, "Battery", x + PAD, cur, 16f,Color(){r=0.62f, g=0.64f, b=0.72f, a=1f});
         cur += 26;
 
         // ── Large percentage ──────────────────────────────────────────────
@@ -65,8 +64,7 @@ public class BatteryPage : BaseTrayPage {
         cur += 50;
 
         // ── Status ────────────────────────────────────────────────────────
-        pdt_center(ctx, status_str, cx, cur, 14f,
-            Color(){r=0.60f, g=0.62f, b=0.70f, a=1f});
+        pdt_center(ctx, status_str, cx, cur, 14f,Color(){r=0.60f, g=0.62f, b=0.70f, a=1f});
         cur += 24;
 
         // ── Charge bar ────────────────────────────────────────────────────
@@ -76,8 +74,7 @@ public class BatteryPage : BaseTrayPage {
         progress.render(ctx);
 
         int blx = bar_x + bar_w - ctx.width_of(cached_pct_str, 11f) - 8;
-        pdt(ctx, cached_pct_str, blx, cur + (BAR_H - 11) / 2, 11f,
-            Color(){r=1f, g=1f, b=1f, a=0.65f});
+        pdt(ctx, cached_pct_str, blx, cur + (BAR_H - 11) / 2, 11f,Color(){r=1f, g=1f, b=1f, a=0.65f});
         cur += BAR_H + 14;
 
         // ── Stats grid (2 × 2) ────────────────────────────────────────────
@@ -92,10 +89,8 @@ public class BatteryPage : BaseTrayPage {
     }
 
     private void render_stat(Context ctx, int x, int y, string label, string value) {
-        pdt(ctx, label, x, y, 11f,
-            Color(){r=0.42f, g=0.44f, b=0.52f, a=1f});
-        pdt(ctx, value, x, y + 14, 13.5f,
-            Color(){r=0.84f, g=0.86f, b=0.92f, a=1f});
+        pdt(ctx, label, x, y, 11f,Color(){r=0.42f, g=0.44f, b=0.52f, a=1f});
+        pdt(ctx, value, x, y + 14, 13.5f,Color(){r=0.84f, g=0.86f, b=0.92f, a=1f});
     }
 
     // ─────────────────────────────────────────────────────────────────────
