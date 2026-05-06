@@ -147,6 +147,20 @@ public class App {
             }
         }
 
+        launch_new_window();
+    }
+
+    public void launch_new_window(){
+        if(is_launcher){
+            try {
+                Process.spawn_command_line_async("/home/nicholas/Dokumenter/layer-shell-experiments/Kickoff/main");
+            } catch (Error e) {
+                stderr.printf("Kickoff exception: %s\n", e.message);
+            }
+            redraw = true;
+            return;
+        }
+
         if(launch_cmd == ""){
             stderr.printf("No launch command for app_id=%s\n", app_id);
             return;
@@ -161,6 +175,19 @@ public class App {
         }
 
         redraw = true;
+    }
+
+    public void close_all_windows(){
+        if(window_ids.size == 0) return;
+
+        var ids_to_close = new ArrayList<uint>();
+        foreach(var id in window_ids){
+            ids_to_close.add(id);
+        }
+
+        foreach(var id in ids_to_close){
+            WLHooks.toplevel_close_by_id(id);
+        }
     }
 
     public void free(){
