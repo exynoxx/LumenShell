@@ -9,6 +9,46 @@
 
 ---
 
+## Cross-Project Architecture (repo-level)
+
+This repository contains multiple cooperating projects:
+
+- **`lumen-panel/`**
+  - Bottom layer-shell panel process.
+  - Uses WLHooks for Wayland + EGL surface lifecycle.
+  - Uses DrawKit for all rendering.
+
+- **`Kickoff/`**
+  - App launcher process (separate executable).
+  - Also uses WLHooks + DrawKit (same rendering/input foundation, different UI).
+
+- **`wlhooks/`**
+  - C library that owns Wayland protocol wiring and EGL setup.
+  - Exposes Vala bindings via `vapi/libwlhooks.vapi`.
+
+- **`libdrawkit/`**
+  - C GLES2 renderer used by panel and launcher.
+  - Exposes Vala bindings via `vapi/libdrawkit.vapi`.
+
+- **`vapi/`**
+  - Binding layer that lets Vala call into both C libraries directly.
+
+### How the executables interact
+
+- `lumen-panel` launches `Kickoff/main` from the launcher icon click path in `src/components/app.vala`.
+- They are **separate processes** with separate event loops and separate WLHooks state, but the same architectural pattern.
+- Both depend on `libdrawkit.a` and `libwlhooks.a` at link time.
+
+### Build/dependency direction
+
+`wlhooks` + `libdrawkit` → VAPI bindings → `lumen-panel` / `Kickoff`
+
+Panel Makefile links static libs from:
+- `../libdrawkit/build/libdrawkit.a`
+- `../wlhooks/build/libwlhooks.a`
+
+---
+
 ## Geometry Constants (`src/components/panel.vala`)
 ```
 HEIGHT           = 300   // total layer-shell surface height
@@ -45,6 +85,12 @@ stencil_pop()    → glDisable(GL_STENCIL_TEST)
 
 ### Color tinting textures
 `ctx.set_tex_color(color)` multiplies subsequent `draw_texture()` calls. Reset to `{1,1,1,1}` after use.
+
+### DrawKit backend assumptions
+- DrawKit does **not** create or own Wayland/EGL objects.
+- DrawKit assumes a valid current GLES2 context already exists.
+- `begin_frame()` performs `glViewport + glClear`; `end_frame()` performs `glFlush`.
+- Buffer presentation is delegated to caller via `WLHooks.swap_buffers()`.
 
 ---
 
@@ -140,6 +186,32 @@ WLHooks.register_on_key_down(SeatKeyDown? cb)
 ```
 Fix: mark parameter nullable in vapi: `SeatKeyDown? cb`
 
+### WLHooks EGL + layer-shell ownership (important)
+
+In `wlhooks/main.c`:
+- `wlhooks_init()` connects display and initializes protocol modules.
+- `init_layer_shell(...)` creates layer-shell `wl_surface` then calls `egl_init(...)`.
+
+In `wlhooks/egl.c`:
+- `eglGetDisplay` + `eglInitialize`
+- chooses EGL config
+- creates `wl_egl_window`
+- creates EGL window surface + GLES2 context
+- calls `eglMakeCurrent(...)`
+
+This means:
+- **WLHooks owns EGL display/surface/context lifecycle**.
+- It makes that context current before Vala rendering begins.
+- **DrawKit then renders into that same current context**, so EGL state implicitly couples WLHooks and DrawKit.
+
+Practical model:
+1. WLHooks creates layer-shell surface + EGL context and makes it current.
+2. Vala creates `DrawKit.Context` and issues draw calls.
+3. DrawKit writes GL commands into the current EGL context.
+4. WLHooks swaps buffers (`eglSwapBuffers`) to present.
+
+So: WLHooks = window/context/platform owner; DrawKit = GPU drawing engine using that context.
+
 ---
 
 ## Build Command
@@ -155,6 +227,23 @@ valac --vapidir=../vapi \
   -o main \
   src/*.vala src/components/*.vala src/components/trays/*.vala
 ```
+
+`Kickoff` follows the same pattern (Vala app + WLHooks + DrawKit + swap loop), with its own `Processor`/input flow.
+
+---
+
+## Runtime loop contract (panel)
+
+- `WLHooks.init()` bootstraps Wayland state.
+- `Panel` constructor calls `WLHooks.init_layer_shell(...)` before rendering.
+- Main loop:
+  - `display_dispatch_blocking()` pumps events.
+  - if `redraw || animations.has_active`:
+    - update animations
+    - render via DrawKit
+    - `WLHooks.swap_buffers()`
+
+This contract is shared conceptually by Kickoff.
 
 ---
 
