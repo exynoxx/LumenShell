@@ -103,9 +103,7 @@ public class SoundPage : GLib.Object, ITrayPage {
     private Color  cached_pct_col;
 
     public SoundPage() {
-        slider.value_changed.connect((v) => {
-            set_volume_percent(v);
-        });
+        slider.value_changed.connect((v) => set_volume_percent(v));
         slider.track_color = Color(){r=0.14f, g=0.15f, b=0.22f, a=1f};
 
         mute_button.label = "Mute";
@@ -114,9 +112,7 @@ public class SoundPage : GLib.Object, ITrayPage {
         mute_button.normal_color = Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
         mute_button.hover_color = Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
         mute_button.pressed_color = Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
-        mute_button.clicked.connect(() => {
-            toggle_mute();
-        });
+        mute_button.clicked.connect(() => toggle_mute());
     }
 
     public string get_title() { return "Sound"; }
@@ -125,10 +121,10 @@ public class SoundPage : GLib.Object, ITrayPage {
     public bool is_muted() { return muted; }
 
     public void on_activate() {
-        refresh_state(true);
+        refresh_state();
         if (refresh_timer_id == 0)
             refresh_timer_id = GLib.Timeout.add(1500, () => {
-                refresh_state(false);
+                refresh_state();
                 return Source.CONTINUE;
             });
     }
@@ -144,7 +140,7 @@ public class SoundPage : GLib.Object, ITrayPage {
             row.cancel_press();
     }
 
-    public void refresh_state(bool emit_signal = true) {
+    public void refresh_state() {
         default_sink = query_default_sink();
         var raw_sinks = query_sinks();
         volume_percent = query_volume_percent();
@@ -169,23 +165,24 @@ public class SoundPage : GLib.Object, ITrayPage {
         }
 
         apply_mute_visuals();
-        if (emit_signal)
-            state_changed();
+        state_changed();
+
         redraw = true;
     }
 
     public void render(Context ctx, int x, int y, int w, int h) {
-        px = x; py = y; pw = w; ph = h;
+        px = x; 
+        py = y;
+        pw = w; 
+        ph = h;
 
         // ── Header ───────────────────────────────────────────────────────
-        pdt(ctx, "Sound", x + PAD, y + TITLE_TOP_OFFSET, 20f,
-            Color(){r=1f, g=1f, b=1f, a=1f});
+        pdt(ctx, "Sound", x + PAD, y + TITLE_TOP_OFFSET, 20f, Color(){r=1f, g=1f, b=1f, a=1f});
 
         int chip_tw = ctx.width_of(cached_pct_txt, 12.5f);
         int chip_x  = x + w - PAD - chip_tw - 18 - 48 - 8;
         int chip_y  = y + CTRL_Y_OFFSET;
-        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f,
-            Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
+        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f, Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
         pdt(ctx, cached_pct_txt, chip_x + 9, chip_y + 4, 12.5f, cached_pct_col);
 
         int mute_x = x + w - PAD - 48;
@@ -194,29 +191,24 @@ public class SoundPage : GLib.Object, ITrayPage {
 
         // ── Separator ────────────────────────────────────────────────────
         int sep_y = y + HEADER_H;
-        ctx.draw_rect(x + PAD, sep_y, w - PAD * 2, 1,
-            Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f});
+        ctx.draw_rect(x + PAD, sep_y, w - PAD * 2, 1,Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f});
 
         // ── Volume slider ────────────────────────────────────────────────
         int slider_y = sep_y + 14;
         slider.set_bounds(x + PAD, slider_y, w - PAD * 2, SLIDER_H);
         slider.render(ctx);
-
-        pdt(ctx, cached_pct_txt, x + PAD, slider_y + SLIDER_H - 14, 12f,
-            Color(){r=0.72f, g=0.75f, b=0.84f, a=1f});
+        pdt(ctx, cached_pct_txt, x + PAD, slider_y + SLIDER_H - 14, 12f, Color(){r=0.72f, g=0.75f, b=0.84f, a=1f});
 
         // ── Device list ──────────────────────────────────────────────────
         int list_top = slider_y + SLIDER_H + 8;
-        pdt(ctx, "Output device", x + PAD, list_top, 12f,
-            Color(){r=0.55f, g=0.57f, b=0.66f, a=1f});
+        pdt(ctx, "Output device", x + PAD, list_top, 12f,Color(){r=0.55f, g=0.57f, b=0.66f, a=1f});
 
         int rows_top = list_top + 16;
         int max_rows = (h - (rows_top - y) - 8) / ROW_H;
         if (max_rows <= 0) return;
 
         if (sink_rows.length == 0) {
-            pdt_center(ctx, "No output devices", x + w / 2, rows_top + 8, 13f,
-                Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
+            pdt_center(ctx, "No output devices", x + w / 2, rows_top + 8, 13f,Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
             return;
         }
 

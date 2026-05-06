@@ -23,7 +23,7 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
             redraw = true;
         });
 
-        _page.refresh_state(false);
+        _page.refresh_state();
         sync_from_page();
     }
 
@@ -50,7 +50,7 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
     public void render(Context ctx) {
         int now_us = (int) GLib.get_monotonic_time();
         if (now_us - last_poll_us > 1200000) {
-            _page.refresh_state(false);
+            _page.refresh_state();
             sync_from_page();
             last_poll_us = now_us;
         }
