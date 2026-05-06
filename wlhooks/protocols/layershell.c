@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 static struct zwlr_layer_shell_v1 *layer_shell = NULL;
+static uint32_t layer_shell_version = 1;
 static struct wl_surface *surface = NULL;
 static struct zwlr_layer_surface_v1 *layer_surface = NULL;
 extern bool grab_keyboard;
@@ -34,7 +35,8 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 static void layer_shell_registry_handler(void *data, struct wl_registry *registry,
                                         uint32_t name, const char *interface,
                                         uint32_t version) {
-    layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 1);
+    layer_shell_version = version > 4 ? 4 : version;
+    layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, layer_shell_version);
 }
 
 void layer_shell_init(void) {
@@ -90,9 +92,13 @@ struct wl_surface *layer_shell_create_surface(const char *layer_name, int width,
     }
 
     if(grab_keyboard){
+        uint32_t mode = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
+        if (layer_shell_version >= ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION) {
+            mode = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND;
+        }
         zwlr_layer_surface_v1_set_keyboard_interactivity(
             layer_surface,
-            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
+            mode);
     }
 
     zwlr_layer_surface_v1_set_anchor(layer_surface, (enum zwlr_layer_surface_v1_anchor) anchor);

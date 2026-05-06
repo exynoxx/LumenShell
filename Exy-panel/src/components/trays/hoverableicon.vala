@@ -14,6 +14,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
     private int circle_x;
     private int circle_y;
     public bool hovered;
+    public bool selected;
 
     public HoverableIcon(string icon){
         load(icon);
@@ -60,7 +61,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
 
     public void render(Context ctx){
         
-        if(hovered){
+        if(hovered || selected){
             ctx.draw_circle(circle_x, circle_y, 24, {1,1,1,1});
             ctx.set_tex_color({0,0,0,1});
             ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);

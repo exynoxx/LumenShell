@@ -16,6 +16,10 @@ public class WifiTray : IconAndText, IUpdateable, IHasPage {
     public WifiTray(Context ctx) {
         base(ctx, new HoverableIcon("wifi-unknown"), "WiFi");
         _page = new WifiPage();
+        _page.state_changed.connect(() => {
+            update();
+            redraw = true;
+        });
         update();
     }
 
@@ -23,6 +27,7 @@ public class WifiTray : IconAndText, IUpdateable, IHasPage {
 
     public ITrayPage get_page()       { return _page; }
     public bool      is_icon_hovered(){ return icon.hovered; }
+    public void      set_page_active(bool active) { icon.selected = active; }
 
     // ── IUpdateable ───────────────────────────────────────────────────────
 

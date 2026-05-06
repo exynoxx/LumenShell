@@ -33,6 +33,8 @@ public interface IHasPage : GLib.Object {
     public abstract ITrayPage get_page();
     /** Return true when this icon's hover circle is currently hovered. */
     public abstract bool is_icon_hovered();
+    /** Set icon visual active state while page is open. */
+    public abstract void set_page_active(bool active);
 }
 
 public interface IUpdateable {

@@ -95,10 +95,10 @@ namespace WLHooks {
     void register_on_mouse_motion(SeatMouseMotion cb);
 
     [CCode(cname = "register_on_key_down")]
-    void register_on_key_down(SeatKeyDown cb);
+    void register_on_key_down(SeatKeyDown? cb);
 
     [CCode(cname = "register_on_key_up")]
-    void register_on_key_up(SeatKeyUp cb);
+    void register_on_key_up(SeatKeyUp? cb);
 
     [CCode(cname = "set_grab_keyboard")]
     void grab_keyboard(bool value);

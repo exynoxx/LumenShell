@@ -16,6 +16,9 @@ using GLib;
  */
 public class WifiPage : GLib.Object, ITrayPage {
 
+    public signal void state_changed();
+    private const bool DEBUG_WIFI = true;
+
     // ── Layout constants ──────────────────────────────────────────────────
     private const int PAD       = 14;
     private const int HEADER_H  = 44;
@@ -42,6 +45,7 @@ public class WifiPage : GLib.Object, ITrayPage {
     private bool   pass_focused  = false;
     private bool   connect_hov   = false;
     private bool   scanning      = false;
+    private bool   ctrl_down     = false;
 
     // Bounds from last render() call — used for hit-testing
     private int px;
@@ -56,18 +60,15 @@ public class WifiPage : GLib.Object, ITrayPage {
     public string get_title() { return "WiFi"; }
 
     public void on_activate() {
+        if (DEBUG_WIFI) print("[wifi] on_activate()\n");
         nets        = {};
         selected_row = -1;
         password    = "";
         pass_focused = false;
         connect_hov  = false;
         scanning    = true;
-        fetch_connected();
-        new GLib.Thread<void>("wifi-scan", () => {
-            nets    = fetch_nets();
-            scanning = false;
-            redraw  = true;
-        });
+        connected   = "";
+        refresh_nets_async(false);
     }
 
     public void on_deactivate() {
@@ -212,6 +213,27 @@ public class WifiPage : GLib.Object, ITrayPage {
         ctx.draw_rect(x + PAD, y + 1, w - PAD * 2, 1,
             Color(){r=0.22f, g=0.24f, b=0.35f, a=0.5f});
 
+        bool is_conn_row = selected_row >= 0
+                        && selected_row < nets.length
+                        && nets[selected_row].ssid == connected;
+
+        if (is_conn_row) {
+            int btn_w = 120;
+            int btn_x = x + w - PAD - btn_w;
+            int btn_y = y + (h - 34) / 2;
+            Color btn_col = connect_hov
+                ? Color(){r=0.88f, g=0.26f, b=0.26f, a=1f}
+                : Color(){r=0.76f, g=0.20f, b=0.20f, a=1f};
+
+            pdt(ctx, "Connected", x + PAD, btn_y + (34 - 13) / 2, 13f,
+                Color(){r=0.58f, g=0.78f, b=0.62f, a=0.95f});
+
+            ctx.draw_rect_rounded(btn_x, btn_y, btn_w, 34, 8f, btn_col);
+            pdt_center(ctx, "Disconnect", btn_x + btn_w / 2, btn_y + (34 - 14) / 2, 14f,
+                Color(){r=1f, g=1f, b=1f, a=1f});
+            return;
+        }
+
         int field_w = w - PAD * 2 - 90 - 10;
         int field_x = x + PAD;
         int field_y = y + (h - 34) / 2;
@@ -229,18 +251,16 @@ public class WifiPage : GLib.Object, ITrayPage {
             ctx.draw_rect_rounded(field_x, field_y, field_w, 34, 8f, field_bg);
         }
 
-        // Masked text or placeholder
-        var sb = new GLib.StringBuilder();
-        for (int i = 0; i < password.length; i++) sb.append_unichar('●');
-        string display  = sb.str != "" ? sb.str : "Password…";
-        Color  text_col = sb.str != ""
+        // Plain text or placeholder
+        string display  = password != "" ? password : "Password…";
+        Color  text_col = password != ""
             ? Color(){r=1f, g=1f, b=1f, a=0.92f}
             : Color(){r=0.42f, g=0.43f, b=0.50f, a=0.85f};
         pdt(ctx, display, field_x + 10, field_y + (34 - 13) / 2, 13f, text_col);
 
         // Blinking cursor
         if (pass_focused) {
-            int cursor_x = field_x + 10 + ctx.width_of(sb.str, 13f);
+            int cursor_x = field_x + 10 + ctx.width_of(password, 13f);
             ctx.draw_rect(cursor_x, field_y + 7, 2, 20,
                 Color(){r=0.50f, g=0.65f, b=1.0f, a=0.9f});
         }
@@ -281,9 +301,12 @@ public class WifiPage : GLib.Object, ITrayPage {
         }
 
         if (selected_row >= 0) {
-            int btn_x = px + pw - PAD - 90;
+            bool is_conn_row = selected_row < nets.length
+                            && nets[selected_row].ssid == connected;
+            int btn_w = is_conn_row ? 120 : 90;
+            int btn_x = px + pw - PAD - btn_w;
             int btn_y = py + ph - PASS_H + (PASS_H - 34) / 2;
-            connect_hov = mx >= btn_x && mx <= btn_x + 90
+            connect_hov = mx >= btn_x && mx <= btn_x + btn_w
                        && my >= btn_y && my <= btn_y + 34;
         }
 
@@ -294,7 +317,12 @@ public class WifiPage : GLib.Object, ITrayPage {
     public void mouse_down(int mx, int my) {
         // Connect button
         if (connect_hov) {
-            do_connect();
+            if (selected_row >= 0 && selected_row < nets.length
+             && nets[selected_row].ssid == connected) {
+                do_disconnect();
+            } else {
+                do_connect();
+            }
             return;
         }
 
@@ -307,6 +335,7 @@ public class WifiPage : GLib.Object, ITrayPage {
              && my >= field_y && my <= field_y + 34) {
                 pass_focused = true;
                 WLHooks.register_on_key_down(key_handler);
+                WLHooks.register_on_key_up(key_up_handler);
                 redraw = true;
                 return;
             }
@@ -327,7 +356,9 @@ public class WifiPage : GLib.Object, ITrayPage {
                     selected_row = i;
                     password     = "";
                     pass_focused = true;
+                    ctrl_down    = false;
                     WLHooks.register_on_key_down(key_handler);
+                    WLHooks.register_on_key_up(key_up_handler);
                 }
                 redraw = true;
                 return;
@@ -341,18 +372,38 @@ public class WifiPage : GLib.Object, ITrayPage {
 
     private void key_handler(uint32 keysym) {
         if (!pass_focused) return;
+        if (keysym == 0xFFE3 || keysym == 0xFFE4) {        // Ctrl_L / Ctrl_R
+            ctrl_down = true;
+            return;
+        }
         if (keysym == 0xFF08) {                              // BackSpace
-            if (password.length > 0)
+            if (ctrl_down) {
+                password = "";
+            } else if (password.length > 0) {
                 password = password.substring(0, password.length - 1);
+            }
+        } else if (keysym == 0xFFFF) {                      // Delete
+            password = "";
         } else if (keysym == 0xFF0D || keysym == 0xFF8D) {  // Return / KP_Enter
             do_connect();
             return;
         } else if (keysym == 0xFF1B) {                      // Escape
             dismiss_pass();
-        } else if (keysym >= 0x20 && keysym <= 0x7E) {      // Printable ASCII
+        } else if (is_printable_keysym(keysym)) {
             password += ((unichar) keysym).to_string();
         }
         redraw = true;
+    }
+
+    private void key_up_handler(uint32 keysym) {
+        if (keysym == 0xFFE3 || keysym == 0xFFE4) {         // Ctrl_L / Ctrl_R
+            ctrl_down = false;
+        }
+    }
+
+    private bool is_printable_keysym(uint32 keysym) {
+        return (keysym >= 0x20 && keysym <= 0x7E)
+            || (keysym >= 0xA0 && keysym <= 0x10FFFF);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -370,37 +421,135 @@ public class WifiPage : GLib.Object, ITrayPage {
             string pw = password.replace("\\", "\\\\").replace("\"", "\\\"");
             cmd = @"nmcli device wifi connect \"$ssid\" password \"$pw\"";
         }
+        if (DEBUG_WIFI) print("[wifi] connect cmd: %s\n", cmd);
         try { Process.spawn_command_line_async(cmd); } catch (SpawnError e) {}
         dismiss_pass();
-        GLib.Timeout.add(3000, () => { fetch_connected(); redraw = true; return false; });
+        delayed_refresh(1400, true);
+    }
+
+    private void do_disconnect() {
+        string dev = get_wifi_device();
+        if (dev == "") return;
+
+        string cmd = @"nmcli device disconnect \"$dev\"";
+        if (DEBUG_WIFI) print("[wifi] disconnect cmd: %s\n", cmd);
+        try { Process.spawn_command_line_async(cmd); } catch (SpawnError e) {}
+        dismiss_pass();
+        delayed_refresh(1000, true);
+    }
+
+    private void delayed_refresh(int delay_ms, bool rescan) {
+        if (DEBUG_WIFI) print("[wifi] delayed_refresh(%d ms, rescan=%s)\n", delay_ms, rescan.to_string());
+        new GLib.Thread<void>("wifi-refresh-delay", () => {
+            Thread.usleep((ulong) delay_ms * 1000UL);
+            refresh_nets_async(rescan);
+        });
     }
 
     private void dismiss_pass() {
         selected_row = -1;
         password     = "";
         pass_focused = false;
+        ctrl_down    = false;
         WLHooks.register_on_key_down(null);
+        WLHooks.register_on_key_up(null);
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // nmcli helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    private void fetch_connected() {
+    private string query_connected() {
         string out_str = "";
         try {
             Process.spawn_command_line_sync(
                 "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device",
                 out out_str, null, null);
-        } catch (SpawnError e) { return; }
-        connected = "";
+        } catch (SpawnError e) { return ""; }
+
+        if (DEBUG_WIFI) {
+            var preview = out_str;
+            if (preview.length > 300) preview = preview.substring(0, 300);
+            print("[wifi] query_connected raw:\n%s\n", preview);
+        }
+
         foreach (var line in out_str.split("\n")) {
-            var p = line.split(":");
+            var p = split_nmcli_terse(line, 4);
             if (p.length >= 4 && p[1] == "wifi" && p[2] == "connected") {
-                connected = p[3];
-                break;
+                if (DEBUG_WIFI) print("[wifi] connected ssid: %s\n", p[3]);
+                return p[3];
             }
         }
+        if (DEBUG_WIFI) print("[wifi] connected ssid: <none>\n");
+        return "";
+    }
+
+    private string get_wifi_device() {
+        string out_str = "";
+        try {
+            Process.spawn_command_line_sync(
+                "nmcli -t -f DEVICE,TYPE,STATE device",
+                out out_str, null, null);
+        } catch (SpawnError e) { return ""; }
+
+        foreach (var line in out_str.split("\n")) {
+            var p = split_nmcli_terse(line, 3);
+            if (p.length >= 3 && p[1] == "wifi") {
+                return p[0];
+            }
+        }
+        return "";
+    }
+
+    private void refresh_nets_async(bool rescan = false) {
+        if (DEBUG_WIFI) print("[wifi] refresh_nets_async(rescan=%s) begin\n", rescan.to_string());
+        scanning = true;
+        redraw = true;
+
+        string selected_ssid = "";
+        if (selected_row >= 0 && selected_row < nets.length)
+            selected_ssid = nets[selected_row].ssid;
+
+        new GLib.Thread<void>("wifi-refresh", () => {
+            if (DEBUG_WIFI) print("[wifi] refresh thread start\n");
+            if (rescan) {
+                try {
+                    Process.spawn_command_line_async("nmcli device wifi rescan");
+                    if (DEBUG_WIFI) print("[wifi] rescan requested\n");
+                } catch (SpawnError e) {}
+            }
+
+            var new_nets = fetch_nets();
+            var new_conn = query_connected();
+
+            if (DEBUG_WIFI) print("[wifi] refresh result: nets=%d connected='%s'\n", new_nets.length, new_conn);
+
+            nets = new_nets;
+            connected = new_conn;
+            scanning = false;
+
+            if (selected_ssid != "") {
+                int new_sel = -1;
+                for (int i = 0; i < nets.length; i++) {
+                    if (nets[i].ssid == selected_ssid) {
+                        new_sel = i;
+                        break;
+                    }
+                }
+                selected_row = new_sel;
+                if (selected_row < 0) {
+                    password = "";
+                    pass_focused = false;
+                    ctrl_down = false;
+                    WLHooks.register_on_key_down(null);
+                    WLHooks.register_on_key_up(null);
+                }
+            }
+
+            state_changed();
+            redraw = true;
+            if (DEBUG_WIFI) print("[wifi] refresh apply done (selected_row=%d)\n", selected_row);
+        });
     }
 
     private Net[] fetch_nets() {
@@ -411,18 +560,73 @@ public class WifiPage : GLib.Object, ITrayPage {
                 out out_str, null, null);
         } catch (SpawnError e) { return {}; }
 
+        if (DEBUG_WIFI) {
+            var preview = out_str;
+            if (preview.length > 500) preview = preview.substring(0, 500);
+            print("[wifi] fetch_nets raw preview:\n%s\n", preview);
+        }
+
         Net[] result = {};
         var seen = new GLib.HashTable<string, bool>(str_hash, str_equal);
+        int bad_rows = 0;
         foreach (var line in out_str.split("\n")) {
-            var p = line.split(":");
-            if (p.length < 3) continue;
+            var p = split_nmcli_terse(line, 3);
+            if (p.length < 3) {
+                if (line.strip() != "") bad_rows++;
+                continue;
+            }
             string ssid = p[0].strip();
             if (ssid == "" || ssid == "--") continue;
             if (seen.contains(ssid)) continue;
             seen.insert(ssid, true);
-            result += new Net(ssid, int.parse(p[1]), p[2]);
+            int signal = 0;
+            if (!int.try_parse(p[1], out signal))
+                continue;
+            result += new Net(ssid, signal, p[2]);
             if (result.length >= MAX_NETS) break;
         }
+        if (DEBUG_WIFI) print("[wifi] fetch_nets parsed=%d bad_rows=%d\n", result.length, bad_rows);
         return result;
+    }
+
+    /**
+     * Split nmcli terse output fields using ':' separator with support for
+     * escaped separators (\:) and escaped backslashes (\\).
+     */
+    private string[] split_nmcli_terse(string line, int max_fields = -1) {
+        string[] parts = {};
+        var sb = new GLib.StringBuilder();
+        bool escaped = false;
+        int split_count = 0;
+
+        for (int i = 0; i < line.length; i++) {
+            char c = line[i];
+
+            if (escaped) {
+                sb.append_c(c);
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+
+            if (c == ':' && (max_fields < 0 || split_count < max_fields - 1)) {
+                parts += sb.str;
+                sb.truncate(0);
+                split_count++;
+                continue;
+            }
+
+            sb.append_c(c);
+        }
+
+        if (escaped)
+            sb.append_c('\\');
+
+        parts += sb.str;
+        return parts;
     }
 }

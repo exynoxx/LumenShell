@@ -75,6 +75,7 @@ public class Tray {
         }
 
         layout_children();
+        sync_page_icon_states();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -120,6 +121,7 @@ public class Tray {
                 &page_slide_x, target_slide, 0.22d));
 
             active_page_idx = page_idx;
+            sync_page_icon_states();
             pages[page_idx].on_activate();
         }
         redraw = true;
@@ -129,10 +131,18 @@ public class Tray {
         if (active_page_idx >= 0) {
             pages[active_page_idx].on_deactivate();
             active_page_idx = -1;
+            sync_page_icon_states();
         }
         animations.add(new Transition1D(EXPAND_ANIM_ID,
             &expanded_height, 0, 0.24d));
         redraw = true;
+    }
+
+    private void sync_page_icon_states() {
+        for (int p = 0; p < pages.length; p++) {
+            var owner = (IHasPage) trays[page_owner[p]];
+            owner.set_page_active(p == active_page_idx);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────

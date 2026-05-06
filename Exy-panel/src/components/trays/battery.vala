@@ -22,6 +22,7 @@ public class BatteryTray : IconAndText, IUpdateable, IHasPage {
 
     public ITrayPage get_page()        { return _page; }
     public bool      is_icon_hovered() { return icon.hovered; }
+    public void      set_page_active(bool active) { icon.selected = active; }
 
     // ── IUpdateable ───────────────────────────────────────────────────────
 
