@@ -17,7 +17,7 @@ using GLib;
 public class WifiPage : GLib.Object, ITrayPage {
 
     public signal void state_changed();
-    private const bool DEBUG_WIFI = true;
+    private const bool DEBUG_WIFI = false;
 
     // ── Layout constants ──────────────────────────────────────────────────
     private const int PAD       = 14;
@@ -40,20 +40,68 @@ public class WifiPage : GLib.Object, ITrayPage {
     private string connected     = "";
     private int    hovered_row   = -1;
     private int    selected_row  = -1;
-    private string password      = "";
-    private bool   pass_focused  = false;
-    private bool   connect_hov   = false;
-    private bool   refresh_hov   = false;
     private int    disconnect_hov_row = -1;
     private bool   scanning      = false;
-    private bool   ctrl_down     = false;
-    private WifiListViewport list_view = new WifiListViewport();
+    private UiScrollView list_view = new UiScrollView();
+    private UiSignalBars signal_bars = new UiSignalBars();
+    private UiButton refresh_button = new UiButton();
+    private UiButton connect_button = new UiButton();
+    private UiButton disconnect_button = new UiButton();
+    private UiTextField password_field = new UiTextField();
 
     // Bounds from last render() call — used for hit-testing
     private int px;
     private int py;
     private int pw;
     private int ph;
+
+    public WifiPage() {
+        refresh_button.label = "Refresh";
+        refresh_button.text_size = 12f;
+        refresh_button.normal_color = Color(){r=0.14f, g=0.21f, b=0.40f, a=1f};
+        refresh_button.hover_color = Color(){r=0.20f, g=0.30f, b=0.56f, a=1f};
+        refresh_button.pressed_color = Color(){r=0.11f, g=0.17f, b=0.32f, a=1f};
+        refresh_button.clicked.connect(() => {
+            refresh_nets_async(true);
+            redraw = true;
+        });
+
+        connect_button.label = "Connect";
+        connect_button.text_size = 14f;
+        connect_button.clicked.connect(() => {
+            if (selected_row >= 0 && selected_row < nets.length
+             && nets[selected_row].ssid == connected) {
+                do_disconnect();
+            } else {
+                do_connect();
+            }
+        });
+
+        disconnect_button.label = "×";
+        disconnect_button.text_size = 13f;
+        disconnect_button.radius = 6f;
+        disconnect_button.normal_color = Color(){r=0.74f, g=0.20f, b=0.20f, a=0.96f};
+        disconnect_button.hover_color = Color(){r=0.90f, g=0.30f, b=0.30f, a=1f};
+        disconnect_button.pressed_color = Color(){r=0.66f, g=0.16f, b=0.16f, a=1f};
+        disconnect_button.clicked.connect(() => {
+            do_disconnect();
+        });
+
+        password_field.placeholder = "Password…";
+        password_field.changed.connect((s) => {
+            redraw = true;
+        });
+        password_field.submitted.connect(() => {
+            do_connect();
+        });
+        password_field.cancelled.connect(() => {
+            dismiss_pass();
+            redraw = true;
+        });
+        password_field.focus_changed.connect((focused) => {
+            redraw = true;
+        });
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // ITrayPage
@@ -65,12 +113,15 @@ public class WifiPage : GLib.Object, ITrayPage {
         if (DEBUG_WIFI) print("[wifi] on_activate()\n");
         nets        = {};
         selected_row = -1;
-        password    = "";
-        pass_focused = false;
-        connect_hov  = false;
         scanning    = true;
         connected   = "";
+        hovered_row = -1;
+        disconnect_hov_row = -1;
         list_view.reset();
+        password_field.set_text("");
+        password_field.blur();
+        connect_button.cancel_press();
+        disconnect_button.cancel_press();
         refresh_nets_async(false);
     }
 
@@ -78,7 +129,14 @@ public class WifiPage : GLib.Object, ITrayPage {
         dismiss_pass();
     }
 
-    public void mouse_up(int mx, int my) {}
+    public void mouse_up(int mx, int my) {
+        bool handled = false;
+        handled = refresh_button.mouse_up(mx, my) || handled;
+        handled = connect_button.mouse_up(mx, my) || handled;
+        handled = disconnect_button.mouse_up(mx, my) || handled;
+        if (handled)
+            redraw = true;
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // Rendering
@@ -96,13 +154,9 @@ public class WifiPage : GLib.Object, ITrayPage {
         int refresh_h = 24;
         int refresh_x = x + PAD + 58;
         int refresh_y = y + (HEADER_H - refresh_h) / 2;
-        Color refresh_col = refresh_hov
-            ? Color(){r=0.20f, g=0.30f, b=0.56f, a=1f}
-            : Color(){r=0.14f, g=0.21f, b=0.40f, a=1f};
-        ctx.draw_rect_rounded(refresh_x, refresh_y, refresh_w, refresh_h, 8f, refresh_col);
-        pdt_center(ctx, scanning ? "Scanning" : "Refresh",
-            refresh_x + refresh_w / 2, refresh_y + 4, 12f,
-            Color(){r=1f, g=1f, b=1f, a=1f});
+        refresh_button.set_bounds(refresh_x, refresh_y, refresh_w, refresh_h);
+        refresh_button.label = scanning ? "Scanning" : "Refresh";
+        refresh_button.render(ctx);
 
         // Connection status chip (right-aligned)
         bool is_conn    = connected != "" && connected != "--";
@@ -181,7 +235,7 @@ public class WifiPage : GLib.Object, ITrayPage {
         }
 
         // Signal bars
-        draw_signal_bars(ctx, x + PAD, y + h - 6, net.signal);
+        signal_bars.render(ctx, x + PAD, y + h - 6, net.signal);
 
         // SSID
         Color name_col = is_conn
@@ -197,42 +251,13 @@ public class WifiPage : GLib.Object, ITrayPage {
             int db_h = 18;
             int db_x = rx - db_w;
             int db_y = y + (h - db_h) / 2;
-            Color db_col = disconnect_hov_row == i
-                ? Color(){r=0.90f, g=0.30f, b=0.30f, a=1f}
-                : Color(){r=0.74f, g=0.20f, b=0.20f, a=0.96f};
-            ctx.draw_rect_rounded(db_x, db_y, db_w, db_h, 6f, db_col);
-            pdt_center(ctx, "×", db_x + db_w / 2, db_y + 2, 13f,
-                Color(){r=1f, g=1f, b=1f, a=1f});
+            disconnect_button.set_bounds(db_x, db_y, db_w, db_h);
+            disconnect_button.render(ctx);
             rx -= 30;
         }
         if (net.security != "--" && net.security != "") {
             pdt(ctx, "🔒", rx - 14, y + (h - 12) / 2, 11f,
                 Color(){r=0.52f, g=0.52f, b=0.58f, a=1f});
-        }
-    }
-
-    /**
-     * Draw 4 vertical WiFi signal bars.
-     * bottom_y is the baseline (bottom edge of the bar group).
-     */
-    private void draw_signal_bars(Context ctx, int left_x, int bottom_y, int signal) {
-        int active_bars = signal >= 75 ? 4 : signal >= 50 ? 3 : signal >= 25 ? 2 : 1;
-
-        Color active_col = signal >= 65
-            ? Color(){r=0.18f, g=0.85f, b=0.40f, a=1f}
-            : signal >= 35
-                ? Color(){r=1.0f, g=0.72f, b=0.10f, a=1f}
-                : Color(){r=1.0f, g=0.30f, b=0.30f, a=1f};
-        Color dim_col = Color(){r=0.20f, g=0.21f, b=0.28f, a=0.75f};
-
-        int[] heights = { 6, 10, 14, 20 };
-
-        for (int b = 0; b < 4; b++) {
-            int bh = heights[b];
-            int bx = left_x + b * 7;
-            int by = bottom_y - bh;
-            ctx.draw_rect_rounded(bx, by, 4, bh, 2f,
-                b < active_bars ? active_col : dim_col);
         }
     }
 
@@ -253,16 +278,16 @@ public class WifiPage : GLib.Object, ITrayPage {
             int btn_w = 120;
             int btn_x = x + w - PAD - btn_w;
             int btn_y = y + (h - 34) / 2;
-            Color btn_col = connect_hov
-                ? Color(){r=0.88f, g=0.26f, b=0.26f, a=1f}
-                : Color(){r=0.76f, g=0.20f, b=0.20f, a=1f};
 
             pdt(ctx, "Connected", x + PAD, btn_y + (34 - 13) / 2, 13f,
                 Color(){r=0.58f, g=0.78f, b=0.62f, a=0.95f});
 
-            ctx.draw_rect_rounded(btn_x, btn_y, btn_w, 34, 8f, btn_col);
-            pdt_center(ctx, "Disconnect", btn_x + btn_w / 2, btn_y + (34 - 14) / 2, 14f,
-                Color(){r=1f, g=1f, b=1f, a=1f});
+            connect_button.set_bounds(btn_x, btn_y, btn_w, 34);
+            connect_button.label = "Disconnect";
+            connect_button.normal_color = Color(){r=0.76f, g=0.20f, b=0.20f, a=1f};
+            connect_button.hover_color = Color(){r=0.88f, g=0.26f, b=0.26f, a=1f};
+            connect_button.pressed_color = Color(){r=0.64f, g=0.16f, b=0.16f, a=1f};
+            connect_button.render(ctx);
             return;
         }
 
@@ -270,42 +295,18 @@ public class WifiPage : GLib.Object, ITrayPage {
         int field_x = x + PAD;
         int field_y = y + (h - 34) / 2;
 
-        // Password field
-        Color field_bg = pass_focused
-            ? Color(){r=0.14f, g=0.16f, b=0.24f, a=1f}
-            : Color(){r=0.10f, g=0.11f, b=0.16f, a=1f};
-        ctx.draw_rect_rounded(field_x, field_y, field_w, 34, 8f, field_bg);
-
-        // Border glow when focused
-        if (pass_focused) {
-            ctx.draw_rect_rounded(field_x - 1, field_y - 1, field_w + 2, 36, 9f,
-                Color(){r=0.22f, g=0.48f, b=1.0f, a=0.55f});
-            ctx.draw_rect_rounded(field_x, field_y, field_w, 34, 8f, field_bg);
-        }
-
-        // Plain text or placeholder
-        string display  = password != "" ? password : "Password…";
-        Color  text_col = password != ""
-            ? Color(){r=1f, g=1f, b=1f, a=0.92f}
-            : Color(){r=0.42f, g=0.43f, b=0.50f, a=0.85f};
-        pdt(ctx, display, field_x + 10, field_y + (34 - 13) / 2, 13f, text_col);
-
-        // Blinking cursor
-        if (pass_focused) {
-            int cursor_x = field_x + 10 + ctx.width_of(password, 13f);
-            ctx.draw_rect(cursor_x, field_y + 7, 2, 20,
-                Color(){r=0.50f, g=0.65f, b=1.0f, a=0.9f});
-        }
+        password_field.set_bounds(field_x, field_y, field_w, 34);
+        password_field.render(ctx);
 
         // Connect button
         int btn_x = x + w - PAD - 90;
         int btn_y = y + (h - 34) / 2;
-        Color btn_col = connect_hov
-            ? Color(){r=0.20f, g=0.50f, b=1.0f, a=1f}
-            : Color(){r=0.12f, g=0.34f, b=0.88f, a=1f};
-        ctx.draw_rect_rounded(btn_x, btn_y, 90, 34, 8f, btn_col);
-        pdt_center(ctx, "Connect", btn_x + 45, btn_y + (34 - 14) / 2, 14f,
-            Color(){r=1f, g=1f, b=1f, a=1f});
+        connect_button.set_bounds(btn_x, btn_y, 90, 34);
+        connect_button.label = "Connect";
+        connect_button.normal_color = Color(){r=0.12f, g=0.34f, b=0.88f, a=1f};
+        connect_button.hover_color = Color(){r=0.20f, g=0.50f, b=1.0f, a=1f};
+        connect_button.pressed_color = Color(){r=0.10f, g=0.28f, b=0.72f, a=1f};
+        connect_button.render(ctx);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -313,83 +314,56 @@ public class WifiPage : GLib.Object, ITrayPage {
     // ─────────────────────────────────────────────────────────────────────
 
     public void mouse_motion(int mx, int my) {
-        int old_hr  = hovered_row;
-        bool old_ch = connect_hov;
-        bool old_rh = refresh_hov;
+        bool changed = false;
+        changed = refresh_button.mouse_motion(mx, my) || changed;
+
+        int old_hr = hovered_row;
         int old_dh = disconnect_hov_row;
-
-        hovered_row = -1;
-        connect_hov = false;
-        refresh_hov = false;
-        disconnect_hov_row = -1;
-
-        int refresh_w = 78;
-        int refresh_h = 24;
-        int refresh_x = px + PAD + 58;
-        int refresh_y = py + (HEADER_H - refresh_h) / 2;
-        refresh_hov = mx >= refresh_x && mx <= refresh_x + refresh_w
-                   && my >= refresh_y && my <= refresh_y + refresh_h;
 
         update_list_viewport_geometry();
         hovered_row = list_view.row_at(mx, my);
 
+        disconnect_hov_row = -1;
         if (hovered_row >= 0 && hovered_row < nets.length
          && nets[hovered_row].ssid == connected
-         && hit_disconnect_button(hovered_row, mx, my)) {
+         && disconnect_button.mouse_motion(mx, my)) {
             disconnect_hov_row = hovered_row;
+        } else {
+            disconnect_button.mouse_motion(-1, -1);
         }
 
-        if (selected_row >= 0) {
+        if (selected_row >= 0 && selected_row < nets.length) {
             bool is_conn_row = selected_row < nets.length
                             && nets[selected_row].ssid == connected;
-            int btn_w = is_conn_row ? 120 : 90;
-            int btn_x = px + pw - PAD - btn_w;
-            int btn_y = py + ph - PASS_H + (PASS_H - 34) / 2;
-            connect_hov = mx >= btn_x && mx <= btn_x + btn_w
-                       && my >= btn_y && my <= btn_y + 34;
+            changed = connect_button.mouse_motion(mx, my) || changed;
+            if (!is_conn_row)
+                changed = password_field.mouse_motion(mx, my) || changed;
         }
 
-        if (hovered_row != old_hr
-         || connect_hov != old_ch
-         || refresh_hov != old_rh
-         || disconnect_hov_row != old_dh)
+        if (hovered_row != old_hr || disconnect_hov_row != old_dh || changed)
             redraw = true;
     }
 
     public void mouse_down(int mx, int my) {
-        if (refresh_hov) {
-            refresh_nets_async(true);
+        if (refresh_button.mouse_down(mx, my)) {
+            redraw = true;
             return;
         }
 
-        if (disconnect_hov_row >= 0
-         && disconnect_hov_row < nets.length
-         && nets[disconnect_hov_row].ssid == connected) {
-            do_disconnect();
+        if (disconnect_hov_row >= 0 && disconnect_button.mouse_down(mx, my)) {
+            redraw = true;
             return;
         }
 
-        // Connect button
-        if (connect_hov) {
-            if (selected_row >= 0 && selected_row < nets.length
-             && nets[selected_row].ssid == connected) {
-                do_disconnect();
-            } else {
-                do_connect();
+        if (selected_row >= 0 && selected_row < nets.length) {
+            bool is_conn_row = nets[selected_row].ssid == connected;
+
+            if (!is_conn_row && password_field.mouse_down(mx, my)) {
+                redraw = true;
+                return;
             }
-            return;
-        }
 
-        // Password field click → focus
-        if (selected_row >= 0) {
-            int field_x = px + PAD;
-            int field_w = pw - PAD * 2 - 90 - 10;
-            int field_y = py + ph - PASS_H + (PASS_H - 34) / 2;
-            if (mx >= field_x && mx <= field_x + field_w
-             && my >= field_y && my <= field_y + 34) {
-                pass_focused = true;
-                WLHooks.register_on_key_down(key_handler);
-                WLHooks.register_on_key_up(key_up_handler);
+            if (connect_button.mouse_down(mx, my)) {
                 redraw = true;
                 return;
             }
@@ -403,17 +377,23 @@ public class WifiPage : GLib.Object, ITrayPage {
                 dismiss_pass();
             } else {
                 selected_row = i;
-                password     = "";
-                pass_focused = true;
-                ctrl_down    = false;
-                WLHooks.register_on_key_down(key_handler);
-                WLHooks.register_on_key_up(key_up_handler);
+                password_field.set_text("");
+
+                if (nets[selected_row].ssid == connected)
+                    password_field.blur();
+                else
+                    password_field.focus();
 
                 update_list_viewport_geometry();
                 list_view.ensure_visible(selected_row);
             }
             redraw = true;
             return;
+        }
+
+        if (password_field.focused) {
+            password_field.blur();
+            redraw = true;
         }
     }
 
@@ -423,53 +403,10 @@ public class WifiPage : GLib.Object, ITrayPage {
         update_list_viewport_geometry();
         if (!list_view.contains(mx, my) || !list_view.can_scroll()) return;
 
-        int old_first = list_view.first_visible_row();
-        list_view.scroll_lines(amount);
-
-        if (list_view.first_visible_row() != old_first) {
+        if (list_view.scroll_lines(amount)) {
             hovered_row = list_view.row_at(mx, my);
             redraw = true;
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Keyboard
-    // ─────────────────────────────────────────────────────────────────────
-
-    private void key_handler(uint32 keysym) {
-        if (!pass_focused) return;
-        if (keysym == 0xFFE3 || keysym == 0xFFE4) {        // Ctrl_L / Ctrl_R
-            ctrl_down = true;
-            return;
-        }
-        if (keysym == 0xFF08) {                              // BackSpace
-            if (ctrl_down) {
-                password = "";
-            } else if (password.length > 0) {
-                password = password.substring(0, password.length - 1);
-            }
-        } else if (keysym == 0xFFFF) {                      // Delete
-            password = "";
-        } else if (keysym == 0xFF0D || keysym == 0xFF8D) {  // Return / KP_Enter
-            do_connect();
-            return;
-        } else if (keysym == 0xFF1B) {                      // Escape
-            dismiss_pass();
-        } else if (is_printable_keysym(keysym)) {
-            password += ((unichar) keysym).to_string();
-        }
-        redraw = true;
-    }
-
-    private void key_up_handler(uint32 keysym) {
-        if (keysym == 0xFFE3 || keysym == 0xFFE4) {         // Ctrl_L / Ctrl_R
-            ctrl_down = false;
-        }
-    }
-
-    private bool is_printable_keysym(uint32 keysym) {
-        return (keysym >= 0x20 && keysym <= 0x7E)
-            || (keysym >= 0xA0 && keysym <= 0x10FFFF);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -481,10 +418,10 @@ public class WifiPage : GLib.Object, ITrayPage {
         var    net  = nets[selected_row];
         string ssid = net.ssid.replace("\\", "\\\\").replace("\"", "\\\"");
         string cmd;
-        if (password == "") {
+        if (password_field.get_text() == "") {
             cmd = @"nmcli connection up id \"$ssid\"";
         } else {
-            string pw = password.replace("\\", "\\\\").replace("\"", "\\\"");
+            string pw = password_field.get_text().replace("\\", "\\\\").replace("\"", "\\\"");
             cmd = @"nmcli device wifi connect \"$ssid\" password \"$pw\"";
         }
         if (DEBUG_WIFI) print("[wifi] connect cmd: %s\n", cmd);
@@ -514,11 +451,8 @@ public class WifiPage : GLib.Object, ITrayPage {
 
     private void dismiss_pass() {
         selected_row = -1;
-        password     = "";
-        pass_focused = false;
-        ctrl_down    = false;
-        WLHooks.register_on_key_down(null);
-        WLHooks.register_on_key_up(null);
+        password_field.set_text("");
+        password_field.blur();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -604,11 +538,8 @@ public class WifiPage : GLib.Object, ITrayPage {
                 }
                 selected_row = new_sel;
                 if (selected_row < 0) {
-                    password = "";
-                    pass_focused = false;
-                    ctrl_down = false;
-                    WLHooks.register_on_key_down(null);
-                    WLHooks.register_on_key_up(null);
+                    password_field.set_text("");
+                    password_field.blur();
                 }
             }
 
@@ -663,18 +594,6 @@ public class WifiPage : GLib.Object, ITrayPage {
         int list_top     = py + HEADER_H + 6;
         int list_avail   = ph - HEADER_H - 6 - pass_reserve;
         list_view.update_layout(px + 6, list_top, pw - 12, list_avail, ROW_H, nets.length);
-    }
-
-    private bool hit_disconnect_button(int row, int mx, int my) {
-        if (row < 0 || row >= nets.length) return false;
-        int row_y = list_view.draw_y_for(row);
-        int rx = px + pw - PAD - 4;
-        int db_w = 22;
-        int db_h = 18;
-        int db_x = rx - db_w;
-        int db_y = row_y + (ROW_H - db_h) / 2;
-        return mx >= db_x && mx <= db_x + db_w
-            && my >= db_y && my <= db_y + db_h;
     }
 
     /**

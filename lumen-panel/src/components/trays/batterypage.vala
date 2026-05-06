@@ -13,6 +13,7 @@ using GLib;
 public class BatteryPage : GLib.Object, ITrayPage {
 
     private const int PAD = 16;
+    private UiProgressBar progress = new UiProgressBar();
 
     // ── Cached sysfs data ─────────────────────────────────────────────────
     private int    percent      = 0;
@@ -70,20 +71,15 @@ public class BatteryPage : GLib.Object, ITrayPage {
         int bar_w = w - PAD * 2;
         int bar_h = 22;
 
-        // Background track
-        ctx.draw_rect_rounded(bar_x, cur, bar_w, bar_h, 11f,
-            Color(){r=0.10f, g=0.11f, b=0.16f, a=1f});
-
-        // Fill
-        int fill_w = (int)(bar_w * percent / 100.0f);
-        if (fill_w > 0) {
-            Color fill_col = percent >= 60
-                ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
-                : percent >= 25
-                    ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
-                    : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
-            ctx.draw_rect_rounded(bar_x, cur, fill_w, bar_h, 11f, fill_col);
-        }
+        progress.set_bounds(bar_x, cur, bar_w, bar_h);
+        progress.set_value(percent);
+        progress.track_color = Color(){r=0.10f, g=0.11f, b=0.16f, a=1f};
+        progress.fill_color = percent >= 60
+            ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
+            : percent >= 25
+                ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
+                : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
+        progress.render(ctx);
 
         // Percentage label inside bar (right-aligned)
         string bar_label = "%d%%".printf(percent);
