@@ -20,6 +20,9 @@ namespace WLHooks {
     [CCode(cname="get_screen_size", has_target = false)]
     public unowned SurfaceSize *get_screen_size();
 
+    [CCode(cname="get_output_scale", has_target = false)]
+    public int get_output_scale();
+
     // toplevel_info struct with pointer to next
     [CCode(cname="toplevel_info", has_type_id=false)]
     public struct ToplevelInfo {

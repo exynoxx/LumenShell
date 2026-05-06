@@ -12,8 +12,12 @@ public static int main(string[] args) {
     WLHooks.grab_keyboard(true);   // must be set before init so seat binds keyboard
     WLHooks.init();
     var size = WLHooks.get_screen_size();
+    var scale = WLHooks.get_output_scale();
+    // get_screen_size() returns physical pixels from wl_output mode;
+    // layer-shell set_size expects logical pixels, so divide by scale.
+    var logical_width = size.width / scale;
 
-    panel = new Panel(size.width);
+    panel = new Panel(logical_width);
     animations = new AnimationManager();
 
     WLHooks.register_on_window_new(panel.on_window_new);

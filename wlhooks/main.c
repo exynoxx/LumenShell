@@ -27,7 +27,14 @@ int wlhooks_init(){
 
 int init_layer_shell(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone, int exclusive_zone_height) {
     struct wl_surface *surface = layer_shell_create_surface(layer_name, width, height, anchor, exclusive_zone, exclusive_zone_height);
-    egl_init(wl_display, surface, width, height);
+
+    int32_t scale = get_output_scale();
+    if (scale < 1) scale = 1;
+    // Set buffer scale as pending state — applied in the next wl_surface_commit
+    // (the layer-shell configure callback or first eglSwapBuffers)
+    wl_surface_set_buffer_scale(surface, scale);
+
+    egl_init(wl_display, surface, width * scale, height * scale);
 
     return 0;
 }
