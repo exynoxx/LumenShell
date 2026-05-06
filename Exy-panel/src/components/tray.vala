@@ -58,11 +58,13 @@ public class Tray {
 
         var wifi    = new WifiTray(ctx);
         var battery = new BatteryTray(ctx);
+        var sound   = new SoundTray(ctx);
         var clock   = new Clock(ctx);
         var exit    = new ExitTray(ctx);
 
         trays += wifi;
         trays += battery;
+        trays += sound;
         trays += clock;
         trays += exit;
 

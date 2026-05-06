@@ -43,6 +43,8 @@ public class WifiPage : GLib.Object, ITrayPage {
     private string password      = "";
     private bool   pass_focused  = false;
     private bool   connect_hov   = false;
+    private bool   refresh_hov   = false;
+    private int    disconnect_hov_row = -1;
     private bool   scanning      = false;
     private bool   ctrl_down     = false;
     private WifiListViewport list_view = new WifiListViewport();
@@ -88,6 +90,19 @@ public class WifiPage : GLib.Object, ITrayPage {
         // ── Header ───────────────────────────────────────────────────────
         int title_top = y + (HEADER_H - 20) / 2;
         pdt(ctx, "WiFi", x + PAD, title_top, 20f, {1f, 1f, 1f, 1f});
+
+        // Refresh button
+        int refresh_w = 78;
+        int refresh_h = 24;
+        int refresh_x = x + PAD + 58;
+        int refresh_y = y + (HEADER_H - refresh_h) / 2;
+        Color refresh_col = refresh_hov
+            ? Color(){r=0.20f, g=0.30f, b=0.56f, a=1f}
+            : Color(){r=0.14f, g=0.21f, b=0.40f, a=1f};
+        ctx.draw_rect_rounded(refresh_x, refresh_y, refresh_w, refresh_h, 8f, refresh_col);
+        pdt_center(ctx, scanning ? "Scanning" : "Refresh",
+            refresh_x + refresh_w / 2, refresh_y + 4, 12f,
+            Color(){r=1f, g=1f, b=1f, a=1f});
 
         // Connection status chip (right-aligned)
         bool is_conn    = connected != "" && connected != "--";
@@ -178,9 +193,17 @@ public class WifiPage : GLib.Object, ITrayPage {
         int rx = x + w - PAD - 4;
 
         if (is_conn) {
-            pdt(ctx, "✓", rx - 14, y + (h - 14) / 2, 14f,
-                Color(){r=0.18f, g=0.88f, b=0.42f, a=1f});
-            rx -= 22;
+            int db_w = 22;
+            int db_h = 18;
+            int db_x = rx - db_w;
+            int db_y = y + (h - db_h) / 2;
+            Color db_col = disconnect_hov_row == i
+                ? Color(){r=0.90f, g=0.30f, b=0.30f, a=1f}
+                : Color(){r=0.74f, g=0.20f, b=0.20f, a=0.96f};
+            ctx.draw_rect_rounded(db_x, db_y, db_w, db_h, 6f, db_col);
+            pdt_center(ctx, "×", db_x + db_w / 2, db_y + 2, 13f,
+                Color(){r=1f, g=1f, b=1f, a=1f});
+            rx -= 30;
         }
         if (net.security != "--" && net.security != "") {
             pdt(ctx, "🔒", rx - 14, y + (h - 12) / 2, 11f,
@@ -292,12 +315,29 @@ public class WifiPage : GLib.Object, ITrayPage {
     public void mouse_motion(int mx, int my) {
         int old_hr  = hovered_row;
         bool old_ch = connect_hov;
+        bool old_rh = refresh_hov;
+        int old_dh = disconnect_hov_row;
 
         hovered_row = -1;
         connect_hov = false;
+        refresh_hov = false;
+        disconnect_hov_row = -1;
+
+        int refresh_w = 78;
+        int refresh_h = 24;
+        int refresh_x = px + PAD + 58;
+        int refresh_y = py + (HEADER_H - refresh_h) / 2;
+        refresh_hov = mx >= refresh_x && mx <= refresh_x + refresh_w
+                   && my >= refresh_y && my <= refresh_y + refresh_h;
 
         update_list_viewport_geometry();
         hovered_row = list_view.row_at(mx, my);
+
+        if (hovered_row >= 0 && hovered_row < nets.length
+         && nets[hovered_row].ssid == connected
+         && hit_disconnect_button(hovered_row, mx, my)) {
+            disconnect_hov_row = hovered_row;
+        }
 
         if (selected_row >= 0) {
             bool is_conn_row = selected_row < nets.length
@@ -309,11 +349,26 @@ public class WifiPage : GLib.Object, ITrayPage {
                        && my >= btn_y && my <= btn_y + 34;
         }
 
-        if (hovered_row != old_hr || connect_hov != old_ch)
+        if (hovered_row != old_hr
+         || connect_hov != old_ch
+         || refresh_hov != old_rh
+         || disconnect_hov_row != old_dh)
             redraw = true;
     }
 
     public void mouse_down(int mx, int my) {
+        if (refresh_hov) {
+            refresh_nets_async(true);
+            return;
+        }
+
+        if (disconnect_hov_row >= 0
+         && disconnect_hov_row < nets.length
+         && nets[disconnect_hov_row].ssid == connected) {
+            do_disconnect();
+            return;
+        }
+
         // Connect button
         if (connect_hov) {
             if (selected_row >= 0 && selected_row < nets.length
@@ -608,6 +663,18 @@ public class WifiPage : GLib.Object, ITrayPage {
         int list_top     = py + HEADER_H + 6;
         int list_avail   = ph - HEADER_H - 6 - pass_reserve;
         list_view.update_layout(px + 6, list_top, pw - 12, list_avail, ROW_H, nets.length);
+    }
+
+    private bool hit_disconnect_button(int row, int mx, int my) {
+        if (row < 0 || row >= nets.length) return false;
+        int row_y = list_view.draw_y_for(row);
+        int rx = px + pw - PAD - 4;
+        int db_w = 22;
+        int db_h = 18;
+        int db_x = rx - db_w;
+        int db_y = row_y + (ROW_H - db_h) / 2;
+        return mx >= db_x && mx <= db_x + db_w
+            && my >= db_y && my <= db_y + db_h;
     }
 
     /**
