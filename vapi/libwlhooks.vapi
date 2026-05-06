@@ -102,7 +102,8 @@ namespace WLHooks {
 
     [CCode(cname = "set_grab_keyboard")]
     void grab_keyboard(bool value);
-
+    [CCode(cname = "layer_shell_set_input_region")]
+    void set_input_region(int x, int y, int w, int h);
     [CCode (cname = "screencopy_buffer_t", destroy_function = "screencopy_buffer_free", has_type_id = false)]
     [Compact]
     public class Buffer {

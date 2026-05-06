@@ -111,3 +111,14 @@ struct wl_surface *layer_shell_create_surface(const char *layer_name, int width,
 struct wl_surface *layer_shell_get_surface(void) {
     return surface;
 }
+
+void layer_shell_set_input_region(int x, int y, int w, int h) {
+    if (!surface) return;
+    struct wl_compositor *compositor = get_compositor();
+    if (!compositor) return;
+    struct wl_region *region = wl_compositor_create_region(compositor);
+    wl_region_add(region, x, y, w, h);
+    wl_surface_set_input_region(surface, region);
+    wl_region_destroy(region);
+    wl_surface_commit(surface);
+}

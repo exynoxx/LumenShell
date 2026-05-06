@@ -34,6 +34,8 @@ public class Tray {
     private int expanded_height = 0;   // mutated in-place by Transition1D
     private int active_page_idx = -1;  // -1 = no active page / collapsed
 
+    public int get_expanded_height() { return expanded_height; }
+
     // page_slide_x: offset of the virtual page band.
     // Page i renders at (tray_x + i * tray_width + page_slide_x).
     private int page_slide_x = 0;
@@ -101,6 +103,13 @@ public class Tray {
     // Page expansion / switching
     // ─────────────────────────────────────────────────────────────────────
 
+    private void update_input_region(int target_expanded_height) {
+        var size = WLHooks.get_screen_size();
+        var region_y = HEIGHT - EXCLUSIVE_HEIGHT - target_expanded_height;
+        var region_h = EXCLUSIVE_HEIGHT + target_expanded_height;
+        WLHooks.set_input_region(0, region_y, size.width, region_h);
+    }
+
     private void toggle_page(int page_idx) {
         if (page_idx == active_page_idx) {
             collapse();
@@ -119,6 +128,7 @@ public class Tray {
 
             active_page_idx = page_idx;
             pages[page_idx].on_activate();
+            update_input_region(EXPAND_FULL);
         }
         redraw = true;
     }
@@ -130,6 +140,7 @@ public class Tray {
         }
         animations.add(new Transition1D(EXPAND_ANIM_ID,
             &expanded_height, 0, 0.24d));
+        update_input_region(0);
         redraw = true;
     }
 
