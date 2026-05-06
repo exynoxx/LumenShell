@@ -15,6 +15,13 @@ public class BatteryPage : GLib.Object, ITrayPage {
     private const int PAD = 16;
     private UiProgressBar progress = new UiProgressBar();
 
+    // Tracks last rendered charge tier (0=low, 1=mid, 2=ok) to avoid per-frame color writes
+    private int progress_tier = -1;
+
+    public BatteryPage() {
+        progress.track_color = Color(){r=0.10f, g=0.11f, b=0.16f, a=1f};
+    }
+
     // ── Cached sysfs data ─────────────────────────────────────────────────
     private int    percent      = 0;
     private string status_str   = "—";
@@ -73,12 +80,15 @@ public class BatteryPage : GLib.Object, ITrayPage {
 
         progress.set_bounds(bar_x, cur, bar_w, bar_h);
         progress.set_value(percent);
-        progress.track_color = Color(){r=0.10f, g=0.11f, b=0.16f, a=1f};
-        progress.fill_color = percent >= 60
-            ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
-            : percent >= 25
-                ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
-                : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
+        int tier = percent >= 60 ? 2 : percent >= 25 ? 1 : 0;
+        if (tier != progress_tier) {
+            progress_tier = tier;
+            progress.fill_color = tier == 2
+                ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
+                : tier == 1
+                    ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
+                    : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
+        }
         progress.render(ctx);
 
         // Percentage label inside bar (right-aligned)

@@ -10,21 +10,79 @@ public class SoundPage : GLib.Object, ITrayPage {
     private const int SLIDER_H = 42;
     private const int ROW_H = 34;
 
-    private class Sink {
-        public string id;
-        public string name;
-        public Sink(string id, string name) {
-            this.id = id;
-            this.name = name;
+    private class SinkRow : GLib.Object {
+        public signal void selected();
+
+        private string _id   = "";
+        private string _name = "";
+        private int rx = 0;
+        private int ry = 0;
+        private int rw = 0;
+        private int rh = 0;
+        private bool hovered = false;
+        private bool pressed = false;
+
+        public string id   { get { return _id;   } }
+        public string name { get { return _name; } }
+
+        public void update(string id, string name) {
+            _id   = id;
+            _name = name;
+        }
+
+        public void set_bounds(int x, int y, int w, int h) {
+            rx = x;  ry = y;  rw = w;  rh = h;
+        }
+
+        public bool contains(int mx, int my) {
+            return mx >= rx && mx <= rx + rw
+                && my >= ry + 3 && my <= ry + rh - 3;
+        }
+
+        public void mouse_motion(int mx, int my) {
+            bool old = hovered;
+            hovered = contains(mx, my);
+            if (old != hovered)
+                redraw = true;
+        }
+
+        public void mouse_down(int mx, int my) {
+            if (contains(mx, my))
+                pressed = true;
+        }
+
+        public void mouse_up(int mx, int my) {
+            if (pressed && contains(mx, my))
+                selected();
+            pressed = false;
+        }
+
+        public void cancel_press() { pressed = false; }
+
+        public void render(Context ctx, bool is_sel) {
+            if (is_sel) {
+                ctx.draw_rect_rounded(rx, ry + 3, rw, rh - 6, 8f,
+                    Color(){r=0.11f, g=0.27f, b=0.66f, a=0.90f});
+            } else if (hovered) {
+                ctx.draw_rect_rounded(rx, ry + 3, rw, rh - 6, 8f,
+                    Color(){r=0.17f, g=0.18f, b=0.24f, a=0.85f});
+            }
+
+            pdt(ctx, _name, rx + 10, ry + (rh - 13) / 2, 13f,
+                is_sel ? Color(){r=1f, g=1f, b=1f, a=1f}
+                       : Color(){r=0.86f, g=0.88f, b=0.93f, a=1f});
+
+            if (is_sel) {
+                pdt(ctx, "✓", rx + rw - 18, ry + (rh - 13) / 2, 13f,
+                    Color(){r=0.22f, g=0.95f, b=0.48f, a=1f});
+            }
         }
     }
 
-    private Sink[] sinks = {};
+    private SinkRow[] sink_rows = {};
     private string default_sink = "";
     private int volume_percent = 0;
     private bool muted = false;
-
-    private int hovered_sink = -1;
 
     private UiHorizontalSlider slider = new UiHorizontalSlider();
     private UiButton mute_button = new UiButton();
@@ -36,10 +94,14 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     private int last_refresh_us = 0;
 
+    // Track last rendered mute state so button colors are only updated on change
+    private bool mute_btn_muted_state = false;
+
     public SoundPage() {
         slider.value_changed.connect((v) => {
             set_volume_percent(v);
         });
+        slider.track_color = Color(){r=0.14f, g=0.15f, b=0.22f, a=1f};
 
         mute_button.label = "Mute";
         mute_button.text_size = 11f;
@@ -64,14 +126,33 @@ public class SoundPage : GLib.Object, ITrayPage {
     public void on_deactivate() {
         slider.mouse_up(-1, -1);
         mute_button.cancel_press();
+        foreach (var row in sink_rows)
+            row.cancel_press();
     }
 
     public void refresh_state(bool emit_signal = true) {
         default_sink = query_default_sink();
-        sinks = query_sinks();
+        var raw_sinks = query_sinks();
         volume_percent = query_volume_percent();
         muted = query_muted();
         slider.set_value(volume_percent);
+
+        // Rebuild pool only when the set of sinks actually changes
+        bool same = sink_rows.length == raw_sinks.length;
+        if (same) {
+            for (int i = 0; i < sink_rows.length; i++) {
+                if (sink_rows[i].id != raw_sinks[i].id) { same = false; break; }
+            }
+        }
+        if (!same) {
+            sink_rows = raw_sinks;
+            for (int i = 0; i < sink_rows.length; i++) {
+                int idx = i;  // capture for closure
+                sink_rows[i].selected.connect(() => {
+                    set_default_sink(sink_rows[idx].id);
+                });
+            }
+        }
 
         last_refresh_us = (int) GLib.get_monotonic_time();
         if (emit_signal)
@@ -99,24 +180,26 @@ public class SoundPage : GLib.Object, ITrayPage {
         int chip_tw = ctx.width_of(pct_txt, 12.5f);
         int chip_x = x + w - PAD - chip_tw - 18 - 48 - 8;
         int chip_y = y + (HEADER_H - 24) / 2;
-        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f,
-            Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
+        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f, Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
         pdt(ctx, pct_txt, chip_x + 9, chip_y + 4, 12.5f, pct_col);
 
         int mute_w = 48;
         int mute_x = x + w - PAD - mute_w;
         int mute_y = y + (HEADER_H - 24) / 2;
         mute_button.set_bounds(mute_x, mute_y, mute_w, 24);
-        mute_button.label = muted ? "Unmute" : "Mute";
-        mute_button.normal_color = muted
-            ? Color(){r=0.78f, g=0.20f, b=0.20f, a=1f}
-            : Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
-        mute_button.hover_color = muted
-            ? Color(){r=0.88f, g=0.28f, b=0.28f, a=1f}
-            : Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
-        mute_button.pressed_color = muted
-            ? Color(){r=0.68f, g=0.16f, b=0.16f, a=1f}
-            : Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
+        if (muted != mute_btn_muted_state) {
+            mute_btn_muted_state = muted;
+            mute_button.label = muted ? "Unmute" : "Mute";
+            mute_button.normal_color = muted
+                ? Color(){r=0.78f, g=0.20f, b=0.20f, a=1f}
+                : Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
+            mute_button.hover_color = muted
+                ? Color(){r=0.88f, g=0.28f, b=0.28f, a=1f}
+                : Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
+            mute_button.pressed_color = muted
+                ? Color(){r=0.68f, g=0.16f, b=0.16f, a=1f}
+                : Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
+        }
         mute_button.render(ctx);
 
         int sep_y = y + HEADER_H;
@@ -125,7 +208,6 @@ public class SoundPage : GLib.Object, ITrayPage {
 
         int slider_y = sep_y + 14;
         slider.set_bounds(x + PAD, slider_y, w - PAD * 2, SLIDER_H);
-        slider.track_color = Color(){r=0.14f, g=0.15f, b=0.22f, a=1f};
         slider.fill_color = muted
             ? Color(){r=0.72f, g=0.24f, b=0.24f, a=1f}
             : Color(){r=0.18f, g=0.62f, b=1.0f, a=1f};
@@ -143,83 +225,44 @@ public class SoundPage : GLib.Object, ITrayPage {
         int max_rows = (h - (rows_top - y) - 8) / ROW_H;
         if (max_rows <= 0) return;
 
-        if (sinks.length == 0) {
+        if (sink_rows.length == 0) {
             pdt_center(ctx, "No output devices", x + w / 2, rows_top + 8, 13f,
                 Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
             return;
         }
 
-        int rows = int.min(max_rows, sinks.length);
+        int rows = int.min(max_rows, sink_rows.length);
         for (int i = 0; i < rows; i++) {
-            render_sink_row(ctx, i, x + 6, rows_top + i * ROW_H, w - 12, ROW_H);
+            sink_rows[i].set_bounds(x + 6, rows_top + i * ROW_H, w - 12, ROW_H);
+            sink_rows[i].render(ctx, sink_rows[i].id == default_sink);
         }
     }
 
     public void mouse_down(int mx, int my) {
         mute_button.mouse_down(mx, my);
         slider.mouse_down(mx, my);
-
-        int sink = sink_at(mx, my);
-        if (sink >= 0 && sink < sinks.length) {
-            set_default_sink(sinks[sink].id);
-        }
+        foreach (var row in sink_rows)
+            row.mouse_down(mx, my);
     }
 
     public void mouse_up(int mx, int my) {
         mute_button.mouse_up(mx, my);
         slider.mouse_up(mx, my);
-        //sink at
+        foreach (var row in sink_rows)
+            row.mouse_up(mx, my);
     }
 
     public void mouse_motion(int mx, int my) {
         slider.mouse_motion(mx, my);
         mute_button.mouse_motion(mx, my);
-        //sink_at.mouse_motion(mx, my) also needs to trigger redraw when hovered sink changes
+        foreach (var row in sink_rows)
+            row.mouse_motion(mx, my);
     }
 
     public void mouse_scroll(int mx, int my, int amount) {
         if (amount == 0) return;
         int delta = amount > 0 ? -3 : 3;
         set_volume_percent(volume_percent + delta);
-    }
-
-    private void render_sink_row(Context ctx, int i, int x, int y, int w, int h) {
-        bool hov = hovered_sink == i;
-        bool sel = i < sinks.length && sinks[i].id == default_sink;
-
-        if (sel) {
-            ctx.draw_rect_rounded(x, y + 3, w, h - 6, 8f,
-                Color(){r=0.11f, g=0.27f, b=0.66f, a=0.90f});
-        } else if (hov) {
-            ctx.draw_rect_rounded(x, y + 3, w, h - 6, 8f,
-                Color(){r=0.17f, g=0.18f, b=0.24f, a=0.85f});
-        }
-
-        if (i < sinks.length) {
-            string label = sinks[i].name;
-            pdt(ctx, label, x + 10, y + (h - 13) / 2, 13f,
-                sel ? Color(){r=1f, g=1f, b=1f, a=1f}
-                    : Color(){r=0.86f, g=0.88f, b=0.93f, a=1f});
-            if (sel) {
-                pdt(ctx, "✓", x + w - 18, y + (h - 13) / 2, 13f,
-                    Color(){r=0.22f, g=0.95f, b=0.48f, a=1f});
-            }
-        }
-    }
-
-    private int sink_at(int mx, int my) {
-        int list_top = py + HEADER_H + 14 + SLIDER_H + 8;
-        int rows_top = list_top + 16;
-        int rel_y = my - rows_top;
-        if (rel_y < 0) return -1;
-
-        int idx = rel_y / ROW_H;
-        int row_y = rows_top + idx * ROW_H;
-        if (idx < 0 || idx >= sinks.length) return -1;
-
-        if (mx < px + 6 || mx > px + pw - 6) return -1;
-        if (my < row_y + 3 || my > row_y + ROW_H - 3) return -1;
-        return idx;
     }
 
     private void set_volume_percent(int pct) {
@@ -269,8 +312,8 @@ public class SoundPage : GLib.Object, ITrayPage {
         return "";
     }
 
-    private Sink[] query_sinks() {
-        Sink[] result = {};
+    private SinkRow[] query_sinks() {
+        SinkRow[] result = {};
         var detailed = run_pactl_sync("list sinks");
         var desc_map = parse_sink_descriptions(detailed);
 
@@ -287,7 +330,9 @@ public class SoundPage : GLib.Object, ITrayPage {
                 ? from_desc.strip()
                 : pretty_sink_name(id);
 
-            result += new Sink(id, name);
+            var row = new SinkRow();
+            row.update(id, name);
+            result += row;
         }
         return result;
     }

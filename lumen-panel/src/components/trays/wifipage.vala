@@ -49,6 +49,9 @@ public class WifiPage : GLib.Object, ITrayPage {
     private UiButton disconnect_button = new UiButton();
     private UiTextField password_field = new UiTextField();
 
+    // Tracks last rendered connect-button mode to avoid per-frame color reassignment
+    private bool connect_btn_is_disconnect = false;
+
     // Bounds from last render() call — used for hit-testing
     private int px;
     private int py;
@@ -68,6 +71,9 @@ public class WifiPage : GLib.Object, ITrayPage {
 
         connect_button.label = "Connect";
         connect_button.text_size = 14f;
+        connect_button.normal_color  = Color(){r=0.12f, g=0.34f, b=0.88f, a=1f};
+        connect_button.hover_color   = Color(){r=0.20f, g=0.50f, b=1.0f,  a=1f};
+        connect_button.pressed_color = Color(){r=0.10f, g=0.28f, b=0.72f, a=1f};
         connect_button.clicked.connect(() => {
             if (selected_row >= 0 && selected_row < nets.length
              && nets[selected_row].ssid == connected) {
@@ -279,11 +285,14 @@ public class WifiPage : GLib.Object, ITrayPage {
             pdt(ctx, "Connected", x + PAD, btn_y + (34 - 13) / 2, 13f,
                 Color(){r=0.58f, g=0.78f, b=0.62f, a=0.95f});
 
+            if (!connect_btn_is_disconnect) {
+                connect_btn_is_disconnect = true;
+                connect_button.label         = "Disconnect";
+                connect_button.normal_color  = Color(){r=0.76f, g=0.20f, b=0.20f, a=1f};
+                connect_button.hover_color   = Color(){r=0.88f, g=0.26f, b=0.26f, a=1f};
+                connect_button.pressed_color = Color(){r=0.64f, g=0.16f, b=0.16f, a=1f};
+            }
             connect_button.set_bounds(btn_x, btn_y, btn_w, 34);
-            connect_button.label = "Disconnect";
-            connect_button.normal_color = Color(){r=0.76f, g=0.20f, b=0.20f, a=1f};
-            connect_button.hover_color = Color(){r=0.88f, g=0.26f, b=0.26f, a=1f};
-            connect_button.pressed_color = Color(){r=0.64f, g=0.16f, b=0.16f, a=1f};
             connect_button.render(ctx);
             return;
         }
@@ -295,14 +304,17 @@ public class WifiPage : GLib.Object, ITrayPage {
         password_field.set_bounds(field_x, field_y, field_w, 34);
         password_field.render(ctx);
 
+        if (connect_btn_is_disconnect) {
+            connect_btn_is_disconnect = false;
+            connect_button.label         = "Connect";
+            connect_button.normal_color  = Color(){r=0.12f, g=0.34f, b=0.88f, a=1f};
+            connect_button.hover_color   = Color(){r=0.20f, g=0.50f, b=1.0f,  a=1f};
+            connect_button.pressed_color = Color(){r=0.10f, g=0.28f, b=0.72f, a=1f};
+        }
         // Connect button
         int btn_x = x + w - PAD - 90;
         int btn_y = y + (h - 34) / 2;
         connect_button.set_bounds(btn_x, btn_y, 90, 34);
-        connect_button.label = "Connect";
-        connect_button.normal_color = Color(){r=0.12f, g=0.34f, b=0.88f, a=1f};
-        connect_button.hover_color = Color(){r=0.20f, g=0.50f, b=1.0f, a=1f};
-        connect_button.pressed_color = Color(){r=0.10f, g=0.28f, b=0.72f, a=1f};
         connect_button.render(ctx);
     }
 
