@@ -16,5 +16,6 @@ void register_on_window_focus(toplevel_window_focus cb, void* user_data);
 
 void toplevel_activate_by_id(uint32_t id);
 void toplevel_minimize_by_id(uint32_t id);
+void toplevel_close_by_id(uint32_t id);
 
 #endif

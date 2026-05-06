@@ -13,6 +13,7 @@ typedef struct toplevel_window {
     char *app_id;
     char *title;
     bool activated;
+    bool announced;
     struct wl_list link;
 } toplevel_window_t;
 
@@ -51,6 +52,7 @@ static void toplevel_handle_output_leave(void *data,
 static void toplevel_handle_parent(void *data,
                                    struct zwlr_foreign_toplevel_handle_v1 *handle,
                                    struct zwlr_foreign_toplevel_handle_v1 *parent);
+static void emit_window_new_if_ready(toplevel_window_t *window);
 
 static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_listener = {
     .title = toplevel_handle_title,
@@ -74,6 +76,15 @@ static toplevel_window_t* window_create(struct zwlr_foreign_toplevel_handle_v1 *
     return window;
 }
 
+static void emit_window_new_if_ready(toplevel_window_t *window) {
+    if (!window || window->announced) return;
+    if (!window->app_id || !window->title) return;
+    if (!callback_new) return;
+
+    window->announced = true;
+    callback_new(window->id, window->app_id, window->title, callback_new_data);
+}
+
 // Destroy window entry
 static void window_destroy(toplevel_window_t *window) {
     if (callback_rm && window->app_id && window->title) {
@@ -93,6 +104,7 @@ static void toplevel_handle_title(void *data,
     toplevel_window_t *window = data;
     free(window->title);
     window->title = strdup(title);
+    emit_window_new_if_ready(window);
 }
 
 static void toplevel_handle_app_id(void *data,
@@ -101,14 +113,13 @@ static void toplevel_handle_app_id(void *data,
     toplevel_window_t *window = data;
     free(window->app_id);
     window->app_id = strdup(app_id);
-
-    if (callback_new && window->app_id && window->title) {
-        callback_new(window->id, window->app_id, window->title, callback_new_data);
-    }
+    emit_window_new_if_ready(window);
 }
 
 static void toplevel_handle_done(void *data,
                                  struct zwlr_foreign_toplevel_handle_v1 *handle) {
+    toplevel_window_t *window = data;
+    emit_window_new_if_ready(window);
 }
 
 static void toplevel_handle_closed(void *data,
@@ -209,6 +220,11 @@ void toplevel_cleanup(void) {
 void register_on_window_new(toplevel_window_new cb, void* user_data) {
     callback_new = cb;
     callback_new_data = user_data;
+
+    toplevel_window_t *window;
+    wl_list_for_each(window, &windows, link) {
+        emit_window_new_if_ready(window);
+    }
 }
 
 void register_on_window_rm(toplevel_window_rm cb, void* user_data) {
@@ -219,6 +235,15 @@ void register_on_window_rm(toplevel_window_rm cb, void* user_data) {
 void register_on_window_focus(toplevel_window_focus cb, void* user_data) {
     callback_focus = cb;
     callback_focus_data = user_data;
+
+    if (!callback_focus) return;
+
+    toplevel_window_t *window;
+    wl_list_for_each(window, &windows, link) {
+        if (window->activated && window->app_id && window->title) {
+            callback_focus(window->id, callback_focus_data);
+        }
+    }
 }
 
 static toplevel_window_t* window_find(uint32_t id) {
@@ -279,4 +304,23 @@ void toplevel_minimize_by_id(uint32_t id){
     }
 
     toplevel_minimize(window);
+}
+
+void toplevel_close(toplevel_window_t *window){
+    if (!window->handle) {
+        fprintf(stderr, "toplevel_close: no window handle\n");
+        return;
+    }
+
+    zwlr_foreign_toplevel_handle_v1_close(window->handle);
+}
+
+void toplevel_close_by_id(uint32_t id){
+    toplevel_window_t *window = window_find(id);
+    if (!window) {
+        fprintf(stderr, "Window not found: %u\n", id);
+        return;
+    }
+
+    toplevel_close(window);
 }

@@ -71,6 +71,9 @@ namespace WLHooks {
     [CCode(cname = "toplevel_minimize_by_id")]
     void toplevel_minimize_by_id(uint id);
 
+    [CCode(cname = "toplevel_close_by_id")]
+    void toplevel_close_by_id(uint id);
+
     public delegate void SeatMouseEnter();
     public delegate void SeatMouseLeave();
     public delegate void SeatMouseDown(uint32 button);
