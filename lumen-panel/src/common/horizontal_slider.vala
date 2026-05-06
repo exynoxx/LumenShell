@@ -45,31 +45,27 @@ public class UiHorizontalSlider : GLib.Object {
             && my >= y && my <= y + h;
     }
 
-    public bool mouse_motion(int mx, int my) {
+    public void mouse_motion(int mx, int my) {
         bool old_hover = hovered;
         hovered = contains(mx, my);
 
         if (dragging) {
             update_from_pointer(mx);
-            return true;
+            redraw = true;
         }
-
-        return old_hover != hovered;
     }
 
-    public bool mouse_down(int mx, int my) {
-        if (!contains(mx, my)) return false;
+    public void mouse_down(int mx, int my) {
+        if (!contains(mx, my)) return;
+
         dragging = true;
-        hovered = true;
+        redraw = true;
         update_from_pointer(mx);
-        return true;
     }
 
-    public bool mouse_up(int mx, int my) {
-        bool was_dragging = dragging;
+    public void mouse_up(int mx, int my) {
         dragging = false;
-        hovered = contains(mx, my);
-        return was_dragging;
+        redraw = true;
     }
 
     public void render(Context ctx) {

@@ -80,7 +80,7 @@ public class UiScrollView : GLib.Object {
         return area_y + (index - first_row) * row_h;
     }
 
-    public void render_scrollbar(Context ctx) {
+    public void render(Context ctx) {
         int rows = visible_rows();
         if (item_count <= rows || rows <= 0 || area_h <= 8) return;
 

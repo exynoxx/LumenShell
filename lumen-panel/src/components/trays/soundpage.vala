@@ -156,42 +156,25 @@ public class SoundPage : GLib.Object, ITrayPage {
     }
 
     public void mouse_down(int mx, int my) {
-        if (mute_button.mouse_down(mx, my)) {
-            redraw = true;
-            return;
-        }
-
-        if (slider.mouse_down(mx, my)) {
-            redraw = true;
-            return;
-        }
+        mute_button.mouse_down(mx, my);
+        slider.mouse_down(mx, my);
 
         int sink = sink_at(mx, my);
         if (sink >= 0 && sink < sinks.length) {
             set_default_sink(sinks[sink].id);
-            return;
         }
     }
 
     public void mouse_up(int mx, int my) {
-        bool any = false;
-        any = mute_button.mouse_up(mx, my) || any;
-        any = slider.mouse_up(mx, my) || any;
-        if (any)
-            redraw = true;
+        mute_button.mouse_up(mx, my);
+        slider.mouse_up(mx, my);
+        //sink at
     }
 
     public void mouse_motion(int mx, int my) {
-        bool changed = false;
-        int old_hovered_sink = hovered_sink;
-
-        changed = slider.mouse_motion(mx, my) || changed;
-        changed = mute_button.mouse_motion(mx, my) || changed;
-        hovered_sink = sink_at(mx, my);
-
-        if (hovered_sink != old_hovered_sink || changed) {
-            redraw = true;
-        }
+        slider.mouse_motion(mx, my);
+        mute_button.mouse_motion(mx, my);
+        //sink_at.mouse_motion(mx, my) also needs to trigger redraw when hovered sink changes
     }
 
     public void mouse_scroll(int mx, int my, int amount) {

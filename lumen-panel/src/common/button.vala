@@ -34,34 +34,27 @@ public class UiButton : GLib.Object {
             && my >= y && my <= y + h;
     }
 
-    public bool mouse_motion(int mx, int my) {
+    public void mouse_motion(int mx, int my) {
         bool old = hovered;
         hovered = contains(mx, my);
-        return old != hovered;
+        if (old != hovered)
+            redraw = true;
     }
 
-    public bool mouse_down(int mx, int my) {
-        if (!enabled) return false;
-        if (!contains(mx, my)) return false;
+    public void mouse_down(int mx, int my) {
+        if (!enabled) return;
+        if (!contains(mx, my)) return;
+
         pressed = true;
-        hovered = true;
-        return true;
     }
 
-    public bool mouse_up(int mx, int my) {
-        if (!enabled) {
-            pressed = false;
-            return false;
-        }
-
-        bool was_pressed = pressed;
-        pressed = false;
-        hovered = contains(mx, my);
-        if (was_pressed && hovered) {
+    public void mouse_up(int mx, int my) {
+        if (!enabled) return;
+        if (pressed && hovered) {
             clicked();
-            return true;
+            pressed = false;
+            redraw = true;
         }
-        return was_pressed;
     }
 
     public void cancel_press() {
@@ -84,7 +77,6 @@ public class UiButton : GLib.Object {
         }
 
         ctx.draw_rect_rounded(x, y, w, h, radius, c);
-        pdt_center(ctx, label, x + w / 2, y + (h - (int) text_size) / 2,
-            text_size, text_color);
+        pdt_center(ctx, label, x + w / 2, y + (h - (int) text_size) / 2, text_size, text_color);
     }
 }

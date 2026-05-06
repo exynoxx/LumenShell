@@ -130,12 +130,9 @@ public class WifiPage : GLib.Object, ITrayPage {
     }
 
     public void mouse_up(int mx, int my) {
-        bool handled = false;
-        handled = refresh_button.mouse_up(mx, my) || handled;
-        handled = connect_button.mouse_up(mx, my) || handled;
-        handled = disconnect_button.mouse_up(mx, my) || handled;
-        if (handled)
-            redraw = true;
+        refresh_button.mouse_up(mx, my);
+        connect_button.mouse_up(mx, my);
+        disconnect_button.mouse_up(mx, my);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -206,7 +203,7 @@ public class WifiPage : GLib.Object, ITrayPage {
                 if (i >= nets.length) break;
                 render_row(ctx, i, x, list_top + rel * ROW_H, w, ROW_H);
             }
-            list_view.render_scrollbar(ctx);
+            list_view.render(ctx);
         }
 
         // ── Password area ─────────────────────────────────────────────────
@@ -314,59 +311,30 @@ public class WifiPage : GLib.Object, ITrayPage {
     // ─────────────────────────────────────────────────────────────────────
 
     public void mouse_motion(int mx, int my) {
-        bool changed = false;
-        changed = refresh_button.mouse_motion(mx, my) || changed;
-
-        int old_hr = hovered_row;
-        int old_dh = disconnect_hov_row;
+        refresh_button.mouse_motion(mx, my);
+        disconnect_button.mouse_motion(mx, my);
+        connect_button.mouse_motion(mx, my);    
+        password_field.mouse_motion(mx, my);
 
         update_list_viewport_geometry();
         hovered_row = list_view.row_at(mx, my);
-
-        disconnect_hov_row = -1;
-        if (hovered_row >= 0 && hovered_row < nets.length
-         && nets[hovered_row].ssid == connected
-         && disconnect_button.mouse_motion(mx, my)) {
-            disconnect_hov_row = hovered_row;
-        } else {
-            disconnect_button.mouse_motion(-1, -1);
-        }
-
-        if (selected_row >= 0 && selected_row < nets.length) {
-            bool is_conn_row = selected_row < nets.length
-                            && nets[selected_row].ssid == connected;
-            changed = connect_button.mouse_motion(mx, my) || changed;
-            if (!is_conn_row)
-                changed = password_field.mouse_motion(mx, my) || changed;
-        }
-
-        if (hovered_row != old_hr || disconnect_hov_row != old_dh || changed)
-            redraw = true;
     }
 
     public void mouse_down(int mx, int my) {
-        if (refresh_button.mouse_down(mx, my)) {
-            redraw = true;
-            return;
-        }
+        refresh_button.mouse_down(mx, my);
 
-        if (disconnect_hov_row >= 0 && disconnect_button.mouse_down(mx, my)) {
-            redraw = true;
-            return;
+        if (disconnect_hov_row >= 0) {
+            disconnect_button.mouse_down(mx, my);
         }
 
         if (selected_row >= 0 && selected_row < nets.length) {
             bool is_conn_row = nets[selected_row].ssid == connected;
 
-            if (!is_conn_row && password_field.mouse_down(mx, my)) {
-                redraw = true;
-                return;
+            if (!is_conn_row) {
+                password_field.mouse_down(mx, my);
             }
 
-            if (connect_button.mouse_down(mx, my)) {
-                redraw = true;
-                return;
-            }
+            connect_button.mouse_down(mx, my);
         }
 
         // Network row click

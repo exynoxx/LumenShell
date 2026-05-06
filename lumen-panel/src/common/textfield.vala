@@ -52,26 +52,23 @@ public class UiTextField : GLib.Object {
             changed(text);
     }
 
-    public bool mouse_motion(int mx, int my) {
+    public void mouse_motion(int mx, int my) {
         bool old = hovered;
         hovered = contains(mx, my);
-        return old != hovered;
+        if (old != hovered)
+            redraw = true;
     }
 
-    public bool mouse_down(int mx, int my) {
-        if (contains(mx, my)) {
+    public void mouse_down(int mx, int my) {
+        if (hovered) {
             focus();
-            return true;
         }
-
-        if (focused)
-            blur();
-        return false;
     }
 
     public void focus() {
         if (focused) return;
         focused = true;
+        redraw = true;
         ctrl_down = false;
         WLHooks.register_on_key_down(on_key_down);
         WLHooks.register_on_key_up(on_key_up);
