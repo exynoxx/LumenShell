@@ -15,10 +15,6 @@ public static int main(string[] args) {
     panel = new Panel();
     animations = new AnimationManager();
 
-    // Set initial input region to just the taskbar strip (collapsed state)
-    var size = WLHooks.get_screen_size();
-    WLHooks.set_input_region(0, HEIGHT - EXCLUSIVE_HEIGHT, size.width, EXCLUSIVE_HEIGHT);
-
     WLHooks.register_on_window_new(panel.on_window_new);
     WLHooks.register_on_window_rm(panel.on_window_rm);
     WLHooks.register_on_window_focus(panel.on_window_focus);

@@ -73,8 +73,8 @@ namespace WLHooks {
 
     public delegate void SeatMouseEnter();
     public delegate void SeatMouseLeave();
-    public delegate void SeatMouseDown();
-    public delegate void SeatMouseUp();
+    public delegate void SeatMouseDown(uint32 button);
+    public delegate void SeatMouseUp(uint32 button);
     public delegate void SeatMouseMotion(int x, int y);
     public delegate void SeatKeyDown(uint32 key);
     public delegate void SeatKeyUp(uint32 key);

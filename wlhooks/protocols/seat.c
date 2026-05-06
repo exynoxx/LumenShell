@@ -64,11 +64,11 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
                           uint32_t state) {
     if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
         if(mouse_down_cb){
-            mouse_down_cb(mouse_down_userdata);
+            mouse_down_cb(button, mouse_down_userdata);
         }
     } else {
         if(mouse_up_cb){
-            mouse_up_cb(mouse_up_userdata);
+            mouse_up_cb(button, mouse_up_userdata);
         }
     }
 }

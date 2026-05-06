@@ -7,8 +7,8 @@
 
 typedef void (*seat_mouse_enter)(void* user_data);
 typedef void (*seat_mouse_leave)(void* user_data);
-typedef void (*seat_mouse_down)(void* user_data);
-typedef void (*seat_mouse_up)(void* user_data);
+typedef void (*seat_mouse_down)(uint32_t button, void* user_data);
+typedef void (*seat_mouse_up)(uint32_t button, void* user_data);
 typedef void (*seat_mouse_motion)(int32_t x, int32_t y, void* user_data);
 
 typedef void (*seat_key_down)(uint32_t key, void* user_data);

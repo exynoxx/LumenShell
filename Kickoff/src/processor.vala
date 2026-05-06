@@ -83,10 +83,12 @@ public class Processor {
         grid.mouse_move(mouse_x, mouse_y);
     }
 
-    public void mouse_down() {
+    public void mouse_down(uint32 button) {
+        if(button != 272) return;
         grid.mouse_down();
     }
-    public void mouse_up() {
+    public void mouse_up(uint32 button) {
+        if(button != 272) return;
         grid.mouse_up();
     }
 

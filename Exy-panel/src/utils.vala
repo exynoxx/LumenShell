@@ -71,6 +71,59 @@ public class Utils {
         
         return null;
     }
+
+    public static string? get_name_from_desktop_file(string desktop_file_path) {
+        try {
+            var key_file = new KeyFile();
+            key_file.load_from_file(desktop_file_path, KeyFileFlags.NONE);
+
+            if (key_file.has_key("Desktop Entry", "Name")) {
+                return key_file.get_string("Desktop Entry", "Name");
+            }
+        } catch (Error e) {
+            warning("Failed to parse desktop file name: %s", e.message);
+        }
+
+        return null;
+    }
+
+    private static string sanitize_exec(string exec) {
+        var out = new StringBuilder();
+        foreach (var token in exec.split(" ")) {
+            if (token == "") continue;
+            if (token.has_prefix("%")) continue;
+
+            var cleaned = token.replace("%U", "")
+                               .replace("%u", "")
+                               .replace("%F", "")
+                               .replace("%f", "")
+                               .replace("%i", "")
+                               .replace("%c", "")
+                               .replace("%k", "");
+            if (cleaned.strip() == "") continue;
+
+            if (out.len > 0) out.append(" ");
+            out.append(cleaned);
+        }
+        return out.str;
+    }
+
+    public static string? get_exec_from_desktop_file(string desktop_file_path) {
+        try {
+            var key_file = new KeyFile();
+            key_file.load_from_file(desktop_file_path, KeyFileFlags.NONE);
+
+            if (key_file.has_key("Desktop Entry", "Exec")) {
+                var exec = key_file.get_string("Desktop Entry", "Exec");
+                var sanitized = sanitize_exec(exec);
+                if(sanitized != "") return sanitized;
+            }
+        } catch (Error e) {
+            warning("Failed to parse desktop file exec: %s", e.message);
+        }
+
+        return null;
+    }
     
     // Get XDG icon theme directories
     private static string[] get_icon_theme_dirs() {
@@ -100,6 +153,20 @@ public class Utils {
         if (theme == null)
             theme = Ini.Get_key_value(kde_settings_file, "Theme"); //TODO look in icons section
         return theme ?? "hicolor";
+    }
+
+    public static string get_display_name_from_app_id(string app_id) {
+        string? desktop_file = find_desktop_file(app_id);
+        if (desktop_file == null) return app_id;
+
+        string? name = get_name_from_desktop_file(desktop_file);
+        return name ?? app_id;
+    }
+
+    public static string? get_launch_cmd_from_app_id(string app_id) {
+        string? desktop_file = find_desktop_file(app_id);
+        if (desktop_file == null) return null;
+        return get_exec_from_desktop_file(desktop_file);
     }
 
     // Find icon file from icon name
