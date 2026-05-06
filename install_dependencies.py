@@ -110,7 +110,7 @@ def install_arch():
     return run_command(cmd)
 
 def main():
-    print("ExyShell Dependency Installation Script")
+    print("Lumen Dependency Installation Script")
     print("=" * 50)
     
     if os.geteuid() != 0:

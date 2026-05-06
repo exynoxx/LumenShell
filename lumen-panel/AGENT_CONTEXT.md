@@ -1,4 +1,4 @@
-# Exy-panel — Agent Context
+# lumen-panel — Agent Context
 
 ## Stack
 - **Language:** Vala, compiled with `valac` (single-pass, no incremental build)

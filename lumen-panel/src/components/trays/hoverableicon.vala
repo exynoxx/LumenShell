@@ -3,7 +3,7 @@ using GLES2;
 
 public class HoverableIcon : IHoverable, ITray, Object {
 
-    private const string base_path = "/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/";
+    private const string base_path = "/home/nicholas/Dokumenter/layer-shell-experiments/lumen-panel/src/res/";
     private const int ICON_SIZE = 32;
     private const int HOVER_RADIUS = 24;
     private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;

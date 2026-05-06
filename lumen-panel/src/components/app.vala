@@ -196,7 +196,7 @@ public class App {
 
     private void load_icon(){
         if (is_launcher){
-            var image = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/app.svg",32,32);
+            var image = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/lumen-panel/src/res/app.svg",32,32);
             if(image == null){
                 print("Launcher icon not found");
                 return;
@@ -209,7 +209,7 @@ public class App {
         var icon_path = Utils.get_icon_path_from_app_id(app_id);
         if(icon_path == null){
             stderr.printf("Icon not found for app_id=%s\n", app_id);
-            var fallback = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/Exy-panel/src/res/app.svg",32,32);
+            var fallback = DrawKit.image_from_svg("/home/nicholas/Dokumenter/layer-shell-experiments/lumen-panel/src/res/app.svg",32,32);
             if(fallback != null){
                 tex = DrawKit.texture_upload(*fallback);
             }

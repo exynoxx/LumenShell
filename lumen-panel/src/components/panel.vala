@@ -60,7 +60,7 @@ public class Panel {
 
         tray = new Tray(ctx, screen_width);
 
-        pins_file = Path.build_filename(Environment.get_user_config_dir(), "exy-panel", "pinned-apps.txt");
+        pins_file = Path.build_filename(Environment.get_user_config_dir(), "lumen-panel", "pinned-apps.txt");
         load_pins();
         relayout();
         update_input_region();
