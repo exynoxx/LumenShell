@@ -298,10 +298,10 @@ public class SoundPage : GLib.Object, ITrayPage {
     }
 
     private string query_default_sink() {
-        var out_str = run_cmd_sync("pactl get-default-sink").strip();
+        var out_str = run_pactl_sync("get-default-sink").strip();
         if (out_str != "") return out_str;
 
-        out_str = run_cmd_sync("pactl info");
+        out_str = run_pactl_sync("info");
         foreach (var line in out_str.split("\n")) {
             var l = line.strip();
             if (l.has_prefix("Default Sink:")) {
@@ -313,19 +313,81 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     private Sink[] query_sinks() {
         Sink[] result = {};
-        var out_str = run_cmd_sync("pactl list short sinks");
+        var detailed = run_pactl_sync("list sinks");
+        var desc_map = parse_sink_descriptions(detailed);
+
+        var out_str = run_pactl_sync("list short sinks");
         foreach (var line in out_str.split("\n")) {
             var l = line.strip();
             if (l == "") continue;
             var p = l.split("\t");
             if (p.length < 2) continue;
-            result += new Sink(p[1], p[1]);
+
+            string id = p[1];
+            string? from_desc = desc_map.lookup(id);
+            string name = (from_desc != null && from_desc.strip() != "")
+                ? from_desc.strip()
+                : pretty_sink_name(id);
+
+            result += new Sink(id, name);
         }
         return result;
     }
 
+    private GLib.HashTable<string, string> parse_sink_descriptions(string text) {
+        var map = new GLib.HashTable<string, string>(str_hash, str_equal);
+
+        string current_name = "";
+        string current_desc = "";
+
+        foreach (var raw in text.split("\n")) {
+            string line = raw.strip();
+            if (line.has_prefix("Name:") || line.has_prefix("Navn:")) {
+                if (current_name != "" && current_desc != "") {
+                    map.insert(current_name, current_desc);
+                }
+                int sep = line.index_of(":");
+                current_name = sep >= 0 ? line.substring(sep + 1).strip() : "";
+                current_desc = "";
+                continue;
+            }
+
+            if (line.has_prefix("Description:") || line.has_prefix("Beskrivelse:")) {
+                int sep = line.index_of(":");
+                current_desc = sep >= 0 ? line.substring(sep + 1).strip() : "";
+                continue;
+            }
+        }
+
+        if (current_name != "" && current_desc != "") {
+            map.insert(current_name, current_desc);
+        }
+
+        return map;
+    }
+
+    private string pretty_sink_name(string sink_id) {
+        string s = sink_id;
+        if (s.has_prefix("alsa_output."))
+            s = s.substring("alsa_output.".length);
+
+        s = s.replace(".analog-stereo", "");
+        s = s.replace(".analog-surround-21", "");
+        s = s.replace(".analog-surround-40", "");
+        s = s.replace(".analog-surround-51", "");
+        s = s.replace(".hdmi-stereo", " HDMI");
+        s = s.replace(".iec958-stereo", " Digital");
+        s = s.replace("_", " ");
+        s = s.replace(".", " ");
+
+        if (s.length == 0)
+            return sink_id;
+
+        return s;
+    }
+
     private int query_volume_percent() {
-        var out_str = run_cmd_sync("pactl get-sink-volume @DEFAULT_SINK@");
+        var out_str = run_pactl_sync("get-sink-volume @DEFAULT_SINK@");
         int pct = first_percent(out_str);
         if (pct >= 0) return pct;
 
@@ -334,7 +396,7 @@ public class SoundPage : GLib.Object, ITrayPage {
     }
 
     private bool query_muted() {
-        var out_str = run_cmd_sync("pactl get-sink-mute @DEFAULT_SINK@").down();
+        var out_str = run_pactl_sync("get-sink-mute @DEFAULT_SINK@").down();
         if (out_str.contains("yes")) return true;
         if (out_str.contains("no")) return false;
 
@@ -380,6 +442,10 @@ public class SoundPage : GLib.Object, ITrayPage {
             return "";
         }
         return out_str;
+    }
+
+    private string run_pactl_sync(string args) {
+        return run_cmd_sync("env LC_ALL=C pactl " + args);
     }
 
     private void run_cmd_async(string cmd) {

@@ -8,7 +8,7 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
 
     private int x = 0;
     private int y = 0;
-    private int width = 62;
+    private int width = 60;
 
     private string label = "0%";
     private bool muted = false;
@@ -57,7 +57,7 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
 
         icon.render(ctx);
 
-        int tx = x + icon.get_width() + 2;
+        int tx = x + icon.get_width();
         int ty = y + (Tray.TRAY_HEIGHT - 13) / 2;
         Color col = muted
             ? Color(){r=0.92f, g=0.36f, b=0.36f, a=1f}
@@ -70,6 +70,6 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
         int pct = _page.get_volume_percent();
         label = "%d%%".printf(pct);
         icon.set_icon(muted ? "sound-mute" : "sound-max");
-        width = icon.get_width() + 2 + ctx.width_of(label, 13f);
+        width = icon.get_width() + ctx.width_of(label, 13f);
     }
 }
