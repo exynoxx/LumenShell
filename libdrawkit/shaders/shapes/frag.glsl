@@ -38,7 +38,10 @@ R"(
             alpha = 1.0 - smoothstep(-0.5, 0.5, dist);
         }
 
-        gl_FragColor = vec4(color.rgb, color.a * alpha);
+        // Premultiply RGB by final alpha so the Wayland compositor
+        // (which expects premultiplied alpha) blends correctly.
+        float fa = color.a * alpha;
+        gl_FragColor = vec4(color.rgb * fa, fa);
     }
 
 )"

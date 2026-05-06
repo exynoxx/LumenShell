@@ -63,9 +63,9 @@ bool dk_backend_init(dk_context *ctx, int groups) {
     // Create VBO
     glGenBuffers(1, &ctx->vbo);
     
-    // Enable blending
+    // Enable blending (premultiplied alpha — Wayland compositors expect premult)
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     dk_font_init(ctx);
     return true;

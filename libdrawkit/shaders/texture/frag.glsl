@@ -8,11 +8,15 @@ R"(#version 100
     void main() {
 
         if(mode == 0){
-            gl_FragColor = texture2D(texture0, fragCoord) * color;
+            // Texture has straight alpha (stb_image / nanosvg output).
+            // Premultiply before writing so GL_ONE blend is correct.
+            vec4 t = texture2D(texture0, fragCoord) * color;
+            gl_FragColor = vec4(t.rgb * t.a, t.a);
         } else if (mode == 1) {
             float a = texture2D(texture0, fragCoord).r; // luminance -> sample red\n    
             // premultiply color by alpha
-            gl_FragColor = vec4(color.rgb, color.a * a);
+            float fa = color.a * a;
+            gl_FragColor = vec4(color.rgb * fa, fa);
         }
     }
 )"
