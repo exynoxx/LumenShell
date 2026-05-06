@@ -10,13 +10,21 @@ using GLib;
  *   • Wide charge bar with colour-coded fill
  *   • Stats grid: Voltage · Current · Remaining charge · Time estimate
  */
-public class BatteryPage : GLib.Object, ITrayPage {
+public class BatteryPage : BaseTrayPage {
 
     private const int PAD = 16;
     private UiProgressBar progress = new UiProgressBar();
 
-    // Tracks last rendered charge tier (0=low, 1=mid, 2=ok) to avoid per-frame color writes
-    private int progress_tier = -1;
+    private const int BAR_H = 22;
+
+    // Cached display values — updated in refresh() on each state change
+    private string cached_pct_str     = "0%";
+    private Color  cached_pct_col;
+    private string cached_voltage_str = "";
+    private string cached_current_str = "";
+    private string cached_charge_str  = "";
+    private string cached_time_str    = "";
+    private bool   cached_has_time    = false;
 
     public BatteryPage() {
         progress.track_color = Color(){r=0.10f, g=0.11f, b=0.16f, a=1f};
@@ -35,21 +43,15 @@ public class BatteryPage : GLib.Object, ITrayPage {
     // ITrayPage
     // ─────────────────────────────────────────────────────────────────────
 
-    public string get_title() { return "Battery"; }
+    public override string get_title() { return "Battery"; }
 
-    public void on_activate()   { refresh(); }
-    public void on_deactivate() {}
-
-    public void mouse_down(int mx, int my) {}
-    public void mouse_up  (int mx, int my) {}
-    public void mouse_motion(int mx, int my) {}
-    public void mouse_scroll(int mx, int my, int amount) {}
+    public override void on_activate() { refresh(); }
 
     // ─────────────────────────────────────────────────────────────────────
     // Rendering
     // ─────────────────────────────────────────────────────────────────────
 
-    public void render(Context ctx, int x, int y, int w, int h) {
+    public override void render(Context ctx, int x, int y, int w, int h) {
         int cx  = x + w / 2;
         int cur = y + PAD;
 
@@ -59,13 +61,7 @@ public class BatteryPage : GLib.Object, ITrayPage {
         cur += 26;
 
         // ── Large percentage ──────────────────────────────────────────────
-        string pct_str = "%d%%".printf(percent);
-        Color  pct_col = percent >= 60
-            ? Color(){r=0.18f, g=0.88f, b=0.42f, a=1f}
-            : percent >= 25
-                ? Color(){r=1.0f,  g=0.74f, b=0.14f, a=1f}
-                : Color(){r=1.0f,  g=0.28f, b=0.28f, a=1f};
-        pdt_center(ctx, pct_str, cx, cur, 40f, pct_col);
+        pdt_center(ctx, cached_pct_str, cx, cur, 40f, cached_pct_col);
         cur += 50;
 
         // ── Status ────────────────────────────────────────────────────────
@@ -76,61 +72,23 @@ public class BatteryPage : GLib.Object, ITrayPage {
         // ── Charge bar ────────────────────────────────────────────────────
         int bar_x = x + PAD;
         int bar_w = w - PAD * 2;
-        int bar_h = 22;
-
-        progress.set_bounds(bar_x, cur, bar_w, bar_h);
-        progress.set_value(percent);
-        int tier = percent >= 60 ? 2 : percent >= 25 ? 1 : 0;
-        if (tier != progress_tier) {
-            progress_tier = tier;
-            progress.fill_color = tier == 2
-                ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
-                : tier == 1
-                    ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
-                    : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
-        }
+        progress.set_bounds(bar_x, cur, bar_w, BAR_H);
         progress.render(ctx);
 
-        // Percentage label inside bar (right-aligned)
-        string bar_label = "%d%%".printf(percent);
-        int blx = bar_x + bar_w - ctx.width_of(bar_label, 11f) - 8;
-        pdt(ctx, bar_label, blx, cur + (bar_h - 11) / 2, 11f,
+        int blx = bar_x + bar_w - ctx.width_of(cached_pct_str, 11f) - 8;
+        pdt(ctx, cached_pct_str, blx, cur + (BAR_H - 11) / 2, 11f,
             Color(){r=1f, g=1f, b=1f, a=0.65f});
-
-        cur += bar_h + 14;
+        cur += BAR_H + 14;
 
         // ── Stats grid (2 × 2) ────────────────────────────────────────────
         int col1 = x + PAD;
         int col2 = x + w / 2;
-
-        render_stat(ctx, col1, cur,
-            "Voltage",  "%.2f V".printf(voltage_v));
-        render_stat(ctx, col2, cur,
-            "Current",  "%.2f A".printf(current_a));
+        render_stat(ctx, col1, cur, "Voltage", cached_voltage_str);
+        render_stat(ctx, col2, cur, "Current", cached_current_str);
         cur += 32;
-
-        render_stat(ctx, col1, cur,
-            "Charge",   "%d / %d mAh".printf(
-                charge_now / 1000, charge_full / 1000));
-
-        // Estimated time
-        if (raw_status == "discharging" && current_a > 0.05f) {
-            float hrs   = (charge_now / 1000000f) / current_a;
-            int   h_rem = (int) hrs;
-            int   m_rem = (int)((hrs - h_rem) * 60);
-            string t    = h_rem > 0
-                ? "%dh %dm left".printf(h_rem, m_rem)
-                : "%dm left".printf(m_rem);
-            render_stat(ctx, col2, cur, "Est. time", t);
-        } else if (raw_status == "charging" && current_a > 0.05f) {
-            float hrs   = ((charge_full - charge_now) / 1000000f) / current_a;
-            int   h_rem = (int) hrs;
-            int   m_rem = (int)((hrs - h_rem) * 60);
-            string t    = h_rem > 0
-                ? "%dh %dm to full".printf(h_rem, m_rem)
-                : "%dm to full".printf(m_rem);
-            render_stat(ctx, col2, cur, "Est. time", t);
-        }
+        render_stat(ctx, col1, cur, "Charge",  cached_charge_str);
+        if (cached_has_time)
+            render_stat(ctx, col2, cur, "Est. time", cached_time_str);
     }
 
     private void render_stat(Context ctx, int x, int y, string label, string value) {
@@ -163,6 +121,44 @@ public class BatteryPage : GLib.Object, ITrayPage {
             status_str = "✓ Full";
         else
             status_str = raw_status.length > 0 ? raw_status : "Unknown";
+
+        // ── Cache display values so render() stays pure draw calls ───────────
+        cached_pct_str = "%d%%".printf(percent);
+        cached_pct_col = percent >= 60
+            ? Color(){r=0.18f, g=0.88f, b=0.42f, a=1f}
+            : percent >= 25
+                ? Color(){r=1.0f, g=0.74f, b=0.14f, a=1f}
+                : Color(){r=1.0f, g=0.28f, b=0.28f, a=1f};
+
+        progress.set_value(percent);
+        progress.fill_color = percent >= 60
+            ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
+            : percent >= 25
+                ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
+                : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
+
+        cached_voltage_str = "%.2f V".printf(voltage_v);
+        cached_current_str = "%.2f A".printf(current_a);
+        cached_charge_str  = "%d / %d mAh".printf(charge_now / 1000, charge_full / 1000);
+
+        cached_has_time = false;
+        if (raw_status == "discharging" && current_a > 0.05f) {
+            float hrs   = (charge_now / 1000000f) / current_a;
+            int   h_rem = (int) hrs;
+            int   m_rem = (int)((hrs - h_rem) * 60);
+            cached_time_str = h_rem > 0
+                ? "%dh %dm left".printf(h_rem, m_rem)
+                : "%dm left".printf(m_rem);
+            cached_has_time = true;
+        } else if (raw_status == "charging" && current_a > 0.05f) {
+            float hrs   = ((charge_full - charge_now) / 1000000f) / current_a;
+            int   h_rem = (int) hrs;
+            int   m_rem = (int)((hrs - h_rem) * 60);
+            cached_time_str = h_rem > 0
+                ? "%dh %dm to full".printf(h_rem, m_rem)
+                : "%dm to full".printf(m_rem);
+            cached_has_time = true;
+        }
     }
 
     private static string sysfs_str(string name) {

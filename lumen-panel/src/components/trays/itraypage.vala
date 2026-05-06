@@ -65,3 +65,21 @@ public void pdt(Context ctx, string text, int left, int top, float size, Color c
 public void pdt_center(Context ctx, string text, int cx, int top, float size, Color col) {
     ctx.draw_text(text, cx, top + (int)(size * 0.82f), size, col);
 }
+
+/**
+ * Convenience base class for tray pages.
+ *
+ * Provides no-op virtual defaults for all lifecycle and mouse handlers so that
+ * subclasses only need to implement get_title() and render(), overriding the
+ * other methods only when they actually need them.
+ */
+public abstract class BaseTrayPage : GLib.Object, ITrayPage {
+    public abstract string get_title();
+    public abstract void render(Context ctx, int x, int y, int w, int h);
+    public virtual void on_activate()                            {}
+    public virtual void on_deactivate()                          {}
+    public virtual void mouse_down(int mx, int my)               {}
+    public virtual void mouse_up(int mx, int my)                 {}
+    public virtual void mouse_motion(int mx, int my)             {}
+    public virtual void mouse_scroll(int mx, int my, int amount) {}
+}

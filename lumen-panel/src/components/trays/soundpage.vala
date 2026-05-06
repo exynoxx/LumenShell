@@ -5,10 +5,14 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     public signal void state_changed();
 
-    private const int PAD = 14;
+    private const int PAD      = 14;
     private const int HEADER_H = 44;
     private const int SLIDER_H = 42;
-    private const int ROW_H = 34;
+    private const int ROW_H    = 34;
+
+    // Derived vertical offsets — precomputed from the constants above
+    private const int TITLE_TOP_OFFSET = (HEADER_H - 20) / 2;  // 12
+    private const int CTRL_Y_OFFSET    = (HEADER_H - 24) / 2;  // 10
 
     private class SinkRow : GLib.Object {
         public signal void selected();
@@ -92,10 +96,11 @@ public class SoundPage : GLib.Object, ITrayPage {
     private int pw = 0;
     private int ph = 0;
 
-    private int last_refresh_us = 0;
+    private uint refresh_timer_id = 0;
 
-    // Track last rendered mute state so button colors are only updated on change
-    private bool mute_btn_muted_state = false;
+    // Cached display values — updated in apply_mute_visuals() on each state change
+    private string cached_pct_txt = "";
+    private Color  cached_pct_col;
 
     public SoundPage() {
         slider.value_changed.connect((v) => {
@@ -121,9 +126,18 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     public void on_activate() {
         refresh_state(true);
+        if (refresh_timer_id == 0)
+            refresh_timer_id = GLib.Timeout.add(1500, () => {
+                refresh_state(false);
+                return Source.CONTINUE;
+            });
     }
 
     public void on_deactivate() {
+        if (refresh_timer_id != 0) {
+            GLib.Source.remove(refresh_timer_id);
+            refresh_timer_id = 0;
+        }
         slider.mouse_up(-1, -1);
         mute_button.cancel_press();
         foreach (var row in sink_rows)
@@ -154,7 +168,7 @@ public class SoundPage : GLib.Object, ITrayPage {
             }
         }
 
-        last_refresh_us = (int) GLib.get_monotonic_time();
+        apply_mute_visuals();
         if (emit_signal)
             state_changed();
         redraw = true;
@@ -163,60 +177,35 @@ public class SoundPage : GLib.Object, ITrayPage {
     public void render(Context ctx, int x, int y, int w, int h) {
         px = x; py = y; pw = w; ph = h;
 
-        int now_us = (int) GLib.get_monotonic_time();
-        if (now_us - last_refresh_us > 1500000) {
-            refresh_state(false);
-        }
-
-        int top = y + (HEADER_H - 20) / 2;
-        pdt(ctx, "Sound", x + PAD, top, 20f,
+        // ── Header ───────────────────────────────────────────────────────
+        pdt(ctx, "Sound", x + PAD, y + TITLE_TOP_OFFSET, 20f,
             Color(){r=1f, g=1f, b=1f, a=1f});
 
-        string pct_txt = muted ? "Muted" : "%d%%".printf(volume_percent);
-        Color pct_col = muted
-            ? Color(){r=0.90f, g=0.34f, b=0.34f, a=1f}
-            : Color(){r=0.18f, g=0.88f, b=0.42f, a=1f};
+        int chip_tw = ctx.width_of(cached_pct_txt, 12.5f);
+        int chip_x  = x + w - PAD - chip_tw - 18 - 48 - 8;
+        int chip_y  = y + CTRL_Y_OFFSET;
+        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f,
+            Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
+        pdt(ctx, cached_pct_txt, chip_x + 9, chip_y + 4, 12.5f, cached_pct_col);
 
-        int chip_tw = ctx.width_of(pct_txt, 12.5f);
-        int chip_x = x + w - PAD - chip_tw - 18 - 48 - 8;
-        int chip_y = y + (HEADER_H - 24) / 2;
-        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f, Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
-        pdt(ctx, pct_txt, chip_x + 9, chip_y + 4, 12.5f, pct_col);
-
-        int mute_w = 48;
-        int mute_x = x + w - PAD - mute_w;
-        int mute_y = y + (HEADER_H - 24) / 2;
-        mute_button.set_bounds(mute_x, mute_y, mute_w, 24);
-        if (muted != mute_btn_muted_state) {
-            mute_btn_muted_state = muted;
-            mute_button.label = muted ? "Unmute" : "Mute";
-            mute_button.normal_color = muted
-                ? Color(){r=0.78f, g=0.20f, b=0.20f, a=1f}
-                : Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
-            mute_button.hover_color = muted
-                ? Color(){r=0.88f, g=0.28f, b=0.28f, a=1f}
-                : Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
-            mute_button.pressed_color = muted
-                ? Color(){r=0.68f, g=0.16f, b=0.16f, a=1f}
-                : Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
-        }
+        int mute_x = x + w - PAD - 48;
+        mute_button.set_bounds(mute_x, chip_y, 48, 24);
         mute_button.render(ctx);
 
+        // ── Separator ────────────────────────────────────────────────────
         int sep_y = y + HEADER_H;
         ctx.draw_rect(x + PAD, sep_y, w - PAD * 2, 1,
             Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f});
 
+        // ── Volume slider ────────────────────────────────────────────────
         int slider_y = sep_y + 14;
         slider.set_bounds(x + PAD, slider_y, w - PAD * 2, SLIDER_H);
-        slider.fill_color = muted
-            ? Color(){r=0.72f, g=0.24f, b=0.24f, a=1f}
-            : Color(){r=0.18f, g=0.62f, b=1.0f, a=1f};
         slider.render(ctx);
 
-        string txt = muted ? "Muted" : "%d%%".printf(volume_percent);
-        pdt(ctx, txt, x + PAD, slider_y + SLIDER_H - 14, 12f,
+        pdt(ctx, cached_pct_txt, x + PAD, slider_y + SLIDER_H - 14, 12f,
             Color(){r=0.72f, g=0.75f, b=0.84f, a=1f});
 
+        // ── Device list ──────────────────────────────────────────────────
         int list_top = slider_y + SLIDER_H + 8;
         pdt(ctx, "Output device", x + PAD, list_top, 12f,
             Color(){r=0.55f, g=0.57f, b=0.66f, a=1f});
@@ -265,6 +254,29 @@ public class SoundPage : GLib.Object, ITrayPage {
         set_volume_percent(volume_percent + delta);
     }
 
+    // Synchronises all mute-dependent display state (button colours, cached text,
+    // slider fill) to the current values of `muted` and `volume_percent`.
+    // Must be called whenever either field changes.
+    private void apply_mute_visuals() {
+        cached_pct_txt = muted ? "Muted" : "%d%%".printf(volume_percent);
+        cached_pct_col = muted
+            ? Color(){r=0.90f, g=0.34f, b=0.34f, a=1f}
+            : Color(){r=0.18f, g=0.88f, b=0.42f, a=1f};
+        mute_button.label = muted ? "Unmute" : "Mute";
+        mute_button.normal_color  = muted
+            ? Color(){r=0.78f, g=0.20f, b=0.20f, a=1f}
+            : Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
+        mute_button.hover_color   = muted
+            ? Color(){r=0.88f, g=0.28f, b=0.28f, a=1f}
+            : Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
+        mute_button.pressed_color = muted
+            ? Color(){r=0.68f, g=0.16f, b=0.16f, a=1f}
+            : Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
+        slider.fill_color = muted
+            ? Color(){r=0.72f, g=0.24f, b=0.24f, a=1f}
+            : Color(){r=0.18f, g=0.62f, b=1.0f,  a=1f};
+    }
+
     private void set_volume_percent(int pct) {
         pct = int.max(0, int.min(100, pct));
         if (pct == volume_percent && !muted) return;
@@ -278,7 +290,7 @@ public class SoundPage : GLib.Object, ITrayPage {
             muted = false;
             run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ 0");
         }
-
+        apply_mute_visuals();
         state_changed();
         redraw = true;
     }
@@ -286,6 +298,7 @@ public class SoundPage : GLib.Object, ITrayPage {
     private void toggle_mute() {
         run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ toggle");
         muted = !muted;
+        apply_mute_visuals();
         state_changed();
         redraw = true;
     }

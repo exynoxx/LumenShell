@@ -52,6 +52,10 @@ public class WifiPage : GLib.Object, ITrayPage {
     // Tracks last rendered connect-button mode to avoid per-frame color reassignment
     private bool connect_btn_is_disconnect = false;
 
+    // Cached connection-chip display values — updated in update_connection_chip()
+    private string cached_chip_txt = "●  Offline";
+    private Color  cached_chip_col;
+
     // Bounds from last render() call — used for hit-testing
     private int px;
     private int py;
@@ -128,6 +132,8 @@ public class WifiPage : GLib.Object, ITrayPage {
         password_field.blur();
         connect_button.cancel_press();
         disconnect_button.cancel_press();
+        refresh_button.label = "Scanning";
+        update_connection_chip();
         refresh_nets_async(false);
     }
 
@@ -158,25 +164,15 @@ public class WifiPage : GLib.Object, ITrayPage {
         int refresh_x = x + PAD + 58;
         int refresh_y = y + (HEADER_H - refresh_h) / 2;
         refresh_button.set_bounds(refresh_x, refresh_y, refresh_w, refresh_h);
-        refresh_button.label = scanning ? "Scanning" : "Refresh";
         refresh_button.render(ctx);
 
         // Connection status chip (right-aligned)
-        bool is_conn    = connected != "" && connected != "--";
-        string chip_txt = is_conn ? "●  " + connected : "●  Offline";
-        Color  chip_col = is_conn
-            ? Color(){r=0.18f, g=0.88f, b=0.42f, a=1f}
-            : Color(){r=0.52f, g=0.52f, b=0.57f, a=1f};
-        float chip_sz  = 12.5f;
-        int   chip_tw  = ctx.width_of(chip_txt, chip_sz);
-        int   chip_pad = 10;
-        int   chip_h   = 24;
-        int   chip_x   = x + w - PAD - chip_tw - chip_pad * 2;
-        int   chip_y   = y + (HEADER_H - chip_h) / 2;
-        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + chip_pad * 2, chip_h, 12f,
+        int   chip_tw  = ctx.width_of(cached_chip_txt, 12.5f);
+        int   chip_x   = x + w - PAD - chip_tw - 20;
+        int   chip_y   = y + (HEADER_H - 24) / 2;
+        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 20, 24, 12f,
             Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
-        pdt(ctx, chip_txt, chip_x + chip_pad, chip_y + (chip_h - (int)chip_sz) / 2,
-            chip_sz, chip_col);
+        pdt(ctx, cached_chip_txt, chip_x + 10, chip_y + 6, 12.5f, cached_chip_col);
 
         // Separator
         int sep_y = y + HEADER_H;
@@ -436,6 +432,20 @@ public class WifiPage : GLib.Object, ITrayPage {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Display helpers
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Recalculates cached_chip_txt/col from the current `connected` value.
+    // Call whenever `connected` is updated.
+    private void update_connection_chip() {
+        bool is_conn    = connected != "" && connected != "--";
+        cached_chip_txt = is_conn ? "●  " + connected : "●  Offline";
+        cached_chip_col = is_conn
+            ? Color(){r=0.18f, g=0.88f, b=0.42f, a=1f}
+            : Color(){r=0.52f, g=0.52f, b=0.57f, a=1f};
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // nmcli helpers
     // ─────────────────────────────────────────────────────────────────────
 
@@ -484,6 +494,7 @@ public class WifiPage : GLib.Object, ITrayPage {
     private void refresh_nets_async(bool rescan = false) {
         if (DEBUG_WIFI) print("[wifi] refresh_nets_async(rescan=%s) begin\n", rescan.to_string());
         scanning = true;
+        refresh_button.label = "Scanning";
         redraw = true;
 
         string selected_ssid = "";
@@ -507,6 +518,8 @@ public class WifiPage : GLib.Object, ITrayPage {
             nets = new_nets;
             connected = new_conn;
             scanning = false;
+            refresh_button.label = "Refresh";
+            update_connection_chip();
 
             if (selected_ssid != "") {
                 int new_sel = -1;
