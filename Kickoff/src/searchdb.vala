@@ -27,9 +27,9 @@ public class SearchDb {
     
     public void on_key(uint32 key){
         if(key < 500){
-            var c = ((char)key).tolower();
+            var c = (char) key;
             current_search.append_c(c);
-            technical_search.append_c(c);
+            technical_search.append_c(c.tolower());
             technical_search.append_c('*');
             active = true;
             index();
@@ -61,12 +61,13 @@ public class SearchDb {
     private void index(){
         if(current_search.len == 0) return;
 
+        var search_lc = current_search.str.ascii_down();
         var included = new bool[all_apps.length];
 
         size = 0;
         for(int i = 0; i < all_apps.length; i++){
             if(size>= PER_PAGE) break;
-            if(all_apps[i].name.has_prefix(current_search.str))
+            if(all_apps[i].name.has_prefix(search_lc))
             {
                 included[i] = true; 
                 filtered.alias_index(size++,i);

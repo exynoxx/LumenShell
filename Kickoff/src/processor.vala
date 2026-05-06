@@ -32,11 +32,17 @@ public class Processor {
         foreach (var desktop in desktop_files){
             var entries = Utils.Config.parse(desktop, "Desktop Entry");
 
-            var name = entries["Name"];
+            if (entries == null)
+                continue;
+
+            if (entry_is_hidden(entries))
+                continue;
+
+            var name = get_name(entries);
             var icon = entries["Icon"];
             var exec = entries["Exec"];
             
-            if (icon == null || icon == "" || name == null || exec == null) 
+            if (name == null || exec == null || exec == "") 
                 continue;
 
             
@@ -45,20 +51,9 @@ public class Processor {
             
             deduplication.add(name);
 
-            string icon_path = null;
-            if(Path.is_absolute(icon))
-            {
-                icon_path = icon;
-                //print("entry %s %s - absolut\n", name, icon);
-            }
-            else if(!icon_paths.has_key(icon)){
-                //print("entry %s %s - no has key\n", name, icon);
+            var icon_path = resolve_icon_path(icon_paths, icon);
+            if (icon_path == null)
                 continue;
-            }
-            else {
-                //print("entry %s %s - found\n", name, icon);
-                icon_path = icon_paths[icon];
-            }
             
             apps += new AppEntry(name, icon_path, exec);
         }
@@ -119,6 +114,54 @@ public class Processor {
         grid.render();
 
         ctx.end_frame();
+    }
+
+    private static bool entry_is_hidden(HashMap<string, string> entries) {
+        if (entries.has_key("Hidden") && entries["Hidden"].down() == "true")
+            return true;
+
+        if (entries.has_key("NoDisplay") && entries["NoDisplay"].down() == "true")
+            return true;
+
+        return false;
+    }
+
+    private static string? get_name(HashMap<string, string> entries) {
+        if (entries.has_key("Name") && entries["Name"] != "")
+            return entries["Name"];
+
+        foreach (var key in entries.keys) {
+            if (key.has_prefix("Name[") && entries[key] != "")
+                return entries[key];
+        }
+
+        return null;
+    }
+
+    private static string? resolve_icon_path(HashMap<string, string> icon_paths, string? icon) {
+        if (icon != null && icon != "") {
+            if (Path.is_absolute(icon) && FileUtils.test(icon, FileTest.IS_REGULAR)) {
+                return icon;
+            }
+
+            if (icon_paths.has_key(icon)) {
+                return icon_paths[icon];
+            }
+        }
+
+        string[] fallbacks = {
+            "application-x-executable",
+            "application-default-icon",
+            "applications-other",
+            "system-run"
+        };
+
+        foreach (var fallback in fallbacks) {
+            if (icon_paths.has_key(fallback))
+                return icon_paths[fallback];
+        }
+
+        return null;
     }
 
     //TODO main loop

@@ -15,9 +15,11 @@ namespace Utils {
             dirs.add("/usr/share");
             
             string system_dirs = Environment.get_variable("XDG_DATA_DIRS");
-            foreach (string dir in system_dirs.split(":")) {
-                if (dir != "") {
-                    dirs.add(dir);
+            if(system_dirs != null && system_dirs != "") {
+                foreach (string dir in system_dirs.split(":")) {
+                    if (dir != "") {
+                        dirs.add(dir);
+                    }
                 }
             }
 
@@ -98,17 +100,35 @@ namespace Utils {
         public static string[] get_desktop_files() {
             var applications = get_data_dir("applications");
 
-            filter f = (name) => name.has_suffix(".desktop");
-
             var files = new Gee.ArrayList<string>();
             foreach(var app_dir in applications){
-                foreach (var name in enumerate_dir(app_dir,f)) {
-                    files.add(name);
-                }
+                enumerate_desktop_files_recursive(app_dir, files);
             }
             
     
             return files.to_array();
+        }
+
+        private static void enumerate_desktop_files_recursive(string current_path, Gee.ArrayList<string> files) {
+            try {
+                var dir = Dir.open(current_path);
+                string? name;
+
+                while ((name = dir.read_name()) != null) {
+                    var path = Path.build_filename(current_path, name);
+
+                    if (FileUtils.test(path, FileTest.IS_DIR)) {
+                        enumerate_desktop_files_recursive(path, files);
+                        continue;
+                    }
+
+                    if (name.has_suffix(".desktop") && FileUtils.test(path, FileTest.IS_REGULAR)) {
+                        files.add(path);
+                    }
+                }
+            } catch (FileError e) {
+                // skip unreadable directories
+            }
         }
     }
 }

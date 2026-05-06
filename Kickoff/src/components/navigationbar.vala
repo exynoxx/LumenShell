@@ -9,6 +9,8 @@ public class PageButton {
     private string label;
     private Color color = {0.3f,0.3f,0.3f,1f};
     private Color color_active = {1f,1f,1f,1f};
+    private Color text_color = {1f,1f,1f,1f};
+    private Color text_color_active = {0f,0f,0f,1f};
 
     public PageButton (int x, int y, int i){
         this.x = x;
@@ -18,9 +20,11 @@ public class PageButton {
     }
     
     public void render(Context ctx, int active_idx) {
-        var color = (i==active_idx)? color_active : color;
-        ctx.draw_circle(x,y, 15, color);
-        ctx.draw_text(label, x, y+5, 15, {1,1,1,1});
+        var is_active = (i == active_idx);
+        var color = is_active ? color_active : color;
+        var label_color = is_active ? text_color_active : text_color;
+        ctx.draw_circle(x, y, 15, color);
+        ctx.draw_text(label, x, y + 5, 15, label_color);
     }
 }
 
