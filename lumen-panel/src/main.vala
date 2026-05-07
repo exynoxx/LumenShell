@@ -2,17 +2,15 @@ using WLHooks;
 using GLES2;
 using Gee;
 
-public const uint KICKOFF_ID = uint.MAX;
 public static bool redraw = true;
-public static Panel panel;
 public static AnimationManager animations;
 
 public static int main(string[] args) {
 
     WLHooks.grab_keyboard(true);   // must be set before init so seat binds keyboard
     WLHooks.init();
-    
-    panel = new Panel();
+
+    var panel = new Panel();
     animations = new AnimationManager();
 
     WLHooks.register_on_window_new(panel.on_window_new);

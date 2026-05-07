@@ -1,9 +1,8 @@
-//gtk-icon-theme-name
 using Gee;
 using GLib;
 
 public class Ini {
-    public static string? Get_key_value(string file_path, string key){
+    public static string? get_key_value(string file_path, string key){
         if (!FileUtils.test(file_path, FileTest.EXISTS))
         return null;
 

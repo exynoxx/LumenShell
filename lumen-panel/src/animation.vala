@@ -1,13 +1,13 @@
 using Gee;
 
+private float ease_out_expo(float k) {
+    return (k == 1f) ? 1f : (1f - Math.powf(2f, -10f * k));
+}
+
 public interface Transition : Object {
     public abstract int id { get; }
     public abstract bool finished { get; }
     public abstract void update(double dt);
-
-    public float easeOutExpo(float k){
-        return (k == 1f) ? 1f : (1f - Math.powf(2f, -10f * k));
-    }
 }
 
 public class Transition1D : Object, Transition {
@@ -39,12 +39,9 @@ public class Transition1D : Object, Transition {
 
         t += dt;
         var k = float.min((float)(t / duration), 1.0f);
-        var e = easeOutExpo(k);
+        var e = ease_out_expo(k);
 
-        var ex = start_x + total_dx * e;
-
-        // apply
-        *ref_x += ex-(*ref_x);
+        *ref_x = (int)(start_x + total_dx * e);
 
         if (k >= 1.0) {
             *ref_x = end_x;
@@ -52,19 +49,6 @@ public class Transition1D : Object, Transition {
         }
     }
 }
-
-public class TransitionEmpty : Object, Transition {
-    public int id {get {return 0; }}
-    public bool finished { get { return true; } }
-
-    public TransitionEmpty() {
-    }
-
-    public void update(double dt) {
-
-    }
-}
-
 
 public class AnimationManager : Object {
     private HashMap<int,Transition> transitions = new HashMap<int,Transition>();
@@ -82,20 +66,15 @@ public class AnimationManager : Object {
     }
 
     public void update() {
-        
-        // Get current time in microseconds
         int64 current_time_us = get_monotonic_time();
-        //print("update %lld\n", current_time_us-last_time_us);
-        int64 dt_us = current_time_us-last_time_us;
+        int64 dt_us = current_time_us - last_time_us;
         last_time_us = current_time_us;
-        if(dt_us > 100000){
-            //wait for framerate to warmup
+        if (dt_us > 100000) {
             return;
         }
 
-        // Calculate delta time in seconds (convert from microseconds)
         double dt = dt_us / 1000000.0;
-        
+
         foreach (var t in transitions.values) {
             t.update(dt);
         }
@@ -106,57 +85,7 @@ public class AnimationManager : Object {
                 iter.unset();
             }
         }
-        
-        if(transitions.size == 0) has_active = false;
+
+        if (transitions.size == 0) has_active = false;
     }
 }
-
-
-/*  public class MoveTransition : Object, Transition {
-
-    private int *ref_x;
-    private int *ref_y;
-
-    public int start_x;
-    public int start_y;
-    public int end_x;
-    public int end_y;
-    public double duration;
-    private double t = 0.0;
-
-    private bool _finished = false;
-    public bool finished { 
-        get { return _finished; }
-    }
-
-    public MoveTransition(int* x, int* y, int end_x, int end_y, double duration) {
-        ref_x = x;
-        ref_y = y;
-
-        this.start_x = *x;
-        this.start_y = *y;
-        this.end_x = end_x;
-        this.end_y = end_y;
-        this.duration = duration;
-        // Don't initialize t here - it should start at 0.0
-    }
-
-    public void update(double dt) {
-        if (finished) return;
-
-        t += dt;
-        double k = double.min(t / duration, 1.0);
-        
-        // easing: easeOutExpo
-        double e = 1.0;
-        if (k != 1.0)
-            e = 1.0 - Math.pow(2.0, -10.0 * k);
-
-        // compute eased float values and convert to int
-        *ref_x = start_x + (int)((end_x - start_x) * e);
-        *ref_y = start_y + (int)((end_y - start_y) * e);
-
-        if (k >= 1.0)
-            _finished = true;
-    }
-}  */

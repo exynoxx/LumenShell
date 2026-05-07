@@ -10,7 +10,6 @@ public class SoundPage : GLib.Object, ITrayPage {
     private const int SLIDER_H = 42;
     private const int ROW_H    = 34;
 
-    // Derived vertical offsets — precomputed from the constants above
     private const int TITLE_TOP_OFFSET = (HEADER_H - 20) / 2;  // 12
     private const int CTRL_Y_OFFSET    = (HEADER_H - 24) / 2;  // 10
 
@@ -46,18 +45,15 @@ public class SoundPage : GLib.Object, ITrayPage {
         public void mouse_motion(int mx, int my) {
             bool old = hovered;
             hovered = contains(mx, my);
-            if (old != hovered)
-                redraw = true;
+            if (old != hovered) redraw = true;
         }
 
         public void mouse_down(int mx, int my) {
-            if (contains(mx, my))
-                pressed = true;
+            if (contains(mx, my)) pressed = true;
         }
 
         public void mouse_up(int mx, int my) {
-            if (pressed && contains(mx, my))
-                selected();
+            if (pressed && contains(mx, my)) selected();
             pressed = false;
         }
 
@@ -65,31 +61,29 @@ public class SoundPage : GLib.Object, ITrayPage {
 
         public void render(Context ctx, bool is_sel) {
             if (is_sel) {
-                ctx.draw_rect_rounded(rx, ry + 3, rw, rh - 6, 8f,
-                    Color(){r=0.11f, g=0.27f, b=0.66f, a=0.90f});
+                ctx.draw_rect_rounded(rx, ry + 3, rw, rh - 6, 8f, Color(){r=0.11f, g=0.27f, b=0.66f, a=0.90f});
             } else if (hovered) {
-                ctx.draw_rect_rounded(rx, ry + 3, rw, rh - 6, 8f,
-                    Color(){r=0.17f, g=0.18f, b=0.24f, a=0.85f});
+                ctx.draw_rect_rounded(rx, ry + 3, rw, rh - 6, 8f, Color(){r=0.17f, g=0.18f, b=0.24f, a=0.85f});
             }
 
             pdt(ctx, _name, rx + 10, ry + (rh - 13) / 2, 13f,
                 is_sel ? Color(){r=1f, g=1f, b=1f, a=1f}
                        : Color(){r=0.86f, g=0.88f, b=0.93f, a=1f});
 
-            if (is_sel) {
-                pdt(ctx, "✓", rx + rw - 18, ry + (rh - 13) / 2, 13f,
-                    Color(){r=0.22f, g=0.95f, b=0.48f, a=1f});
-            }
+            if (is_sel)
+                pdt(ctx, "✓", rx + rw - 18, ry + (rh - 13) / 2, 13f, Color(){r=0.22f, g=0.95f, b=0.48f, a=1f});
         }
     }
 
-    private SinkRow[] sink_rows = {};
-    private string default_sink = "";
-    private int volume_percent = 0;
-    private bool muted = false;
+    private PactlClient pactl = new PactlClient();
 
-    private UiHorizontalSlider slider = new UiHorizontalSlider();
-    private UiButton mute_button = new UiButton();
+    private SinkRow[] sink_rows    = {};
+    private string    default_sink = "";
+    private int       volume_percent = 0;
+    private bool      muted          = false;
+
+    private UiHorizontalSlider slider      = new UiHorizontalSlider();
+    private UiButton           mute_button = new UiButton();
 
     private int px = 0;
     private int py = 0;
@@ -98,27 +92,30 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     private uint refresh_timer_id = 0;
 
-    // Cached display values — updated in apply_mute_visuals() on each state change
+    // Cached display values — updated in apply_mute_visuals()
     private string cached_pct_txt = "";
     private Color  cached_pct_col;
+    private int    cached_pct_w   = -1;  // text-width cache, -1 = dirty
+
+    // Cached separator color
+    private Color sep_color = Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f};
 
     public SoundPage() {
         slider.value_changed.connect((v) => set_volume_percent(v));
         slider.track_color = Color(){r=0.14f, g=0.15f, b=0.22f, a=1f};
 
-        mute_button.label = "Mute";
-        mute_button.text_size = 11f;
-        mute_button.radius = 8f;
-        mute_button.normal_color = Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
-        mute_button.hover_color = Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
+        mute_button.label         = "Mute";
+        mute_button.text_size     = 11f;
+        mute_button.radius        = 8f;
+        mute_button.normal_color  = Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
+        mute_button.hover_color   = Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
         mute_button.pressed_color = Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
         mute_button.clicked.connect(() => toggle_mute());
     }
 
-    public string get_title() { return "Sound"; }
-
-    public int get_volume_percent() { return volume_percent; }
-    public bool is_muted() { return muted; }
+    public string get_title()        { return "Sound"; }
+    public int    get_volume_percent() { return volume_percent; }
+    public bool   is_muted()           { return muted; }
 
     public void on_activate() {
         refresh_state();
@@ -141,10 +138,10 @@ public class SoundPage : GLib.Object, ITrayPage {
     }
 
     public void refresh_state() {
-        default_sink = query_default_sink();
-        var raw_sinks = query_sinks();
-        volume_percent = query_volume_percent();
-        muted = query_muted();
+        default_sink   = pactl.query_default_sink();
+        var raw_sinks  = pactl.query_sinks();
+        volume_percent = pactl.query_volume_percent();
+        muted          = pactl.query_muted();
         slider.set_value(volume_percent);
 
         // Rebuild pool only when the set of sinks actually changes
@@ -155,43 +152,47 @@ public class SoundPage : GLib.Object, ITrayPage {
             }
         }
         if (!same) {
-            sink_rows = raw_sinks;
-            for (int i = 0; i < sink_rows.length; i++) {
-                int idx = i;  // capture for closure
-                sink_rows[i].selected.connect(() => {
+            sink_rows = {};
+            for (int i = 0; i < raw_sinks.length; i++) {
+                int idx = i;  // capture i for closure
+                var row = new SinkRow();
+                row.update(raw_sinks[i].id, raw_sinks[i].name);
+                row.selected.connect(() => {
                     set_default_sink(sink_rows[idx].id);
                 });
+                sink_rows += row;
             }
+        } else {
+            for (int i = 0; i < sink_rows.length; i++)
+                sink_rows[i].update(raw_sinks[i].id, raw_sinks[i].name);
         }
 
         apply_mute_visuals();
         state_changed();
-
         redraw = true;
     }
 
     public void render(Context ctx, int x, int y, int w, int h) {
-        px = x; 
-        py = y;
-        pw = w; 
-        ph = h;
+        px = x;  py = y;  pw = w;  ph = h;
 
         // ── Header ───────────────────────────────────────────────────────
         pdt(ctx, "Sound", x + PAD, y + TITLE_TOP_OFFSET, 20f, Color(){r=1f, g=1f, b=1f, a=1f});
 
-        int chip_tw = ctx.width_of(cached_pct_txt, 12.5f);
-        int chip_x  = x + w - PAD - chip_tw - 18 - 48 - 8;
-        int chip_y  = y + CTRL_Y_OFFSET;
-        ctx.draw_rect_rounded(chip_x, chip_y, chip_tw + 18, 24, 12f, Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
+        if (cached_pct_w < 0) cached_pct_w = ctx.width_of(cached_pct_txt, 12.5f);
+        int chip_w = cached_pct_w + 18;
+        int mute_x = x + w - PAD - 48;
+        int chip_x = mute_x - 8 - chip_w;
+        int chip_y = y + CTRL_Y_OFFSET;
+
+        ctx.draw_rect_rounded(chip_x, chip_y, chip_w, 24, 12f, Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
         pdt(ctx, cached_pct_txt, chip_x + 9, chip_y + 4, 12.5f, cached_pct_col);
 
-        int mute_x = x + w - PAD - 48;
         mute_button.set_bounds(mute_x, chip_y, 48, 24);
         mute_button.render(ctx);
 
         // ── Separator ────────────────────────────────────────────────────
         int sep_y = y + HEADER_H;
-        ctx.draw_rect(x + PAD, sep_y, w - PAD * 2, 1,Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f});
+        ctx.draw_rect(x + PAD, sep_y, w - PAD * 2, 1, sep_color);
 
         // ── Volume slider ────────────────────────────────────────────────
         int slider_y = sep_y + 14;
@@ -201,14 +202,14 @@ public class SoundPage : GLib.Object, ITrayPage {
 
         // ── Device list ──────────────────────────────────────────────────
         int list_top = slider_y + SLIDER_H + 8;
-        pdt(ctx, "Output device", x + PAD, list_top, 12f,Color(){r=0.55f, g=0.57f, b=0.66f, a=1f});
+        pdt(ctx, "Output device", x + PAD, list_top, 12f, Color(){r=0.55f, g=0.57f, b=0.66f, a=1f});
 
         int rows_top = list_top + 16;
         int max_rows = (h - (rows_top - y) - 8) / ROW_H;
         if (max_rows <= 0) return;
 
         if (sink_rows.length == 0) {
-            pdt_center(ctx, "No output devices", x + w / 2, rows_top + 8, 13f,Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
+            pdt_center(ctx, "No output devices", x + w / 2, rows_top + 8, 13f, Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
             return;
         }
 
@@ -242,28 +243,21 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     public void mouse_scroll(int mx, int my, int amount) {
         if (amount == 0) return;
-        int delta = amount > 0 ? -3 : 3;
-        set_volume_percent(volume_percent + delta);
+        set_volume_percent(volume_percent + (amount > 0 ? -3 : 3));
     }
 
-    // Synchronises all mute-dependent display state (button colours, cached text,
-    // slider fill) to the current values of `muted` and `volume_percent`.
-    // Must be called whenever either field changes.
+    // Synchronises all mute-dependent display state.
+    // Must be called whenever muted or volume_percent changes.
     private void apply_mute_visuals() {
         cached_pct_txt = muted ? "Muted" : "%d%%".printf(volume_percent);
+        cached_pct_w   = -1;  // invalidate text-width cache
         cached_pct_col = muted
             ? Color(){r=0.90f, g=0.34f, b=0.34f, a=1f}
             : Color(){r=0.18f, g=0.88f, b=0.42f, a=1f};
         mute_button.label = muted ? "Unmute" : "Mute";
-        mute_button.normal_color  = muted
-            ? Color(){r=0.78f, g=0.20f, b=0.20f, a=1f}
-            : Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
-        mute_button.hover_color   = muted
-            ? Color(){r=0.88f, g=0.28f, b=0.28f, a=1f}
-            : Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
-        mute_button.pressed_color = muted
-            ? Color(){r=0.68f, g=0.16f, b=0.16f, a=1f}
-            : Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
+        mute_button.normal_color  = muted ? Color(){r=0.78f, g=0.20f, b=0.20f, a=1f} : Color(){r=0.16f, g=0.18f, b=0.24f, a=1f};
+        mute_button.hover_color   = muted ? Color(){r=0.88f, g=0.28f, b=0.28f, a=1f} : Color(){r=0.25f, g=0.27f, b=0.35f, a=1f};
+        mute_button.pressed_color = muted ? Color(){r=0.68f, g=0.16f, b=0.16f, a=1f} : Color(){r=0.13f, g=0.15f, b=0.21f, a=1f};
         slider.fill_color = muted
             ? Color(){r=0.72f, g=0.24f, b=0.24f, a=1f}
             : Color(){r=0.18f, g=0.62f, b=1.0f,  a=1f};
@@ -273,14 +267,13 @@ public class SoundPage : GLib.Object, ITrayPage {
         pct = int.max(0, int.min(100, pct));
         if (pct == volume_percent && !muted) return;
 
-        string cmd = "pactl set-sink-volume @DEFAULT_SINK@ %d%%".printf(pct);
-        run_cmd_async(cmd);
+        pactl.run_cmd_async("pactl set-sink-volume @DEFAULT_SINK@ %d%%".printf(pct));
 
         volume_percent = pct;
         slider.set_value(volume_percent);
         if (muted) {
             muted = false;
-            run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ 0");
+            pactl.run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ 0");
         }
         apply_mute_visuals();
         state_changed();
@@ -288,7 +281,7 @@ public class SoundPage : GLib.Object, ITrayPage {
     }
 
     private void toggle_mute() {
-        run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ toggle");
+        pactl.run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ toggle");
         muted = !muted;
         apply_mute_visuals();
         state_changed();
@@ -297,172 +290,9 @@ public class SoundPage : GLib.Object, ITrayPage {
 
     private void set_default_sink(string sink_id) {
         if (sink_id == "") return;
-        run_cmd_async("pactl set-default-sink " + shell_quote(sink_id));
+        pactl.run_cmd_async("pactl set-default-sink " + pactl.shell_quote(sink_id));
         default_sink = sink_id;
         state_changed();
         redraw = true;
-    }
-
-    private string query_default_sink() {
-        var out_str = run_pactl_sync("get-default-sink").strip();
-        if (out_str != "") return out_str;
-
-        out_str = run_pactl_sync("info");
-        foreach (var line in out_str.split("\n")) {
-            var l = line.strip();
-            if (l.has_prefix("Default Sink:")) {
-                return l.substring("Default Sink:".length).strip();
-            }
-        }
-        return "";
-    }
-
-    private SinkRow[] query_sinks() {
-        SinkRow[] result = {};
-        var detailed = run_pactl_sync("list sinks");
-        var desc_map = parse_sink_descriptions(detailed);
-
-        var out_str = run_pactl_sync("list short sinks");
-        foreach (var line in out_str.split("\n")) {
-            var l = line.strip();
-            if (l == "") continue;
-            var p = l.split("\t");
-            if (p.length < 2) continue;
-
-            string id = p[1];
-            string? from_desc = desc_map.lookup(id);
-            string name = (from_desc != null && from_desc.strip() != "")
-                ? from_desc.strip()
-                : pretty_sink_name(id);
-
-            var row = new SinkRow();
-            row.update(id, name);
-            result += row;
-        }
-        return result;
-    }
-
-    private GLib.HashTable<string, string> parse_sink_descriptions(string text) {
-        var map = new GLib.HashTable<string, string>(str_hash, str_equal);
-
-        string current_name = "";
-        string current_desc = "";
-
-        foreach (var raw in text.split("\n")) {
-            string line = raw.strip();
-            if (line.has_prefix("Name:") || line.has_prefix("Navn:")) {
-                if (current_name != "" && current_desc != "") {
-                    map.insert(current_name, current_desc);
-                }
-                int sep = line.index_of(":");
-                current_name = sep >= 0 ? line.substring(sep + 1).strip() : "";
-                current_desc = "";
-                continue;
-            }
-
-            if (line.has_prefix("Description:") || line.has_prefix("Beskrivelse:")) {
-                int sep = line.index_of(":");
-                current_desc = sep >= 0 ? line.substring(sep + 1).strip() : "";
-                continue;
-            }
-        }
-
-        if (current_name != "" && current_desc != "") {
-            map.insert(current_name, current_desc);
-        }
-
-        return map;
-    }
-
-    private string pretty_sink_name(string sink_id) {
-        string s = sink_id;
-        if (s.has_prefix("alsa_output."))
-            s = s.substring("alsa_output.".length);
-
-        s = s.replace(".analog-stereo", "");
-        s = s.replace(".analog-surround-21", "");
-        s = s.replace(".analog-surround-40", "");
-        s = s.replace(".analog-surround-51", "");
-        s = s.replace(".hdmi-stereo", " HDMI");
-        s = s.replace(".iec958-stereo", " Digital");
-        s = s.replace("_", " ");
-        s = s.replace(".", " ");
-
-        if (s.length == 0)
-            return sink_id;
-
-        return s;
-    }
-
-    private int query_volume_percent() {
-        var out_str = run_pactl_sync("get-sink-volume @DEFAULT_SINK@");
-        int pct = first_percent(out_str);
-        if (pct >= 0) return pct;
-
-        out_str = run_cmd_sync("wpctl get-volume @DEFAULT_AUDIO_SINK@");
-        return parse_wpctl_percent(out_str);
-    }
-
-    private bool query_muted() {
-        var out_str = run_pactl_sync("get-sink-mute @DEFAULT_SINK@").down();
-        if (out_str.contains("yes")) return true;
-        if (out_str.contains("no")) return false;
-
-        out_str = run_cmd_sync("wpctl get-volume @DEFAULT_AUDIO_SINK@").down();
-        return out_str.contains("muted");
-    }
-
-    private int first_percent(string text) {
-        try {
-            var re = new Regex("([0-9]{1,3})%");
-            MatchInfo info;
-            if (re.match(text, 0, out info)) {
-                var s = info.fetch(1);
-                int v = 0;
-                if (int.try_parse(s, out v))
-                    return int.max(0, int.min(100, v));
-            }
-        } catch (RegexError e) {}
-        return -1;
-    }
-
-    private int parse_wpctl_percent(string text) {
-        try {
-            var re = new Regex("([0-9]+(?:\\.[0-9]+)?)");
-            MatchInfo info;
-            if (re.match(text, 0, out info)) {
-                var s = info.fetch(1);
-                double v = 0;
-                if (double.try_parse(s, out v)) {
-                    int pct = (int) (v * 100.0);
-                    return int.max(0, int.min(100, pct));
-                }
-            }
-        } catch (RegexError e) {}
-        return 0;
-    }
-
-    private string run_cmd_sync(string cmd) {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(cmd, out out_str, null, null);
-        } catch (SpawnError e) {
-            return "";
-        }
-        return out_str;
-    }
-
-    private string run_pactl_sync(string args) {
-        return run_cmd_sync("env LC_ALL=C pactl " + args);
-    }
-
-    private void run_cmd_async(string cmd) {
-        try {
-            Process.spawn_command_line_async(cmd);
-        } catch (SpawnError e) {}
-    }
-
-    private string shell_quote(string value) {
-        return "'" + value.replace("'", "'\\''") + "'";
     }
 }

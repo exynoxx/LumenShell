@@ -6,17 +6,19 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
     private HoverableIcon icon;
     private SoundPage _page;
 
-    private int x = 0;
-    private int y = 0;
+    private int x     = 0;
+    private int y     = 0;
     private int width = 60;
 
     private string label = "0%";
-    private bool muted = false;
-    private int last_poll_us = 0;
+    private bool   muted = false;
+
+    private Color label_col_normal = Color(){r=0.90f, g=0.92f, b=0.96f, a=1f};
+    private Color label_col_muted  = Color(){r=0.92f, g=0.36f, b=0.36f, a=1f};
 
     public SoundTray(Context ctx) {
         this.ctx = ctx;
-        icon = new HoverableIcon("sound-max");
+        icon  = new HoverableIcon("sound-max");
         _page = new SoundPage();
         _page.state_changed.connect(() => {
             sync_from_page();
@@ -25,13 +27,19 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
 
         _page.refresh_state();
         sync_from_page();
+
+        // Poll in the background so render() stays side-effect free.
+        GLib.Timeout.add(1200, () => {
+            _page.refresh_state();
+            return Source.CONTINUE;
+        });
     }
 
     // ── IHasPage ──────────────────────────────────────────────────────────
 
-    public ITrayPage get_page() { return _page; }
-    public bool is_icon_hovered() { return icon.hovered; }
-    public void set_page_active(bool active) { icon.selected = active; }
+    public ITrayPage get_page()        { return _page; }
+    public bool      is_icon_hovered() { return icon.hovered; }
+    public void      set_page_active(bool active) { icon.selected = active; }
 
     // ── ITray / IHoverable ────────────────────────────────────────────────
 
@@ -48,21 +56,11 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
     }
 
     public void render(Context ctx) {
-        int now_us = (int) GLib.get_monotonic_time();
-        if (now_us - last_poll_us > 1200000) {
-            _page.refresh_state();
-            sync_from_page();
-            last_poll_us = now_us;
-        }
-
         icon.render(ctx);
 
-        int tx = x + icon.get_width();
-        int ty = y + (Tray.TRAY_HEIGHT - 13) / 2;
-        Color col = muted
-            ? Color(){r=0.92f, g=0.36f, b=0.36f, a=1f}
-            : Color(){r=0.90f, g=0.92f, b=0.96f, a=1f};
-        pdt(ctx, label, tx, ty, 13f, col);
+        int tx  = x + icon.get_width();
+        int ty  = y + (Tray.TRAY_HEIGHT - 13) / 2;
+        pdt(ctx, label, tx, ty, 13f, muted ? label_col_muted : label_col_normal);
     }
 
     private void sync_from_page() {

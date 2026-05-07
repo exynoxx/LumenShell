@@ -37,7 +37,6 @@ public class Tray {
     public int get_expanded_height() { return expanded_height; }
 
     // page_slide_x: offset of the virtual page band.
-    // Page i renders at (tray_x + i * tray_width + page_slide_x).
     private int page_slide_x = 0;
 
     // ── Cached geometry ───────────────────────────────────────────────────
@@ -48,6 +47,11 @@ public class Tray {
     private int last_mx = -1;
     private int last_my = -1;
 
+    // ── Cached colors ─────────────────────────────────────────────────────
+    private Color bg_color  = Color(){r=0.07f, g=0.08f, b=0.12f, a=0.97f};
+    private Color sep_color = Color(){r=0.20f, g=0.22f, b=0.34f, a=0.6f};
+    private Color stencil_color = Color(){r=1f, g=1f, b=1f, a=1f};
+
     // ─────────────────────────────────────────────────────────────────────
     // Construction
     // ─────────────────────────────────────────────────────────────────────
@@ -56,11 +60,11 @@ public class Tray {
         this.ctx          = ctx;
         this.screen_width = screen_width;
 
-        var wifi    = new WifiTray(ctx);
-        var battery = new BatteryTray(ctx);
+        var wifi    = new WifiTray();
+        var battery = new BatteryTray();
         var sound   = new SoundTray(ctx);
         var clock   = new Clock(ctx);
-        var exit    = new ExitTray(ctx);
+        var exit    = new ExitTray();
 
         trays += wifi;
         trays += battery;
@@ -81,14 +85,9 @@ public class Tray {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Layout  (called every frame so animation is smooth)
+    // Layout
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Icon row sits at the TOP of the expanded container.
-     * As expanded_height grows the icons glide upward; page content
-     * is revealed below them.
-     */
     private void layout_children() {
         int icon_row_y = TRAY_Y - expanded_height;
 
@@ -114,13 +113,10 @@ public class Tray {
                 pages[active_page_idx].on_deactivate();
 
             if (expanded_height == 0)
-                animations.add(new Transition1D(EXPAND_ANIM_ID,
-                    &expanded_height, EXPAND_FULL, 0.28d));
+                animations.add(new Transition1D(EXPAND_ANIM_ID, &expanded_height, EXPAND_FULL, 0.28d));
 
-            // Slide the virtual page band so the target page is centred
             int target_slide = -page_idx * this.width;
-            animations.add(new Transition1D(SLIDE_ANIM_ID,
-                &page_slide_x, target_slide, 0.22d));
+            animations.add(new Transition1D(SLIDE_ANIM_ID, &page_slide_x, target_slide, 0.22d));
 
             active_page_idx = page_idx;
             sync_page_icon_states();
@@ -135,8 +131,7 @@ public class Tray {
             active_page_idx = -1;
             sync_page_icon_states();
         }
-        animations.add(new Transition1D(EXPAND_ANIM_ID,
-            &expanded_height, 0, 0.24d));
+        animations.add(new Transition1D(EXPAND_ANIM_ID, &expanded_height, 0, 0.24d));
         redraw = true;
     }
 
@@ -152,7 +147,6 @@ public class Tray {
     // ─────────────────────────────────────────────────────────────────────
 
     public void on_mouse_down() {
-        // 1. Page-icon clicks
         for (int p = 0; p < pages.length; p++) {
             var hp = (IHasPage) trays[page_owner[p]];
             if (hp.is_icon_hovered()) {
@@ -161,13 +155,11 @@ public class Tray {
             }
         }
 
-        // 2. Non-expandable icons
         foreach (var t in trays) {
             if (!(t is IHasPage) && t is IClickable)
                 ((IClickable) t).mouse_down();
         }
 
-        // 3. Page content area
         if (active_page_idx >= 0) {
             int ct = content_top();
             if (last_my >= ct && last_my <= TRAY_Y)
@@ -195,7 +187,6 @@ public class Tray {
         if (active_page_idx >= 0)
             pages[active_page_idx].mouse_motion(mx, my);
 
-        // Collapse when the pointer leaves the expanded container
         if (active_page_idx >= 0 && expanded_height > 0) {
             int icon_row_y = TRAY_Y - expanded_height;
             bool in_tray   = mx >= this.x
@@ -228,39 +219,29 @@ public class Tray {
         layout_children();
 
         int icon_row_y = TRAY_Y - expanded_height;
-        int bg_h = TRAY_HEIGHT + expanded_height;
+        int bg_h       = TRAY_HEIGHT + expanded_height;
 
-        // ── Container background ──────────────────────────────────────────
-        ctx.draw_rect_rounded(this.x, icon_row_y, this.width, bg_h, 22f,
-            Color(){r=0.07f, g=0.08f, b=0.12f, a=0.97f});
+        ctx.draw_rect_rounded(this.x, icon_row_y, this.width, bg_h, 22f, bg_color);
 
-        // ── Page content ──────────────────────────────────────────────────
         int ct = content_top();
         int ch = content_height();
 
         if (ch > 4 && active_page_idx >= 0) {
-            // Separator line
-            ctx.draw_rect(this.x + 12, ct - 1, this.width - 24, 1,
-                Color(){r=0.20f, g=0.22f, b=0.34f, a=0.6f});
+            ctx.draw_rect(this.x + 12, ct - 1, this.width - 24, 1, sep_color);
 
-            // Stencil-clip so pages cannot overdraw the icon row
             ctx.stencil_push();
-            ctx.draw_rect(this.x, ct, this.width, ch,
-                Color(){r=1f, g=1f, b=1f, a=1f});
+            ctx.draw_rect(this.x, ct, this.width, ch, stencil_color);
             ctx.stencil_apply();
 
-            // Render pages in the virtual horizontal band.
-            // During a slide transition two pages will be partially visible.
             for (int p = 0; p < pages.length; p++) {
-                int px = this.x + p * this.width + page_slide_x;
-                if (px + this.width <= this.x || px >= this.x + this.width) continue;
-                pages[p].render(ctx, px, ct, this.width, ch);
+                int page_x = this.x + p * this.width + page_slide_x;
+                if (page_x + this.width <= this.x || page_x >= this.x + this.width) continue;
+                pages[p].render(ctx, page_x, ct, this.width, ch);
             }
 
             ctx.stencil_pop();
         }
 
-        // ── Icons (on top of page content) ────────────────────────────────
         foreach (var t in trays)
             t.render(ctx);
     }
@@ -269,12 +250,10 @@ public class Tray {
     // Geometry helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    /** Top y of the page content area (just below the icon row). */
     private int content_top() {
         return TRAY_Y - expanded_height + TRAY_HEIGHT;
     }
 
-    /** Height of the page content area. */
     private int content_height() {
         return expanded_height - TRAY_HEIGHT;
     }

@@ -94,9 +94,9 @@ public class UiTextField : GLib.Object {
 
         string display = text;
         if (obscure_text && text != "") {
-            display = "";
-            for (int i = 0; i < text.length; i++)
-                display += "•";
+            var sb = new StringBuilder();
+            for (int i = 0; i < text.length; i++) sb.append("•");
+            display = sb.str;
         }
 
         string shown = display != "" ? display : placeholder;

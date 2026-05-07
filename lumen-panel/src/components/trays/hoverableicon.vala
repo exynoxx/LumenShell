@@ -3,10 +3,9 @@ using GLES2;
 
 public class HoverableIcon : IHoverable, ITray, Object {
 
-    private const string base_path = "/home/nicholas/Dokumenter/layer-shell-experiments/lumen-panel/src/res/";
-    private const int ICON_SIZE = 32;
+    private const int ICON_SIZE   = 32;
     private const int HOVER_RADIUS = 24;
-    private const int MARGIN_TOP = (Tray.TRAY_HEIGHT - ICON_SIZE)/2;
+    private const int MARGIN_TOP  = (Tray.TRAY_HEIGHT - ICON_SIZE) / 2;
 
     protected GLuint tex = 0;
     private int x;
@@ -21,7 +20,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
     }
 
     public int get_width(){
-        return HOVER_RADIUS*2;
+        return HOVER_RADIUS * 2;
     }
 
     public void mouse_motion(int mouse_x, int mouse_y){
@@ -36,18 +35,16 @@ public class HoverableIcon : IHoverable, ITray, Object {
     }
 
     public void set_position(int x, int y){
-        this.x = x;
-        this.y = y + MARGIN_TOP;
-        this.circle_x = this.x + ICON_SIZE/2;
-        this.circle_y = this.y + ICON_SIZE/2;
+        this.x        = x;
+        this.y        = y + MARGIN_TOP;
+        this.circle_x = this.x + ICON_SIZE / 2;
+        this.circle_y = this.y + ICON_SIZE / 2;
     }
 
     public bool set_icon(string icon){
-
-        var path = Path.build_filename(base_path, icon+".svg");
-
-        var image = DrawKit.image_from_svg(path,ICON_SIZE,ICON_SIZE);
-        if(image == null){
+        var path  = Path.build_filename(RES_DIR, icon + ".svg");
+        var image = DrawKit.image_from_svg(path, ICON_SIZE, ICON_SIZE);
+        if (image == null) {
             print("Icon file not found: %s\n", path);
             return false;
         }
@@ -65,10 +62,6 @@ public class HoverableIcon : IHoverable, ITray, Object {
         return true;
     }
 
-    public void load(string icon){
-        set_icon(icon);
-    }
-
     public void free(){
         if (tex != 0) {
             DrawKit.texture_free(tex);
@@ -78,14 +71,13 @@ public class HoverableIcon : IHoverable, ITray, Object {
 
     public void render(Context ctx){
         if (tex == 0) return;
-        
-        if(hovered || selected){
-            ctx.draw_circle(circle_x, circle_y, 24, {0.16f,0.18f,0.26f,1f});
-            ctx.set_tex_color({1f,1f,1f,1f});
-            ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
-            return;
-        } 
 
-        ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
+        if (hovered || selected) {
+            ctx.draw_circle(circle_x, circle_y, 24, {0.16f, 0.18f, 0.26f, 1f});
+            ctx.set_tex_color({1f, 1f, 1f, 1f});
+            ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
+        } else {
+            ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
+        }
     }
 }

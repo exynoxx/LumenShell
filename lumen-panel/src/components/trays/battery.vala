@@ -3,18 +3,20 @@ using DrawKit;
 /**
  * BatteryTray — icon that lives in the tray bar.
  *
- * Displays the appropriate battery icon tinted to charge level.
- * Clicking it tells the Tray to open/close the BatteryPage expansion.
- * All detailed rendering has moved to BatteryPage.
+ * Subscribes to BatteryPage's shared service for all data.
  */
 public class BatteryTray : IconAndText, IUpdateable, IHasPage {
 
     private BatteryPage _page;
     public  string status = "";
 
-    public BatteryTray(Context ctx) {
-        base(ctx, new HoverableIcon("nobattery"), "N/A");
+    public BatteryTray() {
+        base(new HoverableIcon("nobattery"));
         _page = new BatteryPage();
+        _page.service.state_changed.connect(() => {
+            update();
+            redraw = true;
+        });
         update();
     }
 
@@ -29,49 +31,24 @@ public class BatteryTray : IconAndText, IUpdateable, IHasPage {
     public string get_status() { return status; }
 
     public void update() {
-        var raw = sysfs("status").down().strip();
+        var svc      = _page.service;
+        var raw      = svc.raw_status;
         var new_icon = "nobattery";
 
         if (raw == "discharging" || raw.contains("full")) {
-            var full = sysfs_int("charge_full");
-            var curr = sysfs_int("charge_now");
-            if (full > 0) {
-                var pct = (int)((curr / (float) full) * 100);
-                pct    = int.min(100, int.max(0, pct));
-                status = "%d%%".printf(pct);
+            if (svc.charge_full > 0) {
+                var pct = svc.percent;
+                status   = "%d%%".printf(pct);
                 new_icon = pct >= 70 ? "high" : pct >= 30 ? "mid" : "low";
-                set_text(status);
             }
         } else if (raw == "charging") {
             new_icon = "charging";
-            var full = sysfs_int("charge_full");
-            var curr = sysfs_int("charge_now");
-            if (full > 0) {
-                var pct = (int)((curr / (float) full) * 100);
-                pct    = int.min(100, int.max(0, pct));
-                status = "%d%% ⚡".printf(pct);
-                set_text(status);
-            }
+            if (svc.charge_full > 0)
+                status = "%d%% ⚡".printf(svc.percent);
         } else {
-            set_text("N/A");
-            return;
+            status = "N/A";
         }
 
         icon.set_icon(new_icon);
-    }
-
-    private static string sysfs(string name) {
-        string out_str, err;
-        try {
-            int exit;
-            Process.spawn_command_line_sync(
-                "cat /sys/class/power_supply/BAT0/" + name,
-                out out_str, out err, out exit);
-            return exit == 0 ? out_str.strip() : "";
-        } catch (Error e) { return ""; }
-    }
-
-    private static int sysfs_int(string name) {
-        return int.parse(sysfs(name));
     }
 }
