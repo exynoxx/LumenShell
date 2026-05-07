@@ -23,4 +23,10 @@ struct wl_surface *layer_shell_create_surface(const char *layer_name, int width,
 struct wl_surface *layer_shell_get_surface(void);
 void layer_shell_set_input_region(int x, int y, int w, int h);
 
+// Convenience: create the layer surface, initialise EGL on it, and roll back
+// the surface on EGL failure. Returns 0 on success, -1 on any failure.
+int init_layer_shell(const char *layer_name, int width, int height,
+                     Anchor anchor, bool exclusive_zone,
+                     int exclusive_zone_height);
+
 #endif // LAYER_SHELL_H

@@ -1,5 +1,3 @@
-#include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
 
 #include "wlhooks.h"
@@ -23,19 +21,6 @@ int wlhooks_init(void) {
     activation_init();
 
     registry_init(wl_display);
-    return 0;
-}
-
-int init_layer_shell(const char *layer_name, int width, int height,
-                     Anchor anchor, bool exclusive_zone, int exclusive_zone_height) {
-    struct wl_surface *surface = layer_shell_create_surface(
-        layer_name, width, height, anchor, exclusive_zone, exclusive_zone_height);
-    if (!surface) return -1;
-
-    if (egl_init(wl_display, surface, width, height) < 0) {
-        layer_shell_destroy();
-        return -1;
-    }
     return 0;
 }
 

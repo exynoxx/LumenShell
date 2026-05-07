@@ -2,6 +2,7 @@
 #include "screencopy.h"
 #include "registry.h"
 #include "output.h"
+#include "shm.h"
 #include "../generated/wlr-screencopy-unstable.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +13,6 @@
 #include <errno.h>
 
 static struct zwlr_screencopy_manager_v1 *screencopy_manager = NULL;
-static struct wl_shm                     *wl_shm = NULL;
 
 typedef struct {
     struct zwlr_screencopy_frame_v1 *frame;
@@ -26,12 +26,6 @@ typedef struct {
     void *shm_data;
     size_t shm_size;
 } screencopy_state_t;
-
-static void handle_shm_registry(void *user_data, struct wl_registry *registry,
-                                uint32_t name, const char *interface,
-                                uint32_t version) {
-    wl_shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
-}
 
 static int create_shm_file(void) {
     int fd;
@@ -90,7 +84,8 @@ static void frame_handle_buffer(void *data,
     }
 
     // Get shm pool
-    if (!wl_shm) {
+    struct wl_shm *shm = get_wl_shm();
+    if (!shm) {
         fprintf(stderr, "wl_shm not available\n");
         if (state->failed_cb) {
             state->failed_cb(state->user_data_fail);
@@ -98,7 +93,7 @@ static void frame_handle_buffer(void *data,
         return;
     }
 
-    struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, state->shm_fd, size);
+    struct wl_shm_pool *pool = wl_shm_create_pool(shm, state->shm_fd, size);
     if (!pool) {
         fprintf(stderr, "wl_shm_create_pool failed\n");
         if (state->failed_cb) state->failed_cb(state->user_data_fail);
@@ -206,7 +201,7 @@ static void screencopy_registry_handler(void *data, struct wl_registry *registry
 
 void screencopy_init(void) {
     registry_add_handler("zwlr_screencopy_manager_v1", screencopy_registry_handler, NULL);
-    registry_add_handler("wl_shm", handle_shm_registry, NULL);
+    shm_init();
 }
 
 void screencopy_cleanup(void) {
@@ -214,10 +209,7 @@ void screencopy_cleanup(void) {
         zwlr_screencopy_manager_v1_destroy(screencopy_manager);
         screencopy_manager = NULL;
     }
-    if (wl_shm) {
-        wl_shm_destroy(wl_shm);
-        wl_shm = NULL;
-    }
+    shm_cleanup();
 }
 
 void screencopy_capture(screencopy_ready_callback ready_cb,

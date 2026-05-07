@@ -1,33 +1,26 @@
 #ifndef SEAT_H
 #define SEAT_H
 
-#include <wayland-client.h>
+#include <stdbool.h>
 #include <stdint.h>
-#include <stdbool.h>    
 
-typedef void (*seat_mouse_enter)(void* user_data);
-typedef void (*seat_mouse_leave)(void* user_data);
-typedef void (*seat_mouse_down)(uint32_t button, void* user_data);
-typedef void (*seat_mouse_up)(uint32_t button, void* user_data);
-typedef void (*seat_mouse_motion)(int32_t x, int32_t y, void* user_data);
-typedef void (*seat_mouse_scroll)(int32_t amount, void* user_data);
+// Public mouse / keyboard callback registries live in pointer.h / keyboard.h
+// but are pulled in here for backward-compatible single-include callers.
+#include "pointer.h"
+#include "keyboard.h"
 
-typedef void (*seat_key_down)(uint32_t key, void* user_data);
-typedef void (*seat_key_up)(uint32_t key, void* user_data);
-
-void register_on_mouse_enter(seat_mouse_enter cb, void* user_data);
-void register_on_mouse_leave(seat_mouse_leave cb, void* user_data);
-void register_on_mouse_down(seat_mouse_down cb, void* user_data);
-void register_on_mouse_up(seat_mouse_up cb, void* user_data);
-void register_on_mouse_motion(seat_mouse_motion cb, void* user_data);
-void register_on_mouse_scroll(seat_mouse_scroll cb, void* user_data);
-void register_on_key_down(seat_key_down cb, void* user_data);
-void register_on_key_up(seat_key_up cb, void* user_data);
+struct wl_seat;
 
 void seat_init(void);
 void seat_cleanup(void);
 void set_grab_keyboard(bool value);
+bool seat_should_grab_keyboard(void);
 struct wl_seat *get_wl_seat(void);
+
+// The most recent input event serial (pointer enter/leave/button or keyboard
+// enter/leave/key). Used by xdg_activation token requests. Updated by
+// pointer.c / keyboard.c via seat_set_last_serial().
 uint32_t seat_get_last_serial(void);
+void     seat_set_last_serial(uint32_t serial);
 
 #endif

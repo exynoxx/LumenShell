@@ -3,9 +3,12 @@
 #include "compositor.h"
 #include "output.h"
 #include "seat.h"
+#include "../egl.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+extern struct wl_display *wl_display;
 
 #define LAYER_SHELL_MAX_VERSION 4
 
@@ -14,7 +17,6 @@ static uint32_t                      layer_shell_version = 1;
 static struct wl_surface            *surface = NULL;
 static struct zwlr_layer_surface_v1 *layer_surface = NULL;
 
-extern bool grab_keyboard; // owned by seat.c; module-private linkage retained for compat
 
 static void layer_surface_config(void *data,
                                  struct zwlr_layer_surface_v1 *ls,
@@ -100,7 +102,7 @@ struct wl_surface *layer_shell_create_surface(const char *layer_name, int width,
         return NULL;
     }
 
-    if (grab_keyboard) {
+    if (seat_should_grab_keyboard()) {
         uint32_t mode = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
         if (layer_shell_version >= ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION) {
             mode = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND;
@@ -123,6 +125,20 @@ struct wl_surface *layer_shell_create_surface(const char *layer_name, int width,
 
 struct wl_surface *layer_shell_get_surface(void) {
     return surface;
+}
+
+int init_layer_shell(const char *layer_name, int width, int height,
+                     Anchor anchor, bool exclusive_zone,
+                     int exclusive_zone_height) {
+    struct wl_surface *s = layer_shell_create_surface(
+        layer_name, width, height, anchor, exclusive_zone, exclusive_zone_height);
+    if (!s) return -1;
+
+    if (egl_init(wl_display, s, width, height) < 0) {
+        layer_shell_destroy();
+        return -1;
+    }
+    return 0;
 }
 
 void layer_shell_set_input_region(int x, int y, int w, int h) {
