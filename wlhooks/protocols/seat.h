@@ -28,5 +28,6 @@ void seat_init();
 void seat_cleanup();
 void set_grab_keyboard(bool value);
 struct wl_seat *get_wl_seat();
+uint32_t seat_get_last_serial(void);
 
 #endif

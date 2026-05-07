@@ -14,6 +14,7 @@ struct xkb_context *xkb_context;
 struct xkb_keymap *xkb_keymap;
 struct xkb_state *xkb_state;
 bool grab_keyboard = false;
+static uint32_t last_input_serial = 0;
 
 static seat_mouse_enter mouse_enter_cb;
 static void *mouse_enter_userdata = NULL;
@@ -44,6 +45,7 @@ static void *key_up_userdata = NULL;
 static void pointer_enter(void *data, struct wl_pointer *pointer,
                          uint32_t serial, struct wl_surface *surface,
                          wl_fixed_t x, wl_fixed_t y) {
+    last_input_serial = serial;
     if(mouse_enter_cb){
         mouse_enter_cb(mouse_enter_userdata);
     }
@@ -65,6 +67,7 @@ static void pointer_motion(void *data, struct wl_pointer *pointer,
 static void pointer_button(void *data, struct wl_pointer *pointer,
                           uint32_t serial, uint32_t time, uint32_t button,
                           uint32_t state) {
+    last_input_serial = serial;
     if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
         if(mouse_down_cb){
             mouse_down_cb(button, mouse_down_userdata);
@@ -161,8 +164,7 @@ static void keyboard_leave(void *data, struct wl_keyboard *keyboard,
 static void keyboard_key(void *data, struct wl_keyboard *keyboard,
                         uint32_t serial, uint32_t time, uint32_t key,
                         uint32_t state_w) {
-    struct app_state *state = data;
-    
+    last_input_serial = serial;
     xkb_keysym_t keysym = xkb_state_key_get_one_sym(xkb_state, key + 8);
     if (state_w == WL_KEYBOARD_KEY_STATE_PRESSED) {
         if(key_down_cb) key_down_cb(keysym, key_down_userdata);
@@ -241,6 +243,10 @@ void set_grab_keyboard(bool value){
 
 struct wl_seat *get_wl_seat(){
     return seat;
+}
+
+uint32_t seat_get_last_serial(void){
+    return last_input_serial;
 }
 
 void register_on_mouse_enter(seat_mouse_enter cb, void* user_data){

@@ -11,6 +11,7 @@
 #include "protocols/toplevel.h"
 #include "protocols/screencopy.h"
 #include "protocols/output.h"
+#include "protocols/activation.h"
 
 extern struct wl_display *wl_display;
 

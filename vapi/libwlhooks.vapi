@@ -130,4 +130,16 @@ namespace WLHooks {
 
     [CCode (cname = "screencopy_capture")]
     public void capture (ReadyCallback ready_cb, FailedCallback failed_cb);
+
+    [CCode (cname = "activation_available")]
+    public bool activation_available ();
+
+    // Returns a freshly-allocated XDG activation token for `app_id` (may be ""),
+    // or null if the compositor does not implement xdg_activation_v1.
+    // The caller takes ownership.
+    [CCode (cname = "activation_get_token")]
+    public string? activation_get_token (string app_id);
+
+    [CCode (cname = "activation_activate_self")]
+    public void activation_activate_self ();
 }

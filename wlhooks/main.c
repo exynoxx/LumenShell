@@ -20,16 +20,19 @@ int wlhooks_init(){
     seat_init();
     toplevel_init();
     output_init();
+    activation_init();
     //screencopy_init();
 
     registry_init(wl_display);
+
+    return 0;
 }
 
 int init_layer_shell(const char *layer_name, int width, int height, Anchor anchor, bool exclusive_zone, int exclusive_zone_height) {
     struct wl_surface *surface = layer_shell_create_surface(layer_name, width, height, anchor, exclusive_zone, exclusive_zone_height);
+    if (!surface) return -1;
 
     egl_init(wl_display, surface, width, height);
-
     return 0;
 }
 
@@ -42,6 +45,7 @@ int display_dispatch_blocking(){
 }
 
 void wlhooks_destroy(void) {
+    activation_cleanup();
     compositor_cleanup();
     layer_shell_cleanup();
     seat_cleanup();

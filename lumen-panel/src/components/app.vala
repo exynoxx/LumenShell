@@ -155,6 +155,13 @@ public class App {
             return;
         }
 
+        // Hand the spawned process an XDG activation token so KWin / GNOME /
+        // wlroots compositors will grant focus to its first window. No-op if
+        // xdg_activation_v1 is unavailable.
+        string? token = WLHooks.activation_get_token(app_id);
+        if (token != null)
+            Environment.set_variable("XDG_ACTIVATION_TOKEN", token, true);
+
         try {
             Process.spawn_command_line_async(launch_cmd);
             if (is_pinned) launching = true;
@@ -162,6 +169,8 @@ public class App {
             launching = false;
             stderr.printf("Launch failed for %s: %s\n", app_id, e.message);
         }
+
+        if (token != null) Environment.unset_variable("XDG_ACTIVATION_TOKEN");
 
         redraw = true;
     }
