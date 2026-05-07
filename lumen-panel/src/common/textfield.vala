@@ -1,6 +1,25 @@
 using DrawKit;
+using Gee;
 
 public class UiTextField : GLib.Object {
+
+    private const uint32 KEY_CONTROL_L = 0xFFE3;
+    private const uint32 KEY_CONTROL_R = 0xFFE4;
+    private const uint32 KEY_BACKSPACE = 0xFF08;
+    private const uint32 KEY_DELETE    = 0xFFFF;
+    private const uint32 KEY_RETURN    = 0xFF0D;
+    private const uint32 KEY_KP_ENTER  = 0xFF8D;
+    private const uint32 KEY_ESCAPE    = 0xFF1B;
+
+    private const uint32 KEYSYM_FUNCTION_RANGE_LOW  = 0xFD00;
+    private const uint32 KEYSYM_FUNCTION_RANGE_HIGH = 0xFFFF;
+    private const uint32 KEYSYM_ASCII_PRINTABLE_LOW  = 0x20;
+    private const uint32 KEYSYM_ASCII_PRINTABLE_HIGH = 0x7E;
+    private const uint32 KEYSYM_LATIN1_SUPP_LOW  = 0xA0;
+    private const uint32 KEYSYM_LATIN1_SUPP_HIGH = 0xFF;
+    private const uint32 KEYSYM_UNICODE_OFFSET = 0x01000000;
+    private const uint32 KEYSYM_UNICODE_LOW  = 0x01000100;
+    private const uint32 KEYSYM_UNICODE_HIGH = 0x0110FFFF;
 
     public signal void changed(string text);
     public signal void submitted();
@@ -33,6 +52,7 @@ public class UiTextField : GLib.Object {
     private int w = 0;
     private int h = 0;
     private bool ctrl_down = false;
+    private HashSet<uint32> pressed_keys = new HashSet<uint32>();
 
     public void set_bounds(int x, int y, int w, int h) {
         this.x = x;
@@ -70,6 +90,7 @@ public class UiTextField : GLib.Object {
         focused = true;
         redraw = true;
         ctrl_down = false;
+        pressed_keys.clear();
         WLHooks.register_on_key_down(on_key_down);
         WLHooks.register_on_key_up(on_key_up);
         focus_changed(true);
@@ -79,6 +100,7 @@ public class UiTextField : GLib.Object {
         if (!focused) return;
         focused = false;
         ctrl_down = false;
+        pressed_keys.clear();
         WLHooks.register_on_key_down(null);
         WLHooks.register_on_key_up(null);
         focus_changed(false);
@@ -112,12 +134,17 @@ public class UiTextField : GLib.Object {
     private void on_key_down(uint32 keysym) {
         if (!focused) return;
 
-        if (keysym == 0xFFE3 || keysym == 0xFFE4) {
+        // Dedupe key-down events: the compositor delivers a press *and* repeat
+        // events for held keys via wl_keyboard.key. We don't implement repeat,
+        // so ignore everything except the initial press transition.
+        if (!pressed_keys.add(keysym)) return;
+
+        if (keysym == KEY_CONTROL_L || keysym == KEY_CONTROL_R) {
             ctrl_down = true;
             return;
         }
 
-        if (keysym == 0xFF08) {
+        if (keysym == KEY_BACKSPACE) {
             if (ctrl_down) {
                 set_text("", true);
             } else if (text.length > 0) {
@@ -126,35 +153,50 @@ public class UiTextField : GLib.Object {
             return;
         }
 
-        if (keysym == 0xFFFF) {
+        if (keysym == KEY_DELETE) {
             set_text("", true);
             return;
         }
 
-        if (keysym == 0xFF0D || keysym == 0xFF8D) {
+        if (keysym == KEY_RETURN || keysym == KEY_KP_ENTER) {
             submitted();
             return;
         }
 
-        if (keysym == 0xFF1B) {
+        if (keysym == KEY_ESCAPE) {
             cancelled();
             blur();
             return;
         }
 
-        if (is_printable_keysym(keysym)) {
-            set_text(text + ((unichar) keysym).to_string(), true);
+        unichar c = keysym_to_unichar(keysym);
+        if (c != 0) {
+            set_text(text + c.to_string(), true);
         }
     }
 
     private void on_key_up(uint32 keysym) {
-        if (keysym == 0xFFE3 || keysym == 0xFFE4) {
+        pressed_keys.remove(keysym);
+        if (keysym == KEY_CONTROL_L || keysym == KEY_CONTROL_R) {
             ctrl_down = false;
         }
     }
 
-    private bool is_printable_keysym(uint32 keysym) {
-        return (keysym >= 0x20 && keysym <= 0x7E)
-            || (keysym >= 0xA0 && keysym <= 0x10FFFF);
+    private unichar keysym_to_unichar(uint32 keysym) {
+        // X11 function/modifier/navigation keys live in 0xFD00–0xFFFF —
+        // never printable. Without this guard, Shift/Tab/arrows/etc. would
+        // each append a bogus codepoint to the field.
+        if (keysym >= KEYSYM_FUNCTION_RANGE_LOW && keysym <= KEYSYM_FUNCTION_RANGE_HIGH) return 0;
+
+        // Latin-1 (ASCII printable + Latin-1 supplement) maps 1:1.
+        if ((keysym >= KEYSYM_ASCII_PRINTABLE_LOW && keysym <= KEYSYM_ASCII_PRINTABLE_HIGH)
+            || (keysym >= KEYSYM_LATIN1_SUPP_LOW && keysym <= KEYSYM_LATIN1_SUPP_HIGH))
+            return (unichar) keysym;
+
+        // Unicode keysyms: 0x01000000 | codepoint.
+        if (keysym >= KEYSYM_UNICODE_LOW && keysym <= KEYSYM_UNICODE_HIGH)
+            return (unichar) (keysym - KEYSYM_UNICODE_OFFSET);
+
+        return 0;
     }
 }
