@@ -8,6 +8,7 @@ wayland_egl_dep    = dependency('wayland-egl', required: true)
 egl_dep            = dependency('egl', required: true)
 glesv2_dep         = dependency('glesv2', required: true)
 xkb_dep            = dependency('xkbcommon', required: true)
+glib_dep           = dependency('glib-2.0', required: true)
 
 # --- Source and header files ---
 sources = [
@@ -32,6 +33,6 @@ sources = [
 wayland_unstable = static_library(
   'wlhooks',
   sources,
-  dependencies: [wayland_client_dep, wayland_egl_dep, egl_dep, glesv2_dep, xkb_dep],
+  dependencies: [wayland_client_dep, wayland_egl_dep, egl_dep, glesv2_dep, xkb_dep, glib_dep],
   include_directories: include_directories('.')
 )

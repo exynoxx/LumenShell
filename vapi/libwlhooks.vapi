@@ -23,17 +23,6 @@ namespace WLHooks {
     [CCode(cname="get_output_scale", has_target = false)]
     public int get_output_scale();
 
-    // toplevel_info struct with pointer to next
-    [CCode(cname="toplevel_info", has_type_id=false)]
-    public struct ToplevelInfo {
-        public uint32 id;
-        public string app_id;
-        public string title;
-        public uint32 state;
-        public unowned ToplevelInfo* next;
-        // handle omitted, add if needed: public unowned IntPtr handle;
-    }
-
     [CCode(cname="wlhooks_init")]
     public int init();
 
@@ -41,7 +30,7 @@ namespace WLHooks {
     public int init_layer_shell(string layer_name, int width, int height, Anchor anchor, bool exclusive_zone, int exclusive_zone_height = -1);
 
     [CCode(cname="layer_shell_destroy")]
-    public int destroy_layer_shell();
+    public void destroy_layer_shell();
 
     [CCode(cname="wlhooks_destroy")]
     public void destroy();

@@ -6,17 +6,17 @@
 #include <wayland-egl.h>
 #include <wayland-client.h>
 
-static EGLDisplay egl_display = EGL_NO_DISPLAY;
-static EGLSurface egl_surface = EGL_NO_SURFACE;
-static EGLContext egl_context = EGL_NO_CONTEXT;
-static struct wl_egl_window *egl_window = NULL;
+extern EGLDisplay egl_display;
+extern EGLSurface egl_surface;
+extern EGLContext egl_context;
+extern struct wl_egl_window *egl_window;
 
-void egl_init(struct wl_display *display, struct wl_surface *surface, int width, int height);
-void egl_swap_buffers();
-void egl_cleanup();
+int  egl_init(struct wl_display *display, struct wl_surface *surface, int width, int height);
+void egl_swap_buffers(void);
+void egl_cleanup(void);
 
-EGLDisplay get_egl_display();
-EGLSurface get_egl_surface();
-EGLContext get_egl_context();
+EGLDisplay get_egl_display(void);
+EGLSurface get_egl_surface(void);
+EGLContext get_egl_context(void);
 
 #endif

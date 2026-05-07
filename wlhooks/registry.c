@@ -3,11 +3,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAX_HANDLERS 32
+#define MAX_HANDLERS 64
 
 typedef struct {
     char *interface_name;
     registry_handler_fn handler;
+    registry_remover_fn remover;
     void *user_data;
 } registry_handler;
 
@@ -15,33 +16,53 @@ static registry_handler handlers[MAX_HANDLERS];
 static int handler_count = 0;
 static struct wl_registry *global_registry = NULL;
 
+static registry_handler* handler_lookup(const char *interface_name) {
+    for (int i = 0; i < handler_count; i++) {
+        if (strcmp(interface_name, handlers[i].interface_name) == 0)
+            return &handlers[i];
+    }
+    return NULL;
+}
+
 void registry_add_handler(const char *interface_name,
                          registry_handler_fn handler,
                          void *user_data) {
-    if (handler_count >= MAX_HANDLERS) return;
-    
+    if (handler_count >= MAX_HANDLERS) {
+        fprintf(stderr, "registry: handler table full (cap=%d), dropping %s\n",
+                MAX_HANDLERS, interface_name);
+        return;
+    }
+
     handlers[handler_count].interface_name = strdup(interface_name);
     handlers[handler_count].handler = handler;
+    handlers[handler_count].remover = NULL;
     handlers[handler_count].user_data = user_data;
     handler_count++;
 }
 
-static void registry_global(void *data, struct wl_registry *registry,
-                           uint32_t name, const char *interface, 
-                           uint32_t version) {
-    for (int i = 0; i < handler_count; i++) {
-        if (strcmp(interface, handlers[i].interface_name) == 0) {
-            printf("registry hit for %s\n", interface);
-            handlers[i].handler(handlers[i].user_data, registry, name, interface, version);
-            return;
-        }
-    }
-
-    //fprintf(stderr, "registry strcmp miss for %s\n", interface);
+void registry_set_remover(const char *interface_name, registry_remover_fn remover) {
+    registry_handler *h = handler_lookup(interface_name);
+    if (h) h->remover = remover;
 }
 
-static void registry_global_remove(void *data, struct wl_registry *registry,uint32_t name) {
-    // Handle removal if needed
+static void registry_global(void *data, struct wl_registry *registry,
+                           uint32_t name, const char *interface,
+                           uint32_t version) {
+    // Iterate all matching handlers — multiple modules may subscribe to the
+    // same interface (e.g. multi-output binding).
+    for (int i = 0; i < handler_count; i++) {
+        if (strcmp(interface, handlers[i].interface_name) == 0) {
+            handlers[i].handler(handlers[i].user_data, registry, name, interface, version);
+        }
+    }
+}
+
+static void registry_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
+    for (int i = 0; i < handler_count; i++) {
+        if (handlers[i].remover) {
+            handlers[i].remover(handlers[i].user_data, registry, name);
+        }
+    }
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -52,8 +73,11 @@ static const struct wl_registry_listener registry_listener = {
 void registry_init(struct wl_display *display) {
     global_registry = wl_display_get_registry(display);
     wl_registry_add_listener(global_registry, &registry_listener, NULL);
-    wl_display_roundtrip(display);  // Gets registry globals
-    wl_display_roundtrip(display);  // Gets output mode/geometry
+    // First roundtrip: receive globals advertisement.
+    // Second roundtrip: receive initial events from the proxies bound during
+    // the first roundtrip (e.g. wl_output mode/scale).
+    wl_display_roundtrip(display);
+    wl_display_roundtrip(display);
 }
 
 void registry_cleanup(void) {
@@ -61,7 +85,7 @@ void registry_cleanup(void) {
         free(handlers[i].interface_name);
     }
     handler_count = 0;
-    
+
     if (global_registry) {
         wl_registry_destroy(global_registry);
         global_registry = NULL;

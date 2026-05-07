@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "screencopy.h"
 #include "registry.h"
+#include "output.h"
 #include "../generated/wlr-screencopy-unstable.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,8 +12,7 @@
 #include <errno.h>
 
 static struct zwlr_screencopy_manager_v1 *screencopy_manager = NULL;
-struct wl_shm *wl_shm = NULL;
-extern struct wl_output *wl_output;
+static struct wl_shm                     *wl_shm = NULL;
 
 typedef struct {
     struct zwlr_screencopy_frame_v1 *frame;
@@ -31,7 +31,6 @@ static void handle_shm_registry(void *user_data, struct wl_registry *registry,
                                 uint32_t name, const char *interface,
                                 uint32_t version) {
     wl_shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
-    printf("wl_shm bound successfully\n");
 }
 
 static int create_shm_file(void) {
@@ -76,8 +75,6 @@ static void frame_handle_buffer(void *data,
                                 uint32_t stride) {
     screencopy_state_t *state = data;
 
-    printf("frame_handle_buffer\n");
-    
     state->result->width = width;
     state->result->height = height;
     state->result->stride = stride;
@@ -102,8 +99,18 @@ static void frame_handle_buffer(void *data,
     }
 
     struct wl_shm_pool *pool = wl_shm_create_pool(wl_shm, state->shm_fd, size);
+    if (!pool) {
+        fprintf(stderr, "wl_shm_create_pool failed\n");
+        if (state->failed_cb) state->failed_cb(state->user_data_fail);
+        return;
+    }
     state->buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, format);
     wl_shm_pool_destroy(pool);
+    if (!state->buffer) {
+        fprintf(stderr, "wl_shm_pool_create_buffer failed\n");
+        if (state->failed_cb) state->failed_cb(state->user_data_fail);
+        return;
+    }
 
     zwlr_screencopy_frame_v1_copy(frame, state->buffer);
 }
@@ -126,9 +133,8 @@ static void frame_handle_ready(void *data,
     state->result->data = malloc(state->shm_size);
     if (state->result->data) {
         memcpy(state->result->data, state->shm_data, state->shm_size);
-        
+
         if (state->ready_cb) {
-            printf("callback\n");
             state->ready_cb(state->result, state->user_data_ready);
         }
     } else {
@@ -234,7 +240,16 @@ void screencopy_capture(screencopy_ready_callback ready_cb,
     state->user_data_fail = user_data_fail;
     state->shm_fd = -1;
 
-    state->frame = zwlr_screencopy_manager_v1_capture_output(screencopy_manager, 0, wl_output);
+    struct wl_output *output = output_get_primary();
+    if (!output) {
+        fprintf(stderr, "screencopy: no output bound\n");
+        if (failed_cb) failed_cb(user_data_fail);
+        free(state->result);
+        free(state);
+        return;
+    }
+
+    state->frame = zwlr_screencopy_manager_v1_capture_output(screencopy_manager, 0, output);
     zwlr_screencopy_frame_v1_add_listener(state->frame, &frame_listener, state);
 }
 

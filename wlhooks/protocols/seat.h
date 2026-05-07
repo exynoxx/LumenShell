@@ -24,10 +24,10 @@ void register_on_mouse_scroll(seat_mouse_scroll cb, void* user_data);
 void register_on_key_down(seat_key_down cb, void* user_data);
 void register_on_key_up(seat_key_up cb, void* user_data);
 
-void seat_init();
-void seat_cleanup();
+void seat_init(void);
+void seat_cleanup(void);
 void set_grab_keyboard(bool value);
-struct wl_seat *get_wl_seat();
+struct wl_seat *get_wl_seat(void);
 uint32_t seat_get_last_serial(void);
 
 #endif

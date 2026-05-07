@@ -25,8 +25,11 @@ typedef struct toplevel_window {
 static struct zwlr_foreign_toplevel_manager_v1 *wlr_manager = NULL;
 static struct ext_foreign_toplevel_list_v1     *ext_manager = NULL;
 
+#define WLR_TOPLEVEL_MAX_VERSION 3
+
 static struct wl_list windows;
-static uint32_t global_window_id = 0;
+// Start at 1 so 0 stays available as a "no window" sentinel for callers.
+static uint32_t global_window_id = 1;
 
 static toplevel_window_new   callback_new   = NULL;
 static void                 *callback_new_data   = NULL;
@@ -161,8 +164,9 @@ static const struct zwlr_foreign_toplevel_manager_v1_listener wlr_manager_listen
 static void wlr_registry_handler(void *data, struct wl_registry *registry,
                                  uint32_t name, const char *interface,
                                  uint32_t version) {
+    uint32_t v = version > WLR_TOPLEVEL_MAX_VERSION ? WLR_TOPLEVEL_MAX_VERSION : version;
     wlr_manager = wl_registry_bind(registry, name,
-                                   &zwlr_foreign_toplevel_manager_v1_interface, 3);
+                                   &zwlr_foreign_toplevel_manager_v1_interface, v);
     zwlr_foreign_toplevel_manager_v1_add_listener(wlr_manager,
                                                   &wlr_manager_listener, NULL);
 }

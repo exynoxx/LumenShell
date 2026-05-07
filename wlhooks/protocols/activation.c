@@ -7,23 +7,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <glib.h>
 #include <wayland-client.h>
 
 extern struct wl_display *wl_display;
 
+#define ACTIVATION_MAX_ROUNDTRIPS 4
+
 static struct xdg_activation_v1 *activation = NULL;
 
 typedef struct {
-    char *token;
-    bool done;
+    char *token;   // g_strdup'd so the Vala caller can g_free()
+    bool  done;
 } token_request_t;
 
 static void token_handle_done(void *data,
                               struct xdg_activation_token_v1 *token_obj,
                               const char *token) {
     token_request_t *req = data;
-    req->token = strdup(token);
-    req->done = true;
+    req->token = g_strdup(token);
+    req->done  = true;
 }
 
 static const struct xdg_activation_token_v1_listener token_listener = {
@@ -75,8 +78,13 @@ char *activation_get_token(const char *app_id) {
 
     xdg_activation_token_v1_commit(tok);
 
-    while (!req.done) {
+    // Bounded roundtrip: a misbehaving compositor that never replies must not
+    // hang the panel.
+    for (int i = 0; !req.done && i < ACTIVATION_MAX_ROUNDTRIPS; i++) {
         if (wl_display_roundtrip(wl_display) < 0) break;
+    }
+    if (!req.done) {
+        fprintf(stderr, "activation: token request timed out\n");
     }
 
     xdg_activation_token_v1_destroy(tok);
@@ -92,5 +100,5 @@ void activation_activate_self(void) {
     if (!token) return;
 
     xdg_activation_v1_activate(activation, token, surface);
-    free(token);
+    g_free(token);
 }
