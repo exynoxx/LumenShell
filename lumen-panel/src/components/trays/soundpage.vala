@@ -1,7 +1,7 @@
 using DrawKit;
 using GLib;
 
-public class SoundPage : GLib.Object, ITrayPage {
+public class SoundPage : BaseTrayPage {
 
     public signal void state_changed();
 
@@ -85,10 +85,8 @@ public class SoundPage : GLib.Object, ITrayPage {
     private UiHorizontalSlider slider      = new UiHorizontalSlider();
     private UiButton           mute_button = new UiButton();
 
-    private int px = 0;
-    private int py = 0;
-    private int pw = 0;
-    private int ph = 0;
+    // Bounds (bounds_w / bounds_h) and sep_color are inherited from
+    // BaseTrayPage. Tray locks the rectangle before the first render.
 
     private uint refresh_timer_id = 0;
 
@@ -97,8 +95,12 @@ public class SoundPage : GLib.Object, ITrayPage {
     private Color  cached_pct_col;
     private int    cached_pct_w   = -1;  // text-width cache, -1 = dirty
 
-    // Cached separator color
-    private Color sep_color = Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f};
+    // Reserved chip text width: max width of any label the chip will ever
+    // show ("100%" or "Muted"). Computed once on the first render() then
+    // frozen, so the chip background and right-edge alignment never shift
+    // as the label crosses single- ↔ double-digit boundaries.
+    private int  chip_reserved_text_w = 0;
+    private bool chip_metrics_ready   = false;
 
     public SoundPage() {
         slider.value_changed.connect((v) => set_volume_percent(v));
@@ -113,11 +115,11 @@ public class SoundPage : GLib.Object, ITrayPage {
         mute_button.clicked.connect(() => toggle_mute());
     }
 
-    public string get_title()        { return "Sound"; }
+    public override string get_title() { return "Sound"; }
     public int    get_volume_percent() { return volume_percent; }
     public bool   is_muted()           { return muted; }
 
-    public void on_activate() {
+    public override void on_activate() {
         refresh_state();
         if (refresh_timer_id == 0)
             refresh_timer_id = GLib.Timeout.add(1500, () => {
@@ -126,7 +128,7 @@ public class SoundPage : GLib.Object, ITrayPage {
             });
     }
 
-    public void on_deactivate() {
+    public override void on_deactivate() {
         if (refresh_timer_id != 0) {
             GLib.Source.remove(refresh_timer_id);
             refresh_timer_id = 0;
@@ -172,31 +174,44 @@ public class SoundPage : GLib.Object, ITrayPage {
         redraw = true;
     }
 
-    public void render(Context ctx, int x, int y, int w, int h) {
-        px = x;  py = y;  pw = w;  ph = h;
+    protected override void render_content(Context ctx, int x, int y) {
+        int page_w = bounds_w;
+        int page_h = bounds_h;
+
+        // First-render: reserve the chip's max text width once.
+        if (!chip_metrics_ready) {
+            chip_reserved_text_w = int.max(ctx.width_of("100%",  12.5f),
+                                           ctx.width_of("Muted", 12.5f));
+            chip_metrics_ready = true;
+        }
 
         // ── Header ───────────────────────────────────────────────────────
         pdt(ctx, "Sound", x + PAD, y + TITLE_TOP_OFFSET, 20f, Color(){r=1f, g=1f, b=1f, a=1f});
 
         if (cached_pct_w < 0) cached_pct_w = ctx.width_of(cached_pct_txt, 12.5f);
-        int chip_w = cached_pct_w + 18;
-        int mute_x = x + w - PAD - 48;
+
+        // Chip background and position are sized for the *reserved* width
+        // so they never jump when the label crosses a digit boundary. The
+        // text is right-aligned inside the fixed chip rectangle.
+        int chip_w = chip_reserved_text_w + 18;
+        int mute_x = x + page_w - PAD - 48;
         int chip_x = mute_x - 8 - chip_w;
         int chip_y = y + CTRL_Y_OFFSET;
 
         ctx.draw_rect_rounded(chip_x, chip_y, chip_w, 24, 12f, Color(){r=0.11f, g=0.13f, b=0.19f, a=1f});
-        pdt(ctx, cached_pct_txt, chip_x + 9, chip_y + 4, 12.5f, cached_pct_col);
+        int chip_text_left = chip_x + chip_w - 9 - cached_pct_w;
+        pdt(ctx, cached_pct_txt, chip_text_left, chip_y + 4, 12.5f, cached_pct_col);
 
         mute_button.set_bounds(mute_x, chip_y, 48, 24);
         mute_button.render(ctx);
 
         // ── Separator ────────────────────────────────────────────────────
         int sep_y = y + HEADER_H;
-        ctx.draw_rect(x + PAD, sep_y, w - PAD * 2, 1, sep_color);
+        ctx.draw_rect(x + PAD, sep_y, page_w - PAD * 2, 1, sep_color);
 
         // ── Volume slider ────────────────────────────────────────────────
         int slider_y = sep_y + 14;
-        slider.set_bounds(x + PAD, slider_y, w - PAD * 2, SLIDER_H);
+        slider.set_bounds(x + PAD, slider_y, page_w - PAD * 2, SLIDER_H);
         slider.render(ctx);
         pdt(ctx, cached_pct_txt, x + PAD, slider_y + SLIDER_H - 14, 12f, Color(){r=0.72f, g=0.75f, b=0.84f, a=1f});
 
@@ -205,43 +220,43 @@ public class SoundPage : GLib.Object, ITrayPage {
         pdt(ctx, "Output device", x + PAD, list_top, 12f, Color(){r=0.55f, g=0.57f, b=0.66f, a=1f});
 
         int rows_top = list_top + 16;
-        int max_rows = (h - (rows_top - y) - 8) / ROW_H;
+        int max_rows = (page_h - (rows_top - y) - 8) / ROW_H;
         if (max_rows <= 0) return;
 
         if (sink_rows.length == 0) {
-            pdt_center(ctx, "No output devices", x + w / 2, rows_top + 8, 13f, Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
+            pdt_center(ctx, "No output devices", x + page_w / 2, rows_top + 8, 13f, Color(){r=0.48f, g=0.50f, b=0.58f, a=1f});
             return;
         }
 
         int rows = int.min(max_rows, sink_rows.length);
         for (int i = 0; i < rows; i++) {
-            sink_rows[i].set_bounds(x + 6, rows_top + i * ROW_H, w - 12, ROW_H);
+            sink_rows[i].set_bounds(x + 6, rows_top + i * ROW_H, page_w - 12, ROW_H);
             sink_rows[i].render(ctx, sink_rows[i].id == default_sink);
         }
     }
 
-    public void mouse_down(int mx, int my) {
+    public override void mouse_down(int mx, int my) {
         mute_button.mouse_down(mx, my);
         slider.mouse_down(mx, my);
         foreach (var row in sink_rows)
             row.mouse_down(mx, my);
     }
 
-    public void mouse_up(int mx, int my) {
+    public override void mouse_up(int mx, int my) {
         mute_button.mouse_up(mx, my);
         slider.mouse_up(mx, my);
         foreach (var row in sink_rows)
             row.mouse_up(mx, my);
     }
 
-    public void mouse_motion(int mx, int my) {
+    public override void mouse_motion(int mx, int my) {
         slider.mouse_motion(mx, my);
         mute_button.mouse_motion(mx, my);
         foreach (var row in sink_rows)
             row.mouse_motion(mx, my);
     }
 
-    public void mouse_scroll(int mx, int my, int amount) {
+    public override void mouse_scroll(int mx, int my, int amount) {
         if (amount == 0) return;
         set_volume_percent(volume_percent + (amount > 0 ? -3 : 3));
     }

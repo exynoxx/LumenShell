@@ -23,12 +23,14 @@ public class Tray {
     private unowned Context ctx;
     private int screen_width;
 
-    // ── Tray icon list ────────────────────────────────────────────────────
-    private ITray[] trays = {};
-
-    // Parallel arrays: pages[i] is owned by trays[page_owner[i]]
+    // ── Tray icon list — frozen after construction ────────────────────────
+    // trays / pages / page_owner / child_x are populated once in the ctor
+    // and never mutated again. Their lengths and contents are invariants
+    // for the rest of the program's lifetime.
+    private ITray[]     trays      = {};
     private ITrayPage[] pages      = {};
     private int[]       page_owner = {};
+    private int[]       child_x    = {};   // per-icon fixed x position
 
     // ── Expansion state ───────────────────────────────────────────────────
     private int expanded_height = 0;   // mutated in-place by Transition1D
@@ -39,7 +41,7 @@ public class Tray {
     // page_slide_x: offset of the virtual page band.
     private int page_slide_x = 0;
 
-    // ── Cached geometry ───────────────────────────────────────────────────
+    // ── Fixed geometry — computed once in the ctor, then read-only ────────
     private int x;
     private int width;
 
@@ -80,7 +82,9 @@ public class Tray {
             }
         }
 
-        layout_children();
+        compute_layout();
+        publish_page_bounds();
+        position_icons(TRAY_Y);
         sync_page_icon_states();
     }
 
@@ -88,17 +92,40 @@ public class Tray {
     // Layout
     // ─────────────────────────────────────────────────────────────────────
 
-    private void layout_children() {
-        int icon_row_y = TRAY_Y - expanded_height;
-
+    /**
+     * Compute the tray's horizontal layout once. Each ITray contract
+     * requires get_width() to return a value stable for the program's
+     * lifetime, so x / width / child_x[] never need to be recomputed.
+     */
+    private void compute_layout() {
+        child_x = new int[trays.length];
         var current_x = screen_width - MARGIN_RIGHT;
         for (int i = trays.length - 1; i >= 0; i--) {
             current_x -= trays[i].get_width() + SPACING;
-            trays[i].set_position(current_x, icon_row_y);
+            child_x[i] = current_x;
         }
-
         this.x     = current_x - SPACING;
         this.width = screen_width - MARGIN_RIGHT - this.x;
+    }
+
+    /**
+     * Push each page its fully-expanded hit-test rectangle. Pages can
+     * then resolve mouse events without depending on render-time state.
+     */
+    private void publish_page_bounds() {
+        int ct = TRAY_HEIGHT;                  // content_top when fully expanded
+        int ch = EXPAND_FULL - TRAY_HEIGHT;    // content_height when fully expanded
+        foreach (var p in pages)
+            p.set_bounds(this.x, ct, this.width, ch);
+    }
+
+    /**
+     * Update only the icon row's y so the bar can slide vertically as
+     * the tray expands. x positions were fixed at construction.
+     */
+    private void position_icons(int icon_row_y) {
+        for (int i = 0; i < trays.length; i++)
+            trays[i].set_position(child_x[i], icon_row_y);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -216,10 +243,10 @@ public class Tray {
     // ─────────────────────────────────────────────────────────────────────
 
     public void render() {
-        layout_children();
-
         int icon_row_y = TRAY_Y - expanded_height;
-        int bg_h       = TRAY_HEIGHT + expanded_height;
+        position_icons(icon_row_y);
+
+        int bg_h = TRAY_HEIGHT + expanded_height;
 
         ctx.draw_rect_rounded(this.x, icon_row_y, this.width, bg_h, 22f, bg_color);
 

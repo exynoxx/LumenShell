@@ -8,7 +8,7 @@ using GLib;
  * Body: scrollable network list (WifiRow per entry).
  * Footer: password field + connect/disconnect button when a row is selected.
  */
-public class WifiPage : GLib.Object, ITrayPage {
+public class WifiPage : BaseTrayPage {
 
     public WifiService service { get; private set; }
 
@@ -29,13 +29,12 @@ public class WifiPage : GLib.Object, ITrayPage {
     private UiTextField   password_field = new UiTextField();
     private UiChip        conn_chip      = new UiChip();
 
-    private Color sep_color = Color(){r=0.22f, g=0.24f, b=0.35f, a=0.7f};
+    // sep_color and the frozen bounds (bounds_x/y/w/h) come from
+    // BaseTrayPage. on_bounds_set() pushes the rect into list_view.
 
-    // Bounds from last render() — used for hit-testing
-    private int px;
-    private int py;
-    private int pw;
-    private int ph;
+    protected override void on_bounds_set() {
+        update_list_viewport_geometry();
+    }
 
     public WifiPage() {
         service = new WifiService();
@@ -71,9 +70,9 @@ public class WifiPage : GLib.Object, ITrayPage {
     // ITrayPage
     // ─────────────────────────────────────────────────────────────────────
 
-    public string get_title() { return "WiFi"; }
+    public override string get_title() { return "WiFi"; }
 
-    public void on_activate() {
+    public override void on_activate() {
         selected_row = -1;
         hovered_row  = -1;
         list_view.reset();
@@ -85,11 +84,11 @@ public class WifiPage : GLib.Object, ITrayPage {
         service.refresh_scan(false);
     }
 
-    public void on_deactivate() {
+    public override void on_deactivate() {
         dismiss_pass();
     }
 
-    public void mouse_up(int mx, int my) {
+    public override void mouse_up(int mx, int my) {
         refresh_button.mouse_up(mx, my);
         connect_button.mouse_up(mx, my);
         foreach (var row in rows) row.mouse_up(mx, my);
@@ -99,8 +98,9 @@ public class WifiPage : GLib.Object, ITrayPage {
     // Rendering
     // ─────────────────────────────────────────────────────────────────────
 
-    public void render(Context ctx, int x, int y, int w, int h) {
-        px = x;  py = y;  pw = w;  ph = h;
+    protected override void render_content(Context ctx, int x, int y) {
+        int page_w = bounds_w;
+        int page_h = bounds_h;
 
         // ── Header ───────────────────────────────────────────────────────
         int title_top = y + (HEADER_H - 20) / 2;
@@ -111,24 +111,24 @@ public class WifiPage : GLib.Object, ITrayPage {
         refresh_button.render(ctx);
 
         int chip_w = conn_chip.get_width(ctx);
-        conn_chip.set_bounds(x + w - PAD - chip_w, y + (HEADER_H - 24) / 2, chip_w, 24);
+        conn_chip.set_bounds(x + page_w - PAD - chip_w, y + (HEADER_H - 24) / 2, chip_w, 24);
         conn_chip.render(ctx);
 
-        ctx.draw_rect(x + PAD, y + HEADER_H, w - PAD * 2, 1, sep_color);
+        ctx.draw_rect(x + PAD, y + HEADER_H, page_w - PAD * 2, 1, sep_color);
 
         // ── Network list ─────────────────────────────────────────────────
         int list_top    = y + HEADER_H + 6;
         int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
-        int list_avail  = h - HEADER_H - 6 - pass_reserve;
+        int list_avail  = page_h - HEADER_H - 6 - pass_reserve;
         var nets = service.nets;
-        list_view.update_layout(x + 6, list_top, w - 12, list_avail, ROW_H, nets.length);
+        list_view.update_layout(x + 6, list_top, page_w - 12, list_avail, ROW_H, nets.length);
 
         if (selected_row >= 0) list_view.ensure_visible(selected_row);
 
         if (service.scanning && nets.length == 0) {
-            pdt_center(ctx, "Scanning for networks…", x + w / 2, list_top + (list_avail - 14) / 2, 14f, Color(){r=0.52f, g=0.54f, b=0.62f, a=1f});
+            pdt_center(ctx, "Scanning for networks…", x + page_w / 2, list_top + (list_avail - 14) / 2, 14f, Color(){r=0.52f, g=0.54f, b=0.62f, a=1f});
         } else if (nets.length == 0) {
-            pdt_center(ctx, "No networks found", x + w / 2, list_top + (list_avail - 14) / 2, 14f, Color(){r=0.45f, g=0.46f, b=0.52f, a=1f});
+            pdt_center(ctx, "No networks found", x + page_w / 2, list_top + (list_avail - 14) / 2, 14f, Color(){r=0.45f, g=0.46f, b=0.52f, a=1f});
         } else {
             int first = list_view.first_visible_row();
             int n     = list_view.visible_rows();
@@ -142,7 +142,7 @@ public class WifiPage : GLib.Object, ITrayPage {
                 rows[i].is_connected = (nets[i].ssid == connected);
                 rows[i].hovered      = (hovered_row == i);
                 rows[i].selected     = (selected_row == i);
-                rows[i].set_bounds(x, list_top + rel * ROW_H, w, ROW_H);
+                rows[i].set_bounds(x, list_top + rel * ROW_H, page_w, ROW_H);
                 rows[i].render(ctx);
             }
             list_view.render(ctx);
@@ -150,7 +150,7 @@ public class WifiPage : GLib.Object, ITrayPage {
 
         // ── Password area ─────────────────────────────────────────────────
         if (selected_row >= 0 && selected_row < nets.length)
-            render_pass(ctx, x, y + h - PASS_H, w, PASS_H);
+            render_pass(ctx, x, y + page_h - PASS_H, page_w, PASS_H);
     }
 
     private void render_pass(Context ctx, int x, int y, int w, int h) {
@@ -175,7 +175,7 @@ public class WifiPage : GLib.Object, ITrayPage {
     // Mouse handling
     // ─────────────────────────────────────────────────────────────────────
 
-    public void mouse_motion(int mx, int my) {
+    public override void mouse_motion(int mx, int my) {
         refresh_button.mouse_motion(mx, my);
         connect_button.mouse_motion(mx, my);
         password_field.mouse_motion(mx, my);
@@ -185,7 +185,7 @@ public class WifiPage : GLib.Object, ITrayPage {
         hovered_row = list_view.row_at(mx, my);
     }
 
-    public void mouse_down(int mx, int my) {
+    public override void mouse_down(int mx, int my) {
         refresh_button.mouse_down(mx, my);
 
         if (selected_row >= 0) {
@@ -213,7 +213,7 @@ public class WifiPage : GLib.Object, ITrayPage {
         }
     }
 
-    public void mouse_scroll(int mx, int my, int amount) {
+    public override void mouse_scroll(int mx, int my, int amount) {
         if (amount == 0) return;
         update_list_viewport_geometry();
         if (!list_view.contains(mx, my) || !list_view.can_scroll()) return;
@@ -346,8 +346,8 @@ public class WifiPage : GLib.Object, ITrayPage {
 
     private void update_list_viewport_geometry() {
         int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
-        int list_top     = py + HEADER_H + 6;
-        int list_avail   = ph - HEADER_H - 6 - pass_reserve;
-        list_view.update_layout(px + 6, list_top, pw - 12, list_avail, ROW_H, service.nets.length);
+        int list_top     = bounds_y + HEADER_H + 6;
+        int list_avail   = bounds_h - HEADER_H - 6 - pass_reserve;
+        list_view.update_layout(bounds_x + 6, list_top, bounds_w - 12, list_avail, ROW_H, service.nets.length);
     }
 }

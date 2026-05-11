@@ -2,13 +2,14 @@ using DrawKit;
 
 public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
 
-    private unowned Context ctx;
     private HoverableIcon icon;
     private SoundPage _page;
 
     private int x     = 0;
     private int y     = 0;
-    private int width = 60;
+    // Reserved at construction for the widest possible label so the tray
+    // bar never shifts when the volume / mute label changes.
+    private int width;
 
     private string label = "0%";
     private bool   muted = false;
@@ -17,9 +18,14 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
     private Color label_col_muted  = Color(){r=0.92f, g=0.36f, b=0.36f, a=1f};
 
     public SoundTray(Context ctx) {
-        this.ctx = ctx;
         icon  = new HoverableIcon("sound-max");
         _page = new SoundPage();
+
+        // "100%" and "Muted" are the widest labels the tray will ever show.
+        int max_label_w = int.max(ctx.width_of("100%",  13f),
+                                  ctx.width_of("Muted", 13f));
+        width = icon.get_width() + max_label_w;
+
         _page.state_changed.connect(() => {
             sync_from_page();
             redraw = true;
@@ -68,6 +74,5 @@ public class SoundTray : GLib.Object, ITray, IHoverable, IHasPage {
         int pct = _page.get_volume_percent();
         label = "%d%%".printf(pct);
         icon.set_icon(muted ? "sound-mute" : "sound-max");
-        width = icon.get_width() + ctx.width_of(label, 13f);
     }
 }

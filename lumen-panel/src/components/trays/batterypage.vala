@@ -43,7 +43,8 @@ public class BatteryPage : BaseTrayPage {
 
     public override void on_activate() { service.refresh(); }
 
-    public override void render(Context ctx, int x, int y, int w, int h) {
+    protected override void render_content(Context ctx, int x, int y) {
+        int w   = bounds_w;
         int cx  = x + w / 2;
         int cur = y + PAD;
 
