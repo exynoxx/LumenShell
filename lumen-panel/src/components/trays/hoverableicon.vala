@@ -73,7 +73,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
         if (tex == 0) return;
 
         if (hovered || selected) {
-            ctx.draw_circle(circle_x, circle_y, 24, {0.16f, 0.18f, 0.26f, 1f});
+            ctx.draw_circle(circle_x, circle_y, 24, Theme.tray_icon_hover);
             ctx.set_tex_color({1f, 1f, 1f, 1f});
             ctx.draw_texture(tex, x, y, ICON_SIZE, ICON_SIZE);
         } else {

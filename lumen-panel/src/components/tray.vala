@@ -48,7 +48,7 @@ public class Tray {
     private int last_my = -1;
 
     // ── Cached colors ─────────────────────────────────────────────────────
-    private Color bg_color  = Color(){r=0.07f, g=0.08f, b=0.12f, a=0.97f};
+    private Color bg_color  = Theme.tray_bg;
     private Color sep_color = Color(){r=0.20f, g=0.22f, b=0.34f, a=0.6f};
     private Color stencil_color = Color(){r=1f, g=1f, b=1f, a=1f};
 

@@ -10,6 +10,10 @@ public class Utils {
         get { return Environment.get_variable("LUMEN_KICKOFF_BIN") ?? "kickoff"; }
     }
 
+    public static string THEME_FILE {
+        get { return Environment.get_variable("LUMEN_THEME_FILE") ?? "/usr/share/lumen-panel/default-theme.json"; }
+    }
+
 
     // Get XDG data directories
     private static string[] get_xdg_data_dirs() {

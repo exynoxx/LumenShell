@@ -109,15 +109,14 @@ public class App {
     }
 
     public void render(Context ctx){
-        var color = Color(){r=1, g=1, b=1, a=0f};
-        if (hovered) color.a = 0.2f;
+        var color = Theme.app_hover;
+        if (!hovered) color.a = 0f;
 
         ctx.draw_rect(this.x, this.y, APP_WIDTH, APP_HEIGHT, color);
         ctx.draw_texture(tex, tex_x, tex_y, 32, 32);
 
         if (launching) {
-            var launch_color = Color(){r=0.98f, g=0.66f, b=0.20f, a=1f};
-            ctx.draw_rect(this.x + 9, APP_UNDERLINE_Y, APP_WIDTH - 18, UNDERLINE_HEIGHT, launch_color);
+            ctx.draw_rect(this.x + 9, APP_UNDERLINE_Y, APP_WIDTH - 18, UNDERLINE_HEIGHT, Theme.app_launching);
         }
     }
 

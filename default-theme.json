@@ -1,0 +1,7 @@
+{
+    "tray.background":      "#11141FF7",
+    "tray.icon-hover":      "#292E42FF",
+    "app.hover":            "#FFFFFF33",
+    "app.launching":        "#FAA833FF",
+    "app.active-underline": "#002CE6FF"
+}

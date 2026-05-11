@@ -8,6 +8,7 @@ cc = meson.get_compiler('c')
 glib_dep        = dependency('glib-2.0')
 gio_dep         = dependency('gio-2.0')
 gee_dep         = dependency('gee-0.8')
+json_dep        = dependency('json-glib-1.0')
 wayland_dep     = dependency('wayland-client')
 egl_dep         = dependency('egl')
 glesv2_dep      = dependency('glesv2')
@@ -25,6 +26,7 @@ common_deps = [
   glib_dep,
   gio_dep,
   gee_dep,
+  json_dep,
   wayland_dep,
   egl_dep,
   glesv2_dep,
@@ -39,6 +41,7 @@ common_vala_args = [
   '--pkg=libwlhooks',
   '--pkg=glesv2',
   '--pkg=egl',
+  '--pkg=json-glib-1.0',
 ]
 
 # --- lumen-panel ---
@@ -48,6 +51,7 @@ panel_sources = files(
   'lumen-panel/src/animation.vala',
   'lumen-panel/src/utils.vala',
   'lumen-panel/src/ini.vala',
+  'lumen-panel/src/theme.vala',
   'lumen-panel/src/common/button.vala',
   'lumen-panel/src/common/chip.vala',
   'lumen-panel/src/common/horizontal_slider.vala',

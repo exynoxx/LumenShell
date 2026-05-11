@@ -7,6 +7,8 @@ public static AnimationManager animations;
 
 public static int main(string[] args) {
 
+    Theme.load();
+
     WLHooks.grab_keyboard(true);   // must be set before init so seat binds keyboard
     WLHooks.init();
 

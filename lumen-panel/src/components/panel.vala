@@ -35,7 +35,7 @@ public class Panel {
     // Track last values so update_input_region only calls WLHooks when they change
     private int last_region_extra = -1;
 
-    private Color active_underline = Color(){r=0, g=0.17f, b=0.9f, a=1};
+    private Color active_underline = Theme.app_active_underline;
 
     public Panel(){
         var size = WLHooks.get_screen_size();
