@@ -27,6 +27,12 @@ public class WifiPage : GLib.Object, ITrayPage {
     private int         selected_row = -1;
     private bool        scanning     = false;
 
+    // Pre-fetch state — background thread writes at startup, on_activate() consumes
+    private GLib.Mutex pre_mutex;
+    private WifiNet[]  pre_nets  = {};
+    private string     pre_conn  = "";
+    private bool       pre_ready = false;
+
     private UiScrollView  list_view         = new UiScrollView();
     private UiButton      refresh_button    = new UiButton();
     private UiButton      connect_button    = new UiButton();
@@ -81,6 +87,16 @@ public class WifiPage : GLib.Object, ITrayPage {
         password_field.focus_changed.connect((focused) => { redraw = true; });
 
         update_connection_chip();
+
+        new GLib.Thread<void>("wifi-prefetch", () => {
+            var new_nets = nmcli.fetch_nets();
+            var new_conn = nmcli.query_connected();
+            pre_mutex.lock();
+            pre_nets  = new_nets;
+            pre_conn  = new_conn;
+            pre_ready = true;
+            pre_mutex.unlock();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -90,17 +106,32 @@ public class WifiPage : GLib.Object, ITrayPage {
     public string get_title() { return "WiFi"; }
 
     public void on_activate() {
-        nets         = {};
-        rows         = {};
         selected_row = -1;
-        scanning     = true;
-        connected    = "";
         hovered_row  = -1;
         list_view.reset();
         password_field.set_text("");
         password_field.blur();
         connect_button.cancel_press();
-        refresh_button.label = "Scanning";
+
+        // Seed the list from the startup pre-fetch if we have nothing to show yet
+        if (nets.length == 0) {
+            pre_mutex.lock();
+            bool      has_pre   = pre_ready;
+            WifiNet[] init_nets = pre_nets;
+            string    init_conn = pre_conn;
+            pre_mutex.unlock();
+
+            if (has_pre) {
+                nets      = init_nets;
+                connected = init_conn;
+                rebuild_rows();
+            }
+        }
+
+        pre_mutex.lock();
+        pre_ready = false;
+        pre_mutex.unlock();
+
         update_connection_chip();
         refresh_nets_async(false);
     }
@@ -344,9 +375,14 @@ public class WifiPage : GLib.Object, ITrayPage {
     // ─────────────────────────────────────────────────────────────────────
 
     private void refresh_nets_async(bool rescan = false) {
-        scanning             = true;
-        refresh_button.label = "Scanning";
-        redraw = true;
+        // Only blank the list if the user explicitly rescanned or there's nothing to show yet
+        if (rescan || nets.length == 0) {
+            nets             = {};
+            rows             = {};
+            scanning         = true;
+            refresh_button.label = "Scanning";
+            redraw           = true;
+        }
 
         string selected_ssid = "";
         if (selected_row >= 0 && selected_row < nets.length)

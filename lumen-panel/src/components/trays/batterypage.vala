@@ -35,6 +35,8 @@ public class BatteryPage : BaseTrayPage {
             refresh();
             redraw = true;
         });
+
+        service.refresh();
     }
 
     public override string get_title() { return "Battery"; }

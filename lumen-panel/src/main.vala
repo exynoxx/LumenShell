@@ -26,6 +26,7 @@ public static int main(string[] args) {
     WLHooks.register_on_mouse_scroll(panel.on_mouse_scroll);
 
     while (WLHooks.display_dispatch_blocking() != -1) {
+        GLib.MainContext.default().iteration(false);
         if(redraw || animations.has_active){
             animations.update();
             panel.render();
