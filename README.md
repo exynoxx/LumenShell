@@ -1,7 +1,7 @@
 ### Work in progress!!
 
 # Introduction
-Lumen is an early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, a custom panel (unnamed for now) and application launcher (Kickoff) for navigation. Both the panel and Kickoff avoids QT or other heavy UI toolkits and instead utilize **Drawkit** for hardware accelerated rendering, both implemented in vala. Wayland interactions are handled via **WLHooks**, a lightweight Wayland client library.
+Lumen is an early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, **lumen-panel** and application launcher (Kickoff) for navigation. Both lumen-panel and Kickoff avoid QT or other heavy UI toolkits and instead utilize **Drawkit** for hardware accelerated rendering, both implemented in Vala. Wayland interactions are handled via **WLHooks**, a lightweight Wayland client library.
 
 ### DrawKit
 Is a minimal, high-performance 2D graphics library written in C, using GLES2 and EGL as backend. 
@@ -20,6 +20,22 @@ Source also included in this repo.
 
 ### Disclaimer
 Drawkit and WLHooks are tailored exclusively for this project. So not general purpose.
+
+### lumen-panel environment
+
+lumen-panel reads two environment variables at startup:
+
+| Variable | Description | Default |
+|---|---|---|
+| `LUMEN_RES_DIR` | Path to the `src/res/` resources directory | `/usr/share/lumen-panel/res/` |
+| `LUMEN_KICKOFF_BIN` | Path to the Kickoff binary | `kickoff` (on PATH) |
+
+A helper script is provided to populate these for local development:
+
+```bash
+source lumen-panel/env.sh
+./lumen-panel/main
+```
 
 # Show case
 Bottom panel

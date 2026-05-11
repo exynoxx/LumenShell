@@ -1,7 +1,7 @@
 using GLib;
 
-public const string RES_DIR    = "/home/nicholas/Dokumenter/layer-shell-experiments/lumen-panel/src/res/";
-public const string KICKOFF_BIN = "/home/nicholas/Dokumenter/layer-shell-experiments/Kickoff/main";
+public string RES_DIR    = Environment.get_variable("LUMEN_RES_DIR") ?? "/usr/share/lumen-panel/res/";
+public string KICKOFF_BIN = Environment.get_variable("LUMEN_KICKOFF_BIN") ?? "kickoff";
 
 public class Utils {
 
