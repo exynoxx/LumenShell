@@ -204,6 +204,7 @@ public class Panel {
         }
 
         popup.render(ctx);
+        tray.tick();
         tray.render();
 
         // Update input region only when the animated extents have changed

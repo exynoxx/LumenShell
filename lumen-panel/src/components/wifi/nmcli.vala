@@ -26,7 +26,7 @@ public class NmcliClient : GLib.Object {
      * Split an nmcli terse-format line on ':' with backslash-escape support.
      * Stops splitting after max_fields fields (-1 = unlimited).
      */
-    public string[] split_terse(string line, int max_fields = -1) {
+    private string[] split_terse(string line, int max_fields = -1) {
         string[] parts = {};
         var sb = new GLib.StringBuilder();
         bool escaped = false;

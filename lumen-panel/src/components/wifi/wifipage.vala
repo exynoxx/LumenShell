@@ -7,40 +7,55 @@ using GLib;
  * Header: title + connection chip.
  * Body: scrollable network list (WifiRow per entry).
  * Footer: password field + connect/disconnect button when a row is selected.
+ *
+ * The WifiService is injected so the same instance is shared with WifiTray.
  */
 public class WifiPage : BaseTrayPage {
 
-    public WifiService service { get; private set; }
-
     // ── Layout constants ──────────────────────────────────────────────────
-    private const int PAD      = 14;
-    private const int HEADER_H = 44;
-    private const int ROW_H    = 36;
-    private const int PASS_H   = 54;
+    private const int PAD            = 14;
+    private const int HEADER_H       = 44;
+    private const int ROW_H          = 36;
+    private const int PASS_H         = 54;
+    private const int REFRESH_BTN_W  = 78;
+    private const int REFRESH_BTN_H  = 24;
+    private const int CHIP_H         = 24;
+    private const int PASS_BTN_H     = 34;
+    private const int PASS_BTN_W     = 90;
+    private const int CONN_LABEL_W   = 120;
+
+    // ── Cached colours ────────────────────────────────────────────────────
+    private Color title_color    = Color(){r=1f,    g=1f,    b=1f,    a=1f};
+    private Color pass_sep_color = Color(){r=0.22f, g=0.24f, b=0.35f, a=0.5f};
+    private Color scan_text_col  = Color(){r=0.52f, g=0.54f, b=0.62f, a=1f};
+    private Color empty_text_col = Color(){r=0.45f, g=0.46f, b=0.52f, a=1f};
+    private Color conn_label_col = Color(){r=0.58f, g=0.78f, b=0.62f, a=0.95f};
+    private Color chip_online_col  = Color(){r=0.18f, g=0.88f, b=0.42f, a=1f};
+    private Color chip_offline_col = Color(){r=0.52f, g=0.52f, b=0.57f, a=1f};
+
+    // ── Service (injected) ────────────────────────────────────────────────
+    private WifiService service;
 
     // ── State ─────────────────────────────────────────────────────────────
     private WifiRow[] rows         = {};
     private int       hovered_row  = -1;
     private int       selected_row = -1;
 
-    private UiScrollView  list_view      = new UiScrollView();
-    private UiButton      refresh_button = new UiButton();
-    private UiButton      connect_button = new UiButton();
-    private UiTextField   password_field = new UiTextField();
-    private UiChip        conn_chip      = new UiChip();
+    private UiScrollView list_view      = new UiScrollView();
+    private UiButton     refresh_button = new UiButton();
+    private UiButton     connect_button = new UiButton();
+    private UiTextField  password_field = new UiTextField();
+    private UiChip       conn_chip      = new UiChip();
 
-    // sep_color and the frozen bounds (bounds_x/y/w/h) come from
-    // BaseTrayPage. on_bounds_set() pushes the rect into list_view.
+    // Cached chip width — re-measured only when the chip text changes.
+    private int  chip_w           = -1;
+    private bool chip_needs_remeasure = true;
 
-    protected override void on_bounds_set() {
-        update_list_viewport_geometry();
-    }
-
-    public WifiPage() {
-        service = new WifiService();
+    public WifiPage(WifiService service) {
+        this.service = service;
         service.state_changed.connect(on_service_changed);
 
-        conn_chip.text_color = Color(){r=0.52f, g=0.52f, b=0.57f, a=1f};
+        conn_chip.text_color = chip_offline_col;
 
         refresh_button.label         = "Refresh";
         refresh_button.text_size     = 12f;
@@ -57,13 +72,17 @@ public class WifiPage : BaseTrayPage {
         });
 
         password_field.placeholder = "Password…";
-        password_field.changed.connect((s)        => { redraw = true; });
-        password_field.submitted.connect(()       => do_connect());
-        password_field.cancelled.connect(()       => { dismiss_pass(); redraw = true; });
-        password_field.focus_changed.connect((f)  => { redraw = true; });
+        password_field.changed.connect((s)       => { redraw = true; });
+        password_field.submitted.connect(()      => do_connect());
+        password_field.cancelled.connect(()      => { close_password_panel(); redraw = true; });
+        password_field.focus_changed.connect((f) => { redraw = true; });
 
         update_connection_chip();
         service.refresh_scan(false);
+    }
+
+    protected override void on_bounds_set() {
+        update_list_viewport_geometry();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -85,7 +104,7 @@ public class WifiPage : BaseTrayPage {
     }
 
     public override void on_deactivate() {
-        dismiss_pass();
+        close_password_panel();
     }
 
     public override void mouse_up(int mx, int my) {
@@ -95,78 +114,87 @@ public class WifiPage : BaseTrayPage {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Rendering
+    // Rendering — translation only; geometry decisions live in event handlers.
     // ─────────────────────────────────────────────────────────────────────
 
     protected override void render_content(Context ctx, int x, int y) {
         int page_w = bounds_w;
         int page_h = bounds_h;
 
-        // ── Header ───────────────────────────────────────────────────────
-        int title_top = y + (HEADER_H - 20) / 2;
-        pdt(ctx, "WiFi", x + PAD, title_top, 20f, {1f, 1f, 1f, 1f});
+        // Header
+        pdt(ctx, "WiFi", x + PAD, y + (HEADER_H - 20) / 2, 20f, title_color);
 
-        int refresh_h = 24;
-        refresh_button.set_bounds(x + PAD + 58, y + (HEADER_H - refresh_h) / 2, 78, refresh_h);
+        refresh_button.set_bounds(
+            x + PAD + 58, y + (HEADER_H - REFRESH_BTN_H) / 2,
+            REFRESH_BTN_W, REFRESH_BTN_H);
         refresh_button.render(ctx);
 
-        int chip_w = conn_chip.get_width(ctx);
-        conn_chip.set_bounds(x + page_w - PAD - chip_w, y + (HEADER_H - 24) / 2, chip_w, 24);
+        if (chip_needs_remeasure) {
+            chip_w = conn_chip.get_width(ctx);
+            chip_needs_remeasure = false;
+        }
+        conn_chip.set_bounds(
+            x + page_w - PAD - chip_w, y + (HEADER_H - CHIP_H) / 2,
+            chip_w, CHIP_H);
         conn_chip.render(ctx);
 
         ctx.draw_rect(x + PAD, y + HEADER_H, page_w - PAD * 2, 1, sep_color);
 
-        // ── Network list ─────────────────────────────────────────────────
+        // Network list
         int list_top    = y + HEADER_H + 6;
         int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
         int list_avail  = page_h - HEADER_H - 6 - pass_reserve;
-        var nets = service.nets;
-        list_view.update_layout(x + 6, list_top, page_w - 12, list_avail, ROW_H, nets.length);
-
-        if (selected_row >= 0) list_view.ensure_visible(selected_row);
+        var nets        = service.nets;
 
         if (service.scanning && nets.length == 0) {
-            pdt_center(ctx, "Scanning for networks…", x + page_w / 2, list_top + (list_avail - 14) / 2, 14f, Color(){r=0.52f, g=0.54f, b=0.62f, a=1f});
+            pdt_center(ctx, "Scanning for networks…",
+                x + page_w / 2, list_top + (list_avail - 14) / 2, 14f, scan_text_col);
         } else if (nets.length == 0) {
-            pdt_center(ctx, "No networks found", x + page_w / 2, list_top + (list_avail - 14) / 2, 14f, Color(){r=0.45f, g=0.46f, b=0.52f, a=1f});
+            pdt_center(ctx, "No networks found",
+                x + page_w / 2, list_top + (list_avail - 14) / 2, 14f, empty_text_col);
         } else {
-            int first = list_view.first_visible_row();
-            int n     = list_view.visible_rows();
-            string connected = service.connected_ssid;
-            for (int rel = 0; rel < n; rel++) {
-                int i = first + rel;
-                if (i >= nets.length || i >= rows.length) break;
-                rows[i].ssid         = nets[i].ssid;
-                rows[i].signal_val   = nets[i].signal;
-                rows[i].security     = nets[i].security;
-                rows[i].is_connected = (nets[i].ssid == connected);
-                rows[i].hovered      = (hovered_row == i);
-                rows[i].selected     = (selected_row == i);
-                rows[i].set_bounds(x, list_top + rel * ROW_H, page_w, ROW_H);
-                rows[i].render(ctx);
-            }
+            render_rows(ctx, x, list_top, page_w, nets);
             list_view.render(ctx);
         }
 
-        // ── Password area ─────────────────────────────────────────────────
         if (selected_row >= 0 && selected_row < nets.length)
             render_pass(ctx, x, y + page_h - PASS_H, page_w, PASS_H);
     }
 
-    private void render_pass(Context ctx, int x, int y, int w, int h) {
-        ctx.draw_rect(x + PAD, y + 1, w - PAD * 2, 1, Color(){r=0.22f, g=0.24f, b=0.35f, a=0.5f});
+    private void render_rows(Context ctx, int x, int list_top, int page_w, WifiNet[] nets) {
+        int first        = list_view.first_visible_row();
+        int n            = list_view.visible_rows();
+        string connected = service.connected_ssid;
+        for (int rel = 0; rel < n; rel++) {
+            int i = first + rel;
+            if (i >= nets.length || i >= rows.length) break;
+            rows[i].ssid         = nets[i].ssid;
+            rows[i].signal_val   = nets[i].signal;
+            rows[i].security     = nets[i].security;
+            rows[i].is_connected = (nets[i].ssid == connected);
+            rows[i].hovered      = (hovered_row == i);
+            rows[i].selected     = (selected_row == i);
+            rows[i].set_bounds(x, list_top + rel * ROW_H, page_w, ROW_H);
+            rows[i].render(ctx);
+        }
+    }
 
-        int btn_y = y + (h - 34) / 2;
+    private void render_pass(Context ctx, int x, int y, int w, int h) {
+        ctx.draw_rect(x + PAD, y + 1, w - PAD * 2, 1, pass_sep_color);
+
+        int btn_y = y + (h - PASS_BTN_H) / 2;
 
         if (is_selected_connected_row()) {
-            int btn_w = 120;
-            pdt(ctx, "Connected", x + PAD, btn_y + (34 - 13) / 2, 13f, Color(){r=0.58f, g=0.78f, b=0.62f, a=0.95f});
-            connect_button.set_bounds(x + w - PAD - btn_w, btn_y, btn_w, 34);
+            pdt(ctx, "Connected",
+                x + PAD, btn_y + (PASS_BTN_H - 13) / 2, 13f, conn_label_col);
+            connect_button.set_bounds(
+                x + w - PAD - CONN_LABEL_W, btn_y, CONN_LABEL_W, PASS_BTN_H);
         } else {
-            int field_w = w - PAD * 2 - 90 - 10;
-            password_field.set_bounds(x + PAD, btn_y, field_w, 34);
+            int field_w = w - PAD * 2 - PASS_BTN_W - 10;
+            password_field.set_bounds(x + PAD, btn_y, field_w, PASS_BTN_H);
             password_field.render(ctx);
-            connect_button.set_bounds(x + w - PAD - 90, btn_y, 90, 34);
+            connect_button.set_bounds(
+                x + w - PAD - PASS_BTN_W, btn_y, PASS_BTN_W, PASS_BTN_H);
         }
         connect_button.render(ctx);
     }
@@ -181,7 +209,6 @@ public class WifiPage : BaseTrayPage {
         password_field.mouse_motion(mx, my);
         foreach (var row in rows) row.mouse_motion(mx, my);
 
-        update_list_viewport_geometry();
         hovered_row = list_view.row_at(mx, my);
     }
 
@@ -195,14 +222,10 @@ public class WifiPage : BaseTrayPage {
 
         foreach (var row in rows) row.mouse_down(mx, my);
 
-        update_list_viewport_geometry();
         int i = list_view.row_at(mx, my);
         if (i >= 0) {
-            if (selected_row == i) {
-                dismiss_pass();
-            } else {
-                select_row(i);
-            }
+            if (selected_row == i) close_password_panel();
+            else                   select_row(i);
             redraw = true;
             return;
         }
@@ -215,7 +238,6 @@ public class WifiPage : BaseTrayPage {
 
     public override void mouse_scroll(int mx, int my, int amount) {
         if (amount == 0) return;
-        update_list_viewport_geometry();
         if (!list_view.contains(mx, my) || !list_view.can_scroll()) return;
 
         if (list_view.scroll_lines(amount)) {
@@ -249,19 +271,20 @@ public class WifiPage : BaseTrayPage {
         var nets = service.nets;
         if (selected_row < 0 || selected_row >= nets.length) return;
         service.connect_to(nets[selected_row].ssid, password_field.get_text());
-        dismiss_pass();
+        close_password_panel();
     }
 
     private void do_disconnect() {
         service.disconnect_active();
-        dismiss_pass();
+        close_password_panel();
     }
 
-    private void dismiss_pass() {
+    private void close_password_panel() {
         selected_row = -1;
         password_field.set_text("");
         password_field.blur();
         apply_connect_button_mode(false);
+        update_list_viewport_geometry();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -269,7 +292,6 @@ public class WifiPage : BaseTrayPage {
     // ─────────────────────────────────────────────────────────────────────
 
     private void on_service_changed() {
-        // Preserve selection by SSID across rescans
         string prev_ssid = "";
         var nets = service.nets;
         if (selected_row >= 0 && selected_row < nets.length)
@@ -325,9 +347,8 @@ public class WifiPage : BaseTrayPage {
         string ssid   = service.connected_ssid;
         bool   online = ssid != "" && ssid != "--";
         conn_chip.set_text(online ? "●  " + ssid : "●  Offline");
-        conn_chip.text_color = online
-            ? Color(){r=0.18f, g=0.88f, b=0.42f, a=1f}
-            : Color(){r=0.52f, g=0.52f, b=0.57f, a=1f};
+        conn_chip.text_color = online ? chip_online_col : chip_offline_col;
+        chip_needs_remeasure = true;
     }
 
     private void apply_connect_button_mode(bool disconnect_mode) {
@@ -348,6 +369,8 @@ public class WifiPage : BaseTrayPage {
         int pass_reserve = (selected_row >= 0) ? PASS_H : 0;
         int list_top     = bounds_y + HEADER_H + 6;
         int list_avail   = bounds_h - HEADER_H - 6 - pass_reserve;
-        list_view.update_layout(bounds_x + 6, list_top, bounds_w - 12, list_avail, ROW_H, service.nets.length);
+        list_view.update_layout(
+            bounds_x + 6, list_top, bounds_w - 12, list_avail,
+            ROW_H, service.nets.length);
     }
 }

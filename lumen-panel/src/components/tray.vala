@@ -86,6 +86,7 @@ public class Tray {
         publish_page_bounds();
         position_icons(TRAY_Y);
         sync_page_icon_states();
+        tick();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -239,31 +240,45 @@ public class Tray {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Rendering
+    // Layout (per-frame, animation-driven). Run by tick(); render() then
+    // only emits ctx.draw_* / child.render() calls.
     // ─────────────────────────────────────────────────────────────────────
 
+    // Cached frame geometry — written by tick(), read by render().
+    private int frame_icon_row_y = 0;
+    private int frame_bg_h       = 0;
+    private int frame_ct         = 0;
+    private int frame_ch         = 0;
+    private int[] frame_page_x   = {};
+
+    public void tick() {
+        frame_icon_row_y = TRAY_Y - expanded_height;
+        position_icons(frame_icon_row_y);
+
+        frame_bg_h = TRAY_HEIGHT + expanded_height;
+        frame_ct   = content_top();
+        frame_ch   = content_height();
+
+        if (frame_page_x.length != pages.length)
+            frame_page_x = new int[pages.length];
+        for (int p = 0; p < pages.length; p++)
+            frame_page_x[p] = this.x + p * this.width + page_slide_x;
+    }
+
     public void render() {
-        int icon_row_y = TRAY_Y - expanded_height;
-        position_icons(icon_row_y);
+        ctx.draw_rect_rounded(this.x, frame_icon_row_y, this.width, frame_bg_h, 22f, bg_color);
 
-        int bg_h = TRAY_HEIGHT + expanded_height;
-
-        ctx.draw_rect_rounded(this.x, icon_row_y, this.width, bg_h, 22f, bg_color);
-
-        int ct = content_top();
-        int ch = content_height();
-
-        if (ch > 4 && active_page_idx >= 0) {
-            ctx.draw_rect(this.x + 12, ct - 1, this.width - 24, 1, sep_color);
+        if (frame_ch > 4 && active_page_idx >= 0) {
+            ctx.draw_rect(this.x + 12, frame_ct - 1, this.width - 24, 1, sep_color);
 
             ctx.stencil_push();
-            ctx.draw_rect(this.x, ct, this.width, ch, stencil_color);
+            ctx.draw_rect(this.x, frame_ct, this.width, frame_ch, stencil_color);
             ctx.stencil_apply();
 
             for (int p = 0; p < pages.length; p++) {
-                int page_x = this.x + p * this.width + page_slide_x;
+                int page_x = frame_page_x[p];
                 if (page_x + this.width <= this.x || page_x >= this.x + this.width) continue;
-                pages[p].render(ctx, page_x, ct, this.width, ch);
+                pages[p].render(ctx, page_x, frame_ct, this.width, frame_ch);
             }
 
             ctx.stencil_pop();
