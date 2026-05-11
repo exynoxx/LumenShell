@@ -42,7 +42,7 @@ public class HoverableIcon : IHoverable, ITray, Object {
     }
 
     public bool set_icon(string icon){
-        var path  = Path.build_filename(RES_DIR, icon + ".svg");
+        var path  = Path.build_filename(Utils.RES_DIR, icon + ".svg");
         var image = DrawKit.image_from_svg(path, ICON_SIZE, ICON_SIZE);
         if (image == null) {
             print("Icon file not found: %s\n", path);

@@ -1,9 +1,15 @@
 using GLib;
 
-public string RES_DIR    = Environment.get_variable("LUMEN_RES_DIR") ?? "/usr/share/lumen-panel/res/";
-public string KICKOFF_BIN = Environment.get_variable("LUMEN_KICKOFF_BIN") ?? "kickoff";
-
 public class Utils {
+
+    public static string RES_DIR {
+        get { return Environment.get_variable("LUMEN_RES_DIR") ?? "/usr/share/lumen-panel/res/"; }
+    }
+
+    public static string KICKOFF_BIN {
+        get { return Environment.get_variable("LUMEN_KICKOFF_BIN") ?? "kickoff"; }
+    }
+
 
     // Get XDG data directories
     private static string[] get_xdg_data_dirs() {

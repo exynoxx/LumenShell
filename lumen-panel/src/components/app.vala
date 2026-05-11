@@ -189,7 +189,7 @@ public class App {
 
     private void spawn_kickoff() {
         try {
-            Process.spawn_command_line_async(KICKOFF_BIN);
+            Process.spawn_command_line_async(Utils.KICKOFF_BIN);
         } catch (Error e) {
             stderr.printf("Kickoff exception: %s\n", e.message);
         }
@@ -198,14 +198,14 @@ public class App {
 
     private void load_icon(){
         if (is_launcher) {
-            load_svg_icon(RES_DIR + "app.svg");
+            load_svg_icon(Utils.RES_DIR + "app.svg");
             return;
         }
 
         var icon_path = Utils.get_icon_path_from_app_id(app_id);
         if (icon_path == null) {
             stderr.printf("Icon not found for app_id=%s\n", app_id);
-            load_svg_icon(RES_DIR + "app.svg");
+            load_svg_icon(Utils.RES_DIR + "app.svg");
             return;
         }
 
