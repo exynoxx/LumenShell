@@ -193,6 +193,8 @@ public class Panel {
     public void render(){
         ctx.begin_frame();
 
+        ctx.draw_rect(0, APP_Y, screen_width, EXCLUSIVE_HEIGHT, Theme.panel_bg);
+
         foreach (var app in entries)
             app.render(ctx);
 

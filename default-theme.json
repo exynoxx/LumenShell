@@ -1,4 +1,5 @@
 {
+    "panel.background":     "#00000000",
     "tray.background":      "#11141FF7",
     "tray.icon-hover":      "#292E42FF",
     "app.hover":            "#FFFFFF33",

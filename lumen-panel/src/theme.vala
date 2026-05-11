@@ -2,6 +2,7 @@ using DrawKit;
 using Json;
 
 public class Theme {
+    public static Color panel_bg             = Color(){r=0.07f, g=0.08f, b=0.12f, a=0.90f};
     public static Color tray_bg              = Color(){r=0.07f, g=0.08f, b=0.12f, a=0.97f};
     public static Color tray_icon_hover      = Color(){r=0.16f, g=0.18f, b=0.26f, a=1f};
     public static Color app_hover            = Color(){r=1f,    g=1f,    b=1f,    a=0.20f};
@@ -35,6 +36,7 @@ public class Theme {
 
     private static void apply(string key, Color c) {
         switch (key) {
+            case "panel.background":      panel_bg = c; break;
             case "tray.background":      tray_bg = c; break;
             case "tray.icon-hover":      tray_icon_hover = c; break;
             case "app.hover":            app_hover = c; break;
