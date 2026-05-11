@@ -43,3 +43,10 @@ wayland_unstable = static_library(
   dependencies: [wayland_client_dep, wayland_egl_dep, egl_dep, glesv2_dep, xkb_dep, glib_dep],
   include_directories: include_directories('.')
 )
+
+wlhooks_dep = declare_dependency(
+  link_with: wayland_unstable,
+  include_directories: include_directories('.'),
+  dependencies: [wayland_client_dep, egl_dep, glesv2_dep, glib_dep],
+  link_args: ['-lwayland-egl', '-lxkbcommon'],
+)

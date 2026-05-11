@@ -23,5 +23,6 @@ drawkit = static_library(
 
 drawkit_dep = declare_dependency(
   link_with: drawkit,
-  include_directories: include_directories('.')
+  include_directories: include_directories('.'),
+  link_args: ['-lfreetype'],
 )
