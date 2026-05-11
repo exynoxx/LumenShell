@@ -4,5 +4,5 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-export LUMEN_RES_DIR="${SCRIPT_DIR}/src/res/"
-export LUMEN_KICKOFF_BIN="${SCRIPT_DIR}/../Kickoff/main"
+export LUMEN_RES_DIR="${SCRIPT_DIR}/lumen-panel/src/res/"
+export LUMEN_KICKOFF_BIN="${SCRIPT_DIR}/build/kickoff"
