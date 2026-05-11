@@ -53,6 +53,7 @@ sources = files(
   'src/components/trays/sound.vala',
   'src/components/trays/soundpage.vala',
   'src/components/trays/wifi.vala',
+  'src/components/trays/wifi_service.vala',
   'src/components/trays/wifipage.vala',
   'src/components/trays/wifirow.vala',
 )

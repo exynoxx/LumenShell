@@ -2,24 +2,19 @@ using DrawKit;
 using GLib;
 
 /**
- * WifiTray — icon that lives in the tray bar.
+ * WifiTray — icon in the tray bar.
  *
- * Displays a WiFi icon (tinted green when connected, grey when offline).
- * Clicking it tells the Tray to open/close the WifiPage expansion.
+ * Subscribes to WifiPage's shared WifiService; renders a tinted icon based
+ * on the current connection state.
  */
 public class WifiTray : IconAndText, IUpdateable, IHasPage {
 
-    private WifiPage    _page;
-    private NmcliClient _nmcli = new NmcliClient();
-    private string      connected_ssid = "";
-
-    private enum LinkState { UNKNOWN, OFFLINE, ONLINE }
-    private LinkState link_state = LinkState.UNKNOWN;
+    private WifiPage _page;
 
     public WifiTray() {
         base(new HoverableIcon("wifi-unknown"));
         _page = new WifiPage();
-        _page.state_changed.connect(() => {
+        _page.service.state_changed.connect(() => {
             update();
             redraw = true;
         });
@@ -34,63 +29,19 @@ public class WifiTray : IconAndText, IUpdateable, IHasPage {
 
     // ── IUpdateable ───────────────────────────────────────────────────────
 
-    public string get_status() { return connected_ssid; }
+    public string get_status() { return _page.service.connected_ssid; }
 
     public void update() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device",
-                out out_str, null, null);
-        } catch (SpawnError e) {
-            link_state     = LinkState.UNKNOWN;
-            connected_ssid = "";
-            apply_icon();
-            return;
-        }
-
-        connected_ssid = "";
-        bool has_wifi_device = false;
-
-        foreach (var line in out_str.split("\n")) {
-            var p = _nmcli.split_terse(line, 4);
-            if (p.length < 4 || p[1] != "wifi") continue;
-
-            has_wifi_device = true;
-            if (p[2] == "connected" && p[3] != "" && p[3] != "--") {
-                connected_ssid = p[3];
-                break;
-            }
-        }
-
-        if (!has_wifi_device)
-            link_state = LinkState.UNKNOWN;
-        else if (connected_ssid != "")
-            link_state = LinkState.ONLINE;
-        else
-            link_state = LinkState.OFFLINE;
-
-        apply_icon();
-    }
-
-    private void apply_icon() {
-        switch (link_state) {
-        case LinkState.ONLINE:   icon.set_icon("wifi");         break;
-        case LinkState.OFFLINE:  icon.set_icon("nowifi");       break;
-        default:                 icon.set_icon("wifi-unknown"); break;
-        }
+        icon.set_icon(_page.service.connected_ssid != "" ? "wifi" : "nowifi");
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────
 
     public override void render(Context ctx) {
         if (!icon.hovered && !icon.selected) {
-            DrawKit.Color tint;
-            switch (link_state) {
-            case LinkState.ONLINE:  tint = DrawKit.Color(){r=0.25f, g=1.0f,  b=0.45f, a=1f}; break;
-            case LinkState.OFFLINE: tint = DrawKit.Color(){r=0.45f, g=0.45f, b=0.45f, a=1f}; break;
-            default:                tint = DrawKit.Color(){r=1.0f,  g=0.78f, b=0.26f, a=1f}; break;
-            }
+            DrawKit.Color tint = _page.service.connected_ssid != ""
+                ? DrawKit.Color(){r=0.25f, g=1.0f,  b=0.45f, a=1f}
+                : DrawKit.Color(){r=0.45f, g=0.45f, b=0.45f, a=1f};
             ctx.set_tex_color(tint);
         }
         icon.render(ctx);

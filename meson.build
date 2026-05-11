@@ -77,6 +77,7 @@ panel_sources = files(
   'lumen-panel/src/components/trays/sound.vala',
   'lumen-panel/src/components/trays/soundpage.vala',
   'lumen-panel/src/components/trays/wifi.vala',
+  'lumen-panel/src/components/trays/wifi_service.vala',
   'lumen-panel/src/components/trays/wifipage.vala',
   'lumen-panel/src/components/trays/wifirow.vala',
 )
