@@ -1,7 +1,7 @@
 using DrawKit;
 using Gee;
 
-public const int HEIGHT          = 300;
+public const int HEIGHT          = 554;
 public const int EXCLUSIVE_HEIGHT = 60;
 public const int UNDERLINE_HEIGHT = 5;
 
