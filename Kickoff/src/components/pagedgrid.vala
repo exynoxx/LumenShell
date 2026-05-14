@@ -100,16 +100,28 @@ public class PagedGrid : Gtk.Widget {
     }
 
     public override void size_allocate(int width, int height, int baseline) {
-        // Each page covers the full widget area; horizontal placement is
-        // applied at snapshot time via a translate.
-        for (int p = 0; p < page_count; p++) {
-            pages[p].allocate(width, height, baseline, null);
-        }
         // Keep current_offset locked to the active page when allocation
         // changes (e.g. on monitor configure) and no slide is running.
         if (slide_tick_id == 0) {
             current_offset = active_page * (float) width;
             slide_to_offset = current_offset;
+        }
+        allocate_pages(width, height, baseline);
+    }
+
+    private void allocate_pages(int width, int height, int baseline) {
+        // Each page is allocated at its real horizontal position via a
+        // Gsk.Transform on allocate(). Using a real transform (instead of
+        // translating only inside snapshot()) is what makes pointer picking
+        // hit the visible tile: GTK's default pick walks children by their
+        // allocation, so the transform must agree with what's on screen.
+        float fw = (float) width;
+        for (int p = 0; p < page_count; p++) {
+            float page_x = p * fw - current_offset;
+            var pt = Graphene.Point();
+            pt.x = page_x; pt.y = 0f;
+            Gsk.Transform? t = new Gsk.Transform().translate(pt);
+            pages[p].allocate(width, height, baseline, t);
         }
     }
 
@@ -131,18 +143,11 @@ public class PagedGrid : Gtk.Widget {
             s.translate(nc);
         }
 
-        float fw = (float) w;
+        // Pages carry their own translate transform via allocate(), so
+        // snapshot_child positions them correctly. overflow:HIDDEN clips
+        // anything outside the viewport.
         for (int p = 0; p < page_count; p++) {
-            float page_x = p * fw - current_offset;
-            // Cull pages whose [0..w] local range doesn't intersect viewport.
-            if (page_x + fw <= 0f || page_x >= fw) continue;
-
-            s.save();
-            var t = Graphene.Point();
-            t.x = page_x; t.y = 0f;
-            s.translate(t);
             snapshot_child(pages[p], s);
-            s.restore();
         }
 
         if (zooming) s.restore();
@@ -178,7 +183,9 @@ public class PagedGrid : Gtk.Widget {
         double t = double.min(elapsed_s / SLIDE_DURATION_S, 1.0);
         double eased = ease_out_expo(t);
         current_offset = (float) (slide_from_offset + (slide_to_offset - slide_from_offset) * eased);
-        queue_draw();
+        // queue_allocate (not queue_draw) — pages are positioned via their
+        // allocation transform, so the slide has to re-allocate to move.
+        queue_allocate();
         if (t >= 1.0) {
             current_offset = slide_to_offset;
             slide_tick_id = 0;
