@@ -2,11 +2,11 @@ using Gtk;
 
 public class OsdApp : Gtk.Application {
 
-    private OsdWindow?         window  = null;
-    private OsdService?        service = null;
-    private BrightnessWatcher? watcher = null;
-    private uint               owner_id = 0;
-    public  bool               test_mode = false;
+    private OsdWindow?    window  = null;
+    private OsdService?   service = null;
+    private StateWatcher? watcher = null;
+    private uint          owner_id = 0;
+    public  bool          test_mode = false;
 
     public OsdApp() {
         Object(
@@ -32,7 +32,7 @@ public class OsdApp : Gtk.Application {
         window.set_visible(false);
 
         service = new OsdService((!) window);
-        watcher = new BrightnessWatcher((!) service);
+        watcher = new StateWatcher((!) service);
         own_bus_name();
 
         // Keep the application alive even with no visible window.
