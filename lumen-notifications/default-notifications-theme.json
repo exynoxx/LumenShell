@@ -1,0 +1,30 @@
+{
+    "banner.background":     "#11141cf5",
+    "banner.border":         "#ffffff1f",
+    "banner.text":           "#eaeaeaff",
+    "banner.subtext":        "#b0b0b0ff",
+    "banner.shadow":         "#000000a0",
+    "banner.radius":         12,
+    "banner.padding":        14,
+    "banner.spacing":        8,
+    "banner.width":          360,
+    "banner.gap":            10,
+    "banner.max-visible":    4,
+    "banner.margin.top":     16,
+    "banner.margin.right":   16,
+
+    "action.background":       "#ffffff14",
+    "action.background-hover": "#ffffff2a",
+    "action.text":             "#ffffffff",
+    "action.radius":           8,
+
+    "animation.fade-in-ms":  180,
+    "animation.fade-out-ms": 140,
+    "animation.slide-px":    24,
+
+    "expire.default-ms":     5000,
+
+    "urgency.low.accent":      "#5b8defff",
+    "urgency.normal.accent":   "#faa833ff",
+    "urgency.critical.accent": "#e0584cff"
+}

@@ -166,6 +166,49 @@ install_data(
   install_dir: get_option('datadir') / 'lumen-osd',
 )
 
+# --- lumen-notifications ---
+# Independent dep set: no drawkit, no wlhooks, no GLES.
+# Reuses gtk4_dep and gtk4_layer_shell_dep from lumen-osd block above.
+notif_deps = [
+  glib_dep,
+  gio_dep,
+  json_dep,
+  gtk4_dep,
+  gtk4_layer_shell_dep,
+  m_dep,
+]
+
+notif_vala_args = [
+  '--vapidir=' + vapi_dir,
+  '--pkg=gtk4',
+  '--pkg=gtk4-layer-shell-0',
+  '--pkg=json-glib-1.0',
+]
+
+notif_sources = files(
+  'lumen-notifications/src/main.vala',
+  'lumen-notifications/src/utils.vala',
+  'lumen-notifications/src/theme.vala',
+  'lumen-notifications/src/dbus_service.vala',
+  'lumen-notifications/src/notification.vala',
+  'lumen-notifications/src/notification_manager.vala',
+  'lumen-notifications/src/banner.vala',
+  'lumen-notifications/src/stack.vala',
+  'lumen-notifications/src/layer_window.vala',
+)
+
+executable('lumen-notifications',
+  notif_sources,
+  vala_args: notif_vala_args,
+  dependencies: notif_deps,
+  install: true,
+)
+
+install_data(
+  'lumen-notifications/default-notifications-theme.json',
+  install_dir: get_option('datadir') / 'lumen-notifications',
+)
+
 # --- lumen-osdctl ---
 osdctl_deps = [glib_dep, gio_dep, m_dep]
 
