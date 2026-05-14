@@ -33,18 +33,13 @@ public class WifiService : GLib.Object {
 
     /** Connect to an SSID. If password is "", uses an existing saved connection. */
     public void connect_to(string ssid, string password) {
-        string[] argv = (password == "")
-            ? new string[] { "nmcli", "connection", "up", "id", ssid }
-            : new string[] { "nmcli", "device", "wifi", "connect", ssid, "password", password };
-        spawn_argv(argv);
+        nmcli.connect(ssid, password);
         schedule_rescan(1400);
     }
 
     /** Disconnect the wifi device, if any. */
     public void disconnect_active() {
-        string dev = nmcli.get_wifi_device();
-        if (dev == "") return;
-        spawn_argv(new string[] { "nmcli", "device", "disconnect", dev });
+        nmcli.disconnect();
         schedule_rescan(1000);
     }
 
@@ -56,8 +51,7 @@ public class WifiService : GLib.Object {
         state_changed();
 
         new GLib.Thread<void>("wifi-scan", () => {
-            if (rescan)
-                spawn_argv(new string[] { "nmcli", "device", "wifi", "rescan" });
+            if (rescan) nmcli.rescan();
             var new_nets = nmcli.fetch_nets();
             var new_conn = nmcli.query_connected();
             GLib.Idle.add(() => {
@@ -76,16 +70,6 @@ public class WifiService : GLib.Object {
             refresh_scan(true);
             return Source.REMOVE;
         });
-    }
-
-    // argv form avoids shell quoting entirely — SSID/password bytes pass
-    // through unchanged and can never be reinterpreted by /bin/sh.
-    private static void spawn_argv(string[] argv) {
-        try {
-            Pid pid;
-            Process.spawn_async(null, argv, null, SpawnFlags.SEARCH_PATH, null, out pid);
-            Process.close_pid(pid);
-        } catch (SpawnError e) {}
     }
 
     private void poll_connection() {
