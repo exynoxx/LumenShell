@@ -16,33 +16,10 @@ public class SinkInfo : GLib.Object {
 /**
  * PactlClient — all pactl / wpctl shelling and parsing in one place.
  *
- * SoundPage keeps UI; PactlClient keeps subprocess and parsing logic.
+ * Exposes audio verbs (set_volume, toggle_mute, …). Callers never see
+ * a shell command or the @DEFAULT_SINK@ token.
  */
 public class PactlClient : GLib.Object {
-
-    public string run_cmd_sync(string cmd) {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(cmd, out out_str, null, null);
-        } catch (SpawnError e) {
-            return "";
-        }
-        return out_str;
-    }
-
-    public string run_pactl_sync(string args) {
-        return run_cmd_sync("env LC_ALL=C pactl " + args);
-    }
-
-    public void run_cmd_async(string cmd) {
-        try {
-            Process.spawn_command_line_async(cmd);
-        } catch (SpawnError e) {}
-    }
-
-    public string shell_quote(string value) {
-        return "'" + value.replace("'", "'\\''") + "'";
-    }
 
     public string query_default_sink() {
         var out_str = run_pactl_sync("get-default-sink").strip();
@@ -99,7 +76,54 @@ public class PactlClient : GLib.Object {
         return out_str.contains("muted");
     }
 
-    public int first_percent(string text) {
+    public void set_volume(int pct) {
+        pct = int.max(0, int.min(100, pct));
+        spawn_argv(new string[] {
+            "pactl", "set-sink-volume", "@DEFAULT_SINK@", "%d%%".printf(pct)
+        });
+    }
+
+    public void set_muted(bool muted) {
+        spawn_argv(new string[] {
+            "pactl", "set-sink-mute", "@DEFAULT_SINK@", muted ? "1" : "0"
+        });
+    }
+
+    public void toggle_mute() {
+        spawn_argv(new string[] {
+            "pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"
+        });
+    }
+
+    public void set_default_sink(string sink_id) {
+        if (sink_id == "") return;
+        // argv form passes the id as one token — no shell quoting needed.
+        spawn_argv(new string[] { "pactl", "set-default-sink", sink_id });
+    }
+
+    private static void spawn_argv(string[] argv) {
+        try {
+            Pid pid;
+            Process.spawn_async(null, argv, null, SpawnFlags.SEARCH_PATH, null, out pid);
+            Process.close_pid(pid);
+        } catch (SpawnError e) {}
+    }
+
+    private string run_cmd_sync(string cmd) {
+        string out_str = "";
+        try {
+            Process.spawn_command_line_sync(cmd, out out_str, null, null);
+        } catch (SpawnError e) {
+            return "";
+        }
+        return out_str;
+    }
+
+    private string run_pactl_sync(string args) {
+        return run_cmd_sync("env LC_ALL=C pactl " + args);
+    }
+
+    private int first_percent(string text) {
         try {
             var re = new Regex("([0-9]{1,3})%");
             MatchInfo info;
@@ -113,7 +137,7 @@ public class PactlClient : GLib.Object {
         return -1;
     }
 
-    public int parse_wpctl_percent(string text) {
+    private int parse_wpctl_percent(string text) {
         try {
             var re = new Regex("([0-9]+(?:\\.[0-9]+)?)");
             MatchInfo info;

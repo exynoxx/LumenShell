@@ -39,24 +39,24 @@ public class SoundService : GLib.Object {
         pct = int.max(0, int.min(100, pct));
         if (pct == volume_percent && !muted) return;
 
-        pactl.run_cmd_async("pactl set-sink-volume @DEFAULT_SINK@ %d%%".printf(pct));
+        pactl.set_volume(pct);
         volume_percent = pct;
         if (muted) {
             muted = false;
-            pactl.run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ 0");
+            pactl.set_muted(false);
         }
         state_changed();
     }
 
     public void toggle_mute() {
-        pactl.run_cmd_async("pactl set-sink-mute @DEFAULT_SINK@ toggle");
+        pactl.toggle_mute();
         muted = !muted;
         state_changed();
     }
 
     public void change_default_sink(string sink_id) {
         if (sink_id == "") return;
-        pactl.run_cmd_async("pactl set-default-sink " + pactl.shell_quote(sink_id));
+        pactl.set_default_sink(sink_id);
         default_sink = sink_id;
         state_changed();
     }
