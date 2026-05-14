@@ -5,12 +5,21 @@ public class Banner : Gtk.Box {
     public uint32 id;
     public signal void action_invoked(string key);
     public signal void dismissed();
+    public signal void leave_finished();
 
     private Gtk.Image      icon_img;
     private Gtk.Label      title_lbl;
     private Gtk.Label      body_lbl;
     private Gtk.Box        actions_row;
     private bool           has_actions = false;
+
+    // Leave (slide-out / fade-out) animation state.
+    private bool   leaving = false;
+    private string leave_style = "slide-right";
+    private int64  leave_started_us = 0;
+    private double leave_progress = 0.0;
+    private int    full_natural_h = -1;
+    private uint   leave_tick_id = 0;
 
     public Banner(Notification n) {
         Object(orientation: Gtk.Orientation.VERTICAL, spacing: Theme.spacing);
@@ -23,7 +32,7 @@ public class Banner : Gtk.Box {
 
         // -- top row: icon + text column ---------------------------------
         var top_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, Theme.spacing);
-        top_row.margin_start  = Theme.padding + 4;   // +4 to clear accent strip
+        top_row.margin_start  = Theme.padding;
         top_row.margin_end    = Theme.padding;
         top_row.margin_top    = Theme.padding;
         top_row.margin_bottom = Theme.padding;
@@ -139,8 +148,35 @@ public class Banner : Gtk.Box {
     }
 
     public override void snapshot(Gtk.Snapshot s) {
+        if (!leaving) {
+            draw_card(s);
+            return;
+        }
+
+        double opacity = 1.0 - leave_progress;
+        if (opacity < 0.0) opacity = 0.0;
+
+        s.save();
+        s.push_opacity(opacity);
+
+        if (leave_style == "slide-right") {
+            float dx = (float) (leave_progress * (Theme.width + Theme.slide_px * 2));
+            var p = Graphene.Point();
+            p.x = dx; p.y = 0f;
+            s.translate(p);
+        }
+
+        draw_card(s);
+
+        s.pop();      // pop_opacity
+        s.restore();  // restore transform
+    }
+
+    private void draw_card(Gtk.Snapshot s) {
         int   w = get_width();
         int   h = get_height();
+        if (w <= 0 || h <= 0) return;
+
         float r = (float) Theme.radius;
 
         var rect = Graphene.Rect();
@@ -149,8 +185,6 @@ public class Banner : Gtk.Box {
         var rr = Gsk.RoundedRect();
         rr.init_from_rect(rect, r);
 
-        // Clip everything (including child widgets) to the rounded outline so
-        // edge-to-edge action buttons get clean rounded bottom corners.
         s.push_rounded_clip(rr);
 
         s.append_color(Theme.banner_bg, rect);
@@ -165,5 +199,67 @@ public class Banner : Gtk.Box {
         base.snapshot(s);
 
         s.pop();
+    }
+
+    public override void measure(Gtk.Orientation orientation,
+                                 int             for_size,
+                                 out int         minimum,
+                                 out int         natural,
+                                 out int         minimum_baseline,
+                                 out int         natural_baseline) {
+        base.measure(orientation, for_size,
+                     out minimum, out natural,
+                     out minimum_baseline, out natural_baseline);
+        if (leaving && orientation == Gtk.Orientation.VERTICAL) {
+            if (full_natural_h < 0) full_natural_h = natural;
+            double remaining = 1.0 - leave_progress;
+            if (remaining < 0.0) remaining = 0.0;
+            int h = (int) Math.round(full_natural_h * remaining);
+            natural = h;
+            if (minimum > h) minimum = h;
+        }
+    }
+
+    public void begin_leave(string style) {
+        if (leaving) return;
+        leaving = true;
+        leave_style = style;
+        leave_progress = 0.0;
+        // Capture pre-shrink natural height so we have a stable target.
+        int min, nat, mb, nb;
+        base.measure(Gtk.Orientation.VERTICAL, Theme.width,
+                     out min, out nat, out mb, out nb);
+        full_natural_h = nat;
+
+        // Buttons should stop responding once the leave starts.
+        actions_row.set_sensitive(false);
+
+        leave_started_us = (get_frame_clock() != null)
+                           ? ((!) get_frame_clock()).get_frame_time()
+                           : (int64) (get_monotonic_time());
+
+        leave_tick_id = add_tick_callback((widget, clock) => {
+            int64 now = clock.get_frame_time();
+            double elapsed_ms = (now - leave_started_us) / 1000.0;
+            int duration = Theme.fade_out_ms > 0 ? Theme.fade_out_ms : 200;
+            double t = elapsed_ms / duration;
+            if (t >= 1.0) {
+                leave_progress = 1.0;
+                queue_resize();
+                queue_draw();
+                leave_finished();
+                leave_tick_id = 0;
+                return Source.REMOVE;
+            }
+            leave_progress = ease_out_cubic(t);
+            queue_resize();
+            queue_draw();
+            return Source.CONTINUE;
+        });
+    }
+
+    private static double ease_out_cubic(double t) {
+        double inv = 1.0 - t;
+        return 1.0 - inv * inv * inv;
     }
 }

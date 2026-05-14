@@ -11,6 +11,7 @@ public class Theme {
     public static Gdk.RGBA action_bg_hover = rgba(1.00f, 1.00f, 1.00f, 0.16f);
     public static Gdk.RGBA action_text     = rgba(1.00f, 1.00f, 1.00f, 1.00f);
     public static int     action_radius    = 8;
+    public static int     clear_all_radius = 6;
 
     public static Gdk.RGBA urgency_low      = rgba(0.36f, 0.55f, 0.94f, 1.00f);
     public static Gdk.RGBA urgency_normal   = rgba(0.98f, 0.66f, 0.20f, 1.00f);
@@ -26,10 +27,15 @@ public class Theme {
     public static int margin_right  = 16;
 
     public static int fade_in_ms    = 180;
-    public static int fade_out_ms   = 140;
+    public static int fade_out_ms   = 800;
     public static int slide_px      = 24;
 
     public static int expire_default_ms = 5000;
+
+    // Dismiss animation: "slide-right" or "fade".
+    public static string dismiss_style    = "slide-right";
+    public static int    cascade_ms       = 80;
+    public static int    clear_threshold  = 3;
 
     public static void load() {
         var path = Utils.THEME_FILE;
@@ -57,6 +63,10 @@ public class Theme {
     }
 
     private static void apply_string(string key, string val) {
+        if (key == "dismiss.style") {
+            if (val == "slide-right" || val == "fade") dismiss_style = val;
+            return;
+        }
         if (val.has_prefix("#")) {
             Gdk.RGBA? c = parse_hex(val.substring(1));
             if (c == null) return;
@@ -87,11 +97,42 @@ public class Theme {
             case "banner.margin.top":     margin_top        = v; break;
             case "banner.margin.right":   margin_right      = v; break;
             case "action.radius":         action_radius     = v; break;
+            case "clear-all.radius":      clear_all_radius  = v; break;
             case "animation.fade-in-ms":  fade_in_ms        = v; break;
             case "animation.fade-out-ms": fade_out_ms       = v; break;
             case "animation.slide-px":    slide_px          = v; break;
             case "expire.default-ms":     expire_default_ms = v; break;
+            case "dismiss.cascade-ms":    cascade_ms        = v; break;
+            case "clear-all.threshold":   clear_threshold   = v; break;
         }
+    }
+
+    public static string generate_clear_all_css() {
+        return ("""
+        .lumen-notif-clear-all,
+        .lumen-notif-clear-all:focus {
+            background-color: %s;
+            background-image: none;
+            color: %s;
+            border: 1px solid %s;
+            border-radius: %dpx;
+            padding: 8px 16px;
+            min-height: 0;
+            box-shadow: none;
+            outline: none;
+            text-shadow: none;
+            font-weight: 600;
+        }
+        .lumen-notif-clear-all:hover  { background-color: %s; }
+        .lumen-notif-clear-all:active { background-color: %s; }
+        """).printf(
+            Theme.banner_bg.to_string(),
+            Theme.banner_text.to_string(),
+            Theme.banner_border.to_string(),
+            Theme.clear_all_radius,
+            Theme.action_bg_hover.to_string(),
+            Theme.action_bg.to_string()
+        );
     }
 
     public static string generate_action_css() {

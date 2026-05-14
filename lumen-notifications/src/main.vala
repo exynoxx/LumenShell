@@ -43,11 +43,19 @@ public class NotifApp : Gtk.Application {
             if (b != null) ((!) b).update_from(n);
         });
         manager.notification_closed.connect((id, reason) => {
-            window.stack.remove_banner(id);
             if (service != null) ((!) service).notification_closed(id, reason);
+            window.stack.dismiss_banner(id);
         });
         window.stack.empty.connect(() => {
             window.set_visible(false);
+        });
+        window.clear_all_requested.connect(() => {
+            window.stack.cascade_dismiss();
+        });
+        window.stack.close_requested.connect((id) => {
+            if (manager != null && ((!) manager).has(id)) {
+                ((!) manager).close(id, REASON_DISMISSED);
+            }
         });
 
         service = new NotificationsService((!) manager);
@@ -78,7 +86,8 @@ public class NotifApp : Gtk.Application {
             ".lumen-notif-root { background-color: transparent; }" +
             ".lumen-notif-title { font-weight: bold; color: %s; }".printf(Theme.banner_text.to_string()) +
             ".lumen-notif-body  { color: %s; }".printf(Theme.banner_subtext.to_string()) +
-            Theme.generate_action_css();
+            Theme.generate_action_css() +
+            Theme.generate_clear_all_css();
         provider.load_from_string(css);
         Gtk.StyleContext.add_provider_for_display(
             (!) Gdk.Display.get_default(),

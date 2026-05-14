@@ -17,10 +17,15 @@
     "action.background-hover": "#ffffff2a",
     "action.text":             "#ffffffff",
     "action.radius":           8,
+    "clear-all.radius":        6,
 
     "animation.fade-in-ms":  180,
-    "animation.fade-out-ms": 140,
+    "animation.fade-out-ms": 800,
     "animation.slide-px":    24,
+
+    "dismiss.style":         "slide-right",
+    "dismiss.cascade-ms":    80,
+    "clear-all.threshold":   3,
 
     "expire.default-ms":     5000,
 
