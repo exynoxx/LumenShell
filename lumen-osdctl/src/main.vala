@@ -12,14 +12,50 @@ Actions:
   --custom <text>   [--value 0.5] [--icon NAME]
 """;
 
-private static void send(string kind, double value, string text,
-                          HashTable<string, Variant> opts) {
+private static bool daemon_present(DBusConnection conn) {
+    try {
+        var r = conn.call_sync(
+            "org.freedesktop.DBus",
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+            "NameHasOwner",
+            new Variant("(s)", "org.lumenshell.OSD"),
+            new VariantType("(b)"),
+            DBusCallFlags.NONE,
+            500,
+            null
+        );
+        bool has = false;
+        r.get("(b)", out has);
+        return has;
+    } catch (Error e) {
+        return false;
+    }
+}
+
+private static void send_show(string kind, double value, string text,
+                              HashTable<string, Variant> opts) {
+    DBusConnection conn;
+    try {
+        conn = Bus.get_sync(BusType.SESSION);
+    } catch (Error e) {
+        stderr.printf("lumen-osdctl: session bus unavailable: %s\n", e.message);
+        return;
+    }
+
+    if (!daemon_present(conn)) {
+        stderr.printf("lumen-osdctl: lumen-osd daemon is not running\n");
+        return;
+    }
+
     try {
         OsdProxy proxy = Bus.get_proxy_sync(
             BusType.SESSION,
             "org.lumenshell.OSD",
-            "/org/lumenshell/OSD"
+            "/org/lumenshell/OSD",
+            DBusProxyFlags.DO_NOT_LOAD_PROPERTIES | DBusProxyFlags.DO_NOT_AUTO_START
         );
+        ((DBusProxy) proxy).set_default_timeout(1500);
         proxy.show(kind, value, text, opts);
     } catch (Error e) {
         stderr.printf("lumen-osdctl: D-Bus call failed: %s\n", e.message);
@@ -59,7 +95,7 @@ private static int handle_pactl_sink(string[] args) {
     }
     var opts = opts_new();
     opts.insert("muted", new Variant.boolean(st.muted));
-    send("volume", st.value, "", opts);
+    send_show("volume", st.value, "", opts);
     return 0;
 }
 
@@ -75,7 +111,7 @@ private static int handle_pactl_source(string[] args) {
     }
     var opts = opts_new();
     opts.insert("muted", new Variant.boolean(st.muted));
-    send("mic", st.value, "", opts);
+    send_show("mic", st.value, "", opts);
     return 0;
 }
 
@@ -96,7 +132,7 @@ private static int handle_brightness(string[] args, string kind) {
             default: stderr.printf(USAGE); return 1;
         }
     }
-    send(kind, st.value, "", opts_new());
+    send_show(kind, st.value, "", opts_new());
     return 0;
 }
 
@@ -118,7 +154,7 @@ public static int main(string[] args) {
 
         case "--caps-lock":
             bool on = Backends.caps_lock_on();
-            send("caps-lock", 0.0, on ? "Caps ON" : "Caps OFF", opts_new());
+            send_show("caps-lock", 0.0, on ? "Caps ON" : "Caps OFF", opts_new());
             return 0;
 
         case "--custom":
@@ -130,7 +166,7 @@ public static int main(string[] args) {
             string? icon = arg_after(args, "--icon");
             var opts = opts_new();
             if (icon != null) opts.insert("icon", new Variant.string((!) icon));
-            send("custom", value, text, opts);
+            send_show("custom", value, text, opts);
             return 0;
 
         case "--help":

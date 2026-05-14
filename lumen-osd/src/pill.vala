@@ -6,25 +6,36 @@ public class Pill : Gtk.Box {
     public ProgressTrack progress = new ProgressTrack();
     public Gtk.Label     label    = new Gtk.Label("");
 
+    private Gtk.Box inner;
+
     public Pill() {
-        Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 12);
+        Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
 
-        margin_start  = 20;
-        margin_end    = 20;
-        margin_top    = 12;
-        margin_bottom = 12;
+        // The Pill itself spans the full background (with rounded corners).
+        // Content lives inside `inner`, whose margins act as internal padding
+        // so the icon/bar/label never touch the curved edge.
+        inner = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 14);
+        inner.margin_start  = 22;
+        inner.margin_end    = 22;
+        inner.margin_top    = 10;
+        inner.margin_bottom = 10;
+        inner.set_hexpand(true);
+        inner.set_vexpand(true);
 
-        icon.pixel_size = 24;
+        icon.pixel_size = 22;
         icon.set_from_icon_name("audio-volume-medium-symbolic");
-        append(icon);
+        icon.set_valign(Gtk.Align.CENTER);
+        inner.append(icon);
 
         progress.set_hexpand(true);
         progress.set_valign(Gtk.Align.CENTER);
-        append(progress);
+        inner.append(progress);
 
         label.set_valign(Gtk.Align.CENTER);
         label.set_visible(false);
-        append(label);
+        inner.append(label);
+
+        append(inner);
 
         set_size_request(Theme.width, Theme.height);
     }
@@ -91,7 +102,7 @@ public class ProgressTrack : Gtk.Widget {
             minimum = 80;
             natural = 200;
         } else {
-            minimum = natural = 8;
+            minimum = natural = 6;
         }
         minimum_baseline = -1;
         natural_baseline = -1;
@@ -100,8 +111,8 @@ public class ProgressTrack : Gtk.Widget {
     public override void snapshot(Gtk.Snapshot s) {
         int   w       = get_width();
         int   h       = get_height();
-        float track_h = 6f;
-        float track_y = (h - track_h) * 0.5f;
+        float track_h = (float) h;
+        float track_y = 0f;
 
         var track_rect = Graphene.Rect();
         track_rect.init(0f, track_y, (float) w, track_h);
@@ -113,6 +124,8 @@ public class ProgressTrack : Gtk.Widget {
 
         float fill_w = (float) (w * _fraction);
         if (fill_w <= 0f) return;
+        // Ensure the rounded fill cap is visible even at tiny fractions.
+        if (fill_w < track_h) fill_w = track_h;
 
         var fill_rect = Graphene.Rect();
         fill_rect.init(0f, track_y, fill_w, track_h);

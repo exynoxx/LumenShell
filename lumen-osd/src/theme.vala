@@ -1,11 +1,11 @@
 using Json;
 
 public class Theme {
-    public static Gdk.RGBA background       = rgba(0.07f, 0.08f, 0.12f, 0.95f);
-    public static Gdk.RGBA foreground       = rgba(0.92f, 0.94f, 0.98f, 1.00f);
-    public static Gdk.RGBA text             = rgba(0.92f, 0.94f, 0.98f, 1.00f);
-    public static Gdk.RGBA progress_track   = rgba(0.20f, 0.22f, 0.30f, 1.00f);
-    public static Gdk.RGBA progress_fill    = rgba(0.00f, 0.45f, 0.95f, 1.00f);
+    public static Gdk.RGBA background       = rgba(0.00f, 0.00f, 0.00f, 0.75f);
+    public static Gdk.RGBA foreground       = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+    public static Gdk.RGBA text             = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+    public static Gdk.RGBA progress_track   = rgba(1.00f, 1.00f, 1.00f, 0.15f);
+    public static Gdk.RGBA progress_fill    = rgba(1.00f, 1.00f, 1.00f, 1.00f);
 
     public static string  position         = "bottom-center";
     public static int     margin           = 76;       // px from anchored edge

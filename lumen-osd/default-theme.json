@@ -1,9 +1,9 @@
 {
-    "osd.background":     "#12141fee",
-    "osd.foreground":     "#eaedf5",
-    "osd.text":           "#eaedf5",
-    "osd.progress.track": "#2d3245",
-    "osd.progress.fill":  "#0078f0",
+    "osd.background":     "#000000c0",
+    "osd.foreground":     "#ffffffff",
+    "osd.text":           "#ffffffff",
+    "osd.progress.track": "#ffffff26",
+    "osd.progress.fill":  "#ffffffff",
 
     "osd.position":       "bottom-center",
     "osd.margin":         76,
