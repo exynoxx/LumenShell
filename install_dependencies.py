@@ -54,9 +54,11 @@ def install_ubuntu():
         'libgl1-mesa-dev',
         'libfreetype6-dev',
         'libxkbcommon-dev',
+        'libgtk-4-dev',
+        'libgtk4-layer-shell-dev',
         'wayfire',
     ]
-    
+
     cmd = ['apt-get', 'install', '-y'] + packages
     return run_command(cmd)
 
@@ -80,9 +82,11 @@ def install_fedora():
         'mesa-libGL-devel',
         'freetype-devel',
         'libxkbcommon-devel',
+        'gtk4-devel',
+        'gtk4-layer-shell-devel',
         'wayfire',
     ]
-    
+
     cmd = ['dnf', 'install', '-y'] + packages
     return run_command(cmd)
 
@@ -103,9 +107,11 @@ def install_arch():
         'glu',
         'freetype2',
         'libxkbcommon',
+        'gtk4',
+        'gtk4-layer-shell',
         'wayfire',
     ]
-    
+
     cmd = ['pacman', '-S', '--needed', '--noconfirm'] + packages
     return run_command(cmd)
 

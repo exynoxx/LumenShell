@@ -1,0 +1,14 @@
+{
+    "osd.background":     "#12141fee",
+    "osd.foreground":     "#eaedf5",
+    "osd.text":           "#eaedf5",
+    "osd.progress.track": "#2d3245",
+    "osd.progress.fill":  "#0078f0",
+
+    "osd.position":       "bottom-center",
+    "osd.margin":         76,
+    "osd.width":          360,
+    "osd.height":         56,
+    "osd.corner-radius":  -1,
+    "osd.timeout-ms":     1500
+}

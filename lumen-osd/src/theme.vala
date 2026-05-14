@@ -1,0 +1,111 @@
+using Json;
+
+public class Theme {
+    public static Gdk.RGBA background       = rgba(0.07f, 0.08f, 0.12f, 0.95f);
+    public static Gdk.RGBA foreground       = rgba(0.92f, 0.94f, 0.98f, 1.00f);
+    public static Gdk.RGBA text             = rgba(0.92f, 0.94f, 0.98f, 1.00f);
+    public static Gdk.RGBA progress_track   = rgba(0.20f, 0.22f, 0.30f, 1.00f);
+    public static Gdk.RGBA progress_fill    = rgba(0.00f, 0.45f, 0.95f, 1.00f);
+
+    public static string  position         = "bottom-center";
+    public static int     margin           = 76;       // px from anchored edge
+    public static int     width            = 360;
+    public static int     height           = 56;
+    public static int     corner_radius    = -1;       // -1 → pill (height/2)
+    public static int     timeout_ms       = 1500;
+
+    public static void load() {
+        var path = Utils.THEME_FILE;
+        if (!FileUtils.test(path, FileTest.EXISTS)) return;
+
+        var parser = new Json.Parser();
+        try {
+            parser.load_from_file(path);
+        } catch (Error e) {
+            stderr.printf("lumen-osd theme load failed: %s\n", e.message);
+            return;
+        }
+
+        var root = parser.get_root();
+        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
+
+        root.get_object().foreach_member((obj, name, node) => {
+            var t = node.get_value_type();
+            if (t == typeof(string)) {
+                apply_string(name, node.get_string());
+            } else if (t == typeof(int64)) {
+                apply_int(name, (int) node.get_int());
+            }
+        });
+    }
+
+    private static void apply_string(string key, string val) {
+        if (val.has_prefix("#")) {
+            Gdk.RGBA? c = parse_hex(val.substring(1));
+            if (c == null) return;
+            switch (key) {
+                case "osd.background":     background     = (!) c; break;
+                case "osd.foreground":     foreground     = (!) c; break;
+                case "osd.text":           text           = (!) c; break;
+                case "osd.progress.track": progress_track = (!) c; break;
+                case "osd.progress.fill":  progress_fill  = (!) c; break;
+            }
+            return;
+        }
+        if (key == "osd.position") position = val;
+    }
+
+    private static void apply_int(string key, int v) {
+        switch (key) {
+            case "osd.margin":        margin        = v; break;
+            case "osd.width":         width         = v; break;
+            case "osd.height":        height        = v; break;
+            case "osd.corner-radius": corner_radius = v; break;
+            case "osd.timeout-ms":    timeout_ms    = v; break;
+        }
+    }
+
+    private static Gdk.RGBA rgba(float r, float g, float b, float a) {
+        var c = Gdk.RGBA();
+        c.red = r; c.green = g; c.blue = b; c.alpha = a;
+        return c;
+    }
+
+    private static Gdk.RGBA? parse_hex(string hex) {
+        string s = hex;
+        if (s.length == 3 || s.length == 4) {
+            var sb = new StringBuilder();
+            for (int i = 0; i < s.length; i++) {
+                sb.append_c(s[i]);
+                sb.append_c(s[i]);
+            }
+            s = sb.str;
+        }
+        if (s.length != 6 && s.length != 8) return null;
+
+        uint64 v = 0;
+        for (int i = 0; i < s.length; i++) {
+            char ch = s[i];
+            uint64 nibble;
+            if (ch >= '0' && ch <= '9')      nibble = ch - '0';
+            else if (ch >= 'a' && ch <= 'f') nibble = ch - 'a' + 10;
+            else if (ch >= 'A' && ch <= 'F') nibble = ch - 'A' + 10;
+            else return null;
+            v = (v << 4) | nibble;
+        }
+
+        float r, g, b, a;
+        if (s.length == 6) {
+            r = ((v >> 16) & 0xFF) / 255f;
+            g = ((v >>  8) & 0xFF) / 255f;
+            b = ( v        & 0xFF) / 255f;
+            a = 1f;
+        } else {
+            r = ((v >> 24) & 0xFF) / 255f;
+            g = ((v >> 16) & 0xFF) / 255f;
+            b = ((v >>  8) & 0xFF) / 255f;
+            a = ( v        & 0xFF) / 255f;
+        }
+        return rgba(r, g, b, a);
+    }
+}

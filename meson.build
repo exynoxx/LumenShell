@@ -63,23 +63,24 @@ panel_sources = files(
   'lumen-panel/src/components/apppopup.vala',
   'lumen-panel/src/components/panel.vala',
   'lumen-panel/src/components/tray.vala',
-  'lumen-panel/src/components/trays/battery.vala',
-  'lumen-panel/src/components/trays/battery_service.vala',
-  'lumen-panel/src/components/trays/batterypage.vala',
-  'lumen-panel/src/components/trays/clock.vala',
-  'lumen-panel/src/components/trays/exit.vala',
-  'lumen-panel/src/components/trays/hoverableicon.vala',
-  'lumen-panel/src/components/trays/iconandtext.vala',
-  'lumen-panel/src/components/trays/itray.vala',
-  'lumen-panel/src/components/trays/itraypage.vala',
-  'lumen-panel/src/components/trays/nmcli.vala',
-  'lumen-panel/src/components/trays/pactl.vala',
-  'lumen-panel/src/components/trays/sound.vala',
-  'lumen-panel/src/components/trays/soundpage.vala',
-  'lumen-panel/src/components/trays/wifi.vala',
-  'lumen-panel/src/components/trays/wifi_service.vala',
-  'lumen-panel/src/components/trays/wifipage.vala',
-  'lumen-panel/src/components/trays/wifirow.vala',
+  'lumen-panel/src/components/hoverableicon.vala',
+  'lumen-panel/src/components/iconandtext.vala',
+  'lumen-panel/src/components/itray.vala',
+  'lumen-panel/src/components/itraypage.vala',
+  'lumen-panel/src/components/battery/battery.vala',
+  'lumen-panel/src/components/battery/battery_service.vala',
+  'lumen-panel/src/components/battery/batterypage.vala',
+  'lumen-panel/src/components/clock/clock.vala',
+  'lumen-panel/src/components/exit/exit.vala',
+  'lumen-panel/src/components/sound/pactl.vala',
+  'lumen-panel/src/components/sound/sound.vala',
+  'lumen-panel/src/components/sound/sound_service.vala',
+  'lumen-panel/src/components/sound/soundpage.vala',
+  'lumen-panel/src/components/wifi/nmcli.vala',
+  'lumen-panel/src/components/wifi/wifi.vala',
+  'lumen-panel/src/components/wifi/wifi_service.vala',
+  'lumen-panel/src/components/wifi/wifipage.vala',
+  'lumen-panel/src/components/wifi/wifirow.vala',
 )
 
 executable('lumen-panel',
@@ -119,5 +120,68 @@ executable('kickoff',
   kickoff_sources,
   vala_args: common_vala_args,
   dependencies: common_deps,
+  install: true,
+)
+
+# --- lumen-osd ---
+# Independent dep set: no drawkit, no wlhooks, no GLES.
+gtk4_dep             = dependency('gtk4')
+gtk4_layer_shell_dep = dependency('gtk4-layer-shell-0')
+
+osd_deps = [
+  glib_dep,
+  gio_dep,
+  json_dep,
+  gtk4_dep,
+  gtk4_layer_shell_dep,
+  m_dep,
+]
+
+osd_vala_args = [
+  '--vapidir=' + vapi_dir,
+  '--pkg=gtk4',
+  '--pkg=gtk4-layer-shell-0',
+  '--pkg=json-glib-1.0',
+]
+
+osd_sources = files(
+  'lumen-osd/src/main.vala',
+  'lumen-osd/src/window.vala',
+  'lumen-osd/src/utils.vala',
+  'lumen-osd/src/theme.vala',
+  'lumen-osd/src/pill.vala',
+  'lumen-osd/src/dbus.vala',
+)
+
+executable('lumen-osd',
+  osd_sources,
+  vala_args: osd_vala_args,
+  dependencies: osd_deps,
+  install: true,
+)
+
+install_data(
+  'lumen-osd/default-theme.json',
+  install_dir: get_option('datadir') / 'lumen-osd',
+)
+
+# --- lumen-osdctl ---
+osdctl_deps = [glib_dep, gio_dep, m_dep]
+
+osdctl_vala_args = [
+  '--pkg=gio-2.0',
+  '--pkg=glib-2.0',
+]
+
+osdctl_sources = files(
+  'lumen-osdctl/src/main.vala',
+  'lumen-osdctl/src/backends.vala',
+  'lumen-osdctl/src/dbus_proxy.vala',
+)
+
+executable('lumen-osdctl',
+  osdctl_sources,
+  vala_args: osdctl_vala_args,
+  dependencies: osdctl_deps,
   install: true,
 )
