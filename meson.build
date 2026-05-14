@@ -90,39 +90,6 @@ executable('lumen-panel',
   install: true,
 )
 
-# --- Kickoff ---
-
-kickoff_sources = files(
-  'Kickoff/src/main.vala',
-  'Kickoff/src/animation.vala',
-  'Kickoff/src/appentry.vala',
-  'Kickoff/src/keyboard.vala',
-  'Kickoff/src/processor.vala',
-  'Kickoff/src/searchdb.vala',
-  'Kickoff/src/components/appview.vala',
-  'Kickoff/src/components/gridview.vala',
-  'Kickoff/src/components/igrid.vala',
-  'Kickoff/src/components/navigationbar.vala',
-  'Kickoff/src/components/position.vala',
-  'Kickoff/src/components/searchbar.vala',
-  'Kickoff/src/components/searchgridview.vala',
-  'Kickoff/src/utils/aliasarray.vala',
-  'Kickoff/src/utils/config.vala',
-  'Kickoff/src/utils/icon.vala',
-  'Kickoff/src/utils/image.vala',
-  'Kickoff/src/utils/math.vala',
-  'Kickoff/src/utils/serialization.vala',
-  'Kickoff/src/utils/span.vala',
-  'Kickoff/src/utils/system.vala',
-)
-
-executable('kickoff',
-  kickoff_sources,
-  vala_args: common_vala_args,
-  dependencies: common_deps,
-  install: true,
-)
-
 # --- lumen-osd ---
 # Independent dep set: no drawkit, no wlhooks, no GLES.
 gtk4_dep             = dependency('gtk4')
@@ -210,6 +177,46 @@ executable('lumen-notifications',
 install_data(
   'lumen-notifications/default-notifications-theme.json',
   install_dir: get_option('datadir') / 'lumen-notifications',
+)
+
+# --- Kickoff ---
+# Independent dep set: no drawkit, no wlhooks, no GLES.
+# Reuses gtk4_dep and gtk4_layer_shell_dep from lumen-osd block above.
+kickoff_deps = [
+  glib_dep,
+  gio_dep,
+  gee_dep,
+  gtk4_dep,
+  gtk4_layer_shell_dep,
+  m_dep,
+]
+
+kickoff_vala_args = [
+  '--vapidir=' + vapi_dir,
+  '--pkg=gtk4',
+  '--pkg=gtk4-layer-shell-0',
+  '--pkg=gee-0.8',
+  '--pkg=glib-2.0',
+  '--pkg=gio-2.0',
+]
+
+kickoff_sources = files(
+  'Kickoff/src/main.vala',
+  'Kickoff/src/window.vala',
+  'Kickoff/src/appentry.vala',
+  'Kickoff/src/searchdb.vala',
+  'Kickoff/src/components/apptile.vala',
+  'Kickoff/src/components/pagedgrid.vala',
+  'Kickoff/src/components/searchresults.vala',
+  'Kickoff/src/components/pagedots.vala',
+  'Kickoff/src/utils/aliasarray.vala',
+)
+
+executable('kickoff',
+  kickoff_sources,
+  vala_args: kickoff_vala_args,
+  dependencies: kickoff_deps,
+  install: true,
 )
 
 # --- lumen-osdctl ---
