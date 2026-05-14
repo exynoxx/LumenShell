@@ -1,11 +1,15 @@
+using GLib;
+
 [DBus(name = "org.lumenshell.OSD1")]
 public class OsdService : Object {
 
     private OsdWindow window;
+    private Presenter presenter;
     private uint      hide_source = 0;
 
     public OsdService(OsdWindow window) {
         this.window = window;
+        this.presenter = new Presenter(window.pill);
         hide();
     }
 
@@ -14,38 +18,11 @@ public class OsdService : Object {
                      string                       text,
                      HashTable<string, Variant>   opts) throws DBusError, IOError {
 
-        bool muted    = lookup_bool(opts, "muted", false);
-        int  timeout  = lookup_int (opts, "timeout-ms", Theme.timeout_ms);
+        bool    muted         = lookup_bool  (opts, "muted",      false);
+        int     timeout       = lookup_int   (opts, "timeout-ms", Theme.timeout_ms);
         string? icon_override = lookup_string(opts, "icon");
 
-        string icon = (icon_override != null)
-                      ? (!) icon_override
-                      : icon_for(kind, value, muted);
-
-        switch (kind) {
-            case "volume":
-            case "mic":
-            case "brightness":
-            case "kbd-brightness":
-                window.pill.show_slider(icon, value,
-                    text != "" ? text : "%d%%".printf((int) Math.round(value * 100)));
-                break;
-
-            case "caps-lock":
-                window.pill.show_chip(icon, text != "" ? text : "Caps");
-                break;
-
-            case "custom":
-            default:
-                if (text != "" && value <= 0.0) {
-                    window.pill.show_chip(icon, text);
-                } else if (value > 0.0) {
-                    window.pill.show_slider(icon, value, text);
-                } else {
-                    window.pill.show_chip(icon, kind);
-                }
-                break;
-        }
+        presenter.present(kind, value, text, icon_override, muted);
 
         window.set_visible(true);
         arm_hide(timeout);
@@ -66,31 +43,6 @@ public class OsdService : Object {
             hide();
             return Source.REMOVE;
         });
-    }
-
-    private string icon_for(string kind, double value, bool muted) {
-        switch (kind) {
-            case "volume":
-                if (muted) return "audio-volume-muted-symbolic";
-                if (value <= 0.01) return "audio-volume-muted-symbolic";
-                if (value < 0.34)  return "audio-volume-low-symbolic";
-                if (value < 0.67)  return "audio-volume-medium-symbolic";
-                return "audio-volume-high-symbolic";
-            case "mic":
-                if (muted) return "microphone-sensitivity-muted-symbolic";
-                if (value < 0.34) return "microphone-sensitivity-low-symbolic";
-                if (value < 0.67) return "microphone-sensitivity-medium-symbolic";
-                return "microphone-sensitivity-high-symbolic";
-            case "brightness":
-                return "display-brightness-symbolic";
-            case "kbd-brightness":
-                return "keyboard-brightness-symbolic";
-            case "caps-lock":
-                return "keyboard-symbolic";
-            case "custom":
-            default:
-                return "dialog-information-symbolic";
-        }
     }
 
     private static bool lookup_bool(HashTable<string, Variant> opts,

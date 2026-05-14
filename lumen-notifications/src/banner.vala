@@ -12,14 +12,15 @@ public class Banner : Gtk.Box {
     private Gtk.Label      body_lbl;
     private Gtk.Box        actions_row;
     private bool           has_actions = false;
+    private string[]       current_actions = {};
 
     // Leave (slide-out / fade-out) animation state.
-    private bool   leaving = false;
-    private string leave_style = "slide-right";
-    private int64  leave_started_us = 0;
-    private double leave_progress = 0.0;
-    private int    full_natural_h = -1;
-    private uint   leave_tick_id = 0;
+    private bool         leaving = false;
+    private DismissStyle leave_style = DismissStyle.SLIDE_RIGHT;
+    private int64        leave_started_us = 0;
+    private double       leave_progress = 0.0;
+    private int          full_natural_h = -1;
+    private uint         leave_tick_id = 0;
 
     public Banner(Notification n) {
         Object(orientation: Gtk.Orientation.VERTICAL, spacing: Theme.spacing);
@@ -102,23 +103,32 @@ public class Banner : Gtk.Box {
     private void set_icon(Notification n) {
         string? src = (n.image_path != null && (!) n.image_path != "")
                       ? n.image_path
-                      : (n.app_icon != "" ? n.app_icon : null);
-        if (src == null) {
+                      : n.app_icon;
+        if (src == null || (!) src == "") {
             icon_img.set_visible(false);
             return;
         }
         icon_img.set_visible(true);
         string s = (!) src;
-        if (s.has_prefix("/")) {
-            icon_img.set_from_file(s);
-        } else if (s.has_prefix("file://")) {
-            icon_img.set_from_file(s.substring(7));
+        string? file_path = null;
+        if (s.has_prefix("/"))            file_path = s;
+        else if (s.has_prefix("file://")) file_path = s.substring(7);
+
+        if (file_path != null) {
+            if (FileUtils.test((!) file_path, FileTest.EXISTS)) {
+                icon_img.set_from_file((!) file_path);
+            } else {
+                warning("lumen-notifications: icon file missing: %s", (!) file_path);
+                icon_img.set_from_icon_name("dialog-information");
+            }
         } else {
             icon_img.set_from_icon_name(s);
         }
     }
 
     private void rebuild_actions(string[] actions) {
+        if (actions_equal(actions, current_actions)) return;
+
         // Strip previous buttons.
         Gtk.Widget? child = actions_row.get_first_child();
         while (child != null) {
@@ -145,6 +155,15 @@ public class Banner : Gtk.Box {
             has_actions = true;
         }
         actions_row.set_visible(has_actions);
+        current_actions = actions;
+    }
+
+    private static bool actions_equal(string[] a, string[] b) {
+        if (a.length != b.length) return false;
+        for (int i = 0; i < a.length; i++) {
+            if (a[i] != b[i]) return false;
+        }
+        return true;
     }
 
     public override void snapshot(Gtk.Snapshot s) {
@@ -159,7 +178,7 @@ public class Banner : Gtk.Box {
         s.save();
         s.push_opacity(opacity);
 
-        if (leave_style == "slide-right") {
+        if (leave_style == DismissStyle.SLIDE_RIGHT) {
             float dx = (float) (leave_progress * (Theme.width + Theme.slide_px * 2));
             var p = Graphene.Point();
             p.x = dx; p.y = 0f;
@@ -220,7 +239,7 @@ public class Banner : Gtk.Box {
         }
     }
 
-    public void begin_leave(string style) {
+    public void begin_leave(DismissStyle style) {
         if (leaving) return;
         leaving = true;
         leave_style = style;
@@ -234,9 +253,10 @@ public class Banner : Gtk.Box {
         // Buttons should stop responding once the leave starts.
         actions_row.set_sensitive(false);
 
-        leave_started_us = (get_frame_clock() != null)
-                           ? ((!) get_frame_clock()).get_frame_time()
-                           : (int64) (get_monotonic_time());
+        // begin_leave only runs after the widget is realized, so frame_clock
+        // is guaranteed non-null. Using monotonic_time as a fallback would
+        // mix time bases with clock.get_frame_time() below.
+        leave_started_us = ((!) get_frame_clock()).get_frame_time();
 
         leave_tick_id = add_tick_callback((widget, clock) => {
             int64 now = clock.get_frame_time();

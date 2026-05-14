@@ -2,11 +2,12 @@ using Gtk;
 
 public class NotifApp : Gtk.Application {
 
-    private LayerWindow?         window  = null;
-    private NotificationManager? manager = null;
-    private NotificationsService? service = null;
-    private DBusConnection?      conn    = null;
+    private LayerWindow          window;
+    private NotificationManager  manager;
+    private NotificationsService service;
+    private DBusConnection?      conn = null;
     private uint                 owner_id = 0;
+    private bool                 activated = false;
     public  string               bus_name = "org.freedesktop.Notifications";
     public  string               bus_path = "/org/freedesktop/Notifications";
     public  bool                 test_mode = false;
@@ -24,15 +25,24 @@ public class NotifApp : Gtk.Application {
             quit();
             return;
         }
-        if (window != null) return;
+        if (activated) return;
+        activated = true;
 
         Theme.load();
         install_root_css();
 
         manager = new NotificationManager();
         window  = new LayerWindow(this);
+        service = new NotificationsService(manager);
 
-        // Wire manager → window stack.
+        wire_signals();
+        own_bus_name();
+        hold();
+
+        if (test_mode) new NotifSelfTest(service).run();
+    }
+
+    private void wire_signals() {
         manager.notification_added.connect((n) => {
             var b = window.stack.add_banner(n);
             wire_banner(b, n.id);
@@ -43,7 +53,7 @@ public class NotifApp : Gtk.Application {
             if (b != null) ((!) b).update_from(n);
         });
         manager.notification_closed.connect((id, reason) => {
-            if (service != null) ((!) service).notification_closed(id, reason);
+            service.notification_closed(id, reason);
             window.stack.dismiss_banner(id);
         });
         window.stack.empty.connect(() => {
@@ -53,42 +63,23 @@ public class NotifApp : Gtk.Application {
             window.stack.cascade_dismiss();
         });
         window.stack.close_requested.connect((id) => {
-            if (manager != null && ((!) manager).has(id)) {
-                ((!) manager).close(id, REASON_DISMISSED);
-            }
+            if (manager.has(id)) manager.close(id, REASON_DISMISSED);
         });
-
-        service = new NotificationsService((!) manager);
-
-        own_bus_name();
-        hold();
-
-        if (test_mode) run_self_test();
     }
 
     private void wire_banner(Banner b, uint32 id) {
         b.dismissed.connect(() => {
-            if (manager != null && ((!) manager).has(id)) {
-                ((!) manager).close(id, REASON_DISMISSED);
-            }
+            if (manager.has(id)) manager.close(id, REASON_DISMISSED);
         });
         b.action_invoked.connect((key) => {
-            if (service != null) ((!) service).action_invoked(id, key);
-            if (manager != null && ((!) manager).has(id)) {
-                ((!) manager).close(id, REASON_DISMISSED);
-            }
+            service.action_invoked(id, key);
+            if (manager.has(id)) manager.close(id, REASON_DISMISSED);
         });
     }
 
     private void install_root_css() {
         var provider = new Gtk.CssProvider();
-        string css =
-            ".lumen-notif-root { background-color: transparent; }" +
-            ".lumen-notif-title { font-weight: bold; color: %s; }".printf(Theme.banner_text.to_string()) +
-            ".lumen-notif-body  { color: %s; }".printf(Theme.banner_subtext.to_string()) +
-            Theme.generate_action_css() +
-            Theme.generate_clear_all_css();
-        provider.load_from_string(css);
+        provider.load_from_string(Theme.generate_root_css());
         Gtk.StyleContext.add_provider_for_display(
             (!) Gdk.Display.get_default(),
             provider,
@@ -104,7 +95,7 @@ public class NotifApp : Gtk.Application {
             (c) => {
                 conn = c;
                 try {
-                    c.register_object(bus_path, (!) service);
+                    c.register_object(bus_path, service);
                 } catch (IOError e) {
                     stderr.printf("lumen-notifications: register_object failed: %s\n", e.message);
                 }
@@ -118,23 +109,6 @@ public class NotifApp : Gtk.Application {
                 quit();
             }
         );
-    }
-
-    private void run_self_test() {
-        stderr.printf("[lumen-notifications] --test: pushing a sample notification\n");
-        Timeout.add(400, () => {
-            string[] acts = { "ok", "OK", "later", "Later" };
-            var hints = new HashTable<string, Variant>(str_hash, str_equal);
-            try {
-                ((!) service).notify_("lumen-notifications", 0, "dialog-information",
-                                      "Hello from lumen-notifications",
-                                      "This is a test banner. Click a button or the card.",
-                                      acts, hints, 8000);
-            } catch (Error e) {
-                stderr.printf("[lumen-notifications] --test failed: %s\n", e.message);
-            }
-            return Source.REMOVE;
-        });
     }
 }
 

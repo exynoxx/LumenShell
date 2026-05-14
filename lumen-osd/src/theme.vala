@@ -2,7 +2,6 @@ using Json;
 
 public class Theme {
     public static Gdk.RGBA background       = rgba(0.00f, 0.00f, 0.00f, 0.75f);
-    public static Gdk.RGBA foreground       = rgba(1.00f, 1.00f, 1.00f, 1.00f);
     public static Gdk.RGBA text             = rgba(1.00f, 1.00f, 1.00f, 1.00f);
     public static Gdk.RGBA progress_track   = rgba(1.00f, 1.00f, 1.00f, 0.15f);
     public static Gdk.RGBA progress_fill    = rgba(1.00f, 1.00f, 1.00f, 1.00f);
@@ -13,6 +12,9 @@ public class Theme {
     public static int     height           = 56;
     public static int     corner_radius    = -1;       // -1 → pill (height/2)
     public static int     timeout_ms       = 1500;
+    public static int     padding_x        = 22;       // pill internal horizontal padding
+    public static int     padding_y        = 10;       // pill internal vertical padding
+    public static int     content_spacing  = 14;       // gap between icon / bar / label
 
     public static void load() {
         var path = Utils.THEME_FILE;
@@ -40,28 +42,48 @@ public class Theme {
     }
 
     private static void apply_string(string key, string val) {
-        if (val.has_prefix("#")) {
-            Gdk.RGBA? c = parse_hex(val.substring(1));
-            if (c == null) return;
-            switch (key) {
-                case "osd.background":     background     = (!) c; break;
-                case "osd.foreground":     foreground     = (!) c; break;
-                case "osd.text":           text           = (!) c; break;
-                case "osd.progress.track": progress_track = (!) c; break;
-                case "osd.progress.fill":  progress_fill  = (!) c; break;
-            }
+        if (key == "osd.position") {
+            position = val;
             return;
         }
-        if (key == "osd.position") position = val;
+        if (!val.has_prefix("#")) {
+            warning("lumen-osd: unknown theme key: %s", key);
+            return;
+        }
+        Gdk.RGBA? c = parse_hex(val.substring(1));
+        if (c == null) {
+            warning("lumen-osd: invalid color for %s: %s", key, val);
+            return;
+        }
+        switch (key) {
+            case "osd.background":     background     = (!) c; break;
+            case "osd.text":           text           = (!) c; break;
+            case "osd.progress.track": progress_track = (!) c; break;
+            case "osd.progress.fill":  progress_fill  = (!) c; break;
+            default:
+                warning("lumen-osd: unknown theme key: %s", key);
+                break;
+        }
+    }
+
+    public static string generate_root_css() {
+        return (".lumen-osd-root { background-color: transparent; }" +
+                ".lumen-osd-root label { color: %s; }").printf(text.to_string());
     }
 
     private static void apply_int(string key, int v) {
         switch (key) {
-            case "osd.margin":        margin        = v; break;
-            case "osd.width":         width         = v; break;
-            case "osd.height":        height        = v; break;
-            case "osd.corner-radius": corner_radius = v; break;
-            case "osd.timeout-ms":    timeout_ms    = v; break;
+            case "osd.margin":          margin          = v; break;
+            case "osd.width":           width           = v; break;
+            case "osd.height":          height          = v; break;
+            case "osd.corner-radius":   corner_radius   = v; break;
+            case "osd.timeout-ms":      timeout_ms      = v; break;
+            case "osd.padding-x":       padding_x       = v; break;
+            case "osd.padding-y":       padding_y       = v; break;
+            case "osd.content-spacing": content_spacing = v; break;
+            default:
+                warning("lumen-osd: unknown theme key: %s", key);
+                break;
         }
     }
 

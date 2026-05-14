@@ -21,7 +21,7 @@ public class NotificationManager : Object {
      * emit notification_added. Returns the id used.
      */
     public uint32 submit(uint32 replaces_id,
-                         string app_name, string app_icon,
+                         string app_name, string? app_icon,
                          string summary, string body,
                          string[] actions,
                          Urgency urgency, string? image_path,

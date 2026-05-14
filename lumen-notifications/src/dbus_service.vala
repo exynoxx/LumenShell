@@ -36,7 +36,8 @@ public class NotificationsService : Object {
             }
         }
 
-        return manager.submit(replaces_id, app_name, app_icon, summary, body,
+        string? icon = (app_icon != "") ? app_icon : null;
+        return manager.submit(replaces_id, app_name, icon, summary, body,
                               actions, urgency, image_path, expire_timeout);
     }
 

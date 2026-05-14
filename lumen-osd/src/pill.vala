@@ -14,11 +14,11 @@ public class Pill : Gtk.Box {
         // The Pill itself spans the full background (with rounded corners).
         // Content lives inside `inner`, whose margins act as internal padding
         // so the icon/bar/label never touch the curved edge.
-        inner = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 14);
-        inner.margin_start  = 22;
-        inner.margin_end    = 22;
-        inner.margin_top    = 10;
-        inner.margin_bottom = 10;
+        inner = new Gtk.Box(Gtk.Orientation.HORIZONTAL, Theme.content_spacing);
+        inner.margin_start  = Theme.padding_x;
+        inner.margin_end    = Theme.padding_x;
+        inner.margin_top    = Theme.padding_y;
+        inner.margin_bottom = Theme.padding_y;
         inner.set_hexpand(true);
         inner.set_vexpand(true);
 

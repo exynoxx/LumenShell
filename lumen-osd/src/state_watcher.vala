@@ -26,52 +26,50 @@ public class StateWatcher : Object {
     private int     caps_last   = -1;
 
     private bool primed = false;
+    private uint tick_source = 0;
 
     public StateWatcher(OsdService service) {
         this.service = service;
-        discover_kbd();
-        discover_screen();
-        discover_caps();
+        discover(out kbd_path,    out kbd_max,    "/sys/class/leds",      "::kbd_backlight", true);
+        discover(out screen_path, out screen_max, "/sys/class/backlight", null,              true);
+        int _unused;
+        discover(out caps_path,   out _unused,    "/sys/class/leds",      "::capslock",      false);
         // sysfs writes don't reliably emit inotify, so a short periodic
         // read is the most portable trigger. 200ms feels instant.
-        Timeout.add(200, this.tick);
+        tick_source = Timeout.add(200, this.tick);
     }
 
-    private void discover_kbd() {
-        try {
-            var dir = Dir.open("/sys/class/leds");
-            string? name = null;
-            while ((name = dir.read_name()) != null) {
-                if (!((!) name).has_suffix("::kbd_backlight")) continue;
-                kbd_path = "/sys/class/leds/" + (!) name + "/brightness";
-                kbd_max  = read_int("/sys/class/leds/" + (!) name + "/max_brightness");
-                break;
-            }
-        } catch (Error e) {}
+    ~StateWatcher() {
+        if (tick_source != 0) {
+            Source.remove(tick_source);
+            tick_source = 0;
+        }
     }
 
-    private void discover_screen() {
+    /**
+     * Find an entry under `parent` matching `suffix` (or any entry exposing
+     * `brightness` when `suffix` is null), and capture its brightness path
+     * plus optional max_brightness reading.
+     */
+    private static void discover(out string? path, out int max,
+                                 string parent, string? suffix,
+                                 bool read_max) {
+        path = null;
+        max  = 0;
         try {
-            var dir = Dir.open("/sys/class/backlight");
+            var dir = Dir.open(parent);
             string? name = null;
             while ((name = dir.read_name()) != null) {
-                string base_path = "/sys/class/backlight/" + (!) name;
-                if (!FileUtils.test(base_path + "/brightness", FileTest.EXISTS)) continue;
-                screen_path = base_path + "/brightness";
-                screen_max  = read_int(base_path + "/max_brightness");
-                break;
-            }
-        } catch (Error e) {}
-    }
-
-    private void discover_caps() {
-        try {
-            var dir = Dir.open("/sys/class/leds");
-            string? name = null;
-            while ((name = dir.read_name()) != null) {
-                if (!((!) name).has_suffix("::capslock")) continue;
-                caps_path = "/sys/class/leds/" + (!) name + "/brightness";
-                break;
+                string entry = (!) name;
+                string base_path = parent + "/" + entry;
+                if (suffix != null) {
+                    if (!entry.has_suffix((!) suffix)) continue;
+                } else {
+                    if (!FileUtils.test(base_path + "/brightness", FileTest.EXISTS)) continue;
+                }
+                path = base_path + "/brightness";
+                if (read_max) max = read_int(base_path + "/max_brightness");
+                return;
             }
         } catch (Error e) {}
     }

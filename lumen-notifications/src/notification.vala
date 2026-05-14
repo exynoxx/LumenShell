@@ -9,7 +9,7 @@ public enum Urgency {
 public class Notification : Object {
     public uint32   id;
     public string   app_name;
-    public string   app_icon;
+    public string?  app_icon = null;
     public string   summary;
     public string   body;
     public string[] actions;       // raw [key1, label1, key2, label2, ...]

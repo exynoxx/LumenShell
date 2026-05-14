@@ -66,28 +66,27 @@ public class BannerStack : Gtk.Box {
     /**
      * Walk all currently-active banners in visual (top→bottom) order and
      * fire `close_requested(id)` for each, staggered by `Theme.cascade_ms`.
+     * Uses one repeating source rather than N independent timeouts.
      */
     public void cascade_dismiss() {
         uint32[] ids = {};
         Gtk.Widget? child = get_first_child();
         while (child != null) {
-            if (child is Banner) {
-                var b = (Banner) (!) child;
-                if (by_id.contains(b.id)) ids += b.id;
-            }
+            var b = child as Banner;
+            if (b != null && by_id.contains(b.id)) ids += b.id;
             child = ((!) child).get_next_sibling();
         }
+        if (ids.length == 0) return;
 
-        uint delay = 0;
-        foreach (uint32 id in ids) {
-            uint32 capture = id;
-            uint d = delay;
-            Timeout.add(d, () => {
-                close_requested(capture);
-                return Source.REMOVE;
-            });
-            int step = Theme.cascade_ms > 0 ? Theme.cascade_ms : 60;
-            delay += step;
-        }
+        int step = Theme.cascade_ms > 0 ? Theme.cascade_ms : 60;
+        int index = 0;
+        // Fire the first immediately, then one every `step` ms.
+        close_requested(ids[index++]);
+        if (index >= ids.length) return;
+
+        Timeout.add(step, () => {
+            close_requested(ids[index++]);
+            return (index < ids.length) ? Source.CONTINUE : Source.REMOVE;
+        });
     }
 }

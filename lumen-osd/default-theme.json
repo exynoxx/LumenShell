@@ -1,14 +1,16 @@
 {
     "osd.background":     "#000000c0",
-    "osd.foreground":     "#ffffffff",
     "osd.text":           "#ffffffff",
     "osd.progress.track": "#ffffff26",
     "osd.progress.fill":  "#ffffffff",
 
-    "osd.position":       "bottom-center",
-    "osd.margin":         76,
-    "osd.width":          360,
-    "osd.height":         56,
-    "osd.corner-radius":  -1,
-    "osd.timeout-ms":     1500
+    "osd.position":         "bottom-center",
+    "osd.margin":           76,
+    "osd.width":            360,
+    "osd.height":           56,
+    "osd.corner-radius":    -1,
+    "osd.timeout-ms":       1500,
+    "osd.padding-x":        22,
+    "osd.padding-y":        10,
+    "osd.content-spacing":  14
 }

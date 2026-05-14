@@ -150,8 +150,10 @@ osd_sources = files(
   'lumen-osd/src/utils.vala',
   'lumen-osd/src/theme.vala',
   'lumen-osd/src/pill.vala',
+  'lumen-osd/src/presenter.vala',
   'lumen-osd/src/dbus.vala',
   'lumen-osd/src/state_watcher.vala',
+  'lumen-osd/src/self_test.vala',
 )
 
 executable('lumen-osd',
@@ -195,6 +197,7 @@ notif_sources = files(
   'lumen-notifications/src/banner.vala',
   'lumen-notifications/src/stack.vala',
   'lumen-notifications/src/layer_window.vala',
+  'lumen-notifications/src/self_test.vala',
 )
 
 executable('lumen-notifications',

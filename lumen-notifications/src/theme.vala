@@ -1,12 +1,23 @@
 using Json;
 
+public enum DismissStyle {
+    SLIDE_RIGHT,
+    FADE;
+
+    public static DismissStyle? parse(string s) {
+        switch (s) {
+            case "slide-right": return SLIDE_RIGHT;
+            case "fade":        return FADE;
+            default:            return null;
+        }
+    }
+}
+
 public class Theme {
     public static Gdk.RGBA banner_bg       = rgba(0.07f, 0.08f, 0.12f, 0.96f);
     public static Gdk.RGBA banner_border   = rgba(1.00f, 1.00f, 1.00f, 0.12f);
     public static Gdk.RGBA banner_text     = rgba(0.92f, 0.92f, 0.92f, 1.00f);
     public static Gdk.RGBA banner_subtext  = rgba(0.69f, 0.69f, 0.69f, 1.00f);
-    public static Gdk.RGBA banner_shadow   = rgba(0.00f, 0.00f, 0.00f, 0.63f);
-
     public static Gdk.RGBA action_bg       = rgba(1.00f, 1.00f, 1.00f, 0.08f);
     public static Gdk.RGBA action_bg_hover = rgba(1.00f, 1.00f, 1.00f, 0.16f);
     public static Gdk.RGBA action_text     = rgba(1.00f, 1.00f, 1.00f, 1.00f);
@@ -22,20 +33,18 @@ public class Theme {
     public static int spacing       = 8;
     public static int width         = 360;
     public static int gap           = 10;
-    public static int max_visible   = 4;
     public static int margin_top    = 16;
     public static int margin_right  = 16;
 
-    public static int fade_in_ms    = 180;
     public static int fade_out_ms   = 800;
     public static int slide_px      = 24;
 
     public static int expire_default_ms = 5000;
 
-    // Dismiss animation: "slide-right" or "fade".
-    public static string dismiss_style    = "slide-right";
-    public static int    cascade_ms       = 80;
-    public static int    clear_threshold  = 3;
+    // Dismiss animation: slide-right or fade.
+    public static DismissStyle dismiss_style = DismissStyle.SLIDE_RIGHT;
+    public static int          cascade_ms       = 80;
+    public static int          clear_threshold  = 3;
 
     public static void load() {
         var path = Utils.THEME_FILE;
@@ -64,25 +73,34 @@ public class Theme {
 
     private static void apply_string(string key, string val) {
         if (key == "dismiss.style") {
-            if (val == "slide-right" || val == "fade") dismiss_style = val;
+            DismissStyle? d = DismissStyle.parse(val);
+            if (d != null) dismiss_style = (!) d;
+            else warning("lumen-notifications: unknown dismiss.style: %s", val);
             return;
         }
-        if (val.has_prefix("#")) {
-            Gdk.RGBA? c = parse_hex(val.substring(1));
-            if (c == null) return;
-            switch (key) {
-                case "banner.background":        banner_bg        = (!) c; break;
-                case "banner.border":            banner_border    = (!) c; break;
-                case "banner.text":              banner_text      = (!) c; break;
-                case "banner.subtext":           banner_subtext   = (!) c; break;
-                case "banner.shadow":            banner_shadow    = (!) c; break;
-                case "action.background":        action_bg        = (!) c; break;
-                case "action.background-hover":  action_bg_hover  = (!) c; break;
-                case "action.text":              action_text      = (!) c; break;
-                case "urgency.low.accent":       urgency_low      = (!) c; break;
-                case "urgency.normal.accent":    urgency_normal   = (!) c; break;
-                case "urgency.critical.accent":  urgency_critical = (!) c; break;
-            }
+        if (!val.has_prefix("#")) {
+            warning("lumen-notifications: unknown theme key: %s", key);
+            return;
+        }
+        Gdk.RGBA? c = parse_hex(val.substring(1));
+        if (c == null) {
+            warning("lumen-notifications: invalid color for %s: %s", key, val);
+            return;
+        }
+        switch (key) {
+            case "banner.background":        banner_bg        = (!) c; break;
+            case "banner.border":            banner_border    = (!) c; break;
+            case "banner.text":              banner_text      = (!) c; break;
+            case "banner.subtext":           banner_subtext   = (!) c; break;
+            case "action.background":        action_bg        = (!) c; break;
+            case "action.background-hover":  action_bg_hover  = (!) c; break;
+            case "action.text":              action_text      = (!) c; break;
+            case "urgency.low.accent":       urgency_low      = (!) c; break;
+            case "urgency.normal.accent":    urgency_normal   = (!) c; break;
+            case "urgency.critical.accent":  urgency_critical = (!) c; break;
+            default:
+                warning("lumen-notifications: unknown theme key: %s", key);
+                break;
         }
     }
 
@@ -93,18 +111,27 @@ public class Theme {
             case "banner.spacing":        spacing           = v; break;
             case "banner.width":          width             = v; break;
             case "banner.gap":            gap               = v; break;
-            case "banner.max-visible":    max_visible       = v; break;
             case "banner.margin.top":     margin_top        = v; break;
             case "banner.margin.right":   margin_right      = v; break;
             case "action.radius":         action_radius     = v; break;
             case "clear-all.radius":      clear_all_radius  = v; break;
-            case "animation.fade-in-ms":  fade_in_ms        = v; break;
             case "animation.fade-out-ms": fade_out_ms       = v; break;
             case "animation.slide-px":    slide_px          = v; break;
             case "expire.default-ms":     expire_default_ms = v; break;
             case "dismiss.cascade-ms":    cascade_ms        = v; break;
             case "clear-all.threshold":   clear_threshold   = v; break;
+            default:
+                warning("lumen-notifications: unknown theme key: %s", key);
+                break;
         }
+    }
+
+    public static string generate_root_css() {
+        return ".lumen-notif-root { background-color: transparent; }" +
+               ".lumen-notif-title { font-weight: bold; color: %s; }".printf(banner_text.to_string()) +
+               ".lumen-notif-body  { color: %s; }".printf(banner_subtext.to_string()) +
+               generate_action_css() +
+               generate_clear_all_css();
     }
 
     public static string generate_clear_all_css() {
