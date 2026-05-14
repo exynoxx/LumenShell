@@ -151,6 +151,7 @@ osd_sources = files(
   'lumen-osd/src/theme.vala',
   'lumen-osd/src/pill.vala',
   'lumen-osd/src/dbus.vala',
+  'lumen-osd/src/brightness_watcher.vala',
 )
 
 executable('lumen-osd',
