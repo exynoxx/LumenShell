@@ -44,6 +44,8 @@ public class NotifApp : Gtk.Application {
 
     private void wire_signals() {
         manager.notification_added.connect((n) => {
+            stderr.printf("lumen-notifications: notification_added id=%u app=%s summary=%s\n",
+                          n.id, n.app_name, n.summary);
             var b = window.stack.add_banner(n);
             wire_banner(b, n.id);
             window.set_visible(true);
