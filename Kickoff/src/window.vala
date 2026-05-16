@@ -16,12 +16,30 @@ private const string KICKOFF_CSS = """
         min-height: 30px;
         background: alpha(white, 0.85);
         color: black;
+        border: none;
+        outline: none;
+        box-shadow: none;
         border-radius: 20px;
         padding: 2px 8px;
     }
-    .kickoff-search > text {
+    .kickoff-search:focus,
+    .kickoff-search:focus-within {
+        border: none;
+        outline: none;
+        box-shadow: none;
+    }
+    .kickoff-search > text,
+    .kickoff-search > image {
         background: transparent;
+        border: none;
+        outline: none;
+        box-shadow: none;
+    }
+    .kickoff-search > text {
         color: black;
+    }
+    .kickoff-search > text > placeholder {
+        color: alpha(black, 0.55);
     }
 
     .app-tile {
