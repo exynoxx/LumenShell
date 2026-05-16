@@ -46,17 +46,20 @@ public class SearchResults : Gtk.Box {
     }
 
     public void update(Utils.AliasArray<AppEntry> apps, int size) {
-        active_count = int.min(size, PER_PAGE);
-        for (int i = 0; i < active_count; i++) {
+        int new_count = int.min(size, PER_PAGE);
+        for (int i = 0; i < new_count; i++) {
             tiles[i].bind(apps[i]);
-            tiles[i].set_opacity(1);
-            tiles[i].set_sensitive(true);
+            if (i >= active_count) {
+                tiles[i].set_opacity(1);
+                tiles[i].set_sensitive(true);
+            }
         }
-        for (int i = active_count; i < PER_PAGE; i++) {
+        for (int i = new_count; i < active_count; i++) {
             tiles[i].unbind();
             tiles[i].set_opacity(0);
             tiles[i].set_sensitive(false);
         }
+        active_count = new_count;
     }
 
     public bool launch_at(int index) {

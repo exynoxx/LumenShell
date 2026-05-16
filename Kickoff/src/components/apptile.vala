@@ -40,6 +40,10 @@ public class AppTile : Gtk.Button {
     }
 
     public void bind(AppEntry e) {
+        // Skip when this tile is already showing the same entry — search
+        // results often keep tile[0] = firefox across "fi" → "fir" → "fire",
+        // and Gtk.Image.set_from_gicon triggers icon-theme lookup each call.
+        if (this.entry == e) return;
         this.entry = e;
         label.set_text(e.short_name);
         var gicon = e.info.get_icon();
@@ -51,6 +55,7 @@ public class AppTile : Gtk.Button {
     }
 
     public void unbind() {
+        if (this.entry == null) return;
         this.entry = null;
         image.clear();
         label.set_text("");
