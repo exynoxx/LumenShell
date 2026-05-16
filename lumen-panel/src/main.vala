@@ -47,6 +47,20 @@ public class App : GLib.Object {
         win.set_child(root);
         win.present();
 
+        // ESC anywhere on the panel collapses the tray. CAPTURE phase so
+        // the window sees the key before any focused child can swallow it
+        // (e.g. the WiFi password field).
+        var esc = new Gtk.EventControllerKey();
+        esc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+        esc.key_pressed.connect((keyval, keycode, mods) => {
+            if (keyval == Gdk.Key.Escape && tray.is_expanded()) {
+                tray.collapse();
+                return true;
+            }
+            return false;
+        });
+        ((Gtk.Widget) win).add_controller(esc);
+
         // Input region: re-apply when the surface is mapped/resized or the
         // tray reveals/hides its page area.
         // realize is a GTK4 method, not a signal; map fires after realize and
@@ -59,9 +73,12 @@ public class App : GLib.Object {
     }
 
     // Clip the layer-shell surface's input region to the parts the user can
-    // actually click: the bottom 60px strip (AppBar + TrayBar icon row) plus
-    // the revealer's bounding box when expanded. GtkPopovers are separate
-    // xdg_popups and don't go through this region.
+    // actually click: the bottom 60px strip (AppBar + TrayBar icon row when
+    // collapsed) plus the tray's full bounding box when expanded. The latter
+    // is necessary because expanding pushes the tray's icon row UP, above
+    // the bottom strip — without it, other tray icons become unclickable
+    // while a page is open. GtkPopovers are separate xdg_popups and don't
+    // go through this region.
     void update_input_region () {
         var gdk_surface = win.get_surface();
         if (gdk_surface == null) return;
@@ -81,17 +98,17 @@ public class App : GLib.Object {
         };
         region.union_rectangle(bottom);
 
-        // Revealer area (only when actually visible on screen).
+        // Whole tray bounding box (icons + revealer) when expanded.
         if (tray.revealer.reveal_child || tray.revealer.child_revealed) {
-            double rx, ry;
-            if (tray.revealer.translate_coordinates(win, 0, 0, out rx, out ry)) {
-                int rw = tray.revealer.get_width();
-                int rh = tray.revealer.get_height();
-                if (rw > 0 && rh > 0) {
-                    var page = Cairo.RectangleInt() {
-                        x = (int) rx, y = (int) ry, width = rw, height = rh,
+            double tx, ty;
+            if (tray.translate_coordinates(win, 0, 0, out tx, out ty)) {
+                int tw = tray.get_width();
+                int th = tray.get_height();
+                if (tw > 0 && th > 0) {
+                    var trect = Cairo.RectangleInt() {
+                        x = (int) tx, y = (int) ty, width = tw, height = th,
                     };
-                    region.union_rectangle(page);
+                    region.union_rectangle(trect);
                 }
             }
         }

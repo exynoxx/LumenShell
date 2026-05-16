@@ -12,19 +12,23 @@ window.lumen-panel decoration {
     box-shadow: none;
 }
 
-/* The tray is a single rounded rectangle that contains both the icon row
-   (top) and any expanded page (bottom). Both children inherit the bg. */
+/* The tray is a single floating rounded rectangle that contains both the
+   icon row (top) and any expanded page (bottom). Both children inherit the
+   bg. margin-right/bottom give it the "floating off the panel edge" look
+   from the original DrawKit version; overflow:hidden (set in code) clips
+   children to the rounded silhouette so the page-slide animation can't
+   spill past the rounded corners. */
 .tray-bar {
     background: @tray_background;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
+    border-radius: 10px;
     margin-right: 20px;
+    margin-bottom: 6px;
     color: white;
 }
 
 .tray-icons {
     background: transparent;
-    padding: 6px 10px;
+    padding: 0 10px;
 }
 
 .tray-pages {
@@ -45,7 +49,8 @@ button.tray-icon {
     color: white;
     transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-button.tray-icon:hover {
+button.tray-icon:hover,
+button.tray-icon.active {
     background: @tray_icon_hover;
 }
 button.tray-icon label {
@@ -81,7 +86,7 @@ button.app-entry {
     min-height: 60px;
     padding: 0;
     margin: 0;
-    border-radius: 8px;
+    border-radius: 0;
     transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 button.app-entry:hover {

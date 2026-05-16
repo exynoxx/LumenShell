@@ -59,6 +59,10 @@ public class AppPopupMenu : Gtk.Popover {
     public void refresh () {
         title_label.label = entry.display_name;
         pin_btn.label = entry.is_pinned ? "Unpin" : "Pin";
+        // "New window" requires a launch command resolved from the .desktop
+        // file; if we couldn't find one, dim the action so users don't see
+        // a silent failure.
+        new_win_btn.sensitive = entry.launch_cmd != "";
         close_btn.sensitive = entry.has_open_windows();
     }
 }

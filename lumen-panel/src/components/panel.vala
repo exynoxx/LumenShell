@@ -63,11 +63,22 @@ public class AppBar : Gtk.Box {
         var name   = Utils.get_display_name_from_app_id(app_id);
         var launch = Utils.get_launch_cmd_from_app_id(app_id);
         var entry  = new AppEntry(app_id, name, launch, false);
-        entry.pin_toggled.connect(() => save_pins());
-        entry.unpin_and_removable.connect(() => remove_entry(entry));
+        wire_entry(entry);
         entries_by_app_id[app_id] = entry;
         append(entry);
         return entry;
+    }
+
+    // Wire the standard signal handlers for any non-launcher entry.
+    void wire_entry (AppEntry entry) {
+        entry.pin_toggled.connect(() => {
+            save_pins();
+            // Unpinning an entry that no longer has windows means it has no
+            // reason to remain in the bar — drop it immediately.
+            if (!entry.is_pinned && !entry.is_launcher && !entry.has_open_windows())
+                remove_entry(entry);
+        });
+        entry.unpin_and_removable.connect(() => remove_entry(entry));
     }
 
     void remove_entry (AppEntry entry) {
@@ -84,8 +95,7 @@ public class AppBar : Gtk.Box {
             var launch = Utils.get_launch_cmd_from_app_id(app_id);
             var entry  = new AppEntry(app_id, name, launch, false);
             entry.is_pinned = true;
-            entry.pin_toggled.connect(() => save_pins());
-            entry.unpin_and_removable.connect(() => remove_entry(entry));
+            wire_entry(entry);
             entries_by_app_id[app_id] = entry;
             append(entry);
         }
