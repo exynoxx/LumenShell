@@ -20,6 +20,8 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <array>
+#include <utility>
 
 namespace
 {
@@ -136,7 +138,17 @@ class wayfire_desktop_peek_t :
         const int peek = std::clamp((int) peek_px_opt, 0, 400);
 
         auto views = output->wset()->get_views(
-            wf::WSET_MAPPED_ONLY | wf::WSET_CURRENT_WORKSPACE);
+            wf::WSET_MAPPED_ONLY | wf::WSET_CURRENT_WORKSPACE | wf::WSET_SORT_STACKING);
+
+        // Corner order for round-robin assignment: TL, TR, BL, BR.
+        // {left, top} flags per slot.
+        constexpr std::array<std::pair<bool, bool>, 4> slots = {{
+            {true,  true},   // top-left
+            {false, true},   // top-right
+            {true,  false},  // bottom-left
+            {false, false},  // bottom-right
+        }};
+        size_t slot_idx = 0;
 
         for (auto view : views)
         {
@@ -151,10 +163,8 @@ class wayfire_desktop_peek_t :
                 continue;
             }
 
-            const double cx = wgeo.x + wgeo.width / 2.0;
-            const double cy = wgeo.y + wgeo.height / 2.0;
-            const bool left = cx < W / 2.0;
-            const bool top  = cy < H / 2.0;
+            const auto [left, top] = slots[slot_idx % slots.size()];
+            ++slot_idx;
 
             const double target_x = left ? (peek - wgeo.width) : (W - peek);
             const double target_y = top  ? (peek - wgeo.height) : (H - peek);
