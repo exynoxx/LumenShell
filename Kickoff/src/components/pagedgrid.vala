@@ -153,6 +153,33 @@ public class PagedGrid : Gtk.Widget {
         if (zooming) s.restore();
     }
 
+    // Snap back to page 0 without animation. Used when the Kickoff daemon
+    // re-shows the window — every open should land on the first page.
+    public void reset_to_first_page() {
+        if (slide_tick_id != 0) { remove_tick_callback(slide_tick_id); slide_tick_id = 0; }
+        active_page = 0;
+        page_changed(0);
+        current_offset = 0;
+        slide_to_offset = 0;
+        queue_allocate();
+    }
+
+    // Replay the zoom-in intro. If the widget is still mapped (the daemon
+    // path: window hidden then re-shown reuses the same allocation), map()
+    // won't fire again, so kick off the tick callback directly.
+    public void reset_intro() {
+        if (zoom_tick_id != 0) { remove_tick_callback(zoom_tick_id); zoom_tick_id = 0; }
+        zoom_factor = ZOOM_FROM;
+        zoom_started = false;
+        queue_draw();
+        if (get_mapped()) {
+            zoom_started = true;
+            var clock = get_frame_clock();
+            zoom_start_us = (clock != null) ? clock.get_frame_time() : GLib.get_monotonic_time();
+            zoom_tick_id = add_tick_callback(on_zoom_tick);
+        }
+    }
+
     public void next_page() {
         if (active_page >= page_count - 1) return;
         active_page++;

@@ -121,8 +121,11 @@ public class AppEntry : Gtk.Button {
     }
 
     void spawn_kickoff () {
+        // --show is a request to the daemon; the first invocation also
+        // boots the daemon, so this works whether or not kickoff is
+        // already running.
         try {
-            Process.spawn_command_line_async(Utils.KICKOFF_BIN);
+            Process.spawn_command_line_async(Utils.KICKOFF_BIN + " --show");
         } catch (Error e) {
             stderr.printf("Kickoff spawn failed: %s\n", e.message);
         }

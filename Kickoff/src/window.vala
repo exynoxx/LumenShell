@@ -119,6 +119,32 @@ public class KickoffWindow : Gtk.ApplicationWindow {
         map.connect(() => {
             search_entry.grab_focus();
         });
+
+        // The window is owned by the KickoffApp daemon and survives every
+        // hide cycle. A WM-driven close-request would destroy it and break
+        // subsequent --show invocations, so intercept and hide instead.
+        close_request.connect(() => {
+            hide_window();
+            return true;
+        });
+    }
+
+    // Re-show after a hide. Reset transient UI (search query, current page)
+    // and replay the zoom-in intro animation so each open feels identical
+    // to the very first launch.
+    public void show_with_intro() {
+        search_entry.set_text("");
+        grid.reset_to_first_page();
+        body_stack.set_visible_child_name("grid");
+        dots.set_visible(grid.page_count > 1);
+        grid.reset_intro();
+
+        present();
+        search_entry.grab_focus();
+    }
+
+    public void hide_window() {
+        set_visible(false);
     }
 
     private void load_apps() {
@@ -126,7 +152,7 @@ public class KickoffWindow : Gtk.ApplicationWindow {
         foreach (var info in AppInfo.get_all()) {
             if (!info.should_show()) continue;
             var entry = new AppEntry(info);
-            entry.launched.connect(() => close());
+            entry.launched.connect(() => hide_window());
             list.add(entry);
         }
         list.sort((a, b) => GLib.strcmp(a.name, b.name));
@@ -216,7 +242,7 @@ public class KickoffWindow : Gtk.ApplicationWindow {
 
         switch (keyval) {
             case Gdk.Key.Escape:
-                close();
+                hide_window();
                 return true;
             case Gdk.Key.Left:
                 if (!search_db.active && mods == 0) { grid.prev_page(); return true; }
