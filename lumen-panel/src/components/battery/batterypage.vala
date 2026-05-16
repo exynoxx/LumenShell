@@ -1,107 +1,175 @@
 using Gtk;
+using GLib;
 
-public class BatteryPage : Gtk.Box {
+// BatteryPage — full-panel battery information display.
+//
+// One custom widget; snapshot() draws the entire page directly so the
+// visual matches the original DrawKit version pixel-for-pixel: dimmed
+// title top-left, large color-coded percentage centered, status text
+// below, custom progress bar (LumenProgressBar) with embedded label
+// at the bottom, and a 2×2 stat grid for voltage / current / charge /
+// est-time.
+public class BatteryPage : Gtk.Widget {
 
     BatteryService service;
+    LumenProgressBar progress;
 
-    Gtk.Label   pct_label;
-    Gtk.Label   status_label;
-    Gtk.LevelBar bar;
-    Gtk.Label   voltage_label;
-    Gtk.Label   current_label;
-    Gtk.Label   charge_label;
-    Gtk.Label   time_label;
+    // Layout constants — pixel-identical to the original.
+    const int PAD       = 16;
+    const int BAR_H     = 22;
+    const int DY_TITLE  = PAD;
+    const int DY_PCT    = DY_TITLE  + 26;
+    const int DY_STATUS = DY_PCT    + 50;
+    const int DY_BAR    = DY_STATUS + 24;
+    const int DY_STAT1  = DY_BAR    + BAR_H + 14;
+    const int DY_STAT2  = DY_STAT1  + 32;
+    const int PAGE_MIN_H = DY_STAT2 + 32;
+
+    static Gdk.RGBA title_col      = rgba(0.62f, 0.64f, 0.72f, 1f);
+    static Gdk.RGBA status_col     = rgba(0.60f, 0.62f, 0.70f, 1f);
+    static Gdk.RGBA stat_label_col = rgba(0.42f, 0.44f, 0.52f, 1f);
+    static Gdk.RGBA stat_value_col = rgba(0.84f, 0.86f, 0.92f, 1f);
+    static Gdk.RGBA track_col      = rgba(0.10f, 0.11f, 0.16f, 1f);
+
+    string pct_str    = "0%";
+    string status_str = "—";
+    string voltage_str = "";
+    string current_str = "";
+    string charge_str  = "";
+    string time_str    = "";
+    bool   has_time    = false;
+    Gdk.RGBA pct_col   = rgba(1f, 1f, 1f, 1f);
+
+    static Gdk.RGBA rgba (float r, float g, float b, float a) {
+        var c = Gdk.RGBA();
+        c.red = r; c.green = g; c.blue = b; c.alpha = a;
+        return c;
+    }
 
     public BatteryPage (BatteryService service) {
-        GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 8);
         this.service = service;
-        add_css_class("battery-page");
-        set_size_request(360, 240);
 
-        var title = new Gtk.Label("Battery") { xalign = 0 };
-        title.add_css_class("page-title");
-        append(title);
-
-        pct_label = new Gtk.Label("—") { xalign = 0.5f };
-        pct_label.add_css_class("battery-pct");
-        append(pct_label);
-
-        status_label = new Gtk.Label("—") { xalign = 0.5f };
-        status_label.add_css_class("page-status");
-        append(status_label);
-
-        bar = new Gtk.LevelBar.for_interval(0, 100) { hexpand = true };
-        bar.add_offset_value("low",  25);
-        bar.add_offset_value("high", 60);
-        bar.add_offset_value("full", 95);
-        append(bar);
-
-        var stats = new Gtk.Grid() {
-            column_spacing = 24,
-            row_spacing = 6,
-            margin_top = 8,
+        progress = new LumenProgressBar() {
+            track_color = track_col,
         };
-        voltage_label = new_stat_value();
-        current_label = new_stat_value();
-        charge_label  = new_stat_value();
-        time_label    = new_stat_value();
-        stats.attach(new_stat_label("Voltage"), 0, 0, 1, 1);
-        stats.attach(voltage_label,             0, 1, 1, 1);
-        stats.attach(new_stat_label("Current"), 1, 0, 1, 1);
-        stats.attach(current_label,             1, 1, 1, 1);
-        stats.attach(new_stat_label("Charge"),  0, 2, 1, 1);
-        stats.attach(charge_label,              0, 3, 1, 1);
-        stats.attach(new_stat_label("Est. time"), 1, 2, 1, 1);
-        stats.attach(time_label,                1, 3, 1, 1);
-        append(stats);
+        progress.set_parent(this);
 
+        set_size_request(380, PAGE_MIN_H);
         service.state_changed.connect(refresh);
-        refresh();
+        service.refresh();
     }
 
-    static Gtk.Label new_stat_label (string text) {
-        var l = new Gtk.Label(text) { xalign = 0 };
-        l.add_css_class("stat-label");
-        return l;
+    public override void dispose () {
+        if (progress != null) { progress.unparent(); progress = null; }
+        base.dispose();
     }
-    static Gtk.Label new_stat_value () {
-        var l = new Gtk.Label("—") { xalign = 0 };
-        l.add_css_class("stat-value");
-        return l;
+
+    public override void size_allocate (int width, int height, int baseline) {
+        var transform = new Gsk.Transform().translate({ PAD, DY_BAR });
+        progress.allocate(width - PAD * 2, BAR_H, baseline, transform);
+    }
+
+    public override Gtk.SizeRequestMode get_request_mode () {
+        return Gtk.SizeRequestMode.CONSTANT_SIZE;
+    }
+
+    public override void measure (Gtk.Orientation orientation, int for_size,
+                                  out int min, out int nat,
+                                  out int min_baseline, out int nat_baseline) {
+        min_baseline = -1; nat_baseline = -1;
+        if (orientation == Gtk.Orientation.HORIZONTAL) {
+            min = 380; nat = 380;
+        } else {
+            min = PAGE_MIN_H; nat = PAGE_MIN_H;
+        }
     }
 
     void refresh () {
-        pct_label.label = "%d%%".printf(service.percent);
-        bar.value = service.percent;
-
         var raw = service.raw_status;
-        if (raw == "charging")           status_label.label = "⚡ Charging";
-        else if (raw == "discharging")   status_label.label = "Discharging";
-        else if (raw.contains("full"))   status_label.label = "✓ Full";
-        else                             status_label.label = raw == "" ? "Unknown" : raw;
+        var pct = service.percent;
 
-        voltage_label.label = "%.2f V".printf(service.voltage_v);
-        current_label.label = "%.2f A".printf(service.current_a);
-        charge_label.label  = "%d / %d mAh".printf(
+        if (raw == "charging")          status_str = "⚡ Charging";
+        else if (raw == "discharging")  status_str = "Discharging";
+        else if (raw.contains("full"))  status_str = "✓ Full";
+        else                            status_str = raw.length > 0 ? raw : "Unknown";
+
+        pct_str = "%d%%".printf(pct);
+        pct_col = pct >= 60
+            ? rgba(0.18f, 0.88f, 0.42f, 1f)
+            : pct >= 25
+                ? rgba(1.0f, 0.74f, 0.14f, 1f)
+                : rgba(1.0f, 0.28f, 0.28f, 1f);
+
+        progress.set_progress(pct);
+        progress.fill_color = pct >= 60
+            ? rgba(0.13f, 0.76f, 0.34f, 1f)
+            : pct >= 25
+                ? rgba(0.90f, 0.62f, 0.06f, 1f)
+                : rgba(0.86f, 0.20f, 0.20f, 1f);
+
+        voltage_str = "%.2f V".printf(service.voltage_v);
+        current_str = "%.2f A".printf(service.current_a);
+        charge_str  = "%d / %d mAh".printf(
             service.charge_now / 1000, service.charge_full / 1000);
 
-        if ((raw == "discharging" || raw == "charging") && service.current_a > 0.05f) {
-            float hrs;
-            string suffix;
-            if (raw == "discharging") {
-                hrs = (service.charge_now / 1000000f) / service.current_a;
-                suffix = "left";
-            } else {
-                hrs = ((service.charge_full - service.charge_now) / 1000000f) / service.current_a;
-                suffix = "to full";
-            }
+        has_time = false;
+        if (raw == "discharging" && service.current_a > 0.05f) {
+            float hrs = (service.charge_now / 1000000f) / service.current_a;
             int h = (int) hrs;
             int m = (int)((hrs - h) * 60);
-            time_label.label = h > 0
-                ? "%dh %dm %s".printf(h, m, suffix)
-                : "%dm %s".printf(m, suffix);
-        } else {
-            time_label.label = "—";
+            time_str = h > 0 ? "%dh %dm left".printf(h, m) : "%dm left".printf(m);
+            has_time = true;
+        } else if (raw == "charging" && service.current_a > 0.05f) {
+            float hrs = ((service.charge_full - service.charge_now) / 1000000f) / service.current_a;
+            int h = (int) hrs;
+            int m = (int)((hrs - h) * 60);
+            time_str = h > 0 ? "%dh %dm to full".printf(h, m) : "%dm to full".printf(m);
+            has_time = true;
         }
+
+        queue_draw();
+    }
+
+    public override void snapshot (Gtk.Snapshot s) {
+        int w = get_width();
+
+        draw_text(s, "Battery", PAD, DY_TITLE, 16, title_col, false, Pango.Weight.NORMAL);
+        draw_text(s, pct_str,   w / 2, DY_PCT, 40, pct_col,    true,  Pango.Weight.SEMIBOLD);
+        draw_text(s, status_str, w / 2, DY_STATUS, 14, status_col, true, Pango.Weight.NORMAL);
+
+        base.snapshot(s); // progress bar (LumenProgressBar)
+
+        int col1 = PAD;
+        int col2 = w / 2;
+        draw_stat(s, col1, DY_STAT1, "Voltage", voltage_str);
+        draw_stat(s, col2, DY_STAT1, "Current", current_str);
+        draw_stat(s, col1, DY_STAT2, "Charge",  charge_str);
+        if (has_time) draw_stat(s, col2, DY_STAT2, "Est. time", time_str);
+    }
+
+    void draw_stat (Gtk.Snapshot s, int x, int y, string label, string value) {
+        draw_text(s, label, x, y,      11, stat_label_col, false, Pango.Weight.NORMAL);
+        draw_text(s, value, x, y + 14, 14, stat_value_col, false, Pango.Weight.MEDIUM);
+    }
+
+    void draw_text (Gtk.Snapshot s, string text, int x, int y,
+                    int size_pt, Gdk.RGBA color, bool center, Pango.Weight weight) {
+        var layout = create_pango_layout(text);
+        var attrs = new Pango.AttrList();
+        attrs.insert(Pango.AttrSize.new_absolute(size_pt * Pango.SCALE));
+        attrs.insert(Pango.attr_weight_new(weight));
+        layout.set_attributes(attrs);
+
+        int tw, th;
+        layout.get_pixel_size(out tw, out th);
+        int px = center ? x - tw / 2 : x;
+        int py = y;
+
+        var pt = Graphene.Point();
+        pt.init(px, py);
+        s.save();
+        s.translate(pt);
+        s.append_layout(layout, color);
+        s.restore();
     }
 }
