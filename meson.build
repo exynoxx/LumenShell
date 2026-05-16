@@ -10,85 +10,16 @@ gio_dep         = dependency('gio-2.0')
 gee_dep         = dependency('gee-0.8')
 json_dep        = dependency('json-glib-1.0')
 wayland_dep     = dependency('wayland-client')
-egl_dep         = dependency('egl')
-glesv2_dep      = dependency('glesv2')
 m_dep           = cc.find_library('m')
 
-drawkit_sub = subproject('libdrawkit')
-drawkit_dep = drawkit_sub.get_variable('drawkit_dep')
-
+# lumen-panel (GTK4 port) extends wlhooks's foreign-toplevel surface to take
+# a GDK-owned wl_display. The legacy EGL/GLES2 rendering half of wlhooks and
+# libdrawkit remain in tree (see their DEPRECATED.md) but are not built by
+# default.
 wlhooks_sub = subproject('wlhooks')
 wlhooks_dep = wlhooks_sub.get_variable('wlhooks_dep')
 
 vapi_dir = meson.project_source_root() / 'vapi'
-
-common_deps = [
-  glib_dep,
-  gio_dep,
-  gee_dep,
-  json_dep,
-  wayland_dep,
-  egl_dep,
-  glesv2_dep,
-  m_dep,
-  drawkit_dep,
-  wlhooks_dep,
-]
-
-common_vala_args = [
-  '--vapidir=' + vapi_dir,
-  '--pkg=libdrawkit',
-  '--pkg=libwlhooks',
-  '--pkg=glesv2',
-  '--pkg=egl',
-  '--pkg=json-glib-1.0',
-]
-
-# --- lumen-panel ---
-
-panel_sources = files(
-  'lumen-panel/src/main.vala',
-  'lumen-panel/src/animation.vala',
-  'lumen-panel/src/utils.vala',
-  'lumen-panel/src/ini.vala',
-  'lumen-panel/src/theme.vala',
-  'lumen-panel/src/common/button.vala',
-  'lumen-panel/src/common/chip.vala',
-  'lumen-panel/src/common/horizontal_slider.vala',
-  'lumen-panel/src/common/progressbar.vala',
-  'lumen-panel/src/common/scrollview.vala',
-  'lumen-panel/src/common/signalbars.vala',
-  'lumen-panel/src/common/textfield.vala',
-  'lumen-panel/src/components/app.vala',
-  'lumen-panel/src/components/apppopup.vala',
-  'lumen-panel/src/components/panel.vala',
-  'lumen-panel/src/components/tray.vala',
-  'lumen-panel/src/components/hoverableicon.vala',
-  'lumen-panel/src/components/iconandtext.vala',
-  'lumen-panel/src/components/itray.vala',
-  'lumen-panel/src/components/itraypage.vala',
-  'lumen-panel/src/components/battery/battery.vala',
-  'lumen-panel/src/components/battery/battery_service.vala',
-  'lumen-panel/src/components/battery/batterypage.vala',
-  'lumen-panel/src/components/clock/clock.vala',
-  'lumen-panel/src/components/exit/exit.vala',
-  'lumen-panel/src/components/sound/pactl.vala',
-  'lumen-panel/src/components/sound/sound.vala',
-  'lumen-panel/src/components/sound/sound_service.vala',
-  'lumen-panel/src/components/sound/soundpage.vala',
-  'lumen-panel/src/components/wifi/nmcli.vala',
-  'lumen-panel/src/components/wifi/wifi.vala',
-  'lumen-panel/src/components/wifi/wifi_service.vala',
-  'lumen-panel/src/components/wifi/wifipage.vala',
-  'lumen-panel/src/components/wifi/wifirow.vala',
-)
-
-executable('lumen-panel',
-  panel_sources,
-  vala_args: common_vala_args,
-  dependencies: common_deps,
-  install: true,
-)
 
 # --- lumen-osd ---
 # Independent dep set: no drawkit, no wlhooks, no GLES.
@@ -133,6 +64,85 @@ executable('lumen-osd',
 install_data(
   'lumen-osd/default-theme.json',
   install_dir: get_option('datadir') / 'lumen-osd',
+)
+
+# --- lumen-panel (GTK4 + gtk4-layer-shell + GSK) ---
+gtk4_wayland_dep = dependency('gtk4-wayland')
+gnome = import('gnome')
+
+panel_resources = gnome.compile_resources(
+  'lumen-panel-resources',
+  'lumen-panel/src/resources.gresource.xml',
+  source_dir: 'lumen-panel/src',
+  c_name: 'panel',
+)
+
+panel_deps = [
+  # gtk4-layer-shell MUST appear before gtk4/wayland-client in the link line,
+  # otherwise gtk_layer_init_for_window() silently no-ops at runtime.
+  # See https://github.com/wmww/gtk4-layer-shell/blob/main/linking.md
+  gtk4_layer_shell_dep,
+  gtk4_dep,
+  gtk4_wayland_dep,
+  wayland_dep,
+  wlhooks_dep,
+  glib_dep,
+  gio_dep,
+  gee_dep,
+  json_dep,
+  m_dep,
+]
+
+panel_vala_args = [
+  '--vapidir=' + vapi_dir,
+  '--pkg=gtk4',
+  '--pkg=gtk4-layer-shell-0',
+  '--pkg=gtk4-wayland',
+  '--pkg=gee-0.8',
+  '--pkg=json-glib-1.0',
+  '--pkg=libwlhooks',
+  '--pkg=cairo',
+]
+
+panel_sources = files(
+  'lumen-panel/src/main.vala',
+  'lumen-panel/src/theme.vala',
+  'lumen-panel/src/ini.vala',
+  'lumen-panel/src/utils.vala',
+  'lumen-panel/src/wl/toplevels.vala',
+  'lumen-panel/src/widgets/tray_button.vala',
+  'lumen-panel/src/widgets/tray.vala',
+  'lumen-panel/src/widgets/signal_bars.vala',
+  'lumen-panel/src/components/clock/clock.vala',
+  'lumen-panel/src/components/exit/exit.vala',
+  'lumen-panel/src/components/app.vala',
+  'lumen-panel/src/components/apppopup.vala',
+  'lumen-panel/src/components/panel.vala',
+  'lumen-panel/src/components/battery/battery.vala',
+  'lumen-panel/src/components/battery/battery_service.vala',
+  'lumen-panel/src/components/battery/batterypage.vala',
+  'lumen-panel/src/components/sound/pactl.vala',
+  'lumen-panel/src/components/sound/sound_service.vala',
+  'lumen-panel/src/components/sound/sound.vala',
+  'lumen-panel/src/components/sound/soundpage.vala',
+  'lumen-panel/src/components/wifi/nmcli.vala',
+  'lumen-panel/src/components/wifi/wifi_service.vala',
+  'lumen-panel/src/components/wifi/wifi.vala',
+  'lumen-panel/src/components/wifi/wifirow.vala',
+  'lumen-panel/src/components/wifi/wifipage.vala',
+)
+
+executable('lumen-panel',
+  panel_sources + panel_resources,
+  vala_args: panel_vala_args,
+  dependencies: panel_deps,
+  link_args: ['-Wl,--no-as-needed'],
+  install: true,
+)
+
+install_data(
+  'default-theme.json',
+  install_dir: get_option('datadir') / 'lumen-panel',
 )
 
 # --- lumen-notifications ---

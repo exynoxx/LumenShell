@@ -1,226 +1,169 @@
-using GLES2;
-using DrawKit;
+using Gtk;
 using Gee;
 
-public const int APP_UNDERLINE_Y = HEIGHT - UNDERLINE_HEIGHT;
-public const int APP_Y           = HEIGHT - EXCLUSIVE_HEIGHT;
-public const int APP_WIDTH       = 70;
-public const int APP_HEIGHT      = EXCLUSIVE_HEIGHT;
+// One taskbar entry. Drives icon, hover, active-window underline, popover.
+public class AppEntry : Gtk.Button {
 
-public class App {
-    public int order;
-    public string app_id;
-    public string title;
-    public string launch_cmd;
-    public GLuint tex;
-    public bool is_pinned;
-    public bool is_launcher;
-    public bool hovered;
-    public bool clicked;
-    public bool launching;
-    public int x;
-    public int y;
-    public int tex_x;
-    public int tex_y;
-    public ArrayList<uint> window_ids;
+    public const int SLOT_WIDTH  = 70;
+    public const int SLOT_HEIGHT = 60;
+    public const int UNDERLINE_H = 5;
+    public const int ICON_SIZE   = 32;
 
-    private int cycle_idx = 0;
+    public string app_id { get; construct; }
+    public string display_name { get; private set; }
+    public string launch_cmd   { get; private set; default = ""; }
+    public bool   is_pinned    { get; set;     default = false; }
+    public bool   is_launcher  { get; construct;            }
 
-    const int padding_side = (APP_WIDTH - 32) / 2;
-    const int padding_top  = (APP_HEIGHT - 32) / 2;
+    Gee.ArrayList<uint> window_ids = new Gee.ArrayList<uint>();
+    int cycle_idx = 0;
 
-    public App(string app_id, string title, string? launch_cmd, int order, bool is_launcher = false){
-        this.app_id      = app_id;
-        this.title       = title;
-        this.launch_cmd  = launch_cmd ?? "";
-        this.is_launcher = is_launcher;
-        this.is_pinned   = is_launcher;
-        this.y           = APP_Y;
-        this.window_ids  = new ArrayList<uint>();
+    Gtk.Image image;
+    AppPopupMenu? popup = null;
 
-        reset_order(order);
+    public signal void pin_toggled ();
+    public signal void unpin_and_removable ();
+
+    public AppEntry (string app_id, string display_name, string? launch_cmd, bool is_launcher) {
+        GLib.Object(app_id: app_id, is_launcher: is_launcher);
+        this.display_name = display_name;
+        this.launch_cmd   = launch_cmd ?? "";
+        if (is_launcher) this.is_pinned = true;
+
+        add_css_class("app-entry");
+        set_size_request(SLOT_WIDTH, SLOT_HEIGHT);
+        tooltip_text = display_name;
+
+        image = new Gtk.Image() {
+            pixel_size = ICON_SIZE,
+            halign = Gtk.Align.CENTER,
+            valign = Gtk.Align.CENTER,
+        };
+        set_child(image);
         load_icon();
-    }
 
-    public void reset_order(int i){
-        this.order  = i;
-        this.x      = i * APP_WIDTH + 2;
-        this.tex_x  = x + padding_side;
-        this.tex_y  = y + padding_top;
-    }
+        clicked.connect(on_primary_click);
 
-    public void mouse_motion(int x, int y){
-        var oldval = hovered;
-        hovered = hit_test(x, y);
-        if (hovered != oldval) redraw = true;
-    }
-
-    public bool hit_test(int mx, int my){
-        return (mx >= this.x && mx <= this.x + APP_WIDTH
-             && my >= this.y && my <= this.y + APP_HEIGHT);
-    }
-
-    public void add_window(uint id){
-        if (!window_ids.contains(id)) {
-            window_ids.add(id);
-            launching = false;
+        // Right-click → popover. Launcher has no popover.
+        if (!is_launcher) {
+            var rclick = new Gtk.GestureClick() { button = Gdk.BUTTON_SECONDARY };
+            rclick.released.connect((n, x, y) => show_popup());
+            add_controller(rclick);
         }
     }
 
-    public void remove_window(uint id){
-        var idx = window_ids.index_of(id);
-        if (idx < 0) return;
+    public bool has_open_windows () { return window_ids.size > 0; }
 
-        window_ids.remove_at(idx);
-        if (window_ids.size == 0) {
-            cycle_idx = 0;
-            return;
-        }
+    public bool owns_window (uint id) { return window_ids.contains(id); }
 
-        if (cycle_idx >= window_ids.size)
-            cycle_idx = 0;
+    public void add_window (uint id) {
+        if (!window_ids.contains(id)) window_ids.add(id);
+        queue_draw();
     }
 
-    public bool has_open_windows(){
-        return window_ids.size > 0;
-    }
-
-    public uint next_window_for_focus(){
-        if (window_ids.size == 0) return 0;
+    public void remove_window (uint id) {
+        var i = window_ids.index_of(id);
+        if (i < 0) return;
+        window_ids.remove_at(i);
         if (cycle_idx >= window_ids.size) cycle_idx = 0;
+        queue_draw();
 
-        var target = window_ids[cycle_idx];
-        cycle_idx = (cycle_idx + 1) % window_ids.size;
-        return target;
-    }
-
-    public void on_window_focused(uint id){
-        var idx = window_ids.index_of(id);
-        if (idx < 0 || window_ids.size == 0) return;
-        cycle_idx = (idx + 1) % window_ids.size;
-    }
-
-    public void set_pinned(bool pinned){
-        if (is_launcher) {
-            is_pinned = true;
-            return;
-        }
-        is_pinned = pinned;
-    }
-
-    public void render(Context ctx){
-        var color = Theme.app_hover;
-        if (!hovered) color.a = 0f;
-
-        ctx.draw_rect(this.x, this.y, APP_WIDTH, APP_HEIGHT, color);
-        ctx.draw_texture(tex, tex_x, tex_y, 32, 32);
-
-        if (launching) {
-            ctx.draw_rect(this.x + 9, APP_UNDERLINE_Y, APP_WIDTH - 18, UNDERLINE_HEIGHT, Theme.app_launching);
+        if (!is_pinned && !is_launcher && window_ids.size == 0) {
+            unpin_and_removable();
         }
     }
 
-    public void on_click(){
-        if (is_launcher) {
-            spawn_kickoff();
-            return;
-        }
+    public void mark_focused (uint id) {
+        var i = window_ids.index_of(id);
+        if (i >= 0) cycle_idx = (i + 1) % window_ids.size;
+        queue_draw();
+    }
 
-        if (launching) {
-            redraw = true;
-            return;
+    // Active iff one of our windows is the focused toplevel in ToplevelStore.
+    public bool is_active () {
+        foreach (var id in window_ids) {
+            var t = ToplevelStore.instance.find(id);
+            if (t != null && t.activated) return true;
         }
+        return false;
+    }
+
+    void on_primary_click () {
+        if (is_launcher) { spawn_kickoff(); return; }
 
         if (has_open_windows()) {
-            var id = next_window_for_focus();
-            if (id > 0) {
-                WLHooks.toplevel_activate_by_id(id);
-                redraw = true;
-                return;
-            }
+            if (cycle_idx >= window_ids.size) cycle_idx = 0;
+            var id = window_ids[cycle_idx];
+            cycle_idx = (cycle_idx + 1) % window_ids.size;
+            ToplevelStore.instance.activate(id);
+            return;
         }
-
         launch_new_window();
     }
 
-    public void launch_new_window(){
-        if (is_launcher) {
-            spawn_kickoff();
-            return;
-        }
-
+    public void launch_new_window () {
+        if (is_launcher) { spawn_kickoff(); return; }
         if (launch_cmd == "") {
-            stderr.printf("No launch command for app_id=%s\n", app_id);
+            stderr.printf("AppEntry %s: no launch command\n", app_id);
             return;
         }
-
-        // Hand the spawned process an XDG activation token so KWin / GNOME /
-        // wlroots compositors will grant focus to its first window. No-op if
-        // xdg_activation_v1 is unavailable.
-        string? token = WLHooks.activation_get_token(app_id);
-        if (token != null)
-            Environment.set_variable("XDG_ACTIVATION_TOKEN", token, true);
-
         try {
             Process.spawn_command_line_async(launch_cmd);
-            if (is_pinned) launching = true;
         } catch (Error e) {
-            launching = false;
             stderr.printf("Launch failed for %s: %s\n", app_id, e.message);
         }
-
-        if (token != null) Environment.unset_variable("XDG_ACTIVATION_TOKEN");
-
-        redraw = true;
     }
 
-    public void close_all_windows(){
-        if (window_ids.size == 0) return;
-
-        var ids_to_close = new ArrayList<uint>();
-        foreach (var id in window_ids) ids_to_close.add(id);
-        foreach (var id in ids_to_close) WLHooks.toplevel_close_by_id(id);
+    public void close_all_windows () {
+        var ids = new Gee.ArrayList<uint>();
+        ids.add_all(window_ids);
+        foreach (var id in ids) ToplevelStore.instance.close(id);
     }
 
-    public void free(){
-        DrawKit.texture_free(tex);
-    }
-
-    private void spawn_kickoff() {
+    void spawn_kickoff () {
         try {
             Process.spawn_command_line_async(Utils.KICKOFF_BIN);
         } catch (Error e) {
-            stderr.printf("Kickoff exception: %s\n", e.message);
+            stderr.printf("Kickoff spawn failed: %s\n", e.message);
         }
-        redraw = true;
     }
 
-    private void load_icon(){
+    void show_popup () {
+        if (popup == null) popup = new AppPopupMenu(this);
+        popup.refresh();
+        popup.popup();
+    }
+
+    void load_icon () {
         if (is_launcher) {
-            load_svg_icon(Utils.RES_DIR + "app.svg");
+            image.set_from_resource("/dev/lumen/panel/icons/app.svg");
             return;
         }
-
         var icon_path = Utils.get_icon_path_from_app_id(app_id);
-        if (icon_path == null) {
-            stderr.printf("Icon not found for app_id=%s\n", app_id);
-            load_svg_icon(Utils.RES_DIR + "app.svg");
-            return;
-        }
-
-        if (icon_path.contains(".svg")) {
-            var image = DrawKit.image_from_svg(icon_path, 32, 32);
-            if (image == null) return;
-            tex = DrawKit.texture_upload(*image);
+        if (icon_path != null) {
+            image.set_from_file(icon_path);
         } else {
-            var image = DrawKit.image_load(icon_path);
-            tex = DrawKit.texture_upload(image);
+            image.set_from_resource("/dev/lumen/panel/icons/app.svg");
         }
     }
 
-    private void load_svg_icon(string path) {
-        var image = DrawKit.image_from_svg(path, 32, 32);
-        if (image != null)
-            tex = DrawKit.texture_upload(*image);
+    // Overlay the active-window underline. CSS can't condition on the runtime
+    // set, so a 10-line snapshot override does the work.
+    public override void snapshot (Gtk.Snapshot s) {
+        base.snapshot(s);
+        if (is_active()) {
+            var color = Gdk.RGBA();
+            color.parse("@app_active_underline");
+            // Fallback parse — @-references don't resolve outside CSS; hard-code
+            // the value to keep the lookup deterministic.
+            color.red   = 0.0f;
+            color.green = 0.17f;
+            color.blue  = 0.9f;
+            color.alpha = 1.0f;
+
+            var rect = Graphene.Rect();
+            rect.init(9, get_height() - UNDERLINE_H, get_width() - 18, UNDERLINE_H);
+            s.append_color(color, rect);
+        }
     }
 }

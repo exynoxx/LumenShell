@@ -3,6 +3,9 @@
 #include "wlhooks.h"
 #include "egl.h"
 #include "registry.h"
+#include "protocols/seat.h"
+#include "protocols/toplevel.h"
+#include "protocols/activation.h"
 
 struct wl_display *wl_display = NULL;
 
@@ -48,4 +51,28 @@ void wlhooks_destroy(void) {
         wl_display_disconnect(wl_display);
         wl_display = NULL;
     }
+}
+
+int wlhooks_init_toplevel_with_display(struct wl_display *external) {
+    if (!external) return -1;
+    wl_display = external;
+
+    // GTK owns pointer/keyboard. We only need wl_seat exposed for activate().
+    seat_set_minimal_mode(true);
+
+    toplevel_init();
+    seat_init();
+    activation_init();
+
+    registry_init(wl_display);
+    return 0;
+}
+
+void wlhooks_destroy_toplevel(void) {
+    activation_cleanup();
+    toplevel_cleanup();
+    seat_cleanup();
+    registry_cleanup();
+    // Do NOT disconnect: the caller (GTK/GDK) owns the wl_display.
+    wl_display = NULL;
 }

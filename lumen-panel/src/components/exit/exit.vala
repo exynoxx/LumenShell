@@ -1,21 +1,14 @@
-using DrawKit;
+using Gtk;
 
-public class ExitTray : IconAndText, IClickable {
+// Right-most tray button — terminates the compositor session.
+public class ExitTray : TrayButton {
+    const string EXIT_CMD = "pkill wayfire";
 
-    private const string EXIT_CMD = "pkill wayfire";
-
-    public ExitTray() {
-        base(new HoverableIcon("close"));
+    public ExitTray () {
+        base("close");
+        clicked.connect(() => {
+            try { Process.spawn_command_line_async(EXIT_CMD); }
+            catch (SpawnError e) { warning("Exit spawn failed: %s", e.message); }
+        });
     }
-
-    public void mouse_down(){
-        if (base.icon.hovered)
-            try {
-                Process.spawn_command_line_async(EXIT_CMD);
-            } catch (GLib.SpawnError e) {
-                warning("Failed to spawn process: %s", e.message);
-            }
-    }
-
-    public void mouse_up(){}
 }

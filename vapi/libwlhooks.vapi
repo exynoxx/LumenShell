@@ -26,6 +26,14 @@ namespace WLHooks {
     [CCode(cname="wlhooks_init")]
     public int init();
 
+    // Toplevel-only init for clients that already own a wl_display (GTK).
+    // Skips layer-shell, EGL, pointer/keyboard. Caller (GDK) drives dispatch.
+    [CCode(cname="wlhooks_init_toplevel_with_display")]
+    public int init_toplevel_with_display(Wl.Display display);
+
+    [CCode(cname="wlhooks_destroy_toplevel")]
+    public void destroy_toplevel();
+
     [CCode(cname="init_layer_shell")]
     public int init_layer_shell(string layer_name, int width, int height, Anchor anchor, bool exclusive_zone, int exclusive_zone_height = -1);
 

@@ -1,25 +1,15 @@
 ### Work in progress!!
 
 # Introduction
-Lumen is an early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, **lumen-panel** and application launcher (Kickoff) for navigation. Both lumen-panel and Kickoff avoid QT or other heavy UI toolkits and instead utilize **Drawkit** for hardware accelerated rendering, both implemented in Vala. Wayland interactions are handled via **WLHooks**, a lightweight Wayland client library.
-
-### DrawKit
-Is a minimal, high-performance 2D graphics library written in C, using GLES2 and EGL as backend. 
-It supports rendering rectangles, circles, textures, and text.
-Source is included in this repo.
+Lumen is an early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, **lumen-panel** and application launcher (Kickoff) for navigation. lumen-panel is built on GTK4 + `gtk4-layer-shell` + GSK; Kickoff and the OSD/notification surfaces share the same stack. All components are implemented in Vala.
 
 ### WLHooks
-Is a lightweight Wayland client library implementing the following protocols:
--  ``` wl_compositor ```
-- ``` wl_seat ```
-- ``` wl_output ```
-- ``` wlr-layer-shell-unstable-v1 ```
-- ``` wlr-foreign-toplevel-management-unstable-v1 ```
-
-Source also included in this repo.
-
-### Disclaimer
-Drawkit and WLHooks are tailored exclusively for this project. So not general purpose.
+A small Wayland client library that exposes the foreign-toplevel /
+xdg-activation surface lumen-panel needs (so the panel can list and
+raise running windows). It binds these protocols on the wl_display
+GTK already owns — no second connection. See `wlhooks/DEPRECATED.md`
+for the legacy EGL/layer-shell/seat code paths that the GTK4 port no
+longer reaches.
 
 ### lumen-panel environment
 
@@ -27,14 +17,14 @@ lumen-panel reads two environment variables at startup:
 
 | Variable | Description | Default |
 |---|---|---|
-| `LUMEN_RES_DIR` | Path to the `src/res/` resources directory | `/usr/share/lumen-panel/res/` |
+| `LUMEN_THEME_FILE` | Path to the theme JSON | `/usr/share/lumen-panel/default-theme.json` |
 | `LUMEN_KICKOFF_BIN` | Path to the Kickoff binary | `kickoff` (on PATH) |
 
 A helper script is provided to populate these for local development:
 
 ```bash
-source lumen-panel/env.sh
-./lumen-panel/main
+source env.sh
+./build/lumen-panel
 ```
 
 # Show case

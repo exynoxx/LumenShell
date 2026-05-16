@@ -1,0 +1,115 @@
+/* Defaults; runtime Theme.load() overrides @define-color values from JSON. */
+@define-color panel_background          rgba(0, 0, 0, 0);
+@define-color tray_background           rgba(17, 20, 31, 0.97);
+@define-color tray_icon_hover           rgba(41, 46, 66, 1);
+@define-color app_hover                 rgba(255, 255, 255, 0.20);
+@define-color app_launching             rgba(250, 168, 51, 1);
+@define-color app_active_underline      rgba(0, 44, 230, 1);
+
+window.lumen-panel,
+window.lumen-panel decoration {
+    background: @panel_background;
+    box-shadow: none;
+}
+
+.tray {
+    background: @tray_background;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    padding: 6px 10px;
+    margin-right: 20px;
+}
+
+.tray-bar {
+    margin-right: 0;
+}
+
+.tray-pages {
+    background: @tray_background;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    margin-right: 20px;
+    color: white;
+    min-height: 0;
+}
+.tray-pages > * {
+    min-height: 200px;
+    padding: 12px;
+}
+
+button.tray-icon {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    margin: 0 2px;
+    border-radius: 24px;
+    -gtk-icon-size: 22px;
+    color: white;
+    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+button.tray-icon:hover {
+    background: @tray_icon_hover;
+}
+button.tray-icon label {
+    color: white;
+    font-weight: 500;
+}
+
+.clock {
+    padding: 0 14px;
+    margin: 0 4px;
+    border-radius: 10px;
+    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.clock:hover {
+    background: @tray_icon_hover;
+}
+.clock-label {
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+    font-feature-settings: "tnum" 1;
+}
+
+.app-row {
+    padding: 0 6px;
+}
+
+button.app-entry {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    min-width: 70px;
+    min-height: 60px;
+    padding: 0;
+    margin: 0;
+    border-radius: 8px;
+    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+button.app-entry:hover {
+    background: @app_hover;
+}
+button.app-entry.launching {
+    background: @app_launching;
+}
+
+popover.app-popup contents {
+    background: @tray_background;
+    color: white;
+    border-radius: 10px;
+    padding: 6px;
+}
+popover.app-popup button {
+    color: white;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+popover.app-popup button:hover {
+    background: @app_hover;
+}

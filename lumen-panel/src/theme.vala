@@ -1,57 +1,38 @@
-using DrawKit;
+using GLib;
 using Json;
 
-public class Theme {
-    public static Color panel_bg             = Color(){r=0.07f, g=0.08f, b=0.12f, a=0.90f};
-    public static Color tray_bg              = Color(){r=0.07f, g=0.08f, b=0.12f, a=0.97f};
-    public static Color tray_icon_hover      = Color(){r=0.16f, g=0.18f, b=0.26f, a=1f};
-    public static Color app_hover            = Color(){r=1f,    g=1f,    b=1f,    a=0.20f};
-    public static Color app_launching        = Color(){r=0.98f, g=0.66f, b=0.20f, a=1f};
-    public static Color app_active_underline = Color(){r=0f,    g=0.17f, b=0.9f,  a=1f};
+public class Theme : GLib.Object {
 
-    public static void load() {
-        var path = Utils.THEME_FILE;
-        if (!FileUtils.test(path, FileTest.EXISTS)) return;
-
-        var parser = new Json.Parser();
-        try {
-            parser.load_from_file(path);
-        } catch (Error e) {
-            stderr.printf("Theme load failed: %s\n", e.message);
-            return;
-        }
-
-        var root = parser.get_root();
-        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
-
-        root.get_object().foreach_member((obj, name, node) => {
-            if (node.get_value_type() != typeof(string)) return;
-            var val = node.get_string();
-            if (!val.has_prefix("#")) return;
-            Color? c = parse_hex(val.substring(1));
-            if (c == null) return;
-            apply(name, (!) c);
-        });
+    public static string theme_file_path () {
+        return Environment.get_variable("LUMEN_THEME_FILE")
+            ?? "/usr/share/lumen-panel/default-theme.json";
     }
 
-    private static void apply(string key, Color c) {
-        switch (key) {
-            case "panel.background":      panel_bg = c; break;
-            case "tray.background":      tray_bg = c; break;
-            case "tray.icon-hover":      tray_icon_hover = c; break;
-            case "app.hover":            app_hover = c; break;
-            case "app.launching":        app_launching = c; break;
-            case "app.active-underline": app_active_underline = c; break;
-        }
+    // Default palette mirrors default-theme.json; load() overwrites if JSON is found.
+    static GLib.HashTable<string, string> palette;
+
+    static void seed_defaults () {
+        palette = new GLib.HashTable<string, string>(str_hash, str_equal);
+        palette.insert("panel_background",      "rgba(0,0,0,0)");
+        palette.insert("tray_background",       "rgba(17,20,31,0.97)");
+        palette.insert("tray_icon_hover",       "rgba(41,46,66,1)");
+        palette.insert("app_hover",             "rgba(255,255,255,0.20)");
+        palette.insert("app_launching",         "rgba(250,168,51,1)");
+        palette.insert("app_active_underline",  "rgba(0,44,230,1)");
     }
 
-    private static Color? parse_hex(string hex) {
-        string s = hex;
+    // Map JSON keys ("panel.background") to CSS variable names ("panel_background").
+    static string key_to_var (string json_key) {
+        return json_key.replace(".", "_").replace("-", "_");
+    }
+
+    static string? parse_hex_to_rgba (string hex_with_hash) {
+        if (!hex_with_hash.has_prefix("#")) return null;
+        string s = hex_with_hash.substring(1);
         if (s.length == 3 || s.length == 4) {
             var sb = new StringBuilder();
             for (int i = 0; i < s.length; i++) {
-                sb.append_c(s[i]);
-                sb.append_c(s[i]);
+                sb.append_c(s[i]); sb.append_c(s[i]);
             }
             s = sb.str;
         }
@@ -68,18 +49,70 @@ public class Theme {
             v = (v << 4) | nibble;
         }
 
-        float r, g, b, a;
+        int r, g, b;
+        double a;
         if (s.length == 6) {
-            r = ((v >> 16) & 0xFF) / 255f;
-            g = ((v >>  8) & 0xFF) / 255f;
-            b = ( v        & 0xFF) / 255f;
-            a = 1f;
+            r = (int) ((v >> 16) & 0xFF);
+            g = (int) ((v >>  8) & 0xFF);
+            b = (int) ( v        & 0xFF);
+            a = 1.0;
         } else {
-            r = ((v >> 24) & 0xFF) / 255f;
-            g = ((v >> 16) & 0xFF) / 255f;
-            b = ((v >>  8) & 0xFF) / 255f;
-            a = ( v        & 0xFF) / 255f;
+            r = (int) ((v >> 24) & 0xFF);
+            g = (int) ((v >> 16) & 0xFF);
+            b = (int) ((v >>  8) & 0xFF);
+            a = ((v & 0xFF) / 255.0);
         }
-        return Color(){r=r, g=g, b=b, a=a};
+        return "rgba(%d,%d,%d,%.3f)".printf(r, g, b, a);
+    }
+
+    static void load_from_file () {
+        var path = theme_file_path();
+        if (!FileUtils.test(path, FileTest.EXISTS)) return;
+        var parser = new Json.Parser();
+        try {
+            parser.load_from_file(path);
+        } catch (Error e) {
+            stderr.printf("Theme load failed: %s\n", e.message);
+            return;
+        }
+        var root = parser.get_root();
+        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
+        root.get_object().foreach_member((obj, name, node) => {
+            if (node.get_value_type() != typeof(string)) return;
+            var rgba = parse_hex_to_rgba(node.get_string());
+            if (rgba == null) return;
+            palette.insert(key_to_var(name), rgba);
+        });
+    }
+
+    static string build_define_color_block () {
+        var sb = new StringBuilder();
+        palette.foreach((k, v) => {
+            sb.append_printf("@define-color %s %s;\n", k, v);
+        });
+        return sb.str;
+    }
+
+    // Loads the embedded base CSS, prepends @define-color overrides from JSON,
+    // and installs a CssProvider on the default display.
+    public static void install () {
+        seed_defaults();
+        load_from_file();
+
+        var provider = new Gtk.CssProvider();
+        try {
+            var bytes = resources_lookup_data("/dev/lumen/panel/style.css",
+                ResourceLookupFlags.NONE);
+            var base_css = (string) bytes.get_data();
+            var combined = build_define_color_block() + "\n" + base_css;
+            provider.load_from_string(combined);
+        } catch (Error e) {
+            stderr.printf("Theme: failed to load embedded CSS: %s\n", e.message);
+            return;
+        }
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
 }

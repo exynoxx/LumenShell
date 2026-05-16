@@ -1,0 +1,32 @@
+# >>> lumen-osd BEGIN
+# Autostart and keybinds for lumen-osd under Wayfire.
+# Managed by LumenShell/swayosd-wayfire — edit between the markers if you must.
+
+[autostart]
+lumen_osd = lumen-osd
+
+[command]
+# Volume
+binding_volume_raise = KEY_VOLUMEUP
+command_volume_raise = lumen-osdctl --output-volume raise
+
+binding_volume_lower = KEY_VOLUMEDOWN
+command_volume_lower = lumen-osdctl --output-volume lower
+
+binding_volume_mute = KEY_MUTE
+command_volume_mute = lumen-osdctl --output-volume mute-toggle
+
+binding_mic_mute = KEY_MICMUTE
+command_mic_mute = lumen-osdctl --input-volume mute-toggle
+
+# Brightness
+binding_brightness_up = KEY_BRIGHTNESSUP
+command_brightness_up = lumen-osdctl --brightness raise
+
+binding_brightness_down = KEY_BRIGHTNESSDOWN
+command_brightness_down = lumen-osdctl --brightness lower
+
+# Caps Lock indicator (optional — uncomment to enable)
+# binding_capslock = KEY_CAPSLOCK
+# command_capslock = lumen-osdctl --caps-lock
+# >>> lumen-osd END

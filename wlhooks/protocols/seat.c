@@ -10,15 +10,24 @@
 
 static struct wl_seat *seat = NULL;
 static bool grab_keyboard_flag = false;
+static bool minimal_mode = false;
 static uint32_t last_input_serial = 0;
 
 static void on_capabilities(void *data, struct wl_seat *s, uint32_t capabilities) {
+    // minimal_mode: external toolkit (e.g. GTK) owns pointer/keyboard.
+    // Bind only enough to expose wl_seat for foreign-toplevel activate().
+    if (minimal_mode) return;
+
     if (capabilities & WL_SEAT_CAPABILITY_POINTER) {
         pointer_attach(wl_seat_get_pointer(s));
     }
     if ((capabilities & WL_SEAT_CAPABILITY_KEYBOARD) && grab_keyboard_flag) {
         keyboard_attach(wl_seat_get_keyboard(s));
     }
+}
+
+void seat_set_minimal_mode(bool value) {
+    minimal_mode = value;
 }
 
 static void on_name(void *data, struct wl_seat *s, const char *name) {}
@@ -39,7 +48,7 @@ static void seat_registry_handler(void *data, struct wl_registry *registry,
 }
 
 void seat_init(void) {
-    keyboard_init();
+    if (!minimal_mode) keyboard_init();
     registry_add_handler(wl_seat_interface.name, seat_registry_handler, NULL);
 }
 

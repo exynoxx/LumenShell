@@ -1,145 +1,107 @@
-using DrawKit;
-using GLib;
+using Gtk;
 
-/**
- * BatteryPage — full-panel battery information display.
- *
- * BatteryService is injected so the tray and page see the same readings.
- */
-public class BatteryPage : BaseTrayPage {
+public class BatteryPage : Gtk.Box {
 
-    private BatteryService service;
+    BatteryService service;
 
-    // ── Layout constants ──────────────────────────────────────────────────
-    private const int PAD       = 16;
-    private const int BAR_H     = 22;
-    private const int DY_TITLE  = PAD;                       // 16
-    private const int DY_PCT    = DY_TITLE  + 26;            // 42
-    private const int DY_STATUS = DY_PCT    + 50;            // 92
-    private const int DY_BAR    = DY_STATUS + 24;            // 116
-    private const int DY_STAT1  = DY_BAR    + BAR_H + 14;    // 152
-    private const int DY_STAT2  = DY_STAT1  + 32;            // 184
+    Gtk.Label   pct_label;
+    Gtk.Label   status_label;
+    Gtk.LevelBar bar;
+    Gtk.Label   voltage_label;
+    Gtk.Label   current_label;
+    Gtk.Label   charge_label;
+    Gtk.Label   time_label;
 
-    // ── Cached colours ────────────────────────────────────────────────────
-    private Color title_col      = Color(){r=0.62f, g=0.64f, b=0.72f, a=1f};
-    private Color status_col     = Color(){r=0.60f, g=0.62f, b=0.70f, a=1f};
-    private Color stat_label_col = Color(){r=0.42f, g=0.44f, b=0.52f, a=1f};
-    private Color stat_value_col = Color(){r=0.84f, g=0.86f, b=0.92f, a=1f};
-    private Color bar_text_col   = Color(){r=1f,    g=1f,    b=1f,    a=0.65f};
-    private Color track_col      = Color(){r=0.10f, g=0.11f, b=0.16f, a=1f};
-
-    private UiProgressBar progress = new UiProgressBar();
-
-    // ── Layout — derived from bounds, locked once ─────────────────────────
-    private int bar_dx = 0;    // bar x relative to page x
-    private int bar_w  = 0;
-    private int col1_dx = 0;   // first stat column relative to page x
-    private int col2_dx = 0;   // second stat column relative to page x
-
-    // ── Cached display values — updated in refresh() ──────────────────────
-    private string cached_pct_str     = "0%";
-    private Color  cached_pct_col;
-    private string cached_voltage_str = "";
-    private string cached_current_str = "";
-    private string cached_charge_str  = "";
-    private string cached_time_str    = "";
-    private bool   cached_has_time    = false;
-    private string cached_status_str  = "—";
-    private int    cached_pct_w       = -1;  // text-width cache, -1 = dirty
-
-    public BatteryPage(BatteryService service) {
+    public BatteryPage (BatteryService service) {
+        GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 8);
         this.service = service;
-        progress.track_color = track_col;
-        service.state_changed.connect(() => {
-            refresh();
-            redraw = true;
-        });
-        service.refresh();
+        add_css_class("battery-page");
+        set_size_request(360, 240);
+
+        var title = new Gtk.Label("Battery") { xalign = 0 };
+        title.add_css_class("page-title");
+        append(title);
+
+        pct_label = new Gtk.Label("—") { xalign = 0.5f };
+        pct_label.add_css_class("battery-pct");
+        append(pct_label);
+
+        status_label = new Gtk.Label("—") { xalign = 0.5f };
+        status_label.add_css_class("page-status");
+        append(status_label);
+
+        bar = new Gtk.LevelBar.for_interval(0, 100) { hexpand = true };
+        bar.add_offset_value("low",  25);
+        bar.add_offset_value("high", 60);
+        bar.add_offset_value("full", 95);
+        append(bar);
+
+        var stats = new Gtk.Grid() {
+            column_spacing = 24,
+            row_spacing = 6,
+            margin_top = 8,
+        };
+        voltage_label = new_stat_value();
+        current_label = new_stat_value();
+        charge_label  = new_stat_value();
+        time_label    = new_stat_value();
+        stats.attach(new_stat_label("Voltage"), 0, 0, 1, 1);
+        stats.attach(voltage_label,             0, 1, 1, 1);
+        stats.attach(new_stat_label("Current"), 1, 0, 1, 1);
+        stats.attach(current_label,             1, 1, 1, 1);
+        stats.attach(new_stat_label("Charge"),  0, 2, 1, 1);
+        stats.attach(charge_label,              0, 3, 1, 1);
+        stats.attach(new_stat_label("Est. time"), 1, 2, 1, 1);
+        stats.attach(time_label,                1, 3, 1, 1);
+        append(stats);
+
+        service.state_changed.connect(refresh);
+        refresh();
     }
 
-    protected override void on_bounds_set() {
-        bar_dx  = PAD;
-        bar_w   = bounds_w - PAD * 2;
-        col1_dx = PAD;
-        col2_dx = bounds_w / 2;
+    static Gtk.Label new_stat_label (string text) {
+        var l = new Gtk.Label(text) { xalign = 0 };
+        l.add_css_class("stat-label");
+        return l;
+    }
+    static Gtk.Label new_stat_value () {
+        var l = new Gtk.Label("—") { xalign = 0 };
+        l.add_css_class("stat-value");
+        return l;
     }
 
-    public override string get_title() { return "Battery"; }
+    void refresh () {
+        pct_label.label = "%d%%".printf(service.percent);
+        bar.value = service.percent;
 
-    public override void on_activate() { service.refresh(); }
+        var raw = service.raw_status;
+        if (raw == "charging")           status_label.label = "⚡ Charging";
+        else if (raw == "discharging")   status_label.label = "Discharging";
+        else if (raw.contains("full"))   status_label.label = "✓ Full";
+        else                             status_label.label = raw == "" ? "Unknown" : raw;
 
-    protected override void render_content(Context ctx, int x, int y) {
-        int cx = x + bounds_w / 2;
+        voltage_label.label = "%.2f V".printf(service.voltage_v);
+        current_label.label = "%.2f A".printf(service.current_a);
+        charge_label.label  = "%d / %d mAh".printf(
+            service.charge_now / 1000, service.charge_full / 1000);
 
-        pdt(ctx,        "Battery",          x + PAD, y + DY_TITLE,  16f, title_col);
-        pdt_center(ctx, cached_pct_str,     cx,      y + DY_PCT,    40f, cached_pct_col);
-        pdt_center(ctx, cached_status_str,  cx,      y + DY_STATUS, 14f, status_col);
-
-        progress.set_bounds(x + bar_dx, y + DY_BAR, bar_w, BAR_H);
-        progress.render(ctx);
-
-        if (cached_pct_w < 0) cached_pct_w = ctx.width_of(cached_pct_str, 11f);
-        int pct_label_x = x + bar_dx + bar_w - cached_pct_w - 8;
-        pdt(ctx, cached_pct_str, pct_label_x, y + DY_BAR + (BAR_H - 11) / 2, 11f, bar_text_col);
-
-        render_stat(ctx, x + col1_dx, y + DY_STAT1, "Voltage", cached_voltage_str);
-        render_stat(ctx, x + col2_dx, y + DY_STAT1, "Current", cached_current_str);
-        render_stat(ctx, x + col1_dx, y + DY_STAT2, "Charge",  cached_charge_str);
-        if (cached_has_time)
-            render_stat(ctx, x + col2_dx, y + DY_STAT2, "Est. time", cached_time_str);
-    }
-
-    private void render_stat(Context ctx, int x, int y, string label, string value) {
-        pdt(ctx, label, x, y,      11f,   stat_label_col);
-        pdt(ctx, value, x, y + 14, 13.5f, stat_value_col);
-    }
-
-    private void refresh() {
-        var raw     = service.raw_status;
-        var percent = service.percent;
-
-        if (raw == "charging")          cached_status_str = "⚡ Charging";
-        else if (raw == "discharging")  cached_status_str = "Discharging";
-        else if (raw.contains("full"))  cached_status_str = "✓ Full";
-        else                            cached_status_str = raw.length > 0 ? raw : "Unknown";
-
-        cached_pct_str = "%d%%".printf(percent);
-        cached_pct_w   = -1;
-
-        cached_pct_col = percent >= 60
-            ? Color(){r=0.18f, g=0.88f, b=0.42f, a=1f}
-            : percent >= 25
-                ? Color(){r=1.0f, g=0.74f, b=0.14f, a=1f}
-                : Color(){r=1.0f, g=0.28f, b=0.28f, a=1f};
-
-        progress.set_value(percent);
-        progress.fill_color = percent >= 60
-            ? Color(){r=0.13f, g=0.76f, b=0.34f, a=1f}
-            : percent >= 25
-                ? Color(){r=0.90f, g=0.62f, b=0.06f, a=1f}
-                : Color(){r=0.86f, g=0.20f, b=0.20f, a=1f};
-
-        cached_voltage_str = "%.2f V".printf(service.voltage_v);
-        cached_current_str = "%.2f A".printf(service.current_a);
-        cached_charge_str  = "%d / %d mAh".printf(service.charge_now / 1000, service.charge_full / 1000);
-
-        cached_has_time = false;
-        if (raw == "discharging" && service.current_a > 0.05f) {
-            float hrs   = (service.charge_now / 1000000f) / service.current_a;
-            int   h_rem = (int) hrs;
-            int   m_rem = (int)((hrs - h_rem) * 60);
-            cached_time_str = h_rem > 0
-                ? "%dh %dm left".printf(h_rem, m_rem)
-                : "%dm left".printf(m_rem);
-            cached_has_time = true;
-        } else if (raw == "charging" && service.current_a > 0.05f) {
-            float hrs   = ((service.charge_full - service.charge_now) / 1000000f) / service.current_a;
-            int   h_rem = (int) hrs;
-            int   m_rem = (int)((hrs - h_rem) * 60);
-            cached_time_str = h_rem > 0
-                ? "%dh %dm to full".printf(h_rem, m_rem)
-                : "%dm to full".printf(m_rem);
-            cached_has_time = true;
+        if ((raw == "discharging" || raw == "charging") && service.current_a > 0.05f) {
+            float hrs;
+            string suffix;
+            if (raw == "discharging") {
+                hrs = (service.charge_now / 1000000f) / service.current_a;
+                suffix = "left";
+            } else {
+                hrs = ((service.charge_full - service.charge_now) / 1000000f) / service.current_a;
+                suffix = "to full";
+            }
+            int h = (int) hrs;
+            int m = (int)((hrs - h) * 60);
+            time_label.label = h > 0
+                ? "%dh %dm %s".printf(h, m, suffix)
+                : "%dm %s".printf(m, suffix);
+        } else {
+            time_label.label = "—";
         }
     }
 }
