@@ -19,7 +19,7 @@ public class AppBar : Gtk.Box {
         pins_file = Path.build_filename(
             Environment.get_user_config_dir(), "lumen-panel", "pinned-apps.txt");
 
-        var launcher = new AppEntry("--", "Launcher", "", true);
+        var launcher = new AppEntry("--", { "Launcher", "", "" }, true);
         entries_by_app_id["--"] = launcher;
         append(launcher);
 
@@ -60,9 +60,7 @@ public class AppBar : Gtk.Box {
     AppEntry get_or_create (string app_id) {
         if (entries_by_app_id.has_key(app_id)) return entries_by_app_id[app_id];
 
-        var name   = Utils.get_display_name_from_app_id(app_id);
-        var launch = Utils.get_launch_cmd_from_app_id(app_id);
-        var entry  = new AppEntry(app_id, name, launch, false);
+        var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id), false);
         wire_entry(entry);
         entries_by_app_id[app_id] = entry;
         append(entry);
@@ -91,9 +89,7 @@ public class AppBar : Gtk.Box {
         foreach (var app_id in pins) {
             if (app_id == "" || app_id == "--") continue;
             if (entries_by_app_id.has_key(app_id)) continue;
-            var name   = Utils.get_display_name_from_app_id(app_id);
-            var launch = Utils.get_launch_cmd_from_app_id(app_id);
-            var entry  = new AppEntry(app_id, name, launch, false);
+            var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id), false);
             entry.is_pinned = true;
             wire_entry(entry);
             entries_by_app_id[app_id] = entry;

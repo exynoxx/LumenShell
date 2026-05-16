@@ -4,14 +4,8 @@ using Gtk;
 public class LumenChip : Gtk.Widget {
 
     string _text = "";
-    Gdk.RGBA _bg   = rgba(0.11f, 0.13f, 0.19f, 1f);
-    Gdk.RGBA _fg   = rgba(0.52f, 0.52f, 0.57f, 1f);
-
-    static Gdk.RGBA rgba (float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
-    }
+    Gdk.RGBA _bg   = Utils.rgba(0.11f, 0.13f, 0.19f, 1f);
+    Gdk.RGBA _fg   = Utils.rgba(0.52f, 0.52f, 0.57f, 1f);
 
     public LumenChip () {
         height_request = 24;

@@ -7,15 +7,9 @@ public class LumenProgressBar : Gtk.Widget {
 
     int _value = 0;
 
-    public Gdk.RGBA track_color = make_rgba(0.10f, 0.11f, 0.16f, 1f);
-    public Gdk.RGBA fill_color  = make_rgba(0.13f, 0.76f, 0.34f, 1f);
-    public Gdk.RGBA text_color  = make_rgba(1f,    1f,    1f,    0.65f);
-
-    static Gdk.RGBA make_rgba (float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
-    }
+    public Gdk.RGBA track_color = Utils.rgba(0.10f, 0.11f, 0.16f, 1f);
+    public Gdk.RGBA fill_color  = Utils.rgba(0.13f, 0.76f, 0.34f, 1f);
+    public Gdk.RGBA text_color  = Utils.rgba(1f,    1f,    1f,    0.65f);
 
     public LumenProgressBar () {
         set_size_request(-1, 22);

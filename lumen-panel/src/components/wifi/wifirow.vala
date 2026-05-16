@@ -21,17 +21,11 @@ public class WifiRow : Gtk.Widget {
     Gtk.Button? disc_btn = null;
     bool hovered = false;
 
-    static Gdk.RGBA sel_bg   = rgba(0.10f, 0.24f, 0.62f, 0.88f);
-    static Gdk.RGBA hov_bg   = rgba(0.17f, 0.18f, 0.24f, 0.85f);
-    static Gdk.RGBA conn_fg  = rgba(0.18f, 0.88f, 0.42f, 1f);
-    static Gdk.RGBA norm_fg  = rgba(0.90f, 0.91f, 0.94f, 1f);
-    static Gdk.RGBA lock_fg  = rgba(0.52f, 0.52f, 0.58f, 1f);
-
-    static Gdk.RGBA rgba (float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
-    }
+    static Gdk.RGBA sel_bg   = Utils.rgba(0.10f, 0.24f, 0.62f, 0.88f);
+    static Gdk.RGBA hov_bg   = Utils.rgba(0.17f, 0.18f, 0.24f, 0.85f);
+    static Gdk.RGBA conn_fg  = Utils.rgba(0.18f, 0.88f, 0.42f, 1f);
+    static Gdk.RGBA norm_fg  = Utils.rgba(0.90f, 0.91f, 0.94f, 1f);
+    static Gdk.RGBA lock_fg  = Utils.rgba(0.52f, 0.52f, 0.58f, 1f);
 
     public WifiRow (WifiNet net, bool is_connected) {
         this.ssid = net.ssid;

@@ -25,11 +25,11 @@ public class BatteryPage : Gtk.Widget {
     const int DY_STAT2  = DY_STAT1  + 32;
     const int PAGE_MIN_H = DY_STAT2 + 32;
 
-    static Gdk.RGBA title_col      = rgba(0.62f, 0.64f, 0.72f, 1f);
-    static Gdk.RGBA status_col     = rgba(0.60f, 0.62f, 0.70f, 1f);
-    static Gdk.RGBA stat_label_col = rgba(0.42f, 0.44f, 0.52f, 1f);
-    static Gdk.RGBA stat_value_col = rgba(0.84f, 0.86f, 0.92f, 1f);
-    static Gdk.RGBA track_col      = rgba(0.10f, 0.11f, 0.16f, 1f);
+    static Gdk.RGBA title_col      = Utils.rgba(0.62f, 0.64f, 0.72f, 1f);
+    static Gdk.RGBA status_col     = Utils.rgba(0.60f, 0.62f, 0.70f, 1f);
+    static Gdk.RGBA stat_label_col = Utils.rgba(0.42f, 0.44f, 0.52f, 1f);
+    static Gdk.RGBA stat_value_col = Utils.rgba(0.84f, 0.86f, 0.92f, 1f);
+    static Gdk.RGBA track_col      = Utils.rgba(0.10f, 0.11f, 0.16f, 1f);
 
     string pct_str    = "0%";
     string status_str = "—";
@@ -38,13 +38,7 @@ public class BatteryPage : Gtk.Widget {
     string charge_str  = "";
     string time_str    = "";
     bool   has_time    = false;
-    Gdk.RGBA pct_col   = rgba(1f, 1f, 1f, 1f);
-
-    static Gdk.RGBA rgba (float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
-    }
+    Gdk.RGBA pct_col   = Utils.rgba(1f, 1f, 1f, 1f);
 
     public BatteryPage (BatteryService service) {
         this.service = service;
@@ -56,7 +50,7 @@ public class BatteryPage : Gtk.Widget {
 
         set_size_request(380, PAGE_MIN_H);
         service.state_changed.connect(refresh);
-        service.refresh();
+        refresh();
     }
 
     public override void dispose () {
@@ -95,17 +89,17 @@ public class BatteryPage : Gtk.Widget {
 
         pct_str = "%d%%".printf(pct);
         pct_col = pct >= 60
-            ? rgba(0.18f, 0.88f, 0.42f, 1f)
+            ? Utils.rgba(0.18f, 0.88f, 0.42f, 1f)
             : pct >= 25
-                ? rgba(1.0f, 0.74f, 0.14f, 1f)
-                : rgba(1.0f, 0.28f, 0.28f, 1f);
+                ? Utils.rgba(1.0f, 0.74f, 0.14f, 1f)
+                : Utils.rgba(1.0f, 0.28f, 0.28f, 1f);
 
         progress.set_progress(pct);
         progress.fill_color = pct >= 60
-            ? rgba(0.13f, 0.76f, 0.34f, 1f)
+            ? Utils.rgba(0.13f, 0.76f, 0.34f, 1f)
             : pct >= 25
-                ? rgba(0.90f, 0.62f, 0.06f, 1f)
-                : rgba(0.86f, 0.20f, 0.20f, 1f);
+                ? Utils.rgba(0.90f, 0.62f, 0.06f, 1f)
+                : Utils.rgba(0.86f, 0.20f, 0.20f, 1f);
 
         voltage_str = "%.2f V".printf(service.voltage_v);
         current_str = "%.2f A".printf(service.current_a);

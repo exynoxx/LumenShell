@@ -1,10 +1,10 @@
 using Gtk;
 
-// Page-bearing tray icon. Each icon owns a Gtk.Widget to show when the tray
+// Page-bearing tray icon. Each icon owns a Gtk.Button to show when the tray
 // is expanded with that icon active. Implementors register with TrayBar
 // via add_paged().
 public interface IPagedTrayItem : GLib.Object {
-    public abstract Gtk.Widget icon_widget ();
+    public abstract Gtk.Button icon_widget ();
     public abstract Gtk.Widget page_widget ();
 }
 
@@ -91,14 +91,7 @@ public class TrayBar : Gtk.Box {
         icon_row.append(icon);
         icon_by_page.insert(id, icon);
         page_stack.add_named(item.page_widget(), id);
-
-        if (icon is Gtk.Button) {
-            ((Gtk.Button) icon).clicked.connect(() => toggle(id));
-        } else {
-            var click = new Gtk.GestureClick();
-            click.released.connect(() => toggle(id));
-            icon.add_controller(click);
-        }
+        icon.clicked.connect(() => toggle(id));
     }
 
     void toggle (string id) {

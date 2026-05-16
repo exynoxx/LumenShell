@@ -34,14 +34,8 @@ public class WifiPage : Gtk.Box {
     Gee.ArrayList<WifiRow> rows = new Gee.ArrayList<WifiRow>();
     int selected_index = -1;
 
-    static Gdk.RGBA chip_online  = rgba(0.18f, 0.88f, 0.42f, 1f);
-    static Gdk.RGBA chip_offline = rgba(0.52f, 0.52f, 0.57f, 1f);
-
-    static Gdk.RGBA rgba (float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
-    }
+    static Gdk.RGBA chip_online  = Utils.rgba(0.18f, 0.88f, 0.42f, 1f);
+    static Gdk.RGBA chip_offline = Utils.rgba(0.52f, 0.52f, 0.57f, 1f);
 
     public WifiPage (WifiService service) {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);

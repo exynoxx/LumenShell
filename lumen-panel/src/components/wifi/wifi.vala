@@ -18,6 +18,6 @@ public class WifiTray : GLib.Object, IPagedTrayItem {
         icon.set_icon_from_resource(service.connected ? "wifi" : "nowifi");
     }
 
-    public Gtk.Widget icon_widget () { return icon; }
+    public Gtk.Button icon_widget () { return icon; }
     public Gtk.Widget page_widget () { return page; }
 }

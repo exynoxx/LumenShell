@@ -78,35 +78,26 @@ public class PactlClient : GLib.Object {
 
     public void set_volume(int pct) {
         pct = int.max(0, int.min(100, pct));
-        spawn_argv(new string[] {
+        Utils.spawn_argv(new string[] {
             "pactl", "set-sink-volume", "@DEFAULT_SINK@", "%d%%".printf(pct)
         });
     }
 
     public void set_muted(bool muted) {
-        spawn_argv(new string[] {
+        Utils.spawn_argv(new string[] {
             "pactl", "set-sink-mute", "@DEFAULT_SINK@", muted ? "1" : "0"
         });
     }
 
     public void toggle_mute() {
-        spawn_argv(new string[] {
+        Utils.spawn_argv(new string[] {
             "pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"
         });
     }
 
     public void set_default_sink(string sink_id) {
         if (sink_id == "") return;
-        // argv form passes the id as one token — no shell quoting needed.
-        spawn_argv(new string[] { "pactl", "set-default-sink", sink_id });
-    }
-
-    private static void spawn_argv(string[] argv) {
-        try {
-            Pid pid;
-            Process.spawn_async(null, argv, null, SpawnFlags.SEARCH_PATH, null, out pid);
-            Process.close_pid(pid);
-        } catch (SpawnError e) {}
+        Utils.spawn_argv(new string[] { "pactl", "set-default-sink", sink_id });
     }
 
     private string run_cmd_sync(string cmd) {

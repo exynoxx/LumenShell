@@ -11,13 +11,7 @@ public class BatteryTray : GLib.Object, IPagedTrayItem {
         page = new BatteryPage(service);
 
         service.state_changed.connect(update_icon);
-        service.refresh();
-
-        // poll every 10s to keep status fresh
-        GLib.Timeout.add_seconds(10, () => {
-            service.refresh();
-            return Source.CONTINUE;
-        });
+        update_icon();
     }
 
     void update_icon () {
@@ -31,6 +25,6 @@ public class BatteryTray : GLib.Object, IPagedTrayItem {
         icon.set_icon_from_resource(name);
     }
 
-    public Gtk.Widget icon_widget () { return icon; }
+    public Gtk.Button icon_widget () { return icon; }
     public Gtk.Widget page_widget () { return page; }
 }

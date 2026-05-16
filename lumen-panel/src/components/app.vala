@@ -12,6 +12,7 @@ public class AppEntry : Gtk.Button {
     public string app_id { get; construct; }
     public string display_name { get; private set; }
     public string launch_cmd   { get; private set; default = ""; }
+    public string icon_name    { get; private set; default = ""; }
     public bool   is_pinned    { get; set;     default = false; }
     public bool   is_launcher  { get; construct;            }
 
@@ -24,10 +25,11 @@ public class AppEntry : Gtk.Button {
     public signal void pin_toggled ();
     public signal void unpin_and_removable ();
 
-    public AppEntry (string app_id, string display_name, string? launch_cmd, bool is_launcher) {
+    public AppEntry (string app_id, AppMetadata meta, bool is_launcher) {
         GLib.Object(app_id: app_id, is_launcher: is_launcher);
-        this.display_name = display_name;
-        this.launch_cmd   = launch_cmd ?? "";
+        this.display_name = meta.name == "" ? app_id : meta.name;
+        this.launch_cmd   = meta.launch_cmd;
+        this.icon_name    = meta.icon;
         if (is_launcher) this.is_pinned = true;
 
         add_css_class("app-entry");
@@ -137,36 +139,34 @@ public class AppEntry : Gtk.Button {
         popup.popup();
     }
 
+    // Icon names go through the default display's Gtk.IconTheme; absolute
+    // paths in the .desktop file are honored directly. Falls back to the
+    // bundled generic-app glyph when nothing matches.
     void load_icon () {
-        if (is_launcher) {
-            image.set_from_resource("/dev/lumen/panel/icons/app.svg");
-            return;
+        if (!is_launcher && icon_name != "") {
+            if (Path.is_absolute(icon_name) && FileUtils.test(icon_name, FileTest.EXISTS)) {
+                image.set_from_file(icon_name);
+                return;
+            }
+            var theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
+            if (theme.has_icon(icon_name)) {
+                image.set_from_icon_name(icon_name);
+                return;
+            }
         }
-        var icon_path = Utils.get_icon_path_from_app_id(app_id);
-        if (icon_path != null) {
-            image.set_from_file(icon_path);
-        } else {
-            image.set_from_resource("/dev/lumen/panel/icons/app.svg");
-        }
+        image.set_from_resource("/dev/lumen/panel/icons/app.svg");
     }
 
-    // Overlay the active-window underline. CSS can't condition on the runtime
-    // set, so a 10-line snapshot override does the work.
+    // CSS @-references don't resolve outside style rules, so the underline
+    // color is hard-coded here (matches @app_active_underline in style.css).
+    static Gdk.RGBA UNDERLINE_COLOR = Utils.rgba(0.0f, 0.17f, 0.9f, 1.0f);
+
     public override void snapshot (Gtk.Snapshot s) {
         base.snapshot(s);
         if (is_active()) {
-            var color = Gdk.RGBA();
-            color.parse("@app_active_underline");
-            // Fallback parse — @-references don't resolve outside CSS; hard-code
-            // the value to keep the lookup deterministic.
-            color.red   = 0.0f;
-            color.green = 0.17f;
-            color.blue  = 0.9f;
-            color.alpha = 1.0f;
-
             var rect = Graphene.Rect();
             rect.init(9, get_height() - UNDERLINE_H, get_width() - 18, UNDERLINE_H);
-            s.append_color(color, rect);
+            s.append_color(UNDERLINE_COLOR, rect);
         }
     }
 }

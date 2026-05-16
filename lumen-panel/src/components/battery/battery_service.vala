@@ -3,9 +3,12 @@ using GLib;
 /**
  * BatteryService — single sysfs read path shared by BatteryTray and BatteryPage.
  *
- * Call refresh() to update all fields; state_changed fires when done.
+ * Polls every 10 s after construction; state_changed fires on each refresh.
  */
 public class BatteryService : GLib.Object {
+
+    private const uint POLL_SEC = 10;
+    private const string SYSFS_DIR = "/sys/class/power_supply/BAT0/";
 
     public signal void state_changed();
 
@@ -16,6 +19,14 @@ public class BatteryService : GLib.Object {
     public int    charge_full = 0;
     public int    charge_now  = 0;
 
+    public BatteryService() {
+        refresh();
+        GLib.Timeout.add_seconds(POLL_SEC, () => {
+            refresh();
+            return Source.CONTINUE;
+        });
+    }
+
     public void refresh() {
         raw_status  = sysfs_str("status").down().strip();
         charge_full = sysfs_int("charge_full");
@@ -23,25 +34,24 @@ public class BatteryService : GLib.Object {
         voltage_v   = sysfs_int("voltage_now") / 1000000f;
         current_a   = sysfs_int("current_now") / 1000000f;
 
-        if (charge_full > 0)
-            percent = (int)((charge_now / (float) charge_full) * 100);
-        percent = int.min(100, int.max(0, percent));
+        percent = (charge_full > 0)
+            ? int.min(100, int.max(0, (int)((charge_now / (float) charge_full) * 100)))
+            : 0;
 
         state_changed();
     }
 
-    public static string sysfs_str(string name) {
-        string out_str, err;
+    static string sysfs_str(string name) {
         try {
-            int exit;
-            Process.spawn_command_line_sync(
-                "cat /sys/class/power_supply/BAT0/" + name,
-                out out_str, out err, out exit);
-            return exit == 0 ? out_str.strip() : "";
-        } catch (Error e) { return ""; }
+            string contents;
+            FileUtils.get_contents(SYSFS_DIR + name, out contents);
+            return contents.strip();
+        } catch (FileError e) {
+            return "";
+        }
     }
 
-    public static int sysfs_int(string name) {
+    static int sysfs_int(string name) {
         return int.parse(sysfs_str(name));
     }
 }
