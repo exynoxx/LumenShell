@@ -31,6 +31,11 @@ public class TrayBar : Gtk.Box {
     // the right icon as the active page changes.
     GLib.HashTable<string, Gtk.Widget> icon_by_page =
         new GLib.HashTable<string, Gtk.Widget>(str_hash, str_equal);
+    // Keeps IPagedTrayItem instances alive. Vala connects signal handlers
+    // with g_signal_connect_object (weak ref to the handler's instance),
+    // so without an owning reference here the item is freed as soon as
+    // add_paged returns and its update_icon handler is auto-disconnected.
+    Gee.ArrayList<IPagedTrayItem> paged_items = new Gee.ArrayList<IPagedTrayItem>();
     string? active_page_id = null;
     int next_page_id = 0;
 
@@ -87,6 +92,7 @@ public class TrayBar : Gtk.Box {
     public void add_paged (IPagedTrayItem item) {
         string id = "page-%d".printf(next_page_id++);
 
+        paged_items.add(item);
         var icon = item.icon_widget();
         icon_row.append(icon);
         icon_by_page.insert(id, icon);
