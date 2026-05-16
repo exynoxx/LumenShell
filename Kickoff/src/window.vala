@@ -16,7 +16,7 @@ private const string KICKOFF_CSS = """
         min-height: 30px;
         background: alpha(white, 0.85);
         color: black;
-        border-radius: 4px;
+        border-radius: 20px;
         padding: 2px 8px;
     }
     .kickoff-search > text {
