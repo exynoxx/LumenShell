@@ -11,6 +11,7 @@ public class App : GLib.Object {
     Gtk.ApplicationWindow win;
     TrayBar tray;
     uint collapse_timeout_id = 0;
+    uint resize_tick_id = 0;
 
     public void activate (Gtk.Application app) {
         win = new Gtk.ApplicationWindow(app);
@@ -66,44 +67,46 @@ public class App : GLib.Object {
         });
         ((Gtk.Widget) win).add_controller(esc);
 
-        // Input region: re-apply when the surface is mapped/resized or the
-        // tray reveals/hides its page area.
-        // realize is a GTK4 method, not a signal; map fires after realize and
-        // the GdkSurface is then attached, which is what update_input_region
-        // needs. notify::default-height fires on each resize.
-        win.notify["default-height"].connect(update_input_region);
+        // Input region: re-apply when the surface is mapped or the tray
+        // reveals/hides its page area. The revealer notify hooks fire only
+        // at the start and end of the animation; the layer-shell surface
+        // grows incrementally between those two points. While the
+        // transition is in progress, a tick callback re-applies the input
+        // region every frame so it stays aligned with the new buffer size.
+        // Without this, the input region remains in old surface
+        // coordinates during the resize and the compositor fires a
+        // wl_pointer.leave when the cursor's new surface-local position
+        // lands outside the stale region — with a stationary mouse no
+        // matching enter follows, so the hover-out timer collapses the
+        // tray right after click.
         win.map.connect(update_input_region);
-        tray.revealer.notify["child-revealed"].connect(update_input_region);
-        tray.revealer.notify["reveal-child"].connect(update_input_region);
-
-        // Bounded-box hover-out collapse. A single window-level motion
-        // controller avoids the per-widget enter/leave races that fired a
-        // spurious leave the moment a click expanded the tray. We treat the
-        // union of (bottom strip ∪ expanded tray box) as one region and
-        // collapse after a short grace period once the pointer is outside.
-        var motion = new Gtk.EventControllerMotion();
-        motion.motion.connect((x, y) => {
-            if (!tray.is_expanded()) { cancel_collapse(); return; }
-            if (inside_bounded_area(x, y)) cancel_collapse();
-            else schedule_collapse();
+        tray.revealer.notify["reveal-child"].connect(() => {
+            update_input_region();
+            start_resize_tracking();
         });
-        motion.leave.connect(() => {
+        tray.revealer.notify["child-revealed"].connect(update_input_region);
+
+        // Hover-out collapse. contains-pointer on a window-level motion
+        // controller is the right signal source provided the input region
+        // tracks the surface size (see above).
+        var win_motion = new Gtk.EventControllerMotion();
+        win_motion.notify["contains-pointer"].connect(() => {
+            if (win_motion.contains_pointer) { cancel_collapse(); return; }
             if (tray.is_expanded()) schedule_collapse();
         });
-        ((Gtk.Widget) win).add_controller(motion);
+        ((Gtk.Widget) win).add_controller(win_motion);
     }
 
-    bool inside_bounded_area (double x, double y) {
-        int sw = win.get_width();
-        int sh = win.get_height();
-        if (y >= sh - ICON_ROW_HEIGHT && y <= sh && x >= 0 && x <= sw)
-            return true;
-
-        double tx, ty;
-        if (!tray.translate_coordinates(win, 0, 0, out tx, out ty)) return false;
-        int tw = tray.get_width();
-        int th = tray.get_height();
-        return x >= tx && x <= tx + tw && y >= ty && y <= ty + th;
+    void start_resize_tracking () {
+        if (resize_tick_id != 0) return;
+        resize_tick_id = ((Gtk.Widget) win).add_tick_callback((widget, clock) => {
+            update_input_region();
+            if (tray.revealer.reveal_child == tray.revealer.child_revealed) {
+                resize_tick_id = 0;
+                return GLib.Source.REMOVE;
+            }
+            return GLib.Source.CONTINUE;
+        });
     }
 
     void schedule_collapse () {
@@ -138,7 +141,6 @@ public class App : GLib.Object {
 
         var region = new Cairo.Region();
 
-        // Bottom icon-row strip across the full width.
         var bottom = Cairo.RectangleInt() {
             x = 0,
             y = sh - ICON_ROW_HEIGHT,
@@ -147,7 +149,6 @@ public class App : GLib.Object {
         };
         region.union_rectangle(bottom);
 
-        // Whole tray bounding box (icons + revealer) when expanded.
         if (tray.revealer.reveal_child || tray.revealer.child_revealed) {
             double tx, ty;
             if (tray.translate_coordinates(win, 0, 0, out tx, out ty)) {
