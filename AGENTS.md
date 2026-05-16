@@ -1,6 +1,6 @@
 # LumenShell — Agent Context
 
-Wayland desktop shell for Wayfire. Five GTK4 + `gtk4-layer-shell` Vala binaries built from one Meson tree at `/home/nicholas/Dokumenter/git/LumenShell/meson.build`. Build: `meson setup build && ninja -C build` (only warnings expected).
+Wayland desktop shell for Wayfire. Six GTK4 + `gtk4-layer-shell` Vala binaries built from one Meson tree at `/home/nicholas/Dokumenter/git/LumenShell/meson.build`. Build: `meson setup build && ninja -C build` (only warnings expected).
 
 ```
 lumen-panel  ──spawns──▶  kickoff (Kickoff/)
@@ -9,6 +9,8 @@ lumen-panel  ──spawns──▶  kickoff (Kickoff/)
      ▼
  running windows (any Wayland client)
 
+ lumen-desktop (BACKGROUND-layer always-on app drawer; standalone)
+
  host keys / sysfs ──▶ lumen-osdctl ──DBus──▶ lumen-osd
                                        org.lumenshell.OSD1
 
@@ -16,7 +18,7 @@ lumen-panel  ──spawns──▶  kickoff (Kickoff/)
                   org.freedesktop.Notifications
 ```
 
-All five are independent processes. No IPC between panel/kickoff/osd/notifications beyond DBus and process spawn.
+All six are independent processes. No IPC between panel/kickoff/desktop/osd/notifications beyond DBus and process spawn.
 
 ## Repo-wide invariants
 
@@ -102,6 +104,29 @@ Full-screen overlay app launcher. Spawned by lumen-panel on launcher click.
 ### Plays with
 
 - Spawned by lumen-panel. No DBus or IPC back. `AppEntry.launch()` exits the process via `launched` signal → `close()`.
+
+---
+
+## lumen-desktop
+
+Always-visible BACKGROUND-layer app drawer. Visually mirrors Kickoff (search bar + 6×4 paginated tile grid), but the surface is permanent: normal app windows render on top, and closing them re-exposes the tiles. No overlay dim, no ESC-to-hide, no zoom-in intro.
+
+### Files
+
+Fresh copy of the Kickoff tree — `lumen-desktop/src/{appentry,searchdb}.vala`, `lumen-desktop/src/components/{apptile,pagedgrid,searchresults,pagedots}.vala`, `lumen-desktop/src/utils/aliasarray.vala` are verbatim copies; future changes to Kickoff need to be applied here too.
+
+- `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/main.vala` — `DesktopApp` (`Gtk.Application`, id `dev.lumen.desktop`). `activate` constructs `DesktopWindow` once and `present()`s it. No `hold()` — the window is always present.
+- `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/window.vala` — `DesktopWindow`. Layer-shell namespace `lumen-desktop`, layer `BACKGROUND`, all four anchors, `exclusive_zone = 0` (does NOT consume zone — distinct from Kickoff's `-1`), `KeyboardMode.ON_DEMAND` (keyboard follows pointer: clicking the search entry grants us keys, clicking another window hands them back). Inline `DESKTOP_CSS` mirrors `KICKOFF_CSS` but `.lumen-desktop-root` has transparent background (compositor wallpaper shows through) and the search class is renamed `.desktop-search`. Key controller installed without CAPTURE phase. Same Alt+1/2/3, Ctrl+Backspace, Left/Right shortcuts as Kickoff but **no ESC handler**. `AppEntry.launched` is wired to `reset_view()` (clear query + return to page 0) instead of a hide; the desktop never hides itself.
+- `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/components/pagedgrid.vala` — Same as Kickoff's but the zoom-in intro is stripped: no `ZOOM_DURATION_S`/`ZOOM_FROM`, no zoom fields, no `map()` override, no `reset_intro()`, no `on_zoom_tick()`, no zoom-time snapshot transform. Slide pagination (ease-out-expo, 700 ms) is unchanged.
+
+### Quirks
+
+- The duplication of Kickoff sources is intentional per the lumen-desktop plan. Changes to grid/tile/search logic must be applied in both trees.
+- `KeyboardMode.ON_DEMAND` is the load-bearing piece for "keyboard when focused, inert otherwise": the compositor routes keys to us only after the user clicks into the surface, and reroutes them to a normal window the moment it's clicked. `NONE` would make the search bar permanently dead; `EXCLUSIVE` would steal keys from foreground apps.
+
+### Plays with
+
+- Standalone executable. No DBus, no IPC, no spawn relationship with the panel.
 
 ---
 
@@ -201,6 +226,39 @@ CLI that signals lumen-osd. Does NOT spawn the daemon — if it's not running, p
 ### Plays with
 
 - DBus server for any app. No interaction with panel/osd/kickoff.
+
+---
+
+## wayfire-desktop-peek
+
+C++ Wayfire plugin (the first in this tree). Slides every mapped, non-minimized
+toplevel on the active output's current workspace toward its nearest screen
+corner so only a `peek_px` sliver shows on the two adjacent edges. Toggling
+again, or a pointer-button press while peeked, animates them back.
+
+Built from `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/` as
+a `shared_module` (`libwayfire-desktop-peek.so`). Gated behind the meson option
+`with_desktop_peek` (default true) so the rest of the tree builds without
+Wayfire dev headers.
+
+### Files
+
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/src/desktop-peek.cpp` — single TU. `wayfire_desktop_peek_t : wf::per_output_plugin_instance_t, wf::pointer_interaction_t`. State machine `IDLE → OUT → PEEKED → IN → IDLE`. Geometry is **never** mutated; the slide is a `wf::scene::view_2d_transformer_t` named `"wayfire-desktop-peek-slide"` added to each view's transformed node and animated via `wf::animation::simple_animation_t` keyed by `OUTPUT_EFFECT_PRE`. Holds `CAPABILITY_GRAB_INPUT` and an `wf::input_grab_t` at `wf::scene::layer::TOP` while peeked, so a pointer press on the workspace dismisses. `view_unmapped_signal` per tracked view → drop from map; if last, dismiss. `plugin_activation_data_t::cancel` → immediate `hard_reset()`.
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/metadata/wayfire-desktop-peek.xml` — option metadata: `toggle` (activator, default `<super> KEY_D`), `duration` (animation, default `250ms circle`), `peek_px` (int 0..200, default 10).
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/meson.build` — resolves `plugindir`/`metadatadir` via `wayfire.pc`, builds `shared_module`, installs both the module and the XML.
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/README.md` — build, install, activate, `wtype` / Wayfire IPC trigger notes.
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/PLAN.md` — original design doc.
+
+### Quirks
+
+- **Wayfire ABI is tied to the headers used at build time.** This source targets the API ABI shipped with Wayfire 0.10.1 (`WAYFIRE_API_ABI_VERSION` macro from `/usr/include/wayfire/plugin.hpp` — currently `2025'08'22`). Wayfire refuses to load plugins compiled against a different ABI, so a Wayfire upgrade requires a rebuild.
+- The plugin uses the C++ headers from system Wayfire (`/usr/include/wayfire/`) and `wlroots-0.19`. None of the rest of LumenShell uses C++ — `meson.build` adds C++ language support lazily inside the `with_desktop_peek` gate.
+- `wlr_pointer_button_event::state` comparison uses `WL_POINTER_BUTTON_STATE_PRESSED` (from `wayland-server-protocol.h`) — `wlroots` re-exports it but pulling it through Wayland's server header is what the rest of Wayfire does.
+- Input grab is placed at `layer::TOP` so workspace/bottom/background clicks dismiss while TOP/OVERLAY/DWIDGET overlays (e.g. a `gtk4-layer-shell` panel) keep receiving input.
+
+### Plays with
+
+- **Standalone.** No IPC, DBus, or wlhooks interaction with the rest of LumenShell. The plugin is a Wayfire plugin loaded by Wayfire itself, not a binary launched by the shell. Triggered externally only via `wtype` / `ydotool` synthesizing the bound key, or via Wayfire's own `ipc` plugin if loaded.
 
 ---
 

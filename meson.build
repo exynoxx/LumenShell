@@ -232,6 +232,32 @@ executable('kickoff',
   install: true,
 )
 
+# --- lumen-desktop ---
+# Fresh copy of Kickoff sources (per lumen-desktop/lumen-desktop.md). Future
+# changes to either Kickoff or lumen-desktop need to be applied to both —
+# the duplication is intentional, not a shared target.
+desktop_deps = kickoff_deps
+desktop_vala_args = kickoff_vala_args
+
+desktop_sources = files(
+  'lumen-desktop/src/main.vala',
+  'lumen-desktop/src/window.vala',
+  'lumen-desktop/src/appentry.vala',
+  'lumen-desktop/src/searchdb.vala',
+  'lumen-desktop/src/components/apptile.vala',
+  'lumen-desktop/src/components/pagedgrid.vala',
+  'lumen-desktop/src/components/searchresults.vala',
+  'lumen-desktop/src/components/pagedots.vala',
+  'lumen-desktop/src/utils/aliasarray.vala',
+)
+
+executable('lumen-desktop',
+  desktop_sources,
+  vala_args: desktop_vala_args,
+  dependencies: desktop_deps,
+  install: true,
+)
+
 # --- lumen-osdctl ---
 osdctl_deps = [glib_dep, gio_dep, m_dep]
 
