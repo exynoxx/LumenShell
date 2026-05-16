@@ -61,34 +61,6 @@ public class App : GLib.Object {
         });
         ((Gtk.Widget) win).add_controller(esc);
 
-        // Collapse when the pointer leaves the panel surface entirely.
-        // Watching contains-pointer on the *window* (not the tray) sidesteps
-        // the transient-leave problem the tray motion controller had during
-        // the reveal animation: the layer-shell window only grows by adding
-        // input region, so a pointer that's inside before expansion stays
-        // inside throughout. A short debounce absorbs any pointer flicker
-        // when the input region updates mid-frame.
-        uint leave_source = 0;
-        var win_motion = new Gtk.EventControllerMotion();
-        win_motion.notify["contains-pointer"].connect(() => {
-            if (win_motion.contains_pointer) {
-                if (leave_source != 0) {
-                    GLib.Source.remove(leave_source);
-                    leave_source = 0;
-                }
-                return;
-            }
-            if (!tray.is_expanded()) return;
-            if (leave_source != 0) return;
-            leave_source = GLib.Timeout.add(120, () => {
-                leave_source = 0;
-                if (!win_motion.contains_pointer && tray.is_expanded())
-                    tray.collapse();
-                return Source.REMOVE;
-            });
-        });
-        ((Gtk.Widget) win).add_controller(win_motion);
-
         // Input region: re-apply when the surface is mapped/resized or the
         // tray reveals/hides its page area.
         // realize is a GTK4 method, not a signal; map fires after realize and
