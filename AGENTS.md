@@ -68,6 +68,7 @@ GTK4 + layer-shell bottom-of-screen panel. Left half: app entries (launcher + pe
 - `Gtk.EventControllerMotion.leave` on TrayBar fires during the reveal animation as layout shifts under the cursor → collapses immediately on click. Use `notify["contains-pointer"]` on the **window** instead.
 - `Pango.attr_size_new(...)` doesn't exist in the vapi; use `Pango.AttrSize.new_absolute(size_pt * Pango.SCALE)`.
 - `Gtk.Widget.size_allocate(Allocation, baseline)` is bound as `size_allocate(int width, int height, int baseline)` in Vala. To offset a child: `child.allocate(w, h, baseline, new Gsk.Transform().translate({x, y}))`.
+- **Nested-wayfire dev caveat:** if Wayfire (and thus lumen-panel) is launched as a window inside an existing desktop session, mouse events break the moment that host window is resized — and the user will almost certainly resize it. The input region computed by `update_input_region()` is keyed to the output size at map time and doesn't track host-window resizes. Symptoms: clicks land outside the visible panel, or stop landing on the tray. Restart lumen-panel after any resize, or test on a real Wayfire session.
 
 ### Plays with
 
