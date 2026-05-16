@@ -3,9 +3,14 @@ using Gtk;
 public class App : GLib.Object {
 
     public const int ICON_ROW_HEIGHT = 60;
+    // Grace period before the tray collapses after the pointer leaves the
+    // bounded area. Lenient enough to forgive diagonal mouse paths that clip
+    // the concave corner between the bottom strip and the expanded tray.
+    public const uint COLLAPSE_DELAY_MS = 500;
 
     Gtk.ApplicationWindow win;
     TrayBar tray;
+    uint collapse_timeout_id = 0;
 
     public void activate (Gtk.Application app) {
         win = new Gtk.ApplicationWindow(app);
@@ -70,6 +75,50 @@ public class App : GLib.Object {
         win.map.connect(update_input_region);
         tray.revealer.notify["child-revealed"].connect(update_input_region);
         tray.revealer.notify["reveal-child"].connect(update_input_region);
+
+        // Bounded-box hover-out collapse. A single window-level motion
+        // controller avoids the per-widget enter/leave races that fired a
+        // spurious leave the moment a click expanded the tray. We treat the
+        // union of (bottom strip ∪ expanded tray box) as one region and
+        // collapse after a short grace period once the pointer is outside.
+        var motion = new Gtk.EventControllerMotion();
+        motion.motion.connect((x, y) => {
+            if (!tray.is_expanded()) { cancel_collapse(); return; }
+            if (inside_bounded_area(x, y)) cancel_collapse();
+            else schedule_collapse();
+        });
+        motion.leave.connect(() => {
+            if (tray.is_expanded()) schedule_collapse();
+        });
+        ((Gtk.Widget) win).add_controller(motion);
+    }
+
+    bool inside_bounded_area (double x, double y) {
+        int sw = win.get_width();
+        int sh = win.get_height();
+        if (y >= sh - ICON_ROW_HEIGHT && y <= sh && x >= 0 && x <= sw)
+            return true;
+
+        double tx, ty;
+        if (!tray.translate_coordinates(win, 0, 0, out tx, out ty)) return false;
+        int tw = tray.get_width();
+        int th = tray.get_height();
+        return x >= tx && x <= tx + tw && y >= ty && y <= ty + th;
+    }
+
+    void schedule_collapse () {
+        if (collapse_timeout_id != 0) return;
+        collapse_timeout_id = GLib.Timeout.add(COLLAPSE_DELAY_MS, () => {
+            collapse_timeout_id = 0;
+            if (tray.is_expanded()) tray.collapse();
+            return GLib.Source.REMOVE;
+        });
+    }
+
+    void cancel_collapse () {
+        if (collapse_timeout_id == 0) return;
+        GLib.Source.remove(collapse_timeout_id);
+        collapse_timeout_id = 0;
     }
 
     // Clip the layer-shell surface's input region to the parts the user can
