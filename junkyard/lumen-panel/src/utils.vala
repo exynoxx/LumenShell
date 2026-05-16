@@ -1,0 +1,247 @@
+using GLib;
+
+public class Utils {
+
+    public static string RES_DIR {
+        get { return Environment.get_variable("LUMEN_RES_DIR") ?? "/usr/share/lumen-panel/res/"; }
+    }
+
+    public static string KICKOFF_BIN {
+        get { return Environment.get_variable("LUMEN_KICKOFF_BIN") ?? "kickoff"; }
+    }
+
+    public static string THEME_FILE {
+        get { return Environment.get_variable("LUMEN_THEME_FILE") ?? "/usr/share/lumen-panel/default-theme.json"; }
+    }
+
+
+    // Get XDG data directories
+    private static string[] get_xdg_data_dirs() {
+        var dirs = new Gee.ArrayList<string>();
+
+        string user_data_dir = Environment.get_user_data_dir();
+        dirs.add(user_data_dir);
+
+        string system_dirs = Environment.get_variable("XDG_DATA_DIRS");
+        if (system_dirs == null || system_dirs == "") {
+            system_dirs = "/usr/local/share:/usr/share";
+        }
+
+        foreach (string dir in system_dirs.split(":")) {
+            if (dir != "") {
+                dirs.add(dir);
+            }
+        }
+
+        return dirs.to_array();
+    }
+
+    // Find desktop file from app_id
+    public static string? find_desktop_file(string app_id) {
+        string[] search_dirs = get_xdg_data_dirs();
+
+        // Try exact match first: app_id.desktop
+        foreach (string data_dir in search_dirs) {
+            string desktop_path = Path.build_filename(data_dir, "applications", app_id + ".desktop");
+            if (FileUtils.test(desktop_path, FileTest.EXISTS)) {
+                return desktop_path;
+            }
+        }
+
+        // Try case-insensitive match
+        foreach (string data_dir in search_dirs) {
+            string apps_dir = Path.build_filename(data_dir, "applications");
+            try {
+                var dir = Dir.open(apps_dir);
+                string? name = null;
+                while ((name = dir.read_name()) != null) {
+                    if (name.down().has_prefix(app_id.down()) && name.has_suffix(".desktop")) {
+                        return Path.build_filename(apps_dir, name);
+                    }
+                }
+            } catch (FileError e) {
+                // Directory doesn't exist, continue
+            }
+        }
+
+        return null;
+    }
+
+    // Parse desktop file and get icon name/path
+    public static string? get_icon_from_desktop_file(string desktop_file_path) {
+        try {
+            var key_file = new KeyFile();
+            key_file.load_from_file(desktop_file_path, KeyFileFlags.NONE);
+
+            if (key_file.has_key("Desktop Entry", "Icon")) {
+                return key_file.get_string("Desktop Entry", "Icon");
+            }
+        } catch (Error e) {
+            warning("Failed to parse desktop file: %s", e.message);
+        }
+
+        return null;
+    }
+
+    public static string? get_name_from_desktop_file(string desktop_file_path) {
+        try {
+            var key_file = new KeyFile();
+            key_file.load_from_file(desktop_file_path, KeyFileFlags.NONE);
+
+            if (key_file.has_key("Desktop Entry", "Name")) {
+                return key_file.get_string("Desktop Entry", "Name");
+            }
+        } catch (Error e) {
+            warning("Failed to parse desktop file name: %s", e.message);
+        }
+
+        return null;
+    }
+
+    private static string sanitize_exec(string exec) {
+        var out = new StringBuilder();
+        foreach (var token in exec.split(" ")) {
+            if (token == "") continue;
+            if (token.has_prefix("%")) continue;
+
+            var cleaned = token.replace("%U", "")
+                               .replace("%u", "")
+                               .replace("%F", "")
+                               .replace("%f", "")
+                               .replace("%i", "")
+                               .replace("%c", "")
+                               .replace("%k", "");
+            if (cleaned.strip() == "") continue;
+
+            if (out.len > 0) out.append(" ");
+            out.append(cleaned);
+        }
+        return out.str;
+    }
+
+    public static string? get_exec_from_desktop_file(string desktop_file_path) {
+        try {
+            var key_file = new KeyFile();
+            key_file.load_from_file(desktop_file_path, KeyFileFlags.NONE);
+
+            if (key_file.has_key("Desktop Entry", "Exec")) {
+                var exec = key_file.get_string("Desktop Entry", "Exec");
+                var sanitized = sanitize_exec(exec);
+                if(sanitized != "") return sanitized;
+            }
+        } catch (Error e) {
+            warning("Failed to parse desktop file exec: %s", e.message);
+        }
+
+        return null;
+    }
+
+    // Get XDG icon theme directories
+    private static string[] get_icon_theme_dirs() {
+        var dirs = new Gee.ArrayList<string>();
+
+        string home = Environment.get_home_dir();
+        dirs.add(Path.build_filename(home, ".icons"));
+        dirs.add(Path.build_filename(home, ".local", "share", "icons"));
+
+        string[] data_dirs = get_xdg_data_dirs();
+        foreach (string data_dir in data_dirs) {
+            dirs.add(Path.build_filename(data_dir, "icons"));
+        }
+
+        dirs.add("/usr/share/pixmaps");
+
+        return dirs.to_array();
+    }
+
+    public static string get_current_icon_theme() {
+        var gtk_settings_file = Environment.get_home_dir() + "/.config/gtk-4.0/settings.ini";
+        var kde_settings_file = Environment.get_home_dir() + "/.config/kdeglobals";
+
+        string? theme = Ini.get_key_value(gtk_settings_file, "gtk-icon-theme-name");
+        if (theme == null)
+            theme = Ini.get_key_value(kde_settings_file, "Theme");
+        return theme ?? "hicolor";
+    }
+
+    public static string get_display_name_from_app_id(string app_id) {
+        string? desktop_file = find_desktop_file(app_id);
+        if (desktop_file == null) return app_id;
+
+        string? name = get_name_from_desktop_file(desktop_file);
+        return name ?? app_id;
+    }
+
+    public static string? get_launch_cmd_from_app_id(string app_id) {
+        string? desktop_file = find_desktop_file(app_id);
+        if (desktop_file == null) return null;
+        return get_exec_from_desktop_file(desktop_file);
+    }
+
+    // Find icon file from icon name
+    public static string? find_icon_path(string icon_name, int size = 32) {
+
+        var theme = get_current_icon_theme();
+
+        if (Path.is_absolute(icon_name)) {
+            if (FileUtils.test(icon_name, FileTest.EXISTS)) {
+                return icon_name;
+            }
+        }
+
+        string[] icon_dirs = get_icon_theme_dirs();
+        string[] extensions = { ".png", ".svg", ".xpm" };
+
+        foreach (string icon_dir in icon_dirs) {
+            string[] size_dirs = {
+                @"$(size)x$(size)",
+                "48x48",
+                "32x32",
+                "24x24",
+                "16x16",
+                "scalable",
+            };
+
+            foreach (string size_dir in size_dirs) {
+                foreach (string ext in extensions) {
+                    string icon_path = Path.build_filename(icon_dir, theme, size_dir, "apps", icon_name + ext);
+                    if (FileUtils.test(icon_path, FileTest.EXISTS)) {
+                        return icon_path;
+                    }
+                }
+            }
+
+            foreach (string ext in extensions) {
+                string icon_path = Path.build_filename(icon_dir, icon_name + ext);
+                if (FileUtils.test(icon_path, FileTest.EXISTS)) {
+                    return icon_path;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Main function: get icon path from app_id
+    public static string? get_icon_path_from_app_id(string app_id, int size = 32) {
+        string? desktop_file = find_desktop_file(app_id);
+        if (desktop_file == null) {
+            warning("Desktop file not found for app_id: %s", app_id);
+            return null;
+        }
+
+        string? icon_name = get_icon_from_desktop_file(desktop_file);
+        if (icon_name == null) {
+            warning("No icon specified in desktop file");
+            return null;
+        }
+
+        string? icon_path = find_icon_path(icon_name, size);
+        if (icon_path == null) {
+            warning("Icon file not found: %s", icon_name);
+            return null;
+        }
+
+        return icon_path;
+    }
+}
