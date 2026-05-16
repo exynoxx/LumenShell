@@ -116,7 +116,8 @@ Always-visible BACKGROUND-layer app drawer. Visually mirrors Kickoff (search bar
 Fresh copy of the Kickoff tree — `lumen-desktop/src/{appentry,searchdb}.vala`, `lumen-desktop/src/components/{apptile,pagedgrid,searchresults,pagedots}.vala`, `lumen-desktop/src/utils/aliasarray.vala` are verbatim copies; future changes to Kickoff need to be applied here too.
 
 - `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/main.vala` — `DesktopApp` (`Gtk.Application`, id `dev.lumen.desktop`). `activate` constructs `DesktopWindow` once and `present()`s it. No `hold()` — the window is always present.
-- `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/window.vala` — `DesktopWindow`. Layer-shell namespace `lumen-desktop`, layer `BACKGROUND`, all four anchors, `exclusive_zone = 0` (does NOT consume zone — distinct from Kickoff's `-1`), `KeyboardMode.ON_DEMAND` (keyboard follows pointer: clicking the search entry grants us keys, clicking another window hands them back). Inline `DESKTOP_CSS` mirrors `KICKOFF_CSS` but `.lumen-desktop-root` has transparent background (compositor wallpaper shows through) and the search class is renamed `.desktop-search`. Key controller installed without CAPTURE phase. Same Alt+1/2/3, Ctrl+Backspace, Left/Right shortcuts as Kickoff but **no ESC handler**. `AppEntry.launched` is wired to `reset_view()` (clear query + return to page 0) instead of a hide; the desktop never hides itself.
+- `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/window.vala` — `DesktopWindow`. Layer-shell namespace `lumen-desktop`, layer `BACKGROUND`, all four anchors, `exclusive_zone = 0` (does NOT consume zone — distinct from Kickoff's `-1`), `KeyboardMode.ON_DEMAND` (keyboard follows pointer: clicking the search entry grants us keys, clicking another window hands them back). Inline `DESKTOP_CSS` mirrors `KICKOFF_CSS` but `.lumen-desktop-root` has transparent background (compositor wallpaper shows through) and the search class is renamed `.desktop-search`. Key controller installed without CAPTURE phase. Same Alt+1/2/3, Ctrl+Backspace, Left/Right shortcuts as Kickoff but **no ESC handler**. `AppEntry.launched` is wired to `reset_view()` (clear query + return to page 0) instead of a hide; the desktop never hides itself. `notify["is-active"]` → `PeekIpc.start()` so gaining focus triggers the [[wayfire-desktop-peek]] plugin.
+- `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/peek_ipc.vala` — minimal Wayfire IPC client. `PeekIpc.start()` / `PeekIpc.stop()` open `WAYFIRE_SOCKET`, send `[u32_le length][JSON]` with `{"method":"wayfire-desktop-peek/start","data":{}}` (or `/stop`), close. Errors logged to stderr; never reads the reply. No-op if `WAYFIRE_SOCKET` is unset (e.g. when running outside a Wayfire session that has the `ipc` plugin loaded).
 - `/home/nicholas/Dokumenter/git/LumenShell/lumen-desktop/src/components/pagedgrid.vala` — Same as Kickoff's but the zoom-in intro is stripped: no `ZOOM_DURATION_S`/`ZOOM_FROM`, no zoom fields, no `map()` override, no `reset_intro()`, no `on_zoom_tick()`, no zoom-time snapshot transform. Slide pagination (ease-out-expo, 700 ms) is unchanged.
 
 ### Quirks
@@ -126,7 +127,7 @@ Fresh copy of the Kickoff tree — `lumen-desktop/src/{appentry,searchdb}.vala`,
 
 ### Plays with
 
-- Standalone executable. No DBus, no IPC, no spawn relationship with the panel.
+- Sends one-shot Wayfire IPC calls to `wayfire-desktop-peek/start` over `WAYFIRE_SOCKET` on focus-gain. No DBus, no spawn relationship with the panel. Must be launched as a child of the running Wayfire process (typically via `wayfire.ini` `[autostart]`) so that `WAYFIRE_SOCKET` is inherited.
 
 ---
 
@@ -232,9 +233,10 @@ CLI that signals lumen-osd. Does NOT spawn the daemon — if it's not running, p
 ## wayfire-desktop-peek
 
 C++ Wayfire plugin (the first in this tree). Slides every mapped, non-minimized
-toplevel on the active output's current workspace toward its nearest screen
-corner so only a `peek_px` sliver shows on the two adjacent edges. Toggling
-again, or a pointer-button press while peeked, animates them back.
+toplevel on the active output's current workspace to a corner using round-robin
+assignment (TL → TR → BL → BR → TL …) in stacking order, so only a `peek_px`
+sliver shows on the two adjacent edges. Toggling again, or a pointer-button
+press while peeked, animates them back.
 
 Built from `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/` as
 a `shared_module` (`libwayfire-desktop-peek.so`). Gated behind the meson option
@@ -243,22 +245,40 @@ Wayfire dev headers.
 
 ### Files
 
-- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/src/desktop-peek.cpp` — single TU. `wayfire_desktop_peek_t : wf::per_output_plugin_instance_t, wf::pointer_interaction_t`. State machine `IDLE → OUT → PEEKED → IN → IDLE`. Geometry is **never** mutated; the slide is a `wf::scene::view_2d_transformer_t` named `"wayfire-desktop-peek-slide"` added to each view's transformed node and animated via `wf::animation::simple_animation_t` keyed by `OUTPUT_EFFECT_PRE`. Holds `CAPABILITY_GRAB_INPUT` and an `wf::input_grab_t` at `wf::scene::layer::TOP` while peeked, so a pointer press on the workspace dismisses. `view_unmapped_signal` per tracked view → drop from map; if last, dismiss. `plugin_activation_data_t::cancel` → immediate `hard_reset()`.
-- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/metadata/wayfire-desktop-peek.xml` — option metadata: `toggle` (activator, default `<super> KEY_D`), `duration` (animation, default `250ms circle`), `peek_px` (int 0..200, default 10).
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/src/desktop-peek.cpp` — single TU. `wayfire_desktop_peek_t : wf::per_output_plugin_instance_t, wf::pointer_interaction_t` for the per-output state. `wayfire_desktop_peek_plugin_t : wf::per_output_plugin_t<…>` owns the plugin-wide `wf::ipc_activator_t` and the `start`/`stop` IPC methods. State machine `IDLE → OUT → PEEKED → IN → IDLE`. Geometry is **never** mutated; the slide is a `wf::scene::view_2d_transformer_t` named `"wayfire-desktop-peek-slide"` added to each view's transformed node and animated via `wf::animation::simple_animation_t` keyed by `OUTPUT_EFFECT_PRE`. Frame hook drives translations from `(double) anim` (transition value), **not** `anim.progress()` — using `progress()` instead breaks the restore animation because progress always runs 0→1 regardless of transition direction. Holds `CAPABILITY_GRAB_INPUT` and an `wf::input_grab_t` at `wf::scene::layer::TOP` while peeked, so a pointer press on the workspace dismisses. `view_unmapped_signal` per tracked view → drop from map; if last, dismiss. `plugin_activation_data_t::cancel` → immediate `hard_reset()`.
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/metadata/wayfire-desktop-peek.xml` — option metadata: `toggle` (activator, default `<super> KEY_D`), `duration` (animation, default `250ms circle`), `peek_px` (int 0..400, default 50).
 - `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/meson.build` — resolves `plugindir`/`metadatadir` via `wayfire.pc`, builds `shared_module`, installs both the module and the XML.
 - `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/README.md` — build, install, activate, `wtype` / Wayfire IPC trigger notes.
-- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/PLAN.md` — original design doc.
+- `/home/nicholas/Dokumenter/git/LumenShell/wayfire-desktop-peek/PLAN.md` — original design doc (nearest-corner geometry described there has been superseded by round-robin).
+
+### IPC surface
+
+Registered via Wayfire's `ipc` plugin (must be loaded in `core/plugins`):
+
+| Method | Behaviour |
+|---|---|
+| `wayfire-desktop-peek/toggle` | Idle → peek, peeked/out → restore. Also bound to the activator option. |
+| `wayfire-desktop-peek/start`  | Idle → peek; in-flight restore → reverse back to peeked; no-op when already peeked. |
+| `wayfire-desktop-peek/stop`   | Peeked/out → restore; no-op when idle. |
+
+Method names are literal — payload is just `{"method":"<name>","data":{}}` with the standard 4-byte little-endian length prefix on Wayfire's `WAYFIRE_SOCKET`. `start` and `stop` are registered directly on the `wf::ipc::method_repository_t` and route to whichever per-output instance corresponds to `seat->get_active_output()`.
 
 ### Quirks
 
 - **Wayfire ABI is tied to the headers used at build time.** This source targets the API ABI shipped with Wayfire 0.10.1 (`WAYFIRE_API_ABI_VERSION` macro from `/usr/include/wayfire/plugin.hpp` — currently `2025'08'22`). Wayfire refuses to load plugins compiled against a different ABI, so a Wayfire upgrade requires a rebuild.
 - The plugin uses the C++ headers from system Wayfire (`/usr/include/wayfire/`) and `wlroots-0.19`. None of the rest of LumenShell uses C++ — `meson.build` adds C++ language support lazily inside the `with_desktop_peek` gate.
+- **`glm-devel` is a hidden build prerequisite.** `wayfire.pc` does not list GLM as a `Requires`, but Wayfire's public headers `#include <glm/vec4.hpp>`. Without `glm-devel`, the TU fails to compile.
 - `wlr_pointer_button_event::state` comparison uses `WL_POINTER_BUTTON_STATE_PRESSED` (from `wayland-server-protocol.h`) — `wlroots` re-exports it but pulling it through Wayland's server header is what the rest of Wayfire does.
-- Input grab is placed at `layer::TOP` so workspace/bottom/background clicks dismiss while TOP/OVERLAY/DWIDGET overlays (e.g. a `gtk4-layer-shell` panel) keep receiving input.
+- Input grab is placed at `layer::TOP` so workspace/bottom/background clicks dismiss while TOP/OVERLAY/DWIDGET overlays (e.g. a `gtk4-layer-shell` panel) keep receiving input. **Consequence for lumen-desktop:** lumen-desktop sits on BACKGROUND, so while the plugin is peeked its tiles are not clickable — clicks are intercepted by the grab and dismiss the peek. The current UX is "click desktop → peek opens revealing tiles → toggle/click to dismiss → tiles become clickable". Removing this constraint requires either removing the grab or making it skip when triggered via IPC.
+
+### Things to know when testing
+
+- **Trigger from lumen-desktop:** lumen-desktop calls `wayfire-desktop-peek/start` over Wayfire IPC whenever its window gains focus (`notify["is-active"]`, see `lumen-desktop/src/peek_ipc.vala`). For this to work, `WAYFIRE_SOCKET` must be in the env of whichever process spawns lumen-desktop — Wayfire's `ipc` plugin sets that variable before launching `[autostart]` children, so launching lumen-desktop from `wayfire.ini`'s `[autostart]` section (or any descendant of the Wayfire process) is sufficient. Launching it from outside the Wayfire session makes `PeekIpc.start()` a silent no-op.
+- **Grab vs lumen-desktop interactivity:** see the input-grab quirk above. While peek is active, lumen-desktop's `Gtk.SearchEntry` and tiles do not receive pointer events — they get swallowed by the input grab.
 
 ### Plays with
 
-- **Standalone.** No IPC, DBus, or wlhooks interaction with the rest of LumenShell. The plugin is a Wayfire plugin loaded by Wayfire itself, not a binary launched by the shell. Triggered externally only via `wtype` / `ydotool` synthesizing the bound key, or via Wayfire's own `ipc` plugin if loaded.
+- **lumen-desktop** is the only LumenShell binary that talks to this plugin. Trigger surface is one-way: lumen-desktop → Wayfire IPC → plugin. No DBus, no wlhooks. The plugin can also be driven by `wtype` / `ydotool` synthesizing the keybinding, or by any other Wayfire IPC client calling the three methods above.
 
 ---
 
