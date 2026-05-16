@@ -74,16 +74,18 @@ class wayfire_desktop_peek_t :
 
     wf::effect_hook_t on_frame = [this] ()
     {
-        const double p = anim.progress();
-        apply_progress(p);
+        const double v = (double) anim;
+        apply_progress(v);
 
         if (!anim.running())
         {
             if (state == state_t::OUT)
             {
+                apply_progress(1.0);
                 state = state_t::PEEKED;
             } else if (state == state_t::IN)
             {
+                apply_progress(0.0);
                 hard_reset();
             }
         }
@@ -131,7 +133,7 @@ class wayfire_desktop_peek_t :
         tracked_views.clear();
         const auto geo = output->get_relative_geometry();
         const int W = geo.width, H = geo.height;
-        const int peek = std::clamp((int) peek_px_opt, 0, 200);
+        const int peek = std::clamp((int) peek_px_opt, 0, 400);
 
         auto views = output->wset()->get_views(
             wf::WSET_MAPPED_ONLY | wf::WSET_CURRENT_WORKSPACE);
@@ -197,7 +199,7 @@ class wayfire_desktop_peek_t :
         }
 
         state = state_t::IN;
-        anim.animate(anim.progress(), 0.0);
+        anim.animate((double) anim, 0.0);
     }
 
     void apply_progress(double p)

@@ -14,9 +14,9 @@
     </option>
     <option name="peek_px" type="int">
       <_short>Peek size (px)</_short>
-      <default>10</default>
+      <default>50</default>
       <min>0</min>
-      <max>200</max>
+      <max>400</max>
     </option>
   </plugin>
 </wayfire>
