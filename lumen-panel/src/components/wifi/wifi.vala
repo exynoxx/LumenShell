@@ -15,16 +15,7 @@ public class WifiTray : GLib.Object, IPagedTrayItem {
     }
 
     void update_icon () {
-        if (!service.connected) {
-            icon.set_icon_from_resource("nowifi");
-            return;
-        }
-        // Pick strength based on the connected SSID's current signal.
-        int sig = 0;
-        foreach (var n in service.nets) {
-            if (n.ssid == service.connected_ssid) { sig = n.signal; break; }
-        }
-        icon.set_icon_from_resource(sig >= 60 ? "wifi" : sig > 0 ? "wifi-unknown" : "wifi");
+        icon.set_icon_from_resource(service.connected ? "wifi" : "nowifi");
     }
 
     public Gtk.Widget icon_widget () { return icon; }
