@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-desktop-peek">
+    <_short>Desktop Peek</_short>
+    <_long>Slide windows to the nearest corner to reveal the desktop.</_long>
+    <category>Desktop</category>
+    <option name="toggle" type="activator">
+      <_short>Toggle peek</_short>
+      <default>&lt;super&gt; KEY_D</default>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>250ms circle</default>
+    </option>
+    <option name="peek_px" type="int">
+      <_short>Peek size (px)</_short>
+      <default>10</default>
+      <min>0</min>
+      <max>200</max>
+    </option>
+  </plugin>
+</wayfire>

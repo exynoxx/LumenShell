@@ -1,6 +1,5 @@
 .vscode
 main
 .agents
-plan.md
-PLAN.md
+*.md
 /swayosd*

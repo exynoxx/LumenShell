@@ -278,3 +278,11 @@ executable('lumen-osdctl',
   dependencies: osdctl_deps,
   install: true,
 )
+
+# --- wayfire-desktop-peek (C++ Wayfire plugin) ---
+# Gated so users without Wayfire dev headers can disable with
+# -Dwith_desktop_peek=false. Standalone — no link with the rest of the tree.
+if get_option('with_desktop_peek')
+  add_languages('cpp', native: false)
+  subdir('wayfire-desktop-peek')
+endif
