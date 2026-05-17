@@ -153,12 +153,70 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         dots.set_visible(grid.page_count > 1);
     }
 
+    private void peek_log(string msg) {
+        try {
+            var f = GLib.File.new_for_path("/tmp/lumen-desktop-peek.log");
+            var os = f.append_to(GLib.FileCreateFlags.NONE);
+            var ts = new GLib.DateTime.now_local();
+            var line = "[%s] window: %s\n".printf(ts.format("%H:%M:%S.%f"), msg);
+            os.write(line.data);
+            os.close();
+        } catch (GLib.Error e) {
+            GLib.stderr.printf("peek_log failed: %s\n", e.message);
+        }
+    }
+
+    private void trigger_peek(string reason) {
+        peek_log(@"trigger_peek from $reason");
+        LumenDesktop.PeekIpc.toggle();
+    }
+
     private void build_ui() {
         var root = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
         root.set_halign(Gtk.Align.FILL);
         root.set_valign(Gtk.Align.FILL);
         root.set_hexpand(true);
         root.set_vexpand(true);
+
+        // Click on empty wallpaper area triggers a Wayfire desktop-peek.
+        // BUBBLE phase (default) means tile / search-entry click controllers
+        // get the press first. To make sure a tile launch never piggybacks
+        // a peek, we ALSO walk up from the picked widget and skip the trigger
+        // if any ancestor is a Gtk.Button or Gtk.Editable. That covers two
+        // cases the propagation rules alone don't: child gestures that don't
+        // explicitly claim the sequence, and non-button interactive widgets
+        // like the SearchEntry.
+        var click = new Gtk.GestureClick();
+        click.set_button(0);
+        click.pressed.connect((n_press, x, y) => {
+            var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
+            var name   = picked == null ? "<null>" : picked.get_type().name();
+            peek_log(@"root box clicked: x=$x y=$y n_press=$n_press picked=$name");
+
+            for (var w = picked; w != null && w != root; w = w.get_parent()) {
+                if (w is Gtk.Button || w is Gtk.Editable) {
+                    peek_log(@"  skip peek: ancestor $(w.get_type().name()) is interactive");
+                    return;
+                }
+            }
+
+            trigger_peek("root-click");
+        });
+        root.add_controller(click);
+
+        // Layer-shell surfaces never get GDK_TOPLEVEL_STATE_FOCUSED, so
+        // notify::is-active is silent. The pointer-enter on the root box is
+        // the closest analogue to "focus shifted to lumen-desktop" we get;
+        // log it for visibility but DO NOT trigger from it (would peek
+        // every time the user mouses across the desktop between windows).
+        var motion = new Gtk.EventControllerMotion();
+        motion.enter.connect((x, y) => {
+            peek_log(@"root box pointer-enter: x=$x y=$y");
+        });
+        motion.leave.connect(() => {
+            peek_log("root box pointer-leave");
+        });
+        root.add_controller(motion);
 
         var search_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
         search_row.add_css_class("search-row");

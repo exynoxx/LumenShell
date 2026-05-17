@@ -236,14 +236,18 @@ executable('kickoff',
 # Fresh copy of Kickoff sources (per lumen-desktop/lumen-desktop.md). Future
 # changes to either Kickoff or lumen-desktop need to be applied to both —
 # the duplication is intentional, not a shared target.
-desktop_deps = kickoff_deps
-desktop_vala_args = kickoff_vala_args
+gio_unix_dep = dependency('gio-unix-2.0')
+desktop_deps = kickoff_deps + [gio_unix_dep]
+# UnixSocketAddress for the Wayfire IPC client lives in gio-unix-2.0; Kickoff
+# doesn't need it so we extend the arg list only for lumen-desktop.
+desktop_vala_args = kickoff_vala_args + ['--pkg=gio-unix-2.0']
 
 desktop_sources = files(
   'lumen-desktop/src/main.vala',
   'lumen-desktop/src/window.vala',
   'lumen-desktop/src/appentry.vala',
   'lumen-desktop/src/searchdb.vala',
+  'lumen-desktop/src/peek_ipc.vala',
   'lumen-desktop/src/components/apptile.vala',
   'lumen-desktop/src/components/pagedgrid.vala',
   'lumen-desktop/src/components/searchresults.vala',
