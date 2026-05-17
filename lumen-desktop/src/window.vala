@@ -137,7 +137,14 @@ public class DesktopWindow : Gtk.ApplicationWindow {
             // Reset transient UI state (query + page) so the drawer doesn't
             // remain in a filtered/paginated state after the user dispatched
             // an app.
-            entry.launched.connect(() => reset_view());
+            entry.launched.connect(() => {
+                // If a peek is currently active the just-launched window will
+                // appear behind the slid-aside windows, which is confusing.
+                // /stop is a no-op when the plugin is idle, so we can fire it
+                // unconditionally instead of tracking peek state on this side.
+                LumenDesktop.PeekIpc.stop();
+                reset_view();
+            });
             list.add(entry);
         }
         list.sort((a, b) => GLib.strcmp(a.name, b.name));
