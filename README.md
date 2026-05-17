@@ -34,5 +34,24 @@ Bottom panel
 Kickoff
 <img width="1920" height="1080" alt="20251229_19h31m35s_grim" src="https://github.com/user-attachments/assets/31268306-9153-4358-aa86-85810d480bc1" />
 
+<table align="center">
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/shots/shot-1779036345.png" width="700"><br>
+      <sub>full view</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/shots/shot-1779035985.png" width="340"><br>
+      <sub>status strip</sub>
+    </td>
+    <td align="center">
+      <img src="docs/shots/shot-1779036456.png" width="340"><br>
+      <sub>small window</sub>
+    </td>
+  </tr>
+</table>
+
 ### License
 GNU General Public License v3.0
