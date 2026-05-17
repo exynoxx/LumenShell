@@ -280,11 +280,14 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     }
 
     private void install_key_controller() {
-        // No CAPTURE-phase override here — keyboard_mode = NONE means events
-        // only reach us when something else (e.g. a clicked search entry)
-        // routes them. We keep the controller so Alt+1/2/3 and Ctrl+Backspace
-        // work whenever focus does land on us.
+        // CAPTURE phase: the search entry has focus the moment the desktop is
+        // clicked, and it would otherwise swallow Left/Right for caret motion
+        // before our handler ever sees them. Capturing first lets us claim
+        // arrow keys for page navigation while still returning false for
+        // printable keys, so typing falls through to the SearchEntry and
+        // populates the query as expected.
         var key = new Gtk.EventControllerKey();
+        key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
         key.key_pressed.connect(on_key_pressed);
         ((Gtk.Widget) this).add_controller(key);
     }
