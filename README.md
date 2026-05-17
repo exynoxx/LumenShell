@@ -38,7 +38,6 @@ Kickoff
   <tr>
     <td colspan="2" align="center">
       <img src="docs/shots/shot-1779036345.png" width="700"><br>
-      <sub>full view</sub>
     </td>
   </tr>
   <tr>
@@ -48,7 +47,7 @@ Kickoff
     </td>
     <td align="center">
       <img src="docs/shots/shot-1779036456.png" width="340"><br>
-      <sub>small window</sub>
+      <sub>osd</sub>
     </td>
   </tr>
 </table>
