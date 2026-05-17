@@ -275,3 +275,10 @@ if get_option('with_desktop_peek')
   add_languages('cpp', native: false)
   subdir('wayfire-desktop-peek')
 endif
+
+# --- wayfire-startup-zoom (C++ Wayfire plugin) ---
+# Same gating story as wayfire-desktop-peek. Standalone.
+if get_option('with_startup_zoom')
+  add_languages('cpp', native: false)
+  subdir('wayfire-startup-zoom')
+endif

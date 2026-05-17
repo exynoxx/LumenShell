@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-startup-zoom">
+    <_short>Startup Zoom</_short>
+    <_long>One-shot CRT-style zoom-from-center animation when Wayfire first starts. Scales every initial view from a small centered square up to its real position.</_long>
+    <category>Effects</category>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>600ms circle</default>
+    </option>
+    <option name="initial_scale" type="double">
+      <_short>Initial scale</_short>
+      <_long>Starting scale of the views before they zoom up to 1.0. Lower values = views appear smaller and farther away.</_long>
+      <default>0.05</default>
+      <min>0.01</min>
+      <max>1.0</max>
+      <precision>0.01</precision>
+    </option>
+    <option name="grace_ms" type="int">
+      <_short>Grace period (ms)</_short>
+      <_long>If no view maps within this many milliseconds after the plugin loads, the animation is skipped. Prevents the plugin from sitting armed forever on an empty session.</_long>
+      <default>3000</default>
+      <min>100</min>
+      <max>30000</max>
+    </option>
+  </plugin>
+</wayfire>
