@@ -14,7 +14,6 @@ public class AppEntry : Gtk.Button {
     public string launch_cmd   { get; private set; default = ""; }
     public string icon_name    { get; private set; default = ""; }
     public bool   is_pinned    { get; set;     default = false; }
-    public bool   is_launcher  { get; construct;            }
 
     Gee.ArrayList<uint> window_ids = new Gee.ArrayList<uint>();
     int cycle_idx = 0;
@@ -25,12 +24,11 @@ public class AppEntry : Gtk.Button {
     public signal void pin_toggled ();
     public signal void unpin_and_removable ();
 
-    public AppEntry (string app_id, AppMetadata meta, bool is_launcher) {
-        GLib.Object(app_id: app_id, is_launcher: is_launcher);
+    public AppEntry (string app_id, AppMetadata meta) {
+        GLib.Object(app_id: app_id);
         this.display_name = meta.name == "" ? app_id : meta.name;
         this.launch_cmd   = meta.launch_cmd;
         this.icon_name    = meta.icon;
-        if (is_launcher) this.is_pinned = true;
 
         add_css_class("app-entry");
         set_size_request(SLOT_WIDTH, SLOT_HEIGHT);
@@ -46,12 +44,9 @@ public class AppEntry : Gtk.Button {
 
         clicked.connect(on_primary_click);
 
-        // Right-click → popover. Launcher has no popover.
-        if (!is_launcher) {
-            var rclick = new Gtk.GestureClick() { button = Gdk.BUTTON_SECONDARY };
-            rclick.released.connect((n, x, y) => show_popup());
-            add_controller(rclick);
-        }
+        var rclick = new Gtk.GestureClick() { button = Gdk.BUTTON_SECONDARY };
+        rclick.released.connect((n, x, y) => show_popup());
+        add_controller(rclick);
     }
 
     public bool has_open_windows () { return window_ids.size > 0; }
@@ -70,7 +65,7 @@ public class AppEntry : Gtk.Button {
         if (cycle_idx >= window_ids.size) cycle_idx = 0;
         queue_draw();
 
-        if (!is_pinned && !is_launcher && window_ids.size == 0) {
+        if (!is_pinned && window_ids.size == 0) {
             unpin_and_removable();
         }
     }
@@ -91,8 +86,6 @@ public class AppEntry : Gtk.Button {
     }
 
     void on_primary_click () {
-        if (is_launcher) { spawn_kickoff(); return; }
-
         if (has_open_windows()) {
             if (cycle_idx >= window_ids.size) cycle_idx = 0;
             var id = window_ids[cycle_idx];
@@ -104,7 +97,6 @@ public class AppEntry : Gtk.Button {
     }
 
     public void launch_new_window () {
-        if (is_launcher) { spawn_kickoff(); return; }
         if (launch_cmd == "") {
             stderr.printf("AppEntry %s: no launch command\n", app_id);
             return;
@@ -122,17 +114,6 @@ public class AppEntry : Gtk.Button {
         foreach (var id in ids) ToplevelStore.instance.close(id);
     }
 
-    void spawn_kickoff () {
-        // --show is a request to the daemon; the first invocation also
-        // boots the daemon, so this works whether or not kickoff is
-        // already running.
-        try {
-            Process.spawn_command_line_async(Utils.KICKOFF_BIN + " --show");
-        } catch (Error e) {
-            stderr.printf("Kickoff spawn failed: %s\n", e.message);
-        }
-    }
-
     void show_popup () {
         if (popup == null) popup = new AppPopupMenu(this);
         popup.refresh();
@@ -143,7 +124,7 @@ public class AppEntry : Gtk.Button {
     // paths in the .desktop file are honored directly. Falls back to the
     // bundled generic-app glyph when nothing matches.
     void load_icon () {
-        if (!is_launcher && icon_name != "") {
+        if (icon_name != "") {
             if (Path.is_absolute(icon_name) && FileUtils.test(icon_name, FileTest.EXISTS)) {
                 image.set_from_file(icon_name);
                 return;

@@ -192,55 +192,30 @@ install_data(
   install_dir: get_option('datadir') / 'lumen-notifications',
 )
 
-# --- Kickoff ---
+# --- lumen-desktop ---
 # Independent dep set: no drawkit, no wlhooks, no GLES.
 # Reuses gtk4_dep and gtk4_layer_shell_dep from lumen-osd block above.
-kickoff_deps = [
+# UnixSocketAddress for the Wayfire IPC client lives in gio-unix-2.0.
+gio_unix_dep = dependency('gio-unix-2.0')
+desktop_deps = [
   glib_dep,
   gio_dep,
   gee_dep,
   gtk4_dep,
   gtk4_layer_shell_dep,
+  gio_unix_dep,
   m_dep,
 ]
 
-kickoff_vala_args = [
+desktop_vala_args = [
   '--vapidir=' + vapi_dir,
   '--pkg=gtk4',
   '--pkg=gtk4-layer-shell-0',
   '--pkg=gee-0.8',
   '--pkg=glib-2.0',
   '--pkg=gio-2.0',
+  '--pkg=gio-unix-2.0',
 ]
-
-kickoff_sources = files(
-  'Kickoff/src/main.vala',
-  'Kickoff/src/window.vala',
-  'Kickoff/src/appentry.vala',
-  'Kickoff/src/searchdb.vala',
-  'Kickoff/src/components/apptile.vala',
-  'Kickoff/src/components/pagedgrid.vala',
-  'Kickoff/src/components/searchresults.vala',
-  'Kickoff/src/components/pagedots.vala',
-  'Kickoff/src/utils/aliasarray.vala',
-)
-
-executable('kickoff',
-  kickoff_sources,
-  vala_args: kickoff_vala_args,
-  dependencies: kickoff_deps,
-  install: true,
-)
-
-# --- lumen-desktop ---
-# Fresh copy of Kickoff sources (per lumen-desktop/lumen-desktop.md). Future
-# changes to either Kickoff or lumen-desktop need to be applied to both —
-# the duplication is intentional, not a shared target.
-gio_unix_dep = dependency('gio-unix-2.0')
-desktop_deps = kickoff_deps + [gio_unix_dep]
-# UnixSocketAddress for the Wayfire IPC client lives in gio-unix-2.0; Kickoff
-# doesn't need it so we extend the arg list only for lumen-desktop.
-desktop_vala_args = kickoff_vala_args + ['--pkg=gio-unix-2.0']
 
 desktop_sources = files(
   'lumen-desktop/src/main.vala',

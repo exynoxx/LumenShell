@@ -14,10 +14,6 @@ public class Utils {
         get { return Environment.get_variable("LUMEN_RES_DIR") ?? "/usr/share/lumen-panel/res/"; }
     }
 
-    public static string KICKOFF_BIN {
-        get { return Environment.get_variable("LUMEN_KICKOFF_BIN") ?? "kickoff"; }
-    }
-
     public static string THEME_FILE {
         get { return Environment.get_variable("LUMEN_THEME_FILE") ?? "/usr/share/lumen-panel/default-theme.json"; }
     }

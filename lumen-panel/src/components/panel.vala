@@ -1,7 +1,7 @@
 using Gtk;
 using Gee;
 
-// Left-aligned taskbar half: launcher + per-app-id buttons. Drives
+// Left-aligned taskbar half: per-app-id buttons. Drives
 // ToplevelStore subscription and pinned-apps persistence.
 public class AppBar : Gtk.Box {
 
@@ -18,10 +18,6 @@ public class AppBar : Gtk.Box {
 
         pins_file = Path.build_filename(
             Environment.get_user_config_dir(), "lumen-panel", "pinned-apps.txt");
-
-        var launcher = new AppEntry("--", { "Launcher", "", "" }, true);
-        entries_by_app_id["--"] = launcher;
-        append(launcher);
 
         load_pins();
 
@@ -45,7 +41,7 @@ public class AppBar : Gtk.Box {
         var entry = entries_by_window[id];
         entry.remove_window(id);
         entries_by_window.unset(id);
-        if (!entry.is_pinned && !entry.is_launcher && !entry.has_open_windows()) {
+        if (!entry.is_pinned && !entry.has_open_windows()) {
             remove_entry(entry);
         }
         queue_draw();
@@ -60,20 +56,19 @@ public class AppBar : Gtk.Box {
     AppEntry get_or_create (string app_id) {
         if (entries_by_app_id.has_key(app_id)) return entries_by_app_id[app_id];
 
-        var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id), false);
+        var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id));
         wire_entry(entry);
         entries_by_app_id[app_id] = entry;
         append(entry);
         return entry;
     }
 
-    // Wire the standard signal handlers for any non-launcher entry.
     void wire_entry (AppEntry entry) {
         entry.pin_toggled.connect(() => {
             save_pins();
             // Unpinning an entry that no longer has windows means it has no
             // reason to remain in the bar — drop it immediately.
-            if (!entry.is_pinned && !entry.is_launcher && !entry.has_open_windows())
+            if (!entry.is_pinned && !entry.has_open_windows())
                 remove_entry(entry);
         });
         entry.unpin_and_removable.connect(() => remove_entry(entry));
@@ -89,7 +84,7 @@ public class AppBar : Gtk.Box {
         foreach (var app_id in pins) {
             if (app_id == "" || app_id == "--") continue;
             if (entries_by_app_id.has_key(app_id)) continue;
-            var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id), false);
+            var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id));
             entry.is_pinned = true;
             wire_entry(entry);
             entries_by_app_id[app_id] = entry;
@@ -103,7 +98,7 @@ public class AppBar : Gtk.Box {
         while (w != null) {
             if (w is AppEntry) {
                 var e = (AppEntry) w;
-                if (e.is_pinned && !e.is_launcher) lst.add(e.app_id);
+                if (e.is_pinned) lst.add(e.app_id);
             }
             w = w.get_next_sibling();
         }
