@@ -1,31 +1,7 @@
 ### Work in progress!!
 
 # Introduction
-Lumen is an early-ChromeOS lookalike Wayland shell featuring Wayfire as compositor, **lumen-panel** and application launcher (Kickoff) for navigation. lumen-panel is built on GTK4 + `gtk4-layer-shell` + GSK; Kickoff and the OSD/notification surfaces share the same stack. All components are implemented in Vala.
-
-### WLHooks
-A small Wayland client library that exposes the foreign-toplevel /
-xdg-activation surface lumen-panel needs (so the panel can list and
-raise running windows). It binds these protocols on the wl_display
-GTK already owns — no second connection. See `wlhooks/DEPRECATED.md`
-for the legacy EGL/layer-shell/seat code paths that the GTK4 port no
-longer reaches.
-
-### lumen-panel environment
-
-lumen-panel reads two environment variables at startup:
-
-| Variable | Description | Default |
-|---|---|---|
-| `LUMEN_THEME_FILE` | Path to the theme JSON | `/usr/share/lumen-panel/default-theme.json` |
-| `LUMEN_KICKOFF_BIN` | Path to the Kickoff binary | `kickoff` (on PATH) |
-
-A helper script is provided to populate these for local development:
-
-```bash
-source env.sh
-./build/lumen-panel
-```
+LumenShell is a ChromeOS lookalike Wayland shell featuring Wayfire as compositor and a bunch of small layer shell programs on top. All programs are built on GTK4 + `gtk4-layer-shell` + GSK. All components are implemented in Vala.
 
 # Show case
 <table align="center">
@@ -50,6 +26,35 @@ source env.sh
     </td>
   </tr>
 </table>
+
+# Build & install
+
+### 1. Install dependencies
+
+A helper script covers Fedora, Ubuntu/Debian and Arch:
+
+```sh
+python3 install_dependencies.py
+```
+### 2. Configure, build, install
+
+```sh
+meson setup build
+meson compile -C build
+sudo meson install -C build
+```
+
+Useful options:
+
+- `-Dwith_desktop_peek=false` — skip the C++ Wayfire plugin (`wayfire-desktop-peek`) if you don't have Wayfire dev headers.
+- `--prefix=$HOME/.local` — install to your home instead of the system.
+
+### 3. Run from the build tree (dev)
+
+```sh
+source env.sh
+./build/lumen-panel
+```
 
 ### License
 GNU General Public License v3.0
