@@ -198,11 +198,16 @@ install_data(
 # UnixSocketAddress for the Wayfire IPC client lives in gio-unix-2.0.
 gio_unix_dep = dependency('gio-unix-2.0')
 desktop_deps = [
+  # Same link-order rule as lumen-panel: gtk4-layer-shell must come before
+  # gtk4/wayland-client/wlhooks for layer-shell init to actually take effect.
+  gtk4_layer_shell_dep,
+  gtk4_dep,
+  gtk4_wayland_dep,
+  wayland_dep,
+  wlhooks_dep,
   glib_dep,
   gio_dep,
   gee_dep,
-  gtk4_dep,
-  gtk4_layer_shell_dep,
   gio_unix_dep,
   m_dep,
 ]
@@ -211,10 +216,12 @@ desktop_vala_args = [
   '--vapidir=' + vapi_dir,
   '--pkg=gtk4',
   '--pkg=gtk4-layer-shell-0',
+  '--pkg=gtk4-wayland',
   '--pkg=gee-0.8',
   '--pkg=glib-2.0',
   '--pkg=gio-2.0',
   '--pkg=gio-unix-2.0',
+  '--pkg=libwlhooks',
 ]
 
 desktop_sources = files(
@@ -223,6 +230,8 @@ desktop_sources = files(
   'lumen-desktop/src/appentry.vala',
   'lumen-desktop/src/searchdb.vala',
   'lumen-desktop/src/peek_ipc.vala',
+  'lumen-desktop/src/wl/toplevels.vala',
+  'lumen-desktop/src/widgets/blur_bin.vala',
   'lumen-desktop/src/components/apptile.vala',
   'lumen-desktop/src/components/pagedgrid.vala',
   'lumen-desktop/src/components/searchresults.vala',
@@ -234,6 +243,7 @@ executable('lumen-desktop',
   desktop_sources,
   vala_args: desktop_vala_args,
   dependencies: desktop_deps,
+  link_args: ['-Wl,--no-as-needed'],
   install: true,
 )
 

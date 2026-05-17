@@ -12,6 +12,9 @@ public class DesktopApp : Gtk.Application {
 
     protected override void activate() {
         if (win == null) {
+            // Bind foreign-toplevel before the window is shown so its
+            // focus_changed handler sees the initial state on map.
+            DesktopToplevels.instance.bind();
             win = new DesktopWindow(this);
         }
         win.present();
