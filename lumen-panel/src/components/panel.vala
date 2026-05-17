@@ -48,9 +48,15 @@ public class AppBar : Gtk.Box {
     }
 
     void on_focused (uint id) {
-        if (!entries_by_window.has_key(id)) return;
-        entries_by_window[id].mark_focused(id);
-        queue_draw();
+        if (entries_by_window.has_key(id))
+            entries_by_window[id].mark_focused(id);
+        // Every entry's underline depends on global focus state, so repaint
+        // them all — the previously-active entry needs to clear its underline.
+        Gtk.Widget? w = get_first_child();
+        while (w != null) {
+            if (w is AppEntry) w.queue_draw();
+            w = w.get_next_sibling();
+        }
     }
 
     AppEntry get_or_create (string app_id) {
