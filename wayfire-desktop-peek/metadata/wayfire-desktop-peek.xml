@@ -8,6 +8,11 @@
       <_short>Toggle peek</_short>
       <default>&lt;super&gt; KEY_D</default>
     </option>
+    <option name="dismiss" type="activator">
+      <_short>Dismiss peek</_short>
+      <_long>Optional secondary binding that only restores the peeked windows. Unset by default so it does not conflict with other plugins that consume Escape.</_long>
+      <default></default>
+    </option>
     <option name="duration" type="animation">
       <_short>Animation duration</_short>
       <default>250ms circle</default>

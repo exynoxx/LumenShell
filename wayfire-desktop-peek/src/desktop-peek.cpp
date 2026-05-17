@@ -63,6 +63,7 @@ class wayfire_desktop_peek_t :
     public wf::pointer_interaction_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-desktop-peek/toggle"};
+    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-desktop-peek/dismiss"};
     wf::option_wrapper_t<int> peek_px_opt{"wayfire-desktop-peek/peek_px"};
     wf::option_wrapper_t<wf::animation_description_t> duration_opt{"wayfire-desktop-peek/duration"};
 
@@ -107,6 +108,20 @@ class wayfire_desktop_peek_t :
         return false;
     };
 
+    // dismiss is restore-only; firing it from IDLE is a no-op so it doesn't
+    // step on Escape's other consumers (search bar, expo, etc.) when nothing
+    // is peeked. Returning false in that case lets the keypress propagate.
+    wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
+    {
+        peek_log("on_dismiss: state=%d", (int) state);
+        if ((state == state_t::PEEKED) || (state == state_t::OUT))
+        {
+            start_restore();
+            return true;
+        }
+        return false;
+    };
+
     wf::effect_hook_t on_frame = [this] ()
     {
         const double v = (double) anim;
@@ -131,12 +146,14 @@ class wayfire_desktop_peek_t :
     {
         peek_log("per-output init on output=%p", (void *) output);
         output->add_activator(toggle_opt, &on_toggle);
+        output->add_activator(dismiss_opt, &on_dismiss);
     }
 
     void fini() override
     {
         peek_log("per-output fini on output=%p state=%d", (void *) output, (int) state);
         output->rem_binding(&on_toggle);
+        output->rem_binding(&on_dismiss);
         if (state != state_t::IDLE)
         {
             hard_reset();
