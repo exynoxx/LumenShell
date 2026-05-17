@@ -1,7 +1,7 @@
 ### Work in progress!!
 
 # Introduction
-LumenShell is a ChromeOS lookalike Wayland shell featuring Wayfire as compositor and a bunch of small layer shell programs on top. All programs are built on GTK4 + `gtk4-layer-shell` + GSK. All components are implemented in Vala.
+LumenShell is a ChromeOS-inspired desktop shell for Wayland. It uses Wayfire as compositor and a collection of small `gtk4-layer-shell` apps written in Vala. Graphics are rendered with the Gtk scene graph kit (GSK) and are hardware-accelerated.
 
 # Show case
 <table align="center">
@@ -26,6 +26,16 @@ LumenShell is a ChromeOS lookalike Wayland shell featuring Wayfire as compositor
     </td>
   </tr>
 </table>
+
+# What's in the repo
+- `lumen-panel` — bottom bar showing open apps and tray area.
+- `lumen-desktop` — always-open app drawer that replaces the traditional desktop files view.
+- `lumen-osd` — on-screen display (volume, brightness, etc.)
+- `lumen-osdctl` — CLI to trigger OSD events
+- `lumen-notifications` — display system notification.
+- `wayfire-desktop-peek` — Wayfire C++ plugin for show-desktop / peek
+- `wlhooks` — Wayland helper library in C. Implements several wayland protocols, including foreign-toplevel-managment, used to retrieve info about open windows.
+
 
 # Build & install
 
