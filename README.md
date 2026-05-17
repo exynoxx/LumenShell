@@ -28,12 +28,6 @@ source env.sh
 ```
 
 # Show case
-Bottom panel
-<img width="1920" height="1080" alt="20251229_19h31m16s_grim" src="https://github.com/user-attachments/assets/79427174-5150-4ea8-8304-a39ef679c654" />
-  
-Kickoff
-<img width="1920" height="1080" alt="20251229_19h31m35s_grim" src="https://github.com/user-attachments/assets/31268306-9153-4358-aa86-85810d480bc1" />
-
 <table align="center">
   <tr>
     <td colspan="2" align="center">
@@ -48,6 +42,11 @@ Kickoff
     <td align="center">
       <img src="docs/shots/shot-1779036456.png" width="340"><br>
       <sub>osd</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/shots/f3.gif" width="700"><br>
     </td>
   </tr>
 </table>
