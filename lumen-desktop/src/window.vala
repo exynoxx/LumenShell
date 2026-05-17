@@ -94,10 +94,12 @@ public class DesktopWindow : Gtk.ApplicationWindow {
 
         GtkLayerShell.init_for_window(this);
         GtkLayerShell.set_namespace(this, "lumen-desktop");
-        // BACKGROUND layer: normal app windows render above us per the
-        // compositor's layer-shell semantics. Closing those apps re-exposes
-        // the tile grid underneath.
-        GtkLayerShell.set_layer(this, GtkLayerShell.Layer.BACKGROUND);
+        // BOTTOM (not BACKGROUND) so we stack ABOVE wf-shell's wf-background
+        // wallpaper surface — wf-background also lives on BACKGROUND and
+        // tends to map after us, hiding us. BOTTOM still renders below all
+        // regular app windows, so the "closing apps re-exposes the tile
+        // grid" property is preserved.
+        GtkLayerShell.set_layer(this, GtkLayerShell.Layer.BOTTOM);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,   true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.RIGHT,  true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP,    true);
@@ -208,6 +210,10 @@ public class DesktopWindow : Gtk.ApplicationWindow {
             }
 
             trigger_peek("root-click");
+            // Wallpaper click means "I want to interact with the drawer" —
+            // hand keyboard focus to the search entry so the user can start
+            // typing or arrow-navigate the grid immediately.
+            search_entry.grab_focus();
         });
         root.add_controller(click);
 
