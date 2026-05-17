@@ -1,14 +1,16 @@
 using Gtk;
 
-// Right-most tray button — terminates the compositor session.
-public class ExitTray : TrayButton {
-    const string EXIT_CMD = "pkill wayfire";
+// Right-most tray item — expands a page offering session-end actions
+// (log out, reboot, shutdown).
+public class ExitTray : GLib.Object, IPagedTrayItem {
+    TrayButton icon;
+    ExitPage page;
 
     public ExitTray () {
-        base("close");
-        clicked.connect(() => {
-            try { Process.spawn_command_line_async(EXIT_CMD); }
-            catch (SpawnError e) { warning("Exit spawn failed: %s", e.message); }
-        });
+        icon = new TrayButton("close");
+        page = new ExitPage();
     }
+
+    public Gtk.Button icon_widget () { return icon; }
+    public Gtk.Widget page_widget () { return page; }
 }

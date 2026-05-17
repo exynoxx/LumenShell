@@ -118,6 +118,7 @@ panel_sources = files(
   'lumen-panel/src/widgets/chip.vala',
   'lumen-panel/src/components/clock/clock.vala',
   'lumen-panel/src/components/exit/exit.vala',
+  'lumen-panel/src/components/exit/exitpage.vala',
   'lumen-panel/src/components/app.vala',
   'lumen-panel/src/components/apppopup.vala',
   'lumen-panel/src/components/panel.vala',

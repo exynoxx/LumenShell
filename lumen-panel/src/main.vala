@@ -47,7 +47,7 @@ public class App : GLib.Object {
         tray.add_paged(new BatteryTray());
         tray.add_paged(new SoundTray());
         tray.add_icon(new Clock());
-        tray.add_icon(new ExitTray());
+        tray.add_paged(new ExitTray());
         root.append(tray);
 
         win.set_child(root);
