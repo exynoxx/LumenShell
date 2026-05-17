@@ -1,6 +1,8 @@
 public class PageDots : Gtk.Box {
 
-    private Gtk.Label[] dots;
+    public signal void page_clicked(int page);
+
+    private Gtk.Button[] dots;
     private int active = 0;
 
     public PageDots(int page_count) {
@@ -8,10 +10,14 @@ public class PageDots : Gtk.Box {
         add_css_class("page-dots");
         set_halign(Gtk.Align.CENTER);
 
-        dots = new Gtk.Label[page_count];
+        dots = new Gtk.Button[page_count];
         for (int i = 0; i < page_count; i++) {
-            var dot = new Gtk.Label((i + 1).to_string());
+            var dot = new Gtk.Button.with_label((i + 1).to_string());
             dot.add_css_class("page-dot");
+            // strip default button chrome; .page-dot CSS provides background
+            dot.add_css_class("flat");
+            int page = i;
+            dot.clicked.connect(() => page_clicked(page));
             dots[i] = dot;
             append(dot);
         }

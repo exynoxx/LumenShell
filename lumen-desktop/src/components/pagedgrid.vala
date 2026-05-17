@@ -139,6 +139,14 @@ public class PagedGrid : Gtk.Widget {
         start_slide_to(active_page * (float) get_width());
     }
 
+    public void goto_page(int page) {
+        if (page < 0 || page >= page_count) return;
+        if (page == active_page) return;
+        active_page = page;
+        page_changed(active_page);
+        start_slide_to(active_page * (float) get_width());
+    }
+
     private void start_slide_to(float target) {
         slide_from_offset = current_offset;
         slide_to_offset   = target;

@@ -71,10 +71,25 @@ private const string DESKTOP_CSS = """
         border-radius: 15px;
         background: #4d4d4d;
         color: white;
+        border: none;
+        box-shadow: none;
+        transition: background 120ms ease-out;
+    }
+    .page-dot:hover {
+        background: #6a6a6a;
+    }
+    .page-dot:active {
+        background: #222;
     }
     .page-dot.active {
         background: white;
         color: black;
+    }
+    .page-dot.active:hover {
+        background: alpha(white, 0.85);
+    }
+    .page-dot.active:active {
+        background: alpha(white, 0.65);
     }
 """;
 
@@ -325,6 +340,7 @@ public class DesktopWindow : Gtk.ApplicationWindow {
 
         dots = new PageDots(grid.page_count);
         grid.page_changed.connect((p) => dots.set_active(p));
+        dots.page_clicked.connect((p) => grid.goto_page(p));
         root.append(dots);
 
         // Wrap the whole UI in a BlurBin so the GSK render pass applies a
