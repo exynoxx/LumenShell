@@ -1,12 +1,18 @@
 using Json;
 
 public class Theme {
-    public static Gdk.RGBA background       = rgba(0.00f, 0.00f, 0.00f, 0.75f);
-    public static Gdk.RGBA text             = rgba(1.00f, 1.00f, 1.00f, 1.00f);
-    public static Gdk.RGBA progress_track   = rgba(1.00f, 1.00f, 1.00f, 0.15f);
-    public static Gdk.RGBA progress_fill    = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+    // Non-trivial initializers (anything not a C constant expression) are
+    // emitted by Vala into class_init. Theme is never instantiated, so
+    // class_init never runs and these Gdk.RGBA / string defaults stay
+    // zero-initialized — which is fully transparent, hiding the entire OSD.
+    // The fields are set imperatively in load() instead; the values below
+    // document intent only.
+    public static Gdk.RGBA background;       // rgba(0, 0, 0, 0.75)
+    public static Gdk.RGBA text;             // rgba(1, 1, 1, 1)
+    public static Gdk.RGBA progress_track;   // rgba(1, 1, 1, 0.15)
+    public static Gdk.RGBA progress_fill;    // rgba(1, 1, 1, 1)
 
-    public static string  position         = "bottom-center";
+    public static string  position;          // "bottom-center" (set in load())
     public static int     margin           = 76;       // px from anchored edge
     public static int     width            = 360;
     public static int     height           = 56;
@@ -17,6 +23,12 @@ public class Theme {
     public static int     content_spacing  = 14;       // gap between icon / bar / label
 
     public static void load() {
+        position       = "bottom-center";
+        background     = rgba(0.00f, 0.00f, 0.00f, 0.75f);
+        text           = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+        progress_track = rgba(1.00f, 1.00f, 1.00f, 0.15f);
+        progress_fill  = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+
         var path = Utils.THEME_FILE;
         if (!FileUtils.test(path, FileTest.EXISTS)) return;
 
