@@ -15,7 +15,11 @@ public class WifiTray : GLib.Object, IPagedTrayItem {
     }
 
     void update_icon () {
-        icon.set_icon_from_resource(service.connected ? "wifi" : "nowifi");
+        string name;
+        if      (service.connected)          name = "wifi";
+        else if (service.ethernet_connected) name = "ethernet";
+        else                                  name = "nowifi";
+        icon.set_icon_from_resource(name);
     }
 
     public Gtk.Button icon_widget () { return icon; }

@@ -7,7 +7,7 @@ public class ExitTray : GLib.Object, IPagedTrayItem {
     ExitPage page;
 
     public ExitTray () {
-        icon = new TrayButton("close");
+        icon = new TrayButton("leaving");
         page = new ExitPage();
     }
 

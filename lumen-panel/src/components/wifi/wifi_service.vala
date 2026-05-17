@@ -11,9 +11,10 @@ public class WifiService : GLib.Object {
 
     public signal void state_changed();
 
-    public string    connected_ssid { get; private set; default = ""; }
-    public WifiNet[] nets           = {};
-    public bool      scanning       { get; private set; default = false; }
+    public string    connected_ssid     { get; private set; default = ""; }
+    public WifiNet[] nets               = {};
+    public bool      scanning           { get; private set; default = false; }
+    public bool      ethernet_connected { get; private set; default = false; }
 
     public bool connected { get { return connected_ssid != ""; } }
 
@@ -54,11 +55,13 @@ public class WifiService : GLib.Object {
             if (rescan) nmcli.rescan();
             var new_nets = nmcli.fetch_nets();
             var new_conn = nmcli.query_connected();
+            var new_eth  = nmcli.query_ethernet_connected();
             GLib.Idle.add(() => {
-                nets           = new_nets;
-                connected_ssid = new_conn;
-                scanning       = false;
-                scan_in_flight = false;
+                nets               = new_nets;
+                connected_ssid     = new_conn;
+                ethernet_connected = new_eth;
+                scanning           = false;
+                scan_in_flight     = false;
                 state_changed();
                 return Source.REMOVE;
             });
@@ -77,12 +80,13 @@ public class WifiService : GLib.Object {
         poll_in_flight = true;
         new GLib.Thread<void>("wifi-poll", () => {
             var conn = nmcli.query_connected();
+            var eth  = nmcli.query_ethernet_connected();
             GLib.Idle.add(() => {
                 poll_in_flight = false;
-                if (conn != connected_ssid) {
-                    connected_ssid = conn;
-                    state_changed();
-                }
+                bool changed = false;
+                if (conn != connected_ssid)     { connected_ssid = conn;    changed = true; }
+                if (eth  != ethernet_connected) { ethernet_connected = eth; changed = true; }
+                if (changed) state_changed();
                 return Source.REMOVE;
             });
         });

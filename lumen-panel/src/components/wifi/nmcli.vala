@@ -78,6 +78,23 @@ public class NmcliClient : GLib.Object {
         return "";
     }
 
+    /** True if any wired ethernet device is in the connected state. */
+    public bool query_ethernet_connected() {
+        string out_str = "";
+        try {
+            Process.spawn_command_line_sync(
+                "nmcli -t -f DEVICE,TYPE,STATE device",
+                out out_str, null, null);
+        } catch (SpawnError e) { return false; }
+
+        foreach (var line in out_str.split("\n")) {
+            var p = split_terse(line, 3);
+            if (p.length >= 3 && p[1] == "ethernet" && p[2] == "connected")
+                return true;
+        }
+        return false;
+    }
+
     /** Return the name of the WiFi network interface, or "". */
     public string get_wifi_device() {
         string out_str = "";

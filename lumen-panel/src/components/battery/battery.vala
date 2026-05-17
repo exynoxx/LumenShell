@@ -17,11 +17,12 @@ public class BatteryTray : GLib.Object, IPagedTrayItem {
     void update_icon () {
         string name;
         var raw = service.raw_status;
-        if (raw == "charging") name = "charging";
+        if (service.ac_online)                   name = "wired";
+        else if (raw == "charging")              name = "charging";
         else if (raw == "discharging" || raw.contains("full")) {
             var p = service.percent;
             name = p >= 70 ? "high" : p >= 30 ? "mid" : "low";
-        } else name = "nobattery";
+        } else                                    name = "nobattery";
         icon.set_icon_from_resource(name);
     }
 
