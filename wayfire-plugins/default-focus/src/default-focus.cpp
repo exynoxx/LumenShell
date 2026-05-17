@@ -25,9 +25,11 @@
 #include <wayfire/option-wrapper.hpp>
 #include <wayfire/debug.hpp>
 
+extern "C" {
 #define namespace namespace_t
 #include <wlr/types/wlr_layer_shell_v1.h>
 #undef namespace
+}
 
 #include <cstring>
 #include <string>
