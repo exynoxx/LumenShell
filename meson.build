@@ -269,17 +269,24 @@ executable('lumen-osdctl',
   install: true,
 )
 
-# --- wayfire-desktop-peek (C++ Wayfire plugin) ---
-# Gated so users without Wayfire dev headers can disable with
-# -Dwith_desktop_peek=false. Standalone — no link with the rest of the tree.
-if get_option('with_desktop_peek')
+# --- wayfire-plugins/* (C++ Wayfire plugins) ---
+# All Wayfire plugins live under wayfire-plugins/ and are standalone
+# C++ shared modules (no link with the rest of the tree). Each is gated
+# so users without Wayfire dev headers can disable any of them.
+if get_option('with_desktop_peek') \
+   or get_option('with_startup_zoom') \
+   or get_option('with_default_focus')
   add_languages('cpp', native: false)
-  subdir('wayfire-desktop-peek')
 endif
 
-# --- wayfire-startup-zoom (C++ Wayfire plugin) ---
-# Same gating story as wayfire-desktop-peek. Standalone.
+if get_option('with_desktop_peek')
+  subdir('wayfire-plugins/desktop-peek')
+endif
+
 if get_option('with_startup_zoom')
-  add_languages('cpp', native: false)
-  subdir('wayfire-startup-zoom')
+  subdir('wayfire-plugins/startup-zoom')
+endif
+
+if get_option('with_default_focus')
+  subdir('wayfire-plugins/default-focus')
 endif

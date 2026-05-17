@@ -11,3 +11,10 @@ option(
   value: true,
   description: 'Build the wayfire-startup-zoom Wayfire plugin (needs Wayfire 0.10 dev headers).',
 )
+
+option(
+  'with_default_focus',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-default-focus Wayfire plugin (needs Wayfire 0.10 dev headers and wlr-protocols).',
+)

@@ -136,11 +136,12 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         // our presence when sizing. Distinct from Kickoff's -1 (which forces
         // full-output coverage at the cost of overlapping other layers).
         GtkLayerShell.set_exclusive_zone(this, 0);
-        // ON_DEMAND: keyboard focus follows pointer interaction. Clicking
-        // the search entry hands the keyboard to us; clicking a normal
-        // window hands it back. This is what makes the always-visible
-        // drawer searchable without ever stealing focus from foreground
-        // apps unprompted.
+        // ON_DEMAND is the only legal keyboard mode for a BOTTOM-layer
+        // surface — wlr-layer-shell forbids EXCLUSIVE below the shell
+        // layer (it is silently ignored). Auto-handing the keyboard back
+        // to us when no toplevel is focused is therefore implemented on
+        // the compositor side, in the wayfire-desktop-peek plugin's
+        // lumen_desktop_focus_keeper_t.
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
         decorated = false;
@@ -158,16 +159,28 @@ public class DesktopWindow : Gtk.ApplicationWindow {
             // Sync blur to whatever the focus state is at map time — if a
             // window is already focused, ramp up; otherwise stay clear.
             sync_blur_to_focus();
+            sync_keyboard_mode();
         });
 
         DesktopToplevels.instance.focus_changed.connect((any) => {
             sync_blur_to_focus();
+            sync_keyboard_mode();
         });
     }
 
     private void sync_blur_to_focus() {
         bool focused = DesktopToplevels.instance.any_focused;
         animate_blur_to(focused ? BLUR_MAX : 0.0, focused ? BLUR_IN_US : BLUR_OUT_US);
+    }
+
+    // The compositor (wayfire-desktop-peek) hands keyboard focus back to
+    // our layer surface whenever no toplevel is focused. Make sure the
+    // search entry is the GTK-side focus target so the keys land there
+    // and not on some other widget that happened to be last-focused.
+    private void sync_keyboard_mode() {
+        if (!DesktopToplevels.instance.any_focused) {
+            search_entry.grab_focus();
+        }
     }
 
     private void animate_blur_to(double target, int64 duration_us) {
