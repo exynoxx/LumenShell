@@ -1,0 +1,83 @@
+#!/bin/sh
+# start-lumenshell — LumenShell session launcher
+#
+# This is the script the greeter invokes when a user picks "LumenShell" from
+# the session menu. The accompanying lumenshell.desktop entry
+# (../wayland-sessions/lumenshell.desktop) points its Exec= line here.
+#
+# What this script does, in order:
+#   1. Exports XDG_CURRENT_DESKTOP / XDG_SESSION_DESKTOP=LumenShell so that
+#      portals, autostart .desktop files (OnlyShowIn=), and AccountsService
+#      (XSession=) all see a consistent "session name".
+#   2. Imports those vars (plus WAYLAND_DISPLAY/DISPLAY) into the systemd
+#      user manager so any --user services started later inherit them.
+#   3. Execs Wayfire as the compositor. Wayfire's autostart plugin (see
+#      ../wayfire/lumenshell.ini.d/autostart.ini) is what actually spawns
+#      lumen-panel, lumen-desktop, lumen-osd, lumen-notifications, and
+#      lumen-lockscreen.
+#
+# Install path (system-wide):
+#   sudo install -Dm755 start-lumenshell /usr/bin/start-lumenshell
+# The lumenshell.desktop file's Exec= must match this path.
+#
+# Running locally for development (without installing):
+#   1. Make sure the build tree binaries are on PATH:
+#        source env.sh
+#        export PATH="$PWD/build:$PATH"
+#   2. Run this script from a TTY (Ctrl+Alt+F3, log in, then `./start-lumenshell`)
+#      OR from inside an existing session for a nested Wayfire (depends on
+#      Wayfire's nested-mode support on your distro).
+#
+# Customizing:
+#   * To use a non-default Wayfire config, set WAYFIRE_CONFIG_FILE before
+#     calling this script (e.g., in a wrapper, or via the greeter env).
+#   * To add pre-launch hooks (mounting, dbus-activation, ssh-agent), drop
+#     scripts into /etc/lumenshell/pre-start.d/ — this script will source
+#     them in lexical order if the directory exists.
+#
+# Troubleshooting:
+#   * Greeter shows LumenShell but logs straight back out:
+#       journalctl --user -b -e
+#     Usually means wayfire isn't on PATH for the greeter's env.
+#   * Panel/OSD don't appear after login:
+#       Check ~/.config/wayfire.ini has the autostart block from
+#       data/wayfire/lumenshell.ini.d/autostart.ini.
+
+set -e
+
+# --- 1. Session identity ----------------------------------------------------
+export XDG_CURRENT_DESKTOP=LumenShell
+export XDG_SESSION_DESKTOP=lumenshell
+export XDG_SESSION_TYPE=wayland
+
+# --- 2. Optional pre-start hooks --------------------------------------------
+if [ -d /etc/lumenshell/pre-start.d ]; then
+    for hook in /etc/lumenshell/pre-start.d/*.sh; do
+        [ -r "$hook" ] && . "$hook"
+    done
+fi
+
+# --- 3. Hand env to systemd user manager ------------------------------------
+# Best-effort: failures are non-fatal (works on systemd distros, no-op elsewhere).
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user import-environment \
+        XDG_CURRENT_DESKTOP \
+        XDG_SESSION_DESKTOP \
+        XDG_SESSION_TYPE \
+        WAYLAND_DISPLAY \
+        DISPLAY \
+        2>/dev/null || true
+fi
+
+# --- 4. Locate wayfire ------------------------------------------------------
+WAYFIRE_BIN="${WAYFIRE_BIN:-$(command -v wayfire || true)}"
+if [ -z "$WAYFIRE_BIN" ]; then
+    echo "start-lumenshell: wayfire not found on PATH" >&2
+    echo "Install wayfire (see install_dependencies.py) and retry." >&2
+    exit 1
+fi
+
+# --- 5. Launch --------------------------------------------------------------
+# `exec` replaces this shell with wayfire so the session leader PID is
+# wayfire itself — logind tracks it as the session scope's main process.
+exec "$WAYFIRE_BIN" "$@"
