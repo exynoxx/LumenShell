@@ -20,7 +20,7 @@ namespace LumenSettings {
 
             var layout = new BoxedList("Layout");
             var height_initial = parse_double(store.get_value(SECTION, "panel.height"), 60);
-            var height_row = new SpinRow("Panel height", 40, 120, 1, height_initial, 0, "px");
+            var height_row = new SpinRow("Panel height", 40, 120, 1, height_initial, 0, "panel thickness in px");
             height_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "panel.height", "%d".printf((int) v));
                 store.save();
@@ -31,7 +31,7 @@ namespace LumenSettings {
             var clock_group = new BoxedList("Clock");
 
             var fmt_initial = store.get_value(SECTION, "clock.format") ?? "%H:%M";
-            var fmt_row = new EntryRow("Format", fmt_initial, "strftime pattern");
+            var fmt_row = new EntryRow("Format", fmt_initial, "strftime pattern, e.g. %H:%M or %Y-%m-%d %H:%M");
             fmt_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "clock.format", v);
                 store.save();
@@ -41,7 +41,7 @@ namespace LumenSettings {
             string[] click_labels = { "Do nothing", "Open calendar", "Run command" };
             string[] click_values = { "none", "open-calendar", "run-command" };
             var click_initial = store.get_value(SECTION, "clock.on-click") ?? "none";
-            var click_row = new ComboRow("On click", click_labels, click_values, click_initial);
+            var click_row = new ComboRow("On click", click_labels, click_values, click_initial, "action to run when the clock is clicked");
             click_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "clock.on-click", v);
                 store.save();

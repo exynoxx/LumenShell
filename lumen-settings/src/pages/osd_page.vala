@@ -29,28 +29,28 @@ namespace LumenSettings {
                 "bottom-left", "bottom-center", "bottom-right",
             };
             var pos_initial = store.get_string("osd.position") ?? "bottom-center";
-            var pos_row = new ComboRow("Position", pos_labels, pos_values, pos_initial);
+            var pos_row = new ComboRow("Position", pos_labels, pos_values, pos_initial, "where OSD popups appear on the screen");
             pos_row.value_changed.connect((v) => {
                 store.set_string("osd.position", v);
                 store.save();
             });
             placement.add_row(pos_row);
-            placement.add_row(int_row("osd.margin", "Margin from edge", 0, 400, 1, 76, "px"));
+            placement.add_row(int_row("osd.margin", "Margin from edge", 0, 400, 1, 76, "px from the screen's anchored edge"));
             box.append(placement);
 
             var size = new BoxedList("Size");
-            size.add_row(int_row("osd.width",  "Width",  100, 800, 1, 360, "px"));
-            size.add_row(int_row("osd.height", "Height", 24,  200, 1, 56,  "px"));
+            size.add_row(int_row("osd.width",  "Width",  100, 800, 1, 360, "OSD popup width in px"));
+            size.add_row(int_row("osd.height", "Height", 24,  200, 1, 56,  "OSD popup height in px"));
             box.append(size);
 
             var behavior = new BoxedList("Behavior");
-            behavior.add_row(int_row("osd.timeout-ms", "Timeout", 200, 10000, 100, 1500, "ms"));
+            behavior.add_row(int_row("osd.timeout-ms", "Timeout", 200, 10000, 100, 1500, "milliseconds before auto-dismiss"));
             box.append(behavior);
 
             var spacing = new BoxedList("Spacing");
-            spacing.add_row(int_row("osd.padding-x",       "Horizontal padding", 0, 100, 1, 22, "px"));
-            spacing.add_row(int_row("osd.padding-y",       "Vertical padding",   0, 100, 1, 10, "px"));
-            spacing.add_row(int_row("osd.content-spacing", "Content gap",        0, 60,  1, 14, "px"));
+            spacing.add_row(int_row("osd.padding-x",       "Horizontal padding", 0, 100, 1, 22, "px of inner padding on the left and right"));
+            spacing.add_row(int_row("osd.padding-y",       "Vertical padding",   0, 100, 1, 10, "px of inner padding on the top and bottom"));
+            spacing.add_row(int_row("osd.content-spacing", "Content gap",        0, 60,  1, 14, "px between the icon, label, and progress bar"));
             box.append(spacing);
 
             return box;

@@ -18,27 +18,27 @@ namespace LumenSettings {
             };
 
             var panel_group = new BoxedList("Panel");
-            panel_group.add_row(color_row("panel.background",      "Panel background",      "#1a1d27ff"));
-            panel_group.add_row(color_row("tray.background",       "Tray background",       "#222633ff"));
-            panel_group.add_row(color_row("tray.icon-hover",       "Tray icon hover",       "#2c3140ff"));
-            panel_group.add_row(color_row("app.hover",             "App hover",             "#2c3140ff"));
-            panel_group.add_row(color_row("app.launching",         "App launching",         "#3d7affff"));
-            panel_group.add_row(color_row("app.active-underline",  "Active app underline",  "#3d7affff"));
+            panel_group.add_row(color_row("panel.background",      "Panel background",      "#1a1d27ff", "panel color, including transparency"));
+            panel_group.add_row(color_row("tray.background",       "Tray background",       "#222633ff", "tray icon background when not hovered"));
+            panel_group.add_row(color_row("tray.icon-hover",       "Tray icon hover",       "#2c3140ff", "tray icon background while the pointer is over it"));
+            panel_group.add_row(color_row("app.hover",             "App hover",             "#2c3140ff", "taskbar app background while the pointer is over it"));
+            panel_group.add_row(color_row("app.launching",         "App launching",         "#3d7affff", "taskbar app background while the app is starting up"));
+            panel_group.add_row(color_row("app.active-underline",  "Active app underline",  "#3d7affff", "underline color shown beneath the focused app"));
             box.append(panel_group);
 
             var osd_group = new BoxedList("OSD");
-            osd_group.add_row(color_row("osd.background",      "OSD background",     "#000000bf"));
-            osd_group.add_row(color_row("osd.text",            "OSD text",           "#ffffffff"));
-            osd_group.add_row(color_row("osd.progress.track",  "Progress track",     "#ffffff26"));
-            osd_group.add_row(color_row("osd.progress.fill",   "Progress fill",      "#ffffffff"));
+            osd_group.add_row(color_row("osd.background",      "OSD background",     "#000000bf", "background of volume and brightness popups"));
+            osd_group.add_row(color_row("osd.text",            "OSD text",           "#ffffffff", "label and icon color on OSD popups"));
+            osd_group.add_row(color_row("osd.progress.track",  "Progress track",     "#ffffff26", "unfilled portion of the OSD progress bar"));
+            osd_group.add_row(color_row("osd.progress.fill",   "Progress fill",      "#ffffffff", "filled portion of the OSD progress bar"));
             box.append(osd_group);
 
             return box;
         }
 
-        ColorRow color_row(string key, string label, string fallback) {
+        ColorRow color_row(string key, string label, string fallback, string subtitle) {
             var initial = store.get_string(key) ?? fallback;
-            var row = new ColorRow(label, initial);
+            var row = new ColorRow(label, initial, subtitle);
             row.value_changed.connect((hex) => {
                 store.set_string(key, hex);
                 store.save();

@@ -11,7 +11,8 @@ namespace LumenSettings {
             entry = new Gtk.Entry() {
                 text = initial,
                 hexpand = false,
-                width_chars = 18,
+                width_chars = 16,
+                max_width_chars = 16,
             };
             entry.changed.connect(() => value_changed(entry.text));
             set_suffix(entry);

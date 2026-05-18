@@ -21,7 +21,7 @@ namespace LumenSettings {
             var group = new BoxedList("Background");
 
             var initial_image = store.get_value(SECTION, "image") ?? "";
-            var file_row = new FileRow("Image", initial_image);
+            var file_row = new FileRow("Image", initial_image, "background image file");
             file_row.value_changed.connect((p) => {
                 store.set_value(SECTION, "image", p);
                 store.save();
@@ -31,7 +31,7 @@ namespace LumenSettings {
             string[] labels = { "Fill", "Fit", "Center", "Stretch", "Tile" };
             string[] values = { "fill", "fit", "center", "stretch", "tile" };
             var initial_mode = store.get_value(SECTION, "mode") ?? "fill";
-            var mode_row = new ComboRow("Scaling mode", labels, values, initial_mode);
+            var mode_row = new ComboRow("Scaling mode", labels, values, initial_mode, "how the image fills the screen");
             mode_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "mode", v);
                 store.save();

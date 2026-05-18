@@ -14,14 +14,14 @@ namespace LumenSettings.Wayfire {
             var store = new IniStore(Paths.wayfire_ini());
             var plugins = Metadata.load_dir(METADATA_DIR);
 
-            r.add(new WayfirePluginsPage(plugins, store));
+            r.add(new WayfirePluginsPage(plugins, store), "Wayfire");
 
             var by_name = new Gee.HashMap<string, PluginDef>();
             foreach (var p in plugins) by_name.set(p.name, p);
 
             foreach (var name in CURATED) {
                 if (!by_name.has_key(name)) continue;
-                r.add(new PluginPage(by_name.get(name), store));
+                r.add(new PluginPage(by_name.get(name), store), "Wayfire");
             }
         }
     }

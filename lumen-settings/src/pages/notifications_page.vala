@@ -18,15 +18,15 @@ namespace LumenSettings {
             };
 
             var placement = new BoxedList("Placement");
-            placement.add_row(int_row("notifications.margin-top",   "Margin top",   0, 200, 24, "px"));
-            placement.add_row(int_row("notifications.margin-right", "Margin right", 0, 200, 24, "px"));
-            placement.add_row(int_row("notifications.gap",          "Gap",          0, 40,  8,  "px"));
+            placement.add_row(int_row("notifications.margin-top",   "Margin top",   0, 200, 24, "px from the top edge of the screen"));
+            placement.add_row(int_row("notifications.margin-right", "Margin right", 0, 200, 24, "px from the right edge of the screen"));
+            placement.add_row(int_row("notifications.gap",          "Gap",          0, 40,  8,  "px of vertical space between banners"));
             box.append(placement);
 
             var behavior = new BoxedList("Behavior");
             behavior.add_row(int_row("notifications.clear-threshold",
                                      "Clear-all threshold", 1, 50, 5,
-                                     "show the Clear All button once stack reaches this size"));
+                                     "show the Clear All button once the stack reaches this size"));
             box.append(behavior);
 
             return box;

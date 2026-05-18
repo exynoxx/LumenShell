@@ -19,9 +19,9 @@ namespace LumenSettings {
             };
 
             var group = new BoxedList("App grid");
-            group.add_row(int_row("grid.cols",   "Columns", 1, 12, 6));
-            group.add_row(int_row("grid.rows",   "Rows",    1, 8,  4));
-            group.add_row(int_row("grid.margin", "Page margin", 0, 200, 40, "px"));
+            group.add_row(int_row("grid.cols",   "Columns", 1, 12, 6, "number of app icons per row"));
+            group.add_row(int_row("grid.rows",   "Rows",    1, 8,  4, "number of app icon rows per page"));
+            group.add_row(int_row("grid.margin", "Page margin", 0, 200, 40, "px of empty space around the grid"));
             box.append(group);
 
             return box;
