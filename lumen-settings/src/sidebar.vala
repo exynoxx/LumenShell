@@ -12,7 +12,7 @@ namespace LumenSettings {
             Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
             registry = r;
             add_css_class("lumen-settings-sidebar");
-            set_size_request(220, -1);
+            set_size_request(170, -1);
 
             var scroller = new Gtk.ScrolledWindow() {
                 hscrollbar_policy = Gtk.PolicyType.NEVER,
@@ -72,31 +72,20 @@ namespace LumenSettings {
             list.invalidate_headers();
         }
 
+        // GNOME-style: groups are split with a thin full-width separator,
+        // no uppercase header label.
         void update_header(Gtk.ListBoxRow row, Gtk.ListBoxRow? before) {
             var section = row.get_data<string>("section") ?? "";
             var prev    = (before != null) ? (before.get_data<string>("section") ?? "") : "__none__";
-            if (section == "" || section == prev) {
+            if (section == "" || section == prev || before == null) {
                 row.set_header(null);
                 return;
             }
-
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-                margin_top    = (before == null) ? 4 : 14,
-                margin_bottom = 2,
+            var sep = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
+                margin_top = 6, margin_bottom = 6,
             };
-            if (before != null) {
-                var sep = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
-                    margin_start = 12, margin_end = 12, margin_bottom = 6,
-                };
-                box.append(sep);
-            }
-            var label = new Gtk.Label(section) {
-                xalign = 0,
-                margin_start = 16, margin_end = 12,
-            };
-            label.add_css_class("lumen-sidebar-section");
-            box.append(label);
-            row.set_header(box);
+            sep.add_css_class("lumen-sidebar-group-sep");
+            row.set_header(sep);
         }
 
         Gtk.ListBoxRow make_row(SettingsPage page) {
@@ -105,15 +94,22 @@ namespace LumenSettings {
             row.add_css_class("lumen-settings-sidebar-row");
 
             var box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-                margin_start = 12, margin_end = 12,
-                margin_top = 8, margin_bottom = 8,
+                margin_start = 6, margin_end = 6,
+                margin_top = 6, margin_bottom = 6,
             };
+
             var icon = new Gtk.Image.from_icon_name(page.icon_name) {
-                pixel_size = 18,
+                pixel_size = 16,
+                halign = Gtk.Align.CENTER,
+                valign = Gtk.Align.CENTER,
             };
+            icon.add_css_class("lumen-sidebar-icon");
+
             var label = new Gtk.Label(page.title) {
                 xalign = 0, hexpand = true,
             };
+            label.add_css_class("lumen-sidebar-row-label");
+
             box.append(icon);
             box.append(label);
             row.set_child(box);

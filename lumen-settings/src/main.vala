@@ -32,7 +32,7 @@ namespace LumenSettings {
             var provider = new Gtk.CssProvider();
             try {
                 var bytes = resources_lookup_data(
-                    "/org/lumenshell/settings/style.css",
+                    "/org/lumenshell/settings/res/style.css",
                     ResourceLookupFlags.NONE);
                 var base_css = (string) bytes.get_data();
                 var combined = Theme.generate_root_css() + "\n" + base_css;

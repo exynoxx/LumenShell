@@ -8,42 +8,61 @@ window.lumen-settings decoration {
 }
 
 .lumen-settings-sidebar {
-    background: @settings_sidebar_background;
+    background: alpha(black, 0.18);
 }
 
 .lumen-settings-sidebar .navigation-sidebar,
 .lumen-settings-sidebar listview,
 .lumen-settings-sidebar listbox {
     background: transparent;
+    padding: 6px 0 4px 0;
 }
 
+/* GNOME navigation-sidebar metrics: 36px min-height, 9px corners,
+   6px lateral inset, 2px gap between rows, neutral overlays for
+   hover/selected (not accent-tinted). */
 .lumen-settings-sidebar row {
     background: transparent;
     color: @settings_text;
-    border-radius: 8px;
-    margin: 2px 8px;
-    padding: 0;
+    border-radius: 9px;
+    margin: 0 6px 2px 6px;
+    padding: 0 8px;
+    min-height: 36px;
 }
 
 .lumen-settings-sidebar row:hover {
-    background: @settings_row_hover;
+    background: alpha(currentColor, 0.07);
 }
 
 .lumen-settings-sidebar row:selected,
 .lumen-settings-sidebar row:selected:focus {
-    background: @settings_row_active;
+    background: alpha(currentColor, 0.10);
     color: @settings_text;
 }
+.lumen-settings-sidebar row:selected:hover {
+    background: alpha(currentColor, 0.13);
+}
+.lumen-settings-sidebar row:selected:active {
+    background: alpha(currentColor, 0.19);
+}
 
-.lumen-settings-sidebar row image { color: @settings_subtitle; }
-.lumen-settings-sidebar row:selected image { color: @settings_text; }
+/* Symbolic icon inherits the row's currentColor — no colored tile. */
+.lumen-settings-sidebar .lumen-sidebar-icon {
+    color: @settings_text;
+    opacity: 0.85;
+}
+.lumen-settings-sidebar row:selected .lumen-sidebar-icon {
+    opacity: 1.0;
+}
 
-.lumen-sidebar-section {
-    color: @settings_subtitle;
-    font-weight: 700;
-    font-size: 0.78em;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+.lumen-sidebar-row-label {
+    font-size: 1.0em;
+    font-weight: normal;
+}
+
+.lumen-sidebar-group-sep {
+    background: alpha(currentColor, 0.10);
+    min-height: 1px;
 }
 
 separator {
