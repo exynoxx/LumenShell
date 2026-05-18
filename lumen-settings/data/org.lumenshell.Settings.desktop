@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Lumen Settings
+GenericName=System Settings
+Comment=Configure the LumenShell session
+Exec=lumen-settings
+Icon=preferences-system
+Terminal=false
+Categories=Settings;DesktopSettings;GTK;
+StartupNotify=true

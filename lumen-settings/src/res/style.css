@@ -1,0 +1,128 @@
+/* lumen-settings: GNOME-Settings-shaped, Lumen-colored.
+   @define-color values come from Theme.generate_root_css(). */
+
+window.lumen-settings,
+window.lumen-settings decoration {
+    background: @settings_window_background;
+    color: @settings_text;
+}
+
+.lumen-settings-sidebar {
+    background: @settings_sidebar_background;
+}
+
+.lumen-settings-sidebar .navigation-sidebar,
+.lumen-settings-sidebar listview,
+.lumen-settings-sidebar listbox {
+    background: transparent;
+}
+
+.lumen-settings-sidebar row {
+    background: transparent;
+    color: @settings_text;
+    border-radius: 8px;
+    margin: 2px 8px;
+    padding: 0;
+}
+
+.lumen-settings-sidebar row:hover {
+    background: @settings_row_hover;
+}
+
+.lumen-settings-sidebar row:selected,
+.lumen-settings-sidebar row:selected:focus {
+    background: @settings_row_active;
+    color: @settings_text;
+}
+
+.lumen-settings-sidebar row image { color: @settings_subtitle; }
+.lumen-settings-sidebar row:selected image { color: @settings_text; }
+
+separator {
+    background: @settings_border;
+    min-width: 1px;
+}
+
+.lumen-settings-header label.title-1 {
+    font-weight: 800;
+    font-size: 22px;
+    color: @settings_text;
+}
+
+/* Boxed list — a vertical listbox with rounded corners, one separator
+   between rows, no outer chrome. Mirrors adw.boxed-list visuals. */
+.lumen-boxed-list {
+    background: @settings_row_background;
+    border-radius: 12px;
+    border: 1px solid @settings_border;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
+.lumen-boxed-list > row {
+    background: transparent;
+    color: @settings_text;
+    padding: 12px 16px;
+    min-height: 44px;
+    border-bottom: 1px solid @settings_border;
+}
+
+.lumen-boxed-list > row:last-child {
+    border-bottom: none;
+}
+
+.lumen-boxed-list > row:hover {
+    background: @settings_row_hover;
+}
+
+.lumen-boxed-list-group-title {
+    font-weight: 700;
+    color: @settings_subtitle;
+    margin-top: 12px;
+    margin-bottom: 2px;
+    margin-left: 4px;
+}
+
+.lumen-action-row-title {
+    color: @settings_text;
+    font-weight: 500;
+}
+.lumen-action-row-subtitle {
+    color: @settings_subtitle;
+    font-size: 0.9em;
+}
+
+button.lumen-color-swatch {
+    min-width: 28px;
+    min-height: 28px;
+    border-radius: 14px;
+    border: 1px solid @settings_border;
+    padding: 0;
+}
+
+scrolledwindow,
+scrolledwindow viewport {
+    background: transparent;
+}
+
+scrollbar {
+    background: transparent;
+}
+
+spinbutton,
+entry,
+combobox {
+    background: @settings_row_hover;
+    color: @settings_text;
+    border-radius: 6px;
+    border: 1px solid @settings_border;
+    min-height: 28px;
+}
+
+switch {
+    background: @settings_row_hover;
+    border-radius: 14px;
+}
+switch:checked {
+    background: @settings_accent;
+}

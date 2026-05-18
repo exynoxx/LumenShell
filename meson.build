@@ -269,6 +269,9 @@ executable('lumen-osdctl',
   install: true,
 )
 
+# --- lumen-settings (drop-in fragment) ---
+subdir('lumen-settings')
+
 # --- wayfire-plugins/* (C++ Wayfire plugins) ---
 # All Wayfire plugins live under wayfire-plugins/ and are standalone
 # C++ shared modules (no link with the rest of the tree). Each is gated

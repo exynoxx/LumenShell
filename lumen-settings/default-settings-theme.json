@@ -1,0 +1,11 @@
+{
+    "settings.window-background":   "#1A1D27FF",
+    "settings.sidebar-background":  "#141720FF",
+    "settings.row-background":      "#222633FF",
+    "settings.row-hover":            "#2C3140FF",
+    "settings.row-active":           "#363B4DFF",
+    "settings.text":                 "#EAECF2FF",
+    "settings.subtitle":             "#9AA0B5FF",
+    "settings.accent":               "#3D7AFFFF",
+    "settings.border":               "#00000044"
+}

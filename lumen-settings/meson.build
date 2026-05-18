@@ -1,0 +1,99 @@
+# lumen-settings — drop-in build fragment.
+#
+# To enable in the top-level build, add ONE line near the end of the
+# project root meson.build:
+#
+#   subdir('lumen-settings')
+#
+# This file references identifiers expected to be defined in the parent
+# meson.build (matches existing lumen-osd / lumen-panel blocks):
+#   glib_dep, gio_dep, gee_dep, json_dep, gtk4_dep, m_dep, vapi_dir.
+#
+# Wayfire-config panes (wcm fold) are auto-enabled when libxml-2.0 is
+# available on the build host. To force-disable, comment out the
+# `if settings_wayfire_enabled` branch below.
+
+settings_gnome = import('gnome')
+
+settings_resources = settings_gnome.compile_resources(
+  'lumen-settings-resources',
+  'src/resources.gresource.xml',
+  source_dir: 'src',
+  c_name: 'lumen_settings',
+)
+
+settings_deps = [
+  glib_dep,
+  gio_dep,
+  gee_dep,
+  json_dep,
+  gtk4_dep,
+  m_dep,
+]
+
+settings_vala_args = [
+  '--vapidir=' + vapi_dir,
+  '--pkg=gtk4',
+  '--pkg=gee-0.8',
+  '--pkg=json-glib-1.0',
+  '--pkg=glib-2.0',
+  '--pkg=gio-2.0',
+]
+
+settings_sources = files(
+  'src/main.vala',
+  'src/window.vala',
+  'src/sidebar.vala',
+  'src/page.vala',
+  'src/registry.vala',
+  'src/theme.vala',
+  'src/widgets/boxed_list.vala',
+  'src/widgets/action_row.vala',
+  'src/widgets/switch_row.vala',
+  'src/widgets/combo_row.vala',
+  'src/widgets/spin_row.vala',
+  'src/widgets/entry_row.vala',
+  'src/widgets/color_row.vala',
+  'src/widgets/file_row.vala',
+  'src/widgets/binding_row.vala',
+  'src/stores/paths.vala',
+  'src/stores/json_store.vala',
+  'src/stores/ini_store.vala',
+  'src/pages/appearance_page.vala',
+  'src/pages/wallpaper_page.vala',
+  'src/pages/panel_page.vala',
+  'src/pages/desktop_page.vala',
+  'src/pages/osd_page.vala',
+  'src/pages/notifications_page.vala',
+  'src/pages/about_page.vala',
+)
+
+libxml_settings_dep = dependency('libxml-2.0', required: false)
+settings_wayfire_enabled = libxml_settings_dep.found()
+
+if settings_wayfire_enabled
+  settings_deps += [libxml_settings_dep]
+  settings_vala_args += ['--pkg=libxml-2.0', '--define=WITH_WAYFIRE_CONFIG']
+  settings_sources += files(
+    'src/wayfire/metadata.vala',
+    'src/wayfire/plugin_page.vala',
+    'src/wayfire/wayfire_pages.vala',
+  )
+endif
+
+executable('lumen-settings',
+  settings_sources + settings_resources,
+  vala_args: settings_vala_args,
+  dependencies: settings_deps,
+  install: true,
+)
+
+install_data(
+  'default-settings-theme.json',
+  install_dir: get_option('datadir') / 'lumen-settings',
+)
+
+install_data(
+  'data/org.lumenshell.Settings.desktop',
+  install_dir: get_option('datadir') / 'applications',
+)
