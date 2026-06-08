@@ -5,11 +5,18 @@
 @define-color app_hover                 rgba(255, 255, 255, 0.20);
 @define-color app_launching             rgba(250, 168, 51, 1);
 @define-color app_active_underline      rgba(0, 44, 230, 1);
+@define-color panel_autohide_background rgba(17, 20, 31, 0.5);
 
 window.lumen-panel,
 window.lumen-panel decoration {
     background: @panel_background;
     box-shadow: none;
+}
+
+/* Auto-hide mode: fill the full 60px panel backdrop with a translucent color
+   behind the (fully opaque) icons, instead of the transparent default. */
+window.lumen-panel.auto-hide {
+    background: @panel_autohide_background;
 }
 
 /* The tray is a single floating rounded rectangle that contains both the

@@ -59,7 +59,6 @@ settings_sources = files(
   'src/stores/paths.vala',
   'src/stores/json_store.vala',
   'src/stores/ini_store.vala',
-  'src/pages/appearance_page.vala',
   'src/pages/wallpaper_page.vala',
   'src/pages/panel_page.vala',
   'src/pages/desktop_page.vala',

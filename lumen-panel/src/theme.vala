@@ -14,6 +14,9 @@ public class Theme : GLib.Object {
         palette.insert("app_hover",             "rgba(255,255,255,0.20)");
         palette.insert("app_launching",         "rgba(250,168,51,1)");
         palette.insert("app_active_underline",  "rgba(0,44,230,1)");
+        // Auto-hide backdrop: same color as the panel by default, but its own
+        // alpha (settings keeps the RGB synced to panel.background).
+        palette.insert("panel_autohide_background", "rgba(26,29,39,0.5)");
     }
 
     static string key_to_var (string json_key) {

@@ -49,7 +49,6 @@ namespace LumenSettings {
         }
 
         void register_pages() {
-            registry.add(new AppearancePage(),    "LumenShell");
             registry.add(new WallpaperPage(),     "LumenShell");
             registry.add(new PanelPage(),         "LumenShell");
             registry.add(new DesktopPage(),       "LumenShell");

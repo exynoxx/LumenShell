@@ -53,7 +53,24 @@ namespace LumenSettings {
             spacing.add_row(int_row("osd.content-spacing", "Content gap",        0, 60,  1, 14, "px between the icon, label, and progress bar"));
             box.append(spacing);
 
+            var colors = new BoxedList("Colors");
+            colors.add_row(color_row("osd.background",      "OSD background",     "#000000bf", "background of volume and brightness popups"));
+            colors.add_row(color_row("osd.text",            "OSD text",           "#ffffffff", "label and icon color on OSD popups"));
+            colors.add_row(color_row("osd.progress.track",  "Progress track",     "#ffffff26", "unfilled portion of the OSD progress bar"));
+            colors.add_row(color_row("osd.progress.fill",   "Progress fill",      "#ffffffff", "filled portion of the OSD progress bar"));
+            box.append(colors);
+
             return box;
+        }
+
+        ColorRow color_row(string key, string label, string fallback, string subtitle) {
+            var initial = store.get_string(key) ?? fallback;
+            var row = new ColorRow(label, initial, subtitle);
+            row.value_changed.connect((hex) => {
+                store.set_string(key, hex);
+                store.save();
+            });
+            return row;
         }
 
         SpinRow int_row(string key, string label, double min, double max,

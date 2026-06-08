@@ -8,15 +8,32 @@ public class App : GLib.Object {
     // the concave corner between the bottom strip and the expanded tray.
     public const uint COLLAPSE_DELAY_MS = 500;
 
+    // Auto-hide: when enabled the panel slides off the bottom edge, leaving a
+    // SLIVER_PX handle on-screen as the reveal hot-zone. Hidden state shifts the
+    // surface down by HIDDEN_MARGIN via a negative layer-shell bottom margin.
+    public const int SLIVER_PX = 4;
+    public const int HIDDEN_MARGIN = -(ICON_ROW_HEIGHT - SLIVER_PX);
+    public const int64 REVEAL_ANIM_US = 200000; // 200ms
+
     Gtk.ApplicationWindow win;
     TrayBar tray;
     uint collapse_timeout_id = 0;
     uint resize_tick_id = 0;
 
+    bool auto_hide = false;
+    bool reveal_target = false;     // where the slide is heading
+    int current_margin = 0;         // last applied bottom margin
+    int slide_from_margin = 0;      // margin at animation start
+    int64 slide_start_us = 0;       // frame time at animation start
+    uint slide_tick_id = 0;
+
     public void activate (Gtk.Application app) {
         win = new Gtk.ApplicationWindow(app);
         win.add_css_class("lumen-panel");
         win.set_default_size(-1, 60);
+
+        var panel_ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
+        auto_hide = Ini.get_key_value(panel_ini, "behavior.auto-hide") == "true";
 
         GtkLayerShell.init_for_window(win);
         GtkLayerShell.set_namespace(win, "lumen-panel");
@@ -24,8 +41,20 @@ public class App : GLib.Object {
         GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.LEFT,   true);
         GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.RIGHT,  true);
         GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.BOTTOM, true);
-        GtkLayerShell.set_exclusive_zone(win, 60);
         GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.ON_DEMAND);
+
+        if (auto_hide) {
+            // Don't reserve screen space; start hidden with only the handle showing.
+            GtkLayerShell.set_exclusive_zone(win, 0);
+            current_margin = HIDDEN_MARGIN;
+            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, HIDDEN_MARGIN);
+            // In auto-hide mode fill the panel backdrop with a translucent
+            // color (icons stay fully opaque on top) so it reads as a bar over
+            // the windows it now floats above.
+            win.add_css_class("auto-hide");
+        } else {
+            GtkLayerShell.set_exclusive_zone(win, 60);
+        }
 
         Theme.install();
 
@@ -92,10 +121,50 @@ public class App : GLib.Object {
         // tracks the surface size (see above).
         var win_motion = new Gtk.EventControllerMotion();
         win_motion.notify["contains-pointer"].connect(() => {
-            if (win_motion.contains_pointer) { cancel_collapse(); return; }
-            if (tray.is_expanded()) schedule_collapse();
+            if (win_motion.contains_pointer) {
+                cancel_collapse();
+                if (auto_hide) set_reveal(true);
+                return;
+            }
+            if (tray.is_expanded() || auto_hide) schedule_collapse();
         });
         ((Gtk.Widget) win).add_controller(win_motion);
+    }
+
+    // Drive the slide toward revealed (margin 0) or hidden (HIDDEN_MARGIN).
+    void set_reveal (bool reveal) {
+        if (!auto_hide) return;
+        if (reveal == reveal_target && slide_tick_id == 0) {
+            // Already settled in the requested state; nothing to animate.
+            int settled = reveal ? 0 : HIDDEN_MARGIN;
+            if (current_margin == settled) return;
+        }
+        reveal_target = reveal;
+        start_slide_tracking();
+    }
+
+    void start_slide_tracking () {
+        slide_from_margin = current_margin;
+        slide_start_us = 0; // stamped on first tick from the frame clock
+        if (slide_tick_id != 0) return;
+        slide_tick_id = ((Gtk.Widget) win).add_tick_callback((widget, clock) => {
+            int target = reveal_target ? 0 : HIDDEN_MARGIN;
+            if (slide_start_us == 0) slide_start_us = clock.get_frame_time();
+            double t = (double) (clock.get_frame_time() - slide_start_us) / REVEAL_ANIM_US;
+            if (t >= 1.0) {
+                current_margin = target;
+                GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, current_margin);
+                update_input_region();
+                slide_tick_id = 0;
+                return GLib.Source.REMOVE;
+            }
+            // ease-out for a softer settle
+            double eased = 1.0 - (1.0 - t) * (1.0 - t);
+            current_margin = (int) (slide_from_margin + (target - slide_from_margin) * eased);
+            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, current_margin);
+            update_input_region();
+            return GLib.Source.CONTINUE;
+        });
     }
 
     void start_resize_tracking () {
@@ -115,6 +184,8 @@ public class App : GLib.Object {
         collapse_timeout_id = GLib.Timeout.add(COLLAPSE_DELAY_MS, () => {
             collapse_timeout_id = 0;
             if (tray.is_expanded()) tray.collapse();
+            // Don't slide away mid-interaction with an open tray page.
+            if (auto_hide && !tray.is_expanded()) set_reveal(false);
             return GLib.Source.REMOVE;
         });
     }
@@ -141,6 +212,20 @@ public class App : GLib.Object {
         if (sw <= 0 || sh <= 0) return;
 
         var region = new Cairo.Region();
+
+        // Auto-hide: while sliding, claim the whole surface so a spurious
+        // pointer-leave can't abort an in-flight reveal. When settled hidden,
+        // claim only the on-screen handle strip (top SLIVER_PX) as the hot-zone.
+        if (auto_hide && slide_tick_id != 0) {
+            region.union_rectangle(Cairo.RectangleInt() { x = 0, y = 0, width = sw, height = sh });
+            gdk_surface.set_input_region(region);
+            return;
+        }
+        if (auto_hide && !reveal_target) {
+            region.union_rectangle(Cairo.RectangleInt() { x = 0, y = 0, width = sw, height = SLIVER_PX });
+            gdk_surface.set_input_region(region);
+            return;
+        }
 
         var bottom = Cairo.RectangleInt() {
             x = 0,
