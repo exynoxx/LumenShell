@@ -7,6 +7,10 @@ public class WifiRow : Gtk.Widget {
 
     public const int ROW_H = 36;
     const int PAD = 14;
+    const int DISC_W = 80;   // "Disconnect" button width
+    const int DISC_H = 22;
+    const int LOCK_W = 18;   // reserved width for the lock glyph
+    const int GAP    = 8;
 
     public string ssid     { get; private set; }
     public int    signal_pct { get; private set; }
@@ -40,12 +44,13 @@ public class WifiRow : Gtk.Widget {
         bars.set_parent(this);
 
         if (is_connected) {
-            disc_btn = new Gtk.Button.with_label("×") {
-                width_request = 22,
-                height_request = 18,
+            disc_btn = new Gtk.Button.with_label("Disconnect") {
+                width_request = DISC_W,
+                height_request = DISC_H,
             };
             disc_btn.add_css_class("lumen-button");
             disc_btn.add_css_class("danger");
+            disc_btn.add_css_class("row-disconnect");
             disc_btn.clicked.connect(() => disconnect_clicked());
             disc_btn.set_parent(this);
         }
@@ -71,10 +76,13 @@ public class WifiRow : Gtk.Widget {
         bars.allocate(25, 20, baseline, t1);
 
         if (disc_btn != null) {
-            int bx = width - PAD - 22;
-            int by = (height - 18) / 2;
+            // Disconnect button sits left of the lock glyph (which is pinned to
+            // the far right when the network is secured).
+            int right = width - PAD - (is_secured ? LOCK_W + GAP : 0);
+            int bx = right - DISC_W;
+            int by = (height - DISC_H) / 2;
             var t2 = new Gsk.Transform().translate({ bx, by });
-            disc_btn.allocate(22, 18, baseline, t2);
+            disc_btn.allocate(DISC_W, DISC_H, baseline, t2);
         }
     }
 
@@ -116,8 +124,8 @@ public class WifiRow : Gtk.Widget {
         layout.set_attributes(attrs);
 
         int right_reserve = PAD + 14;
-        if (is_secured) right_reserve += 18;
-        if (disc_btn != null) right_reserve += 30;
+        if (is_secured) right_reserve += LOCK_W;
+        if (disc_btn != null) right_reserve += DISC_W + GAP;
         layout.set_width((w - (PAD + 32) - right_reserve) * Pango.SCALE);
         layout.set_ellipsize(Pango.EllipsizeMode.END);
 
@@ -131,8 +139,9 @@ public class WifiRow : Gtk.Widget {
         s.restore();
 
         if (is_secured) {
+            // Lock glyph pinned to the far right; the disconnect button (if any)
+            // is laid out to its left in size_allocate().
             int lx = w - PAD - 14;
-            if (disc_btn != null) lx -= 30;
             var lock_layout = create_pango_layout("🔒");
             var la = new Pango.AttrList();
             la.insert(Pango.AttrSize.new_absolute(11 * Pango.SCALE));

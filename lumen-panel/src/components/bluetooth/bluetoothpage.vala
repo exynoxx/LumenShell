@@ -42,7 +42,7 @@ public class BluetoothPage : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.service = service;
         add_css_class("wifi-page");
-        set_size_request(380, 320);
+        set_size_request(440, 400);
 
         build_header();
         append(build_separator());

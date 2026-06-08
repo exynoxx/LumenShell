@@ -63,7 +63,7 @@ public class BatteryPage : Gtk.Widget {
             if (i >= 0 && i < pps.available.length) pps.select(pps.available[i]);
         });
 
-        set_size_request(380, page_height());
+        set_size_request(440, page_height());
         service.state_changed.connect(refresh);
         pps.state_changed.connect(refresh_profile);
         refresh();
@@ -101,7 +101,7 @@ public class BatteryPage : Gtk.Widget {
                                   out int min_baseline, out int nat_baseline) {
         min_baseline = -1; nat_baseline = -1;
         if (orientation == Gtk.Orientation.HORIZONTAL) {
-            min = 380; nat = 380;
+            min = 440; nat = 440;
         } else {
             min = nat = page_height();
         }

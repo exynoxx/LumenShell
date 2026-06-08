@@ -11,7 +11,7 @@ public class ExitPage : Gtk.Box {
     public ExitPage () {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         add_css_class("exit-page");
-        set_size_request(380, 200);
+        set_size_request(440, 240);
 
         var title = new Gtk.Label("Session") {
             xalign = 0,

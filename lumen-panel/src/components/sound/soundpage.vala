@@ -12,7 +12,7 @@ public class SoundPage : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 8);
         this.service = service;
         add_css_class("sound-page");
-        set_size_request(360, 240);
+        set_size_request(440, 300);
 
         var title = new Gtk.Label("Sound") { xalign = 0 };
         title.add_css_class("page-title");

@@ -180,6 +180,12 @@ button.lumen-button.danger:hover {
 button.lumen-button.danger:active {
     background: rgba(168, 41, 41, 1);
 }
+/* WifiRow inline disconnect button — smaller text, snug padding. */
+button.lumen-button.row-disconnect {
+    font-size: 11px;
+    padding: 2px 8px;
+    min-height: 0;
+}
 
 /* ExitPage — round action buttons (logout / reboot / shutdown). */
 button.exit-action {

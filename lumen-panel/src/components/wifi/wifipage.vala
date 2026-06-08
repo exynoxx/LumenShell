@@ -35,6 +35,7 @@ public class WifiPage : Gtk.Box {
     Gtk.Label  connected_label;
 
     Gee.ArrayList<WifiRow> rows = new Gee.ArrayList<WifiRow>();
+    WifiNet[] sorted_nets = {};
     int selected_index = -1;
 
     static Gdk.RGBA chip_online  = Utils.rgba(0.18f, 0.88f, 0.42f, 1f);
@@ -44,7 +45,7 @@ public class WifiPage : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.service = service;
         add_css_class("wifi-page");
-        set_size_request(380, 320);
+        set_size_request(440, 400);
 
         build_header();
         append(build_separator());
@@ -183,15 +184,13 @@ public class WifiPage : Gtk.Box {
 
     bool selected_is_connected () {
         if (selected_index < 0) return false;
-        var nets = service.nets;
-        return selected_index < nets.length
-            && nets[selected_index].ssid == service.connected_ssid;
+        return selected_index < sorted_nets.length
+            && sorted_nets[selected_index].ssid == service.connected_ssid;
     }
 
     void do_connect () {
-        var nets = service.nets;
-        if (selected_index < 0 || selected_index >= nets.length) return;
-        service.connect_to(nets[selected_index].ssid, password_field.text);
+        if (selected_index < 0 || selected_index >= sorted_nets.length) return;
+        service.connect_to(sorted_nets[selected_index].ssid, password_field.text);
         close_password_panel();
     }
 
@@ -251,7 +250,16 @@ public class WifiPage : Gtk.Box {
         while ((w = list_box.get_first_child()) != null) list_box.remove(w);
         rows.clear();
 
-        foreach (var net in service.nets) {
+        // Keep the currently-connected network pinned to the top of the list,
+        // preserving nmcli's order for everything else.
+        var ordered = new Gee.ArrayList<WifiNet>();
+        foreach (var net in service.nets)
+            if (net.ssid == service.connected_ssid) ordered.add(net);
+        foreach (var net in service.nets)
+            if (net.ssid != service.connected_ssid) ordered.add(net);
+        sorted_nets = ordered.to_array();
+
+        foreach (var net in sorted_nets) {
             var row = new WifiRow(net, net.ssid == service.connected_ssid);
             int captured_index = rows.size;
             row.activated.connect(() => {
