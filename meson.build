@@ -77,6 +77,9 @@ panel_resources = gnome.compile_resources(
   c_name: 'panel',
 )
 
+# UnixSocketAddress for the Wayfire peek IPC client lives in gio-unix-2.0.
+gio_unix_dep = dependency('gio-unix-2.0')
+
 panel_deps = [
   # gtk4-layer-shell MUST appear before gtk4/wayland-client in the link line,
   # otherwise gtk_layer_init_for_window() silently no-ops at runtime.
@@ -103,6 +106,16 @@ panel_vala_args = [
   '--pkg=libwlhooks',
   '--pkg=cairo',
 ]
+
+# Desktop-peek-on-panel-click is opt-out: gate the peek IPC source, the
+# gio-unix dep it needs, and the PANEL_PEEK Vala define behind one option so a
+# standalone panel build has zero Wayfire coupling.
+panel_peek_sources = []
+if get_option('with_panel_peek')
+  panel_deps += gio_unix_dep
+  panel_vala_args += ['--pkg=gio-unix-2.0', '--define=PANEL_PEEK']
+  panel_peek_sources = files('lumen-panel/src/peek_ipc.vala')
+endif
 
 panel_sources = files(
   'lumen-panel/src/main.vala',
@@ -145,7 +158,7 @@ panel_sources = files(
 )
 
 executable('lumen-panel',
-  panel_sources + panel_resources,
+  panel_sources + panel_peek_sources + panel_resources,
   vala_args: panel_vala_args,
   dependencies: panel_deps,
   link_args: ['-Wl,--no-as-needed'],

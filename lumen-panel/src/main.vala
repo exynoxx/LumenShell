@@ -80,6 +80,26 @@ public class App : GLib.Object {
         tray.add_paged(new ExitTray());
         root.append(tray);
 
+#if PANEL_PEEK
+        // Clicking the empty middle of the panel (not an app icon, not the
+        // tray) triggers the same Wayfire desktop-peek as Win+D and as
+        // clicking blank space on the lumen desktop. App icons and tray
+        // buttons are Gtk.Buttons; the tray box is skipped by reference. We
+        // walk up from the picked widget so a child gesture that doesn't
+        // claim the press can't sneak a peek in behind a real click.
+        var peek_click = new Gtk.GestureClick();
+        peek_click.set_button(Gdk.BUTTON_PRIMARY);
+        peek_click.pressed.connect((n_press, x, y) => {
+            var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
+            for (var w = picked; w != null && w != root; w = w.get_parent()) {
+                if (w is Gtk.Button || w is Gtk.Editable || w == tray)
+                    return;
+            }
+            PeekIpc.toggle();
+        });
+        root.add_controller(peek_click);
+#endif
+
         win.set_child(root);
         win.present();
 

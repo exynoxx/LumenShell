@@ -6,6 +6,13 @@ option(
 )
 
 option(
+  'with_panel_peek',
+  type: 'boolean',
+  value: true,
+  description: 'Let a click on the empty middle of lumen-panel trigger the Wayfire desktop-peek (Win+D). Disable for a standalone panel with no Wayfire coupling.',
+)
+
+option(
   'with_startup_zoom',
   type: 'boolean',
   value: true,
