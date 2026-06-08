@@ -100,7 +100,29 @@ public class App : GLib.Object {
         root.add_controller(peek_click);
 #endif
 
-        win.set_child(root);
+        // The panel backdrop is a fixed-height strip pinned to the bottom edge,
+        // not the window background. The layer-shell surface grows upward when
+        // the tray expands a page; painting the color on the window would drag
+        // the backdrop up with it. A spacer pushes the colored strip to the
+        // bottom so it stays ICON_ROW_HEIGHT tall regardless of surface height.
+        var backdrop = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+            hexpand = true, vexpand = true,
+        };
+        backdrop.append(new Gtk.Box(Gtk.Orientation.VERTICAL, 0) { vexpand = true });
+        var strip = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+            hexpand = true, height_request = ICON_ROW_HEIGHT,
+        };
+        strip.add_css_class("panel-strip");
+        backdrop.append(strip);
+
+        // Overlay: backdrop behind (bottom z-order), content on top. The content
+        // layer is measured so the surface still grows with the tray's pages.
+        var overlay = new Gtk.Overlay();
+        overlay.set_child(backdrop);
+        overlay.add_overlay(root);
+        overlay.set_measure_overlay(root, true);
+
+        win.set_child(overlay);
         win.present();
 
         // ESC anywhere on the panel collapses the tray. CAPTURE phase so
