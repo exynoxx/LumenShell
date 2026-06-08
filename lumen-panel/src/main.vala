@@ -44,6 +44,7 @@ public class App : GLib.Object {
 
         tray = new TrayBar();
         tray.add_paged(new WifiTray());
+        tray.add_paged(new BluetoothTray());
         tray.add_paged(new BatteryTray());
         tray.add_paged(new SoundTray());
         tray.add_icon(new Clock());

@@ -134,6 +134,11 @@ panel_sources = files(
   'lumen-panel/src/components/wifi/wifi.vala',
   'lumen-panel/src/components/wifi/wifirow.vala',
   'lumen-panel/src/components/wifi/wifipage.vala',
+  'lumen-panel/src/components/bluetooth/btctl.vala',
+  'lumen-panel/src/components/bluetooth/bluetooth_service.vala',
+  'lumen-panel/src/components/bluetooth/bluetooth.vala',
+  'lumen-panel/src/components/bluetooth/bluetoothrow.vala',
+  'lumen-panel/src/components/bluetooth/bluetoothpage.vala',
 )
 
 executable('lumen-panel',
