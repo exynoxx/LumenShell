@@ -4,7 +4,7 @@ using Gtk;
 // original DrawKit look (no GtkSearchEntry / GtkListBox chrome).
 //
 // Layout:
-//   [Title  Refresh   ...   ConnectionChip]   ← header (44 px)
+//   [Title  Refresh  Power   ...   ConnectionChip]   ← header (44 px)
 //   ──────────── 1 px separator ─────────────
 //   [ WifiRow ... ]                            ← scrolled list (custom rows)
 //   ──────────── 1 px separator ─────────────
@@ -19,12 +19,15 @@ public class WifiPage : Gtk.Box {
 
     WifiService service;
 
-    Gtk.Label title_label;
+    Gtk.Label  title_label;
     Gtk.Button refresh_btn;
-    LumenChip conn_chip;
+    Gtk.Switch power_switch;
+    LumenChip  conn_chip;
+    bool       syncing_power = false;
 
     Gtk.ScrolledWindow scroll;
     Gtk.Box list_box;
+    Gtk.Label empty_label;
 
     Gtk.Box password_panel;
     LumenTextField password_field;
@@ -48,6 +51,7 @@ public class WifiPage : Gtk.Box {
         build_list();
         append(build_separator());
         build_password_panel();
+        update_header();
 
         service.state_changed.connect(on_service_changed);
         service.refresh_scan(false);
@@ -84,6 +88,18 @@ public class WifiPage : Gtk.Box {
         refresh_btn.clicked.connect(() => service.refresh_scan(true));
         header.append(refresh_btn);
 
+        power_switch = new Gtk.Switch() {
+            valign = Gtk.Align.CENTER,
+        };
+        power_switch.add_css_class("lumen-switch");
+        // Guard against the programmatic sync in update_header() looping back
+        // into set_radio(); only user toggles should drive the radio.
+        power_switch.notify["active"].connect(() => {
+            if (syncing_power) return;
+            service.set_radio(power_switch.active);
+        });
+        header.append(power_switch);
+
         var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) { hexpand = true };
         header.append(spacer);
 
@@ -91,7 +107,6 @@ public class WifiPage : Gtk.Box {
         header.append(conn_chip);
 
         append(header);
-        update_connection_chip();
     }
 
     void build_list () {
@@ -108,7 +123,21 @@ public class WifiPage : Gtk.Box {
             min_content_height = 180,
         };
         scroll.add_css_class("wifi-scroll");
-        append(scroll);
+
+        // Centered placeholder shown when the radio is off or no networks are
+        // visible yet — overlaid on the (empty) scroll area.
+        empty_label = new Gtk.Label("") {
+            halign = Gtk.Align.CENTER,
+            valign = Gtk.Align.CENTER,
+            can_target = false,
+            visible = false,
+        };
+        empty_label.add_css_class("wifi-empty");
+
+        var overlay = new Gtk.Overlay() { vexpand = true };
+        overlay.set_child(scroll);
+        overlay.add_overlay(empty_label);
+        append(overlay);
     }
 
     void build_password_panel () {
@@ -214,7 +243,7 @@ public class WifiPage : Gtk.Box {
             else            close_password_panel();
         }
 
-        update_connection_chip();
+        update_header();
     }
 
     void rebuild_rows () {
@@ -235,10 +264,28 @@ public class WifiPage : Gtk.Box {
         }
     }
 
-    void update_connection_chip () {
+    void update_header () {
+        if (power_switch.active != service.enabled) {
+            syncing_power = true;
+            power_switch.active = service.enabled;
+            syncing_power = false;
+        }
+        refresh_btn.sensitive = service.enabled;
+
         string ssid = service.connected_ssid;
         bool online = ssid != "" && ssid != "--";
-        conn_chip.set_text(online ? "●  " + ssid : "●  Offline");
+        conn_chip.set_text(online ? "●  " + ssid
+                                   : (service.enabled ? "●  Offline" : "●  Off"));
         conn_chip.set_text_color(online ? chip_online : chip_offline);
+
+        if (!service.enabled) {
+            empty_label.label = "WiFi is off";
+            empty_label.visible = true;
+        } else if (rows.size == 0) {
+            empty_label.label = service.scanning ? "Scanning…" : "No networks found";
+            empty_label.visible = true;
+        } else {
+            empty_label.visible = false;
+        }
     }
 }

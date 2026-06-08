@@ -14,6 +14,7 @@ public class WifiService : GLib.Object {
     public string    connected_ssid     { get; private set; default = ""; }
     public WifiNet[] nets               = {};
     public bool      scanning           { get; private set; default = false; }
+    public bool      enabled            { get; private set; default = true; }
     public bool      ethernet_connected { get; private set; default = false; }
 
     public bool connected { get { return connected_ssid != ""; } }
@@ -29,6 +30,22 @@ public class WifiService : GLib.Object {
         GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
             poll_connection();
             return Source.CONTINUE;
+        });
+    }
+
+    /** Enable/disable the WiFi radio, then refresh. */
+    public void set_radio(bool on) {
+        // Optimistic: reflect the intent immediately so the toggle doesn't
+        // bounce back while the (blocking) rfkill+nmcli sequence runs.
+        enabled = on;
+        if (!on) { nets = {}; connected_ssid = ""; }
+        state_changed();
+        new GLib.Thread<void>("wifi-power", () => {
+            nmcli.set_enabled(on);
+            GLib.Idle.add(() => {
+                refresh_scan(false);
+                return Source.REMOVE;
+            });
         });
     }
 
@@ -52,11 +69,13 @@ public class WifiService : GLib.Object {
         state_changed();
 
         new GLib.Thread<void>("wifi-scan", () => {
-            if (rescan) nmcli.rescan();
-            var new_nets = nmcli.fetch_nets();
+            bool new_enabled = nmcli.query_enabled();
+            if (rescan && new_enabled) nmcli.rescan();
+            var new_nets = new_enabled ? nmcli.fetch_nets() : new WifiNet[0];
             var new_conn = nmcli.query_connected();
             var new_eth  = nmcli.query_ethernet_connected();
             GLib.Idle.add(() => {
+                enabled            = new_enabled;
                 nets               = new_nets;
                 connected_ssid     = new_conn;
                 ethernet_connected = new_eth;
@@ -79,11 +98,13 @@ public class WifiService : GLib.Object {
         if (poll_in_flight) return;
         poll_in_flight = true;
         new GLib.Thread<void>("wifi-poll", () => {
+            var en   = nmcli.query_enabled();
             var conn = nmcli.query_connected();
             var eth  = nmcli.query_ethernet_connected();
             GLib.Idle.add(() => {
                 poll_in_flight = false;
                 bool changed = false;
+                if (en   != enabled)            { enabled = en;             changed = true; }
                 if (conn != connected_ssid)     { connected_ssid = conn;    changed = true; }
                 if (eth  != ethernet_connected) { ethernet_connected = eth; changed = true; }
                 if (changed) state_changed();

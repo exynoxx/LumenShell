@@ -112,6 +112,34 @@ public class NmcliClient : GLib.Object {
         return "";
     }
 
+    /** True if the WiFi radio is enabled (`nmcli radio wifi` → "enabled"). */
+    public bool query_enabled() {
+        string out_str = "";
+        try {
+            Process.spawn_command_line_sync("nmcli radio wifi", out out_str, null, null);
+        } catch (SpawnError e) { return false; }
+        return out_str.strip() == "enabled";
+    }
+
+    /**
+     * Enable or disable the WiFi radio. Blocking — call from a background
+     * thread. rfkill unblock clears any hard/soft block first, mirroring the
+     * bluetooth power path, otherwise `nmcli radio wifi on` can no-op.
+     */
+    public void set_enabled(bool on) {
+        if (on) run_sync(new string[] { "rfkill", "unblock", "wifi" });
+        run_sync(new string[] { "nmcli", "radio", "wifi", on ? "on" : "off" });
+    }
+
+    private void run_sync(string[] argv) {
+        try {
+            Process.spawn_sync(null, argv, null,
+                SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL
+                    | SpawnFlags.STDERR_TO_DEV_NULL,
+                null, null, null, null);
+        } catch (SpawnError e) {}
+    }
+
     /** Ask nmcli to re-probe visible networks. Blocking. */
     public void rescan() {
         Utils.spawn_argv(new string[] { "nmcli", "device", "wifi", "rescan" });
