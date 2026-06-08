@@ -258,7 +258,7 @@ public class BluetoothPage : Gtk.Box {
         string dev = service.connected_name;
         bool online = dev != "";
         conn_chip.set_text(online ? "●  " + dev
-                                   : (service.powered ? "●  No device" : "●  Off"));
+                                   : (service.powered ? "●  Not connected" : "●  Off"));
         conn_chip.set_text_color(online ? chip_online : chip_offline);
     }
 }

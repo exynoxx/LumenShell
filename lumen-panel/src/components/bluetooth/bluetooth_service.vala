@@ -43,7 +43,10 @@ public class BluetoothService : GLib.Object {
         new GLib.Thread<void>("bt-power", () => {
             btctl.set_powered(on);
             GLib.Idle.add(() => {
-                refresh_scan(false);
+                // Powering on: run a discovery scan so nearby devices appear
+                // without the user having to hit "Scan" manually. Powering
+                // off: just refresh the (now empty) list.
+                refresh_scan(on);
                 return Source.REMOVE;
             });
         });
