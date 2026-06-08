@@ -117,6 +117,13 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     private double blur_anim_from = 0.0;
     private double blur_anim_to   = 0.0;
 
+    // Local mirror of the compositor-side peek toggle. The wayfire plugin
+    // slides windows with view transformers WITHOUT changing toplevel focus,
+    // so no focus_changed signal arrives when a peek ends — we have to track
+    // the toggle direction ourselves to know whether a wallpaper click is a
+    // peek-OUT (clear blur) or a peek-IN (restore blur from focus).
+    private bool peeking = false;
+
     public DesktopWindow(Gtk.Application app) {
         Object(application: app);
 
@@ -232,6 +239,7 @@ public class DesktopWindow : Gtk.ApplicationWindow {
                 // /stop is a no-op when the plugin is idle, so we can fire it
                 // unconditionally instead of tracking peek state on this side.
                 LumenDesktop.PeekIpc.stop();
+                peeking = false;
                 reset_view();
             });
             list.add(entry);
@@ -263,8 +271,24 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     }
 
     private void trigger_peek(string reason) {
-        peek_log(@"trigger_peek from $reason");
+        // Mirror the compositor toggle so we know which way this click goes.
+        // Peek-OUT clears the blur (crisp tiles while windows slide aside);
+        // peek-IN restores it to whatever the focus state wants. We can't rely
+        // on focus_changed for the peek-IN restore because the plugin moves
+        // windows with transformers and never re-fires focus.
+        peeking = !peeking;
+        peek_log(@"trigger_peek from $reason -> peeking=$peeking");
         LumenDesktop.PeekIpc.toggle();
+
+        if (peeking) {
+            animate_blur_to(0.0, BLUR_OUT_US);
+        } else {
+            // Peek-IN: windows are coming back, so return the drawer to a
+            // clean state — clear any in-progress search and reset paging —
+            // and restore the blur to whatever the focus state wants.
+            reset_view();
+            sync_blur_to_focus();
+        }
     }
 
     private void build_ui() {
@@ -301,10 +325,6 @@ public class DesktopWindow : Gtk.ApplicationWindow {
             // hand keyboard focus to the search entry so the user can start
             // typing or arrow-navigate the grid immediately.
             search_entry.grab_focus();
-            // Clear the blur immediately so the user sees crisp tiles while
-            // peek slides the foreground windows out of the way. When focus
-            // returns to a real window, focus_changed re-arms the fade-in.
-            animate_blur_to(0.0, BLUR_OUT_US);
         });
         root.add_controller(click);
 
