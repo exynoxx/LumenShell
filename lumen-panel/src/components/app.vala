@@ -19,6 +19,10 @@ public class AppEntry : Gtk.Button {
     int cycle_idx = 0;
 
     Gtk.Image image;
+    // Resolved once in load_icon(); used to draw the dimmed back copies of the
+    // stacked-icon effect for multi-window apps. The front layer stays the
+    // Gtk.Image above.
+    Gdk.Paintable? icon_paintable = null;
     AppPopupMenu? popup = null;
 
     public signal void pin_toggled ();
@@ -127,22 +131,50 @@ public class AppEntry : Gtk.Button {
         if (icon_name != "") {
             if (Path.is_absolute(icon_name) && FileUtils.test(icon_name, FileTest.EXISTS)) {
                 image.set_from_file(icon_name);
+                try {
+                    icon_paintable = Gdk.Texture.from_filename(icon_name);
+                } catch (Error e) {
+                    icon_paintable = null;
+                }
                 return;
             }
             var theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
             if (theme.has_icon(icon_name)) {
                 image.set_from_icon_name(icon_name);
+                icon_paintable = theme.lookup_icon(
+                    icon_name, null, ICON_SIZE, scale_factor,
+                    Gtk.TextDirection.NONE, 0);
                 return;
             }
         }
         image.set_from_resource("/dev/lumen/panel/icons/app.svg");
+        icon_paintable = Gdk.Texture.from_resource("/dev/lumen/panel/icons/app.svg");
     }
 
     // CSS @-references don't resolve outside style rules, so the underline
     // color is hard-coded here (matches @app_active_underline in style.css).
     static Gdk.RGBA UNDERLINE_COLOR = Utils.rgba(0.0f, 0.17f, 0.9f, 1.0f);
 
+    // Stacked-icon effect: an app with more than one window draws 2 copies of
+    // its icon behind the real one, offset up-and-left, so a multi-window app
+    // reads as a stack of papers at a glance.
+    const int STACK_OFFSET = 4;     // px diagonal step per back layer
+
     public override void snapshot (Gtk.Snapshot s) {
+        // Back copies first so the real Gtk.Image (front) draws on top.
+        if (window_ids.size > 1 && icon_paintable != null) {
+            float cx = (get_width()  - ICON_SIZE) / 2f;
+            float cy = (get_height() - ICON_SIZE) / 2f;
+            for (int layer = 2; layer >= 1; layer--) {   // furthest first
+                var p = Graphene.Point();
+                p.init(cx - STACK_OFFSET * layer, cy - STACK_OFFSET * layer);
+                s.save();
+                s.translate(p);
+                icon_paintable.snapshot(s, ICON_SIZE, ICON_SIZE);
+                s.restore();  // transform
+            }
+        }
+
         base.snapshot(s);
         if (is_active()) {
             var rect = Graphene.Rect();
