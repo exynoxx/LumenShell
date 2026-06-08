@@ -2,13 +2,15 @@ using Gtk;
 
 public class BatteryTray : GLib.Object, IPagedTrayItem {
     BatteryService service;
+    PowerProfileService power_profiles;
     TrayButton icon;
     BatteryPage page;
 
     public BatteryTray () {
         service = new BatteryService();
+        power_profiles = new PowerProfileService();
         icon = new TrayButton("nobattery");
-        page = new BatteryPage(service);
+        page = new BatteryPage(service, power_profiles);
 
         service.state_changed.connect(update_icon);
         update_icon();

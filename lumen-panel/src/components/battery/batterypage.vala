@@ -12,7 +12,9 @@ using GLib;
 public class BatteryPage : Gtk.Widget {
 
     BatteryService service;
+    PowerProfileService pps;
     LumenProgressBar progress;
+    SegmentedControl profile_seg;
 
     // Layout constants — pixel-identical to the original.
     const int PAD       = 16;
@@ -23,7 +25,12 @@ public class BatteryPage : Gtk.Widget {
     const int DY_BAR    = DY_STATUS + 24;
     const int DY_STAT1  = DY_BAR    + BAR_H + 14;
     const int DY_STAT2  = DY_STAT1  + 32;
-    const int PAGE_MIN_H = DY_STAT2 + 32;
+    const int BASE_MIN_H = DY_STAT2 + 32;
+
+    // Power-mode section, appended below the stat grid when a backend exists.
+    const int DY_PROFILE_LABEL = BASE_MIN_H + 4;
+    const int DY_PROFILE       = DY_PROFILE_LABEL + 20;
+    const int PROFILE_MIN_H    = DY_PROFILE + SegmentedControl.CTRL_H + PAD;
 
     static Gdk.RGBA title_col      = Utils.rgba(0.62f, 0.64f, 0.72f, 1f);
     static Gdk.RGBA status_col     = Utils.rgba(0.60f, 0.62f, 0.70f, 1f);
@@ -40,27 +47,49 @@ public class BatteryPage : Gtk.Widget {
     bool   has_time    = false;
     Gdk.RGBA pct_col   = Utils.rgba(1f, 1f, 1f, 1f);
 
-    public BatteryPage (BatteryService service) {
+    public BatteryPage (BatteryService service, PowerProfileService pps) {
         this.service = service;
+        this.pps = pps;
 
         progress = new LumenProgressBar() {
             track_color = track_col,
         };
         progress.set_parent(this);
 
-        set_size_request(380, PAGE_MIN_H);
+        profile_seg = new SegmentedControl();
+        profile_seg.visible = pps.backend != PowerBackend.NONE;
+        profile_seg.set_parent(this);
+        profile_seg.segment_selected.connect((i) => {
+            if (i >= 0 && i < pps.available.length) pps.select(pps.available[i]);
+        });
+
+        set_size_request(380, page_height());
         service.state_changed.connect(refresh);
+        pps.state_changed.connect(refresh_profile);
         refresh();
+        refresh_profile();
     }
 
     public override void dispose () {
-        if (progress != null) { progress.unparent(); progress = null; }
+        if (progress != null)    { progress.unparent();    progress = null; }
+        if (profile_seg != null) { profile_seg.unparent(); profile_seg = null; }
         base.dispose();
+    }
+
+    int page_height () {
+        return pps.backend != PowerBackend.NONE ? PROFILE_MIN_H : BASE_MIN_H;
     }
 
     public override void size_allocate (int width, int height, int baseline) {
         var transform = new Gsk.Transform().translate({ PAD, DY_BAR });
         progress.allocate(width - PAD * 2, BAR_H, baseline, transform);
+
+        if (profile_seg.visible) {
+            var pt = new Gsk.Transform().translate({ PAD, DY_PROFILE });
+            profile_seg.allocate(width - PAD * 2, SegmentedControl.CTRL_H, baseline, pt);
+        } else {
+            profile_seg.allocate(0, 0, baseline, null);
+        }
     }
 
     public override Gtk.SizeRequestMode get_request_mode () {
@@ -74,8 +103,30 @@ public class BatteryPage : Gtk.Widget {
         if (orientation == Gtk.Orientation.HORIZONTAL) {
             min = 380; nat = 380;
         } else {
-            min = PAGE_MIN_H; nat = PAGE_MIN_H;
+            min = nat = page_height();
         }
+    }
+
+    string profile_label (PowerProfile p) {
+        switch (p) {
+            case PowerProfile.PERFORMANCE: return "Performance";
+            case PowerProfile.BALANCED:    return "Balanced";
+            case PowerProfile.POWER_SAVER: return "Power Saver";
+            default:                       return "";
+        }
+    }
+
+    void refresh_profile () {
+        if (pps.backend == PowerBackend.NONE) return;
+
+        string[] labels = {};
+        int selected = -1;
+        for (int i = 0; i < pps.available.length; i++) {
+            labels += profile_label(pps.available[i]);
+            if (pps.available[i] == pps.current) selected = i;
+        }
+        profile_seg.set_segments(labels);
+        profile_seg.set_selected(selected);
     }
 
     void refresh () {
@@ -139,6 +190,10 @@ public class BatteryPage : Gtk.Widget {
         draw_stat(s, col2, DY_STAT1, "Current", current_str);
         draw_stat(s, col1, DY_STAT2, "Charge",  charge_str);
         if (has_time) draw_stat(s, col2, DY_STAT2, "Est. time", time_str);
+
+        if (pps.backend != PowerBackend.NONE)
+            draw_text(s, "Power Mode", PAD, DY_PROFILE_LABEL, 11,
+                      stat_label_col, false, Pango.Weight.NORMAL);
     }
 
     void draw_stat (Gtk.Snapshot s, int x, int y, string label, string value) {
