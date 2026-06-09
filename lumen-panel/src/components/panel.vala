@@ -13,7 +13,7 @@ public class AppBar : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 2);
         add_css_class("app-row");
         halign = Gtk.Align.START;
-        valign = Gtk.Align.END;
+        valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
         hexpand = true;
 
         pins_file = Path.build_filename(

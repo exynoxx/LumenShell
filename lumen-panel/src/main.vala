@@ -21,6 +21,12 @@ public class App : GLib.Object {
     uint resize_tick_id = 0;
 
     bool auto_hide = false;
+    // Panel placement. When at_top the surface anchors to the screen's top
+    // edge instead of the bottom; the backdrop strip, tray growth and the
+    // auto-hide slide all flip to match. slide_edge is the layer-shell edge
+    // the auto-hide margin animates against (TOP when at_top, else BOTTOM).
+    bool at_top = false;
+    GtkLayerShell.Edge slide_edge = GtkLayerShell.Edge.BOTTOM;
     bool reveal_target = false;     // where the slide is heading
     int current_margin = 0;         // last applied bottom margin
     int slide_from_margin = 0;      // margin at animation start
@@ -34,20 +40,23 @@ public class App : GLib.Object {
 
         var panel_ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
         auto_hide = Ini.get_key_value(panel_ini, "behavior.auto-hide") == "true";
+        PanelConfig.load();
+        at_top = PanelConfig.at_top;
+        slide_edge = at_top ? GtkLayerShell.Edge.TOP : GtkLayerShell.Edge.BOTTOM;
 
         GtkLayerShell.init_for_window(win);
         GtkLayerShell.set_namespace(win, "lumen-panel");
         GtkLayerShell.set_layer(win, GtkLayerShell.Layer.TOP);
         GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.LEFT,   true);
         GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.RIGHT,  true);
-        GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.BOTTOM, true);
+        GtkLayerShell.set_anchor(win, slide_edge, true);
         GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
         if (auto_hide) {
             // Don't reserve screen space; start hidden with only the handle showing.
             GtkLayerShell.set_exclusive_zone(win, 0);
             current_margin = HIDDEN_MARGIN;
-            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, HIDDEN_MARGIN);
+            GtkLayerShell.set_margin(win, slide_edge, HIDDEN_MARGIN);
             // In auto-hide mode fill the panel backdrop with a translucent
             // color (icons stay fully opaque on top) so it reads as a bar over
             // the windows it now floats above.
@@ -65,7 +74,7 @@ public class App : GLib.Object {
         // Root: AppBar on the left, TrayBar on the right.
         var root = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
             hexpand = true, vexpand = true,
-            valign = Gtk.Align.END,
+            valign = at_top ? Gtk.Align.START : Gtk.Align.END,
         };
 
         var app_bar = new AppBar();
@@ -108,12 +117,20 @@ public class App : GLib.Object {
         var backdrop = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
             hexpand = true, vexpand = true,
         };
-        backdrop.append(new Gtk.Box(Gtk.Orientation.VERTICAL, 0) { vexpand = true });
         var strip = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
             hexpand = true, height_request = ICON_ROW_HEIGHT,
         };
         strip.add_css_class("panel-strip");
-        backdrop.append(strip);
+        // Pin the strip to the anchored edge: for a bottom panel the spacer
+        // sits above it, for a top panel below it, so the surface can still
+        // grow away from that edge as the tray expands.
+        if (at_top) {
+            backdrop.append(strip);
+            backdrop.append(new Gtk.Box(Gtk.Orientation.VERTICAL, 0) { vexpand = true });
+        } else {
+            backdrop.append(new Gtk.Box(Gtk.Orientation.VERTICAL, 0) { vexpand = true });
+            backdrop.append(strip);
+        }
 
         // Overlay: backdrop behind (bottom z-order), content on top. The content
         // layer is measured so the surface still grows with the tray's pages.
@@ -195,7 +212,7 @@ public class App : GLib.Object {
             double t = (double) (clock.get_frame_time() - slide_start_us) / REVEAL_ANIM_US;
             if (t >= 1.0) {
                 current_margin = target;
-                GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, current_margin);
+                GtkLayerShell.set_margin(win, slide_edge, current_margin);
                 update_input_region();
                 slide_tick_id = 0;
                 return GLib.Source.REMOVE;
@@ -203,7 +220,7 @@ public class App : GLib.Object {
             // ease-out for a softer settle
             double eased = 1.0 - (1.0 - t) * (1.0 - t);
             current_margin = (int) (slide_from_margin + (target - slide_from_margin) * eased);
-            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, current_margin);
+            GtkLayerShell.set_margin(win, slide_edge, current_margin);
             update_input_region();
             return GLib.Source.CONTINUE;
         });
@@ -264,18 +281,24 @@ public class App : GLib.Object {
             return;
         }
         if (auto_hide && !reveal_target) {
-            region.union_rectangle(Cairo.RectangleInt() { x = 0, y = 0, width = sw, height = SLIVER_PX });
+            // The on-screen handle is the SLIVER_PX edge nearest the anchored
+            // screen edge: the surface's top sliver for a bottom panel, its
+            // bottom sliver for a top panel (the rest is slid off-screen).
+            int hy = at_top ? sh - SLIVER_PX : 0;
+            region.union_rectangle(Cairo.RectangleInt() { x = 0, y = hy, width = sw, height = SLIVER_PX });
             gdk_surface.set_input_region(region);
             return;
         }
 
-        var bottom = Cairo.RectangleInt() {
+        // The clickable icon row hugs the anchored edge: top of the surface
+        // when the panel is at the top, bottom of it otherwise.
+        var strip = Cairo.RectangleInt() {
             x = 0,
-            y = sh - ICON_ROW_HEIGHT,
+            y = at_top ? 0 : sh - ICON_ROW_HEIGHT,
             width = sw,
             height = ICON_ROW_HEIGHT,
         };
-        region.union_rectangle(bottom);
+        region.union_rectangle(strip);
 
         if (tray.revealer.reveal_child || tray.revealer.child_revealed) {
             double tx, ty;

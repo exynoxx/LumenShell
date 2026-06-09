@@ -14,8 +14,17 @@ public class Utils {
         get { return Environment.get_variable("LUMEN_RES_DIR") ?? "/usr/share/lumen-panel/res/"; }
     }
 
+    // Precedence: explicit env override → the user's config in
+    // ~/.config/lumen-shell/ (what lumen-settings writes) → the packaged
+    // read-only default. This keeps all editable config in the home dir.
     public static string THEME_FILE {
-        get { return Environment.get_variable("LUMEN_THEME_FILE") ?? "/usr/share/lumen-panel/default-theme.json"; }
+        owned get {
+            var env = Environment.get_variable("LUMEN_THEME_FILE");
+            if (env != null) return env;
+            var home = Environment.get_user_config_dir() + "/lumen-shell/theme.json";
+            if (FileUtils.test(home, FileTest.EXISTS)) return home;
+            return "/usr/share/lumen-panel/default-theme.json";
+        }
     }
 
     public static Gdk.RGBA rgba (float r, float g, float b, float a) {

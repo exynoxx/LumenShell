@@ -45,7 +45,13 @@ public class TrayBar : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         add_css_class("tray-bar");
         halign = Gtk.Align.END;
-        valign = Gtk.Align.END;
+        // Bottom panel: bar anchored bottom-right, grows upward as a page
+        // reveals. Top panel: anchored top-right, grows downward — same child
+        // order (icon row first, revealer below), the revealer's SLIDE_DOWN
+        // now opens away from the screen edge. The .at-top class flips the
+        // floating margin from the bottom edge to the top.
+        valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
+        if (PanelConfig.at_top) add_css_class("at-top");
         // Clip children to the .tray-bar's rounded background so the page-
         // slide and reveal animations can't render past the corners.
         overflow = Gtk.Overflow.HIDDEN;

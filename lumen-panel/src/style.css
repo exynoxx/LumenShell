@@ -41,6 +41,12 @@ window.lumen-panel.auto-hide .panel-strip {
     color: white;
 }
 
+/* Top panel: float off the top edge instead of the bottom. */
+.tray-bar.at-top {
+    margin-top: 6px;
+    margin-bottom: 0;
+}
+
 .tray-icons {
     background: transparent;
     padding: 0 10px;
@@ -123,6 +129,15 @@ button.app-entry.launching {
     font-size: 13px;
     font-weight: 500;
 }
+.wifi-status {
+    color: rgba(120, 124, 142, 0.9);
+    font-size: 12px;
+    font-weight: 500;
+    padding-left: 2px;
+}
+.wifi-status.error {
+    color: rgba(235, 110, 110, 0.95);
+}
 .lumen-separator {
     background: rgba(56, 61, 90, 0.5);
 }
@@ -156,6 +171,9 @@ button.app-entry.launching {
 }
 .lumen-text-field:focus-within {
     background: rgba(36, 41, 61, 1);
+}
+.lumen-text-field.error {
+    background: rgba(58, 30, 36, 1);
 }
 .lumen-text-field text {
     background: transparent;
@@ -200,6 +218,18 @@ button.lumen-button.row-disconnect {
     font-size: 11px;
     padding: 2px 8px;
     min-height: 0;
+}
+/* Password reveal toggle — neutral grey, distinct from the blue Connect. */
+button.lumen-button.reveal-toggle {
+    background: rgba(46, 50, 72, 1);
+    font-size: 12px;
+    padding: 6px 10px;
+}
+button.lumen-button.reveal-toggle:hover {
+    background: rgba(58, 63, 90, 1);
+}
+button.lumen-button.reveal-toggle:checked {
+    background: rgba(36, 54, 102, 1);
 }
 
 /* ExitPage — round action buttons (logout / reboot / shutdown). */
