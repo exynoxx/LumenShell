@@ -26,6 +26,15 @@ namespace LumenSettings.Wayfire {
         Gtk.Widget? detail_child;
         Gee.HashMap<Gtk.ListBoxRow, string> row_map;
 
+        // Live filter state for the list view.
+        Gtk.SearchBar search_bar;
+        Gtk.SearchEntry search_entry;
+        BoxedList plugin_list;
+        BoxedList? other_list;
+        Gee.ArrayList<Gtk.ListBoxRow> plugin_rows;
+        Gee.ArrayList<Gtk.ListBoxRow> other_rows;
+        Gee.HashMap<Gtk.ListBoxRow, string> search_text;
+
         public string id        { owned get { return "wayfire-plugins"; } }
         public string title     { owned get { return "Wayfire Plugins"; } }
         public string icon_name { owned get { return "preferences-system-symbolic"; } }
@@ -47,9 +56,23 @@ namespace LumenSettings.Wayfire {
                 hexpand = true, vexpand = true,
             };
             row_map = new Gee.HashMap<Gtk.ListBoxRow, string>();
+            search_text = new Gee.HashMap<Gtk.ListBoxRow, string>();
+            plugin_rows = new Gee.ArrayList<Gtk.ListBoxRow>();
+            other_rows = new Gee.ArrayList<Gtk.ListBoxRow>();
 
             stack.add_named(build_list_view(), "list");
             stack.set_visible_child_name("list");
+
+            // Typing anywhere in the window reveals the search bar; it stays
+            // hidden while empty (Escape clears and hides it again). Key
+            // capture must hang off the toplevel — not this stack — since the
+            // stack rarely holds focus. We bind it only while the page is
+            // mapped so typing on other settings pages doesn't reach it.
+            stack.map.connect(() => {
+                var root = stack.get_root() as Gtk.Widget;
+                if (root != null) search_bar.set_key_capture_widget(root);
+            });
+            stack.unmap.connect(() => search_bar.set_key_capture_widget(null));
             return stack;
         }
 
@@ -59,9 +82,24 @@ namespace LumenSettings.Wayfire {
                 margin_start = 18, margin_end = 18,
             };
 
+            // Search bar that filters the lists below as you type. It is a
+            // revealer that stays collapsed until the user starts typing, so
+            // nothing is shown while the search is empty.
+            search_entry = new Gtk.SearchEntry() {
+                placeholder_text = "Search plugins",
+                hexpand = true,
+            };
+            search_entry.search_changed.connect(apply_filter);
+            search_bar = new Gtk.SearchBar() {
+                show_close_button = true,
+            };
+            search_bar.set_child(search_entry);
+            search_bar.connect_entry(search_entry);
+            box.append(search_bar);
+
             // Documented plugins: an enable toggle plus a clickable row that
             // opens the plugin's settings.
-            var plugin_list = new BoxedList("Plugins");
+            plugin_list = new BoxedList("Plugins");
             foreach (var p in plugins) {
                 plugin_list.add_row(make_plugin_row(p));
             }
@@ -76,7 +114,7 @@ namespace LumenSettings.Wayfire {
                 if (!by_name.has_key(section)) others.add(section);
             }
             if (others.size > 0) {
-                var other_list = new BoxedList("Other sections");
+                other_list = new BoxedList("Other sections");
                 foreach (var name in others) {
                     other_list.add_row(make_section_row(name));
                 }
@@ -110,6 +148,8 @@ namespace LumenSettings.Wayfire {
             ar.set_suffix(suffix);
 
             row_map.set(ar, p.name);
+            search_text.set(ar, (p.short_label + " " + p.name).down());
+            plugin_rows.add(ar);
             return ar;
         }
 
@@ -124,7 +164,27 @@ namespace LumenSettings.Wayfire {
             ar.set_suffix(chevron);
 
             row_map.set(ar, name);
+            search_text.set(ar, name.down());
+            other_rows.add(ar);
             return ar;
+        }
+
+        // Show only rows matching the query; an entire group is hidden when
+        // none of its rows match. An empty query restores everything.
+        void apply_filter() {
+            var q = search_entry.text.strip().down();
+            filter_group(plugin_list, plugin_rows, q);
+            if (other_list != null) filter_group(other_list, other_rows, q);
+        }
+
+        void filter_group(BoxedList group, Gee.ArrayList<Gtk.ListBoxRow> rows, string q) {
+            int visible = 0;
+            foreach (var row in rows) {
+                bool match = q == "" || (search_text.get(row) ?? "").contains(q);
+                row.visible = match;
+                if (match) visible++;
+            }
+            group.visible = visible > 0;
         }
 
         void on_row_activated(Gtk.ListBoxRow row) {
