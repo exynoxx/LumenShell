@@ -14,19 +14,27 @@ public enum DismissStyle {
 }
 
 public class Theme {
-    public static Gdk.RGBA banner_bg       = rgba(0.07f, 0.08f, 0.12f, 0.96f);
-    public static Gdk.RGBA banner_border   = rgba(1.00f, 1.00f, 1.00f, 0.12f);
-    public static Gdk.RGBA banner_text     = rgba(0.92f, 0.92f, 0.92f, 1.00f);
-    public static Gdk.RGBA banner_subtext  = rgba(0.69f, 0.69f, 0.69f, 1.00f);
-    public static Gdk.RGBA action_bg       = rgba(1.00f, 1.00f, 1.00f, 0.08f);
-    public static Gdk.RGBA action_bg_hover = rgba(1.00f, 1.00f, 1.00f, 0.16f);
-    public static Gdk.RGBA action_text     = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+    // NOTE: these Gdk.RGBA fields are declared without initializers on
+    // purpose. Vala emits static field initializers that call a method
+    // (like rgba()) into the class's class_init, which only runs once the
+    // GType is registered — i.e. when an instance is created. Theme is used
+    // purely statically and never instantiated, so those initializers would
+    // never execute, leaving every color at {0} (transparent black) and
+    // making notifications invisible. The defaults are assigned in
+    // apply_color_defaults(), called from load() at startup instead.
+    public static Gdk.RGBA banner_bg;
+    public static Gdk.RGBA banner_border;
+    public static Gdk.RGBA banner_text;
+    public static Gdk.RGBA banner_subtext;
+    public static Gdk.RGBA action_bg;
+    public static Gdk.RGBA action_bg_hover;
+    public static Gdk.RGBA action_text;
     public static int     action_radius    = 8;
     public static int     clear_all_radius = 6;
 
-    public static Gdk.RGBA urgency_low      = rgba(0.36f, 0.55f, 0.94f, 1.00f);
-    public static Gdk.RGBA urgency_normal   = rgba(0.98f, 0.66f, 0.20f, 1.00f);
-    public static Gdk.RGBA urgency_critical = rgba(0.88f, 0.35f, 0.30f, 1.00f);
+    public static Gdk.RGBA urgency_low;
+    public static Gdk.RGBA urgency_normal;
+    public static Gdk.RGBA urgency_critical;
 
     public static int radius        = 12;
     public static int padding       = 14;
@@ -46,7 +54,24 @@ public class Theme {
     public static int          cascade_ms       = 80;
     public static int          clear_threshold  = 3;
 
+    private static void apply_color_defaults() {
+        banner_bg        = rgba(0.07f, 0.08f, 0.12f, 0.96f);
+        banner_border    = rgba(1.00f, 1.00f, 1.00f, 0.12f);
+        banner_text      = rgba(0.92f, 0.92f, 0.92f, 1.00f);
+        banner_subtext   = rgba(0.69f, 0.69f, 0.69f, 1.00f);
+        action_bg        = rgba(1.00f, 1.00f, 1.00f, 0.08f);
+        action_bg_hover  = rgba(1.00f, 1.00f, 1.00f, 0.16f);
+        action_text      = rgba(1.00f, 1.00f, 1.00f, 1.00f);
+        urgency_low      = rgba(0.36f, 0.55f, 0.94f, 1.00f);
+        urgency_normal   = rgba(0.98f, 0.66f, 0.20f, 1.00f);
+        urgency_critical = rgba(0.88f, 0.35f, 0.30f, 1.00f);
+    }
+
     public static void load() {
+        // Always seed the runtime color defaults first; the theme file (if
+        // present) overrides individual keys on top.
+        apply_color_defaults();
+
         var path = Utils.THEME_FILE;
         if (!FileUtils.test(path, FileTest.EXISTS)) return;
 

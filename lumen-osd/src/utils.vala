@@ -1,10 +1,16 @@
 using GLib;
 
 public class Utils {
+    // Precedence: explicit env override → the user's config in
+    // ~/.config/lumen-shell/ (what lumen-settings writes) → the packaged
+    // read-only default. This keeps all editable config in the home dir.
     public static string THEME_FILE {
-        get {
-            return Environment.get_variable("LUMEN_OSD_THEME_FILE")
-                   ?? "/usr/share/lumen-osd/default-theme.json";
+        owned get {
+            var env = Environment.get_variable("LUMEN_OSD_THEME_FILE");
+            if (env != null) return env;
+            var home = Environment.get_user_config_dir() + "/lumen-shell/osd.json";
+            if (FileUtils.test(home, FileTest.EXISTS)) return home;
+            return "/usr/share/lumen-osd/default-theme.json";
         }
     }
 }

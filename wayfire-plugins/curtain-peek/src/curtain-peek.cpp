@@ -2,6 +2,7 @@
 #include <wayfire/plugin.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/core.hpp>
+#include <wayfire/view.hpp>
 #include <wayfire/toplevel-view.hpp>
 #include <wayfire/view-helpers.hpp>
 #include <wayfire/render-manager.hpp>
@@ -405,6 +406,13 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         //    it is naturally below the OVERLAY screenshot added in step 5.
         set_desktop_visible(true);
 
+        // 2a. Hand keyboard focus to the revealed grid so the user can start
+        //     typing into its search field straight away. Moving the seat off
+        //     the previously-focused toplevel also makes lumen-desktop's
+        //     foreign-toplevel watcher fire (no toplevel focused), which is
+        //     what drives its client-side search_entry.grab_focus().
+        focus_desktop();
+
         // 3. Grey backdrop behind the grid (back of the BOTTOM layer), so the
         //    grid's transparent areas show grey rather than the now-hidden
         //    wallpaper.
@@ -476,6 +484,31 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             }
         }
         return nullptr;
+    }
+
+    // Give keyboard focus to the desktop grid's layer surface. Layer-shell
+    // surfaces can't grab focus client-side below the shell layer, so the
+    // compositor has to do it — mirrors wayfire-default-focus. Used on reveal
+    // so the grid's search field is ready to type into immediately.
+    void focus_desktop()
+    {
+        if (!desktop_view)
+        {
+            desktop_view = find_desktop_view();
+        }
+        if (!desktop_view)
+        {
+            return;
+        }
+
+        auto seat = wf::get_core().seat.get();
+        if (!seat)
+        {
+            return;
+        }
+
+        seat->set_active_node(desktop_view->get_surface_root_node(),
+            wf::keyboard_focus_reason::REFOCUS);
     }
 
     // Show or hide the desktop grid by toggling its scene node. The view stays
@@ -556,8 +589,14 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             backdrop.reset();
         }
 
-        // Curtain closed → desktop grid goes back to hidden.
+        // Curtain closed → desktop grid goes back to hidden. Hand keyboard
+        // focus back to whatever real window should hold it now that the grid's
+        // surface is no longer visible.
         set_desktop_visible(false);
+        if (auto seat = wf::get_core().seat.get())
+        {
+            seat->refocus();
+        }
 
         if (state != state_t::IDLE)
         {

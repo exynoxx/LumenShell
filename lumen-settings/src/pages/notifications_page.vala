@@ -17,15 +17,17 @@ namespace LumenSettings {
                 margin_start = 18, margin_end = 18,
             };
 
+            // Keys match the lumen-notifications theme schema (see Theme.load
+            // in lumen-notifications) so edits here take effect directly.
             var placement = new BoxedList("Placement");
-            placement.add_row(int_row("notifications.margin-top",   "Margin top",   0, 200, 24, "px from the top edge of the screen"));
-            placement.add_row(int_row("notifications.margin-right", "Margin right", 0, 200, 24, "px from the right edge of the screen"));
-            placement.add_row(int_row("notifications.gap",          "Gap",          0, 40,  8,  "px of vertical space between banners"));
+            placement.add_row(int_row("banner.margin.top",   "Margin top",   0, 200, 16, "px from the top edge of the screen"));
+            placement.add_row(int_row("banner.margin.right", "Margin right", 0, 200, 16, "px from the right edge of the screen"));
+            placement.add_row(int_row("banner.gap",          "Gap",          0, 40,  10, "px of vertical space between banners"));
             box.append(placement);
 
             var behavior = new BoxedList("Behavior");
-            behavior.add_row(int_row("notifications.clear-threshold",
-                                     "Clear-all threshold", 1, 50, 5,
+            behavior.add_row(int_row("clear-all.threshold",
+                                     "Clear-all threshold", 1, 50, 3,
                                      "show the Clear All button once the stack reaches this size"));
             box.append(behavior);
 
