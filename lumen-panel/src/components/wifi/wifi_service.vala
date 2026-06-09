@@ -11,7 +11,11 @@ public class WifiService : GLib.Object {
 
     public signal void state_changed();
 
+    /** Fires on the main thread once a connect_to() attempt resolves. */
+    public signal void connect_result(string ssid, WifiConnectResult result);
+
     public string    connected_ssid     { get; private set; default = ""; }
+    public string    connecting_ssid    { get; private set; default = ""; }
     public WifiNet[] nets               = {};
     public bool      scanning           { get; private set; default = false; }
     public bool      enabled            { get; private set; default = true; }
@@ -49,10 +53,26 @@ public class WifiService : GLib.Object {
         });
     }
 
-    /** Connect to an SSID. If password is "", uses an existing saved connection. */
-    public void connect_to(string ssid, string password) {
-        nmcli.connect(ssid, password);
-        schedule_rescan(1400);
+    /**
+     * Connect to an SSID. If password is "", brings up an existing saved
+     * connection. The attempt runs on a background thread; connect_result
+     * fires with the outcome and the connection state is refreshed on success.
+     */
+    public void connect_to(string ssid, string password, bool from_saved = false) {
+        if (connecting_ssid != "") return;   // one attempt at a time
+        connecting_ssid = ssid;
+        state_changed();
+
+        new GLib.Thread<void>("wifi-connect", () => {
+            var res = nmcli.connect(ssid, password, from_saved);
+            GLib.Idle.add(() => {
+                connecting_ssid = "";
+                connect_result(ssid, res);
+                if (res == WifiConnectResult.SUCCESS) refresh_scan(false);
+                else                                  state_changed();
+                return Source.REMOVE;
+            });
+        });
     }
 
     /** Disconnect the wifi device, if any. */

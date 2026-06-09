@@ -34,7 +34,7 @@ public class WifiRow : Gtk.Widget {
     public WifiRow (WifiNet net, bool is_connected) {
         this.ssid = net.ssid;
         this.signal_pct = net.signal;
-        this.is_secured = net.security != "" && net.security != "--";
+        this.is_secured = net.is_secured();
         this.is_connected = is_connected;
 
         height_request = ROW_H;

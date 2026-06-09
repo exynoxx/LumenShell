@@ -8,9 +8,8 @@ using Gtk;
 //   ──────────── 1 px separator ─────────────
 //   [ WifiRow ... ]                            ← scrolled list (custom rows)
 //   ──────────── 1 px separator ─────────────
-//   [ LumenTextField    Connect/Disconnect ]   ← password panel (54 px),
-//                                                only shown when a row is
-//                                                selected
+//   [ LumenTextField  Show  Connect/Disconnect ]  ← password panel, only shown
+//   [ status line ]                                 when a row is selected
 public class WifiPage : Gtk.Box {
 
     const int PAD          = 14;
@@ -29,14 +28,26 @@ public class WifiPage : Gtk.Box {
     Gtk.Box list_box;
     Gtk.Label empty_label;
 
-    Gtk.Box password_panel;
+    Gtk.Box        password_panel;
+    Gtk.Box        controls_row;
     LumenTextField password_field;
-    Gtk.Button connect_btn;
-    Gtk.Label  connected_label;
+    Gtk.ToggleButton reveal_btn;
+    Gtk.Box        spacer;
+    Gtk.Button     connect_btn;
+    Gtk.Label      connected_label;
+    Gtk.Label      status_label;
 
     Gee.ArrayList<WifiRow> rows = new Gee.ArrayList<WifiRow>();
     WifiNet[] sorted_nets = {};
-    int selected_index = -1;
+
+    // Selection is tracked by SSID, not list index, so it survives the row
+    // rebuilds triggered by background scans / state changes.
+    string selected_ssid = "";
+
+    // Sticky error for the in-flight selection — kept across rebuilds until the
+    // user picks a different network or a connect succeeds.
+    string error_ssid = "";
+    string error_msg  = "";
 
     static Gdk.RGBA chip_online  = Utils.rgba(0.18f, 0.88f, 0.42f, 1f);
     static Gdk.RGBA chip_offline = Utils.rgba(0.52f, 0.52f, 0.57f, 1f);
@@ -55,6 +66,7 @@ public class WifiPage : Gtk.Box {
         update_header();
 
         service.state_changed.connect(on_service_changed);
+        service.connect_result.connect(on_connect_result);
         service.refresh_scan(false);
     }
 
@@ -142,11 +154,14 @@ public class WifiPage : Gtk.Box {
     }
 
     void build_password_panel () {
-        password_panel = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
-            height_request = PASS_H,
+        password_panel = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
             margin_start = PAD,
             margin_end = PAD,
             visible = false,
+        };
+
+        controls_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
+            height_request = PASS_H,
         };
 
         password_field = new LumenTextField() {
@@ -157,16 +172,32 @@ public class WifiPage : Gtk.Box {
         };
         password_field.submitted.connect(do_connect);
         password_field.cancelled.connect(close_password_panel);
-        password_panel.append(password_field);
+        controls_row.append(password_field);
 
         connected_label = new Gtk.Label("Connected") {
             xalign = 0,
             valign = Gtk.Align.CENTER,
-            hexpand = true,
             visible = false,
         };
         connected_label.add_css_class("connected-label");
-        password_panel.append(connected_label);
+        controls_row.append(connected_label);
+
+        // Fills the row (keeping Connect pinned right) when neither the
+        // password field nor the connected label is taking the space.
+        spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) { hexpand = true };
+        controls_row.append(spacer);
+
+        reveal_btn = new Gtk.ToggleButton.with_label("Show") {
+            valign = Gtk.Align.CENTER,
+            visible = false,
+        };
+        reveal_btn.add_css_class("lumen-button");
+        reveal_btn.add_css_class("reveal-toggle");
+        reveal_btn.toggled.connect(() => {
+            password_field.obscure_text = !reveal_btn.active;
+            reveal_btn.label = reveal_btn.active ? "Hide" : "Show";
+        });
+        controls_row.append(reveal_btn);
 
         connect_btn = new Gtk.Button.with_label("Connect") {
             valign = Gtk.Align.CENTER,
@@ -177,21 +208,55 @@ public class WifiPage : Gtk.Box {
             if (selected_is_connected()) do_disconnect();
             else                          do_connect();
         });
-        password_panel.append(connect_btn);
+        controls_row.append(connect_btn);
+
+        password_panel.append(controls_row);
+
+        status_label = new Gtk.Label("") {
+            xalign = 0,
+            margin_bottom = 8,
+            visible = false,
+        };
+        status_label.add_css_class("wifi-status");
+        password_panel.append(status_label);
 
         append(password_panel);
     }
 
+    int index_of (string ssid) {
+        for (int i = 0; i < sorted_nets.length; i++)
+            if (sorted_nets[i].ssid == ssid) return i;
+        return -1;
+    }
+
     bool selected_is_connected () {
-        if (selected_index < 0) return false;
-        return selected_index < sorted_nets.length
-            && sorted_nets[selected_index].ssid == service.connected_ssid;
+        return selected_ssid != "" && selected_ssid == service.connected_ssid;
+    }
+
+    void set_status (string msg, bool is_error) {
+        status_label.label = msg;
+        status_label.visible = msg != "";
+        if (is_error) status_label.add_css_class("error");
+        else          status_label.remove_css_class("error");
+        if (is_error) password_field.add_css_class("error");
+        else          password_field.remove_css_class("error");
     }
 
     void do_connect () {
-        if (selected_index < 0 || selected_index >= sorted_nets.length) return;
-        service.connect_to(sorted_nets[selected_index].ssid, password_field.text);
-        close_password_panel();
+        int idx = index_of(selected_ssid);
+        if (idx < 0) return;
+        var net = sorted_nets[idx];
+
+        // Saved networks (and open ones) join without a typed passphrase. A
+        // password typed into a revealed field always overrides — that covers
+        // a saved network whose stored passphrase is now stale.
+        string pass = password_field.visible ? password_field.text : "";
+        bool from_saved = net.is_saved && pass == "";
+
+        // Clear any prior error and reflect the in-flight attempt immediately;
+        // the rest of the panel state is recomputed from service.connecting_ssid.
+        error_ssid = ""; error_msg = "";
+        service.connect_to(net.ssid, pass, from_saved);
     }
 
     void do_disconnect () {
@@ -200,46 +265,106 @@ public class WifiPage : Gtk.Box {
     }
 
     void close_password_panel () {
-        selected_index = -1;
+        selected_ssid = "";
+        error_ssid = ""; error_msg = "";
         foreach (var r in rows) r.selected = false;
         password_field.text = "";
+        reveal_btn.active = false;
+        password_field.obscure_text = true;
         password_field.blur();
+        set_status("", false);
         password_panel.visible = false;
         queue_draw();
     }
 
-    void select_row (int i) {
-        if (i < 0 || i >= rows.size) return;
-        for (int j = 0; j < rows.size; j++) rows[j].selected = (j == i);
-        selected_index = i;
-        password_field.text = "";
+    void select_ssid (string ssid, bool reset_input) {
+        selected_ssid = ssid;
+        foreach (var r in rows) r.selected = (r.ssid == ssid);
+        if (reset_input) {
+            password_field.text = "";
+            reveal_btn.active = false;
+            password_field.obscure_text = true;
+            error_ssid = ""; error_msg = "";
+        }
+        update_password_panel();
+        if (password_field.visible && password_field.text == "")
+            password_field.grab_text_focus();
+    }
 
-        bool already_connected = selected_is_connected();
-        password_field.visible = !already_connected;
-        connected_label.visible = already_connected;
-        connect_btn.label = already_connected ? "Disconnect" : "Connect";
-        if (already_connected) connect_btn.add_css_class("danger");
-        else                    connect_btn.remove_css_class("danger");
+    // Recompute the whole password panel from the selected network plus live
+    // service state (connected / connecting) and any sticky error. Idempotent —
+    // safe to call after every rebuild.
+    void update_password_panel () {
+        int idx = index_of(selected_ssid);
+        if (idx < 0) {
+            password_panel.visible = false;
+            return;
+        }
+        var net = sorted_nets[idx];
+        bool connected  = net.ssid == service.connected_ssid;
+        bool connecting = net.ssid == service.connecting_ssid;
+        bool has_error  = net.ssid == error_ssid && error_msg != "";
+
+        // Prompt for a password only on secured networks that aren't saved or
+        // already connected — or while recovering from a rejected passphrase.
+        bool needs_password = !connected && net.is_secured() && (!net.is_saved || has_error);
+
+        password_field.visible  = needs_password;
+        reveal_btn.visible      = needs_password;
+        connected_label.visible = connected;
+        spacer.visible          = !needs_password && !connected;
+
+        if (connected) {
+            connect_btn.label = "Disconnect";
+            connect_btn.add_css_class("danger");
+        } else {
+            connect_btn.remove_css_class("danger");
+            connect_btn.label = connecting ? "Connecting…" : "Connect";
+        }
+        connect_btn.sensitive    = !connecting;
+        password_field.sensitive = !connecting;
+
+        if (has_error)
+            set_status(error_msg, true);
+        else if (!connected && net.is_saved && !needs_password)
+            set_status("Saved network", false);
+        else
+            set_status("", false);
 
         password_panel.visible = true;
-        if (!already_connected) password_field.grab_text_focus();
+    }
+
+    void on_connect_result (string ssid, WifiConnectResult res) {
+        if (ssid != selected_ssid) return;
+
+        if (res == WifiConnectResult.SUCCESS) {
+            close_password_panel();
+            return;
+        }
+
+        error_ssid = ssid;
+        error_msg  = (res == WifiConnectResult.BAD_PASSWORD)
+            ? "Incorrect password — try again"
+            : "Connection failed";
+        // Re-prompt (revealing the field for saved nets with a stale key) and
+        // clear whatever was typed so the retry starts fresh.
+        password_field.text = "";
+        reveal_btn.active = false;
+        password_field.obscure_text = true;
+        update_password_panel();
+        if (password_field.visible) password_field.grab_text_focus();
     }
 
     void on_service_changed () {
-        string prev_ssid = "";
-        if (selected_index >= 0 && selected_index < rows.size)
-            prev_ssid = rows[selected_index].ssid;
-
         rebuild_rows();
         refresh_btn.label = service.scanning ? "Scanning" : "Refresh";
 
-        if (prev_ssid != "") {
-            int found = -1;
-            for (int i = 0; i < rows.size; i++) {
-                if (rows[i].ssid == prev_ssid) { found = i; break; }
-            }
-            if (found >= 0) select_row(found);
-            else            close_password_panel();
+        // Re-anchor the selection to the same SSID if it's still visible.
+        if (selected_ssid != "" && index_of(selected_ssid) < 0
+            && selected_ssid != service.connecting_ssid) {
+            close_password_panel();
+        } else if (selected_ssid != "") {
+            select_ssid(selected_ssid, false);
         }
 
         update_header();
@@ -261,10 +386,10 @@ public class WifiPage : Gtk.Box {
 
         foreach (var net in sorted_nets) {
             var row = new WifiRow(net, net.ssid == service.connected_ssid);
-            int captured_index = rows.size;
+            string captured_ssid = net.ssid;
             row.activated.connect(() => {
-                if (selected_index == captured_index) close_password_panel();
-                else                                    select_row(captured_index);
+                if (selected_ssid == captured_ssid) close_password_panel();
+                else                                 select_ssid(captured_ssid, true);
             });
             row.disconnect_clicked.connect(do_disconnect);
             rows.add(row);
