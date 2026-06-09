@@ -16,6 +16,11 @@ public class DesktopApp : Gtk.Application {
             // focus_changed handler sees the initial state on map.
             DesktopToplevels.instance.bind();
             win = new DesktopWindow(this);
+            // Start hidden behind a closed curtain. A no-op on a fresh session
+            // (the compositor keeps the grid hidden until the curtain opens),
+            // but if lumen-desktop is restarted while the curtain is open this
+            // makes sure the grid doesn't stay stranded on screen.
+            LumenDesktop.CurtainIpc.close();
         }
         win.present();
     }

@@ -104,12 +104,6 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     private SearchResults results;
     private PageDots dots;
 
-    // Local mirror of the compositor-side peek toggle. The wayfire plugin
-    // slides windows with view transformers WITHOUT changing toplevel focus,
-    // so no focus_changed signal arrives when a peek ends — we track the toggle
-    // direction ourselves so a wallpaper click can reset the drawer on peek-IN.
-    private bool peeking = false;
-
     public DesktopWindow(Gtk.Application app) {
         Object(application: app);
 
@@ -133,8 +127,9 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         // surface — wlr-layer-shell forbids EXCLUSIVE below the shell
         // layer (it is silently ignored). Auto-handing the keyboard back
         // to us when no toplevel is focused is therefore implemented on
-        // the compositor side, in the wayfire-desktop-peek plugin's
-        // lumen_desktop_focus_keeper_t.
+        // the compositor side: wayfire-curtain-peek focuses this surface
+        // when it reveals the grid, and wayfire-default-focus keeps focus
+        // here whenever no toplevel holds it.
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
         decorated = false;
@@ -157,10 +152,11 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         });
     }
 
-    // The compositor (wayfire-desktop-peek) hands keyboard focus back to
-    // our layer surface whenever no toplevel is focused. Make sure the
-    // search entry is the GTK-side focus target so the keys land there
-    // and not on some other widget that happened to be last-focused.
+    // The compositor hands keyboard focus back to our layer surface whenever
+    // no toplevel is focused (wayfire-curtain-peek on reveal, then
+    // wayfire-default-focus thereafter). Make sure the search entry is the
+    // GTK-side focus target so the keys land there and not on some other
+    // widget that happened to be last-focused.
     private void sync_keyboard_mode() {
         if (!DesktopToplevels.instance.any_focused) {
             search_entry.grab_focus();
@@ -172,18 +168,13 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         foreach (var info in AppInfo.get_all()) {
             if (!info.should_show()) continue;
             var entry = new AppEntry(info);
-            // Launching must NOT hide the desktop — it is always present.
-            // Reset transient UI state (query + page) so the drawer doesn't
-            // remain in a filtered/paginated state after the user dispatched
-            // an app.
+            // Dispatching an app closes the curtain over the grid so the new
+            // window is revealed as the doors swing shut. Also reset transient
+            // UI state (query + page) so the drawer doesn't reopen later in a
+            // filtered/paginated state.
             entry.launched.connect(() => {
-                // If a peek is currently active the just-launched window will
-                // appear behind the slid-aside windows, which is confusing.
-                // /stop is a no-op when the plugin is idle, so we can fire it
-                // unconditionally instead of tracking peek state on this side.
-                LumenDesktop.PeekIpc.stop();
-                peeking = false;
                 reset_view();
+                LumenDesktop.CurtainIpc.close();
             });
             list.add(entry);
         }
@@ -200,82 +191,12 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         dots.set_visible(grid.page_count > 1);
     }
 
-    private void peek_log(string msg) {
-        try {
-            var f = GLib.File.new_for_path("/tmp/lumen-desktop-peek.log");
-            var os = f.append_to(GLib.FileCreateFlags.NONE);
-            var ts = new GLib.DateTime.now_local();
-            var line = "[%s] window: %s\n".printf(ts.format("%H:%M:%S.%f"), msg);
-            os.write(line.data);
-            os.close();
-        } catch (GLib.Error e) {
-            GLib.stderr.printf("peek_log failed: %s\n", e.message);
-        }
-    }
-
-    private void trigger_peek(string reason) {
-        // Mirror the compositor toggle so we know which way this click goes.
-        peeking = !peeking;
-        peek_log(@"trigger_peek from $reason -> peeking=$peeking");
-        LumenDesktop.PeekIpc.toggle();
-
-        if (!peeking) {
-            // Peek-IN: windows are coming back, so return the drawer to a
-            // clean state — clear any in-progress search and reset paging.
-            reset_view();
-        }
-    }
-
     private void build_ui() {
         var root = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
         root.set_halign(Gtk.Align.FILL);
         root.set_valign(Gtk.Align.FILL);
         root.set_hexpand(true);
         root.set_vexpand(true);
-
-        // Click on empty wallpaper area triggers a Wayfire desktop-peek.
-        // BUBBLE phase (default) means tile / search-entry click controllers
-        // get the press first. To make sure a tile launch never piggybacks
-        // a peek, we ALSO walk up from the picked widget and skip the trigger
-        // if any ancestor is a Gtk.Button or Gtk.Editable. That covers two
-        // cases the propagation rules alone don't: child gestures that don't
-        // explicitly claim the sequence, and non-button interactive widgets
-        // like the SearchEntry.
-        var click = new Gtk.GestureClick();
-        click.set_button(0);
-        click.pressed.connect((n_press, x, y) => {
-            var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
-            var name   = picked == null ? "<null>" : picked.get_type().name();
-            peek_log(@"root box clicked: x=$x y=$y n_press=$n_press picked=$name");
-
-            for (var w = picked; w != null && w != root; w = w.get_parent()) {
-                if (w is Gtk.Button || w is Gtk.Editable) {
-                    peek_log(@"  skip peek: ancestor $(w.get_type().name()) is interactive");
-                    return;
-                }
-            }
-
-            trigger_peek("root-click");
-            // Wallpaper click means "I want to interact with the drawer" —
-            // hand keyboard focus to the search entry so the user can start
-            // typing or arrow-navigate the grid immediately.
-            search_entry.grab_focus();
-        });
-        root.add_controller(click);
-
-        // Layer-shell surfaces never get GDK_TOPLEVEL_STATE_FOCUSED, so
-        // notify::is-active is silent. The pointer-enter on the root box is
-        // the closest analogue to "focus shifted to lumen-desktop" we get;
-        // log it for visibility but DO NOT trigger from it (would peek
-        // every time the user mouses across the desktop between windows).
-        var motion = new Gtk.EventControllerMotion();
-        motion.enter.connect((x, y) => {
-            peek_log(@"root box pointer-enter: x=$x y=$y");
-        });
-        motion.leave.connect(() => {
-            peek_log("root box pointer-leave");
-        });
-        root.add_controller(motion);
 
         var search_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
         search_row.add_css_class("search-row");

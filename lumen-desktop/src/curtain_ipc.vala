@@ -1,37 +1,24 @@
-// Wayfire IPC client for the wayfire-desktop-peek plugin.
+// Wayfire IPC client for the wayfire-curtain-peek plugin.
 //
 // Frame format (matches wf::ipc::server_t in /usr/lib64/wayfire/libipc.so):
 //   [u32 LE payload-length] [JSON body bytes]
 //
 // JSON body shape:
-//   {"method":"wayfire-desktop-peek/<name>","data":{}}
+//   {"method":"wayfire-curtain-peek/<name>","data":{}}
 //
 // The socket path comes from the env var Wayfire's `ipc` plugin exports
 // (_WAYFIRE_SOCKET, leading underscore — easy to mistype). Without it, every
 // call is a silent no-op so a stand-alone (non-Wayfire) test of lumen-desktop
 // doesn't trip over a missing dep.
+//
+// lumen-desktop only ever needs to *close* the curtain (hide itself again) —
+// it is revealed by the compositor-side binding, which also hands it keyboard
+// focus. The single close() call on launch makes sure a restart doesn't leave
+// the grid stranded visible if the curtain happened to be open.
 
 namespace LumenDesktop {
 
-    public class PeekIpc : GLib.Object {
-
-        // Append-only log lives next to the C++ plugin's
-        // /tmp/wayfire-desktop-peek.log so a single tail -f covers both sides.
-        private const string LOG_PATH = "/tmp/lumen-desktop-peek.log";
-
-        private static void log_line(string msg) {
-            var ts = new GLib.DateTime.now_local();
-            var line = "[%s] %s\n".printf(ts.format("%H:%M:%S.%f"), msg);
-            try {
-                var f = GLib.File.new_for_path(LOG_PATH);
-                var os = f.append_to(GLib.FileCreateFlags.NONE);
-                os.write(line.data);
-                os.close();
-            } catch (GLib.Error e) {
-                // Best-effort: fall back to stderr if /tmp is somehow unwritable.
-                GLib.stderr.printf("peek_ipc: %s (log write failed: %s)\n", msg, e.message);
-            }
-        }
+    public class CurtainIpc : GLib.Object {
 
         private static string? socket_path() {
             var p = GLib.Environment.get_variable("_WAYFIRE_SOCKET");
@@ -47,9 +34,7 @@ namespace LumenDesktop {
 
         private static bool send_method(string method) {
             var path = socket_path();
-            log_line(@"send_method '$method': socket=$(path ?? "<unset>")");
             if (path == null) {
-                log_line("  no socket env var set — silent no-op");
                 return false;
             }
 
@@ -57,7 +42,6 @@ namespace LumenDesktop {
                 var client = new GLib.SocketClient();
                 var addr   = new GLib.UnixSocketAddress(path);
                 var conn   = client.connect(addr, null);
-                log_line("  connected");
 
                 var body  = @"{\"method\":\"$method\",\"data\":{}}";
                 var bytes = body.data;
@@ -73,11 +57,9 @@ namespace LumenDesktop {
                 os.write_all(hdr, null, null);
                 os.write_all(bytes, null, null);
                 os.flush();
-                log_line(@"  wrote $(4 + bytes.length) bytes");
 
                 // Best-effort: read a reply so the server-side handler runs
-                // before we close. We don't parse it — the C++ plugin already
-                // logs everything we'd assert on.
+                // before we close. We don't parse it.
                 var is = conn.get_input_stream();
                 uint8 reply_hdr[4];
                 size_t got;
@@ -90,33 +72,23 @@ namespace LumenDesktop {
                                   | (((uint32) reply_hdr[3]) << 24);
                         var rbuf = new uint8[rl];
                         is.read_all(rbuf, out got, null);
-                        var rstr = (string) rbuf;
-                        log_line(@"  reply: $rstr");
-                    } else {
-                        log_line(@"  short reply header ($got bytes)");
                     }
                 } catch (GLib.Error e) {
-                    log_line(@"  no reply readable: $(e.message)");
+                    // No reply readable — fine, the request was already sent.
                 }
 
                 conn.close();
                 return true;
             } catch (GLib.Error e) {
-                log_line(@"  IPC error: $(e.message)");
+                GLib.stderr.printf("curtain_ipc: IPC error: %s\n", e.message);
                 return false;
             }
         }
 
-        public static bool toggle() {
-            return send_method("wayfire-desktop-peek/toggle");
-        }
-
-        public static bool start() {
-            return send_method("wayfire-desktop-peek/start");
-        }
-
-        public static bool stop() {
-            return send_method("wayfire-desktop-peek/stop");
+        // Close the curtain (hide the desktop grid). No-op when the curtain is
+        // already idle on the compositor side.
+        public static bool close() {
+            return send_method("wayfire-curtain-peek/stop");
         }
     }
 }
