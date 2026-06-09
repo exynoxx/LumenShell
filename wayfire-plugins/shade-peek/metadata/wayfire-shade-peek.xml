@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-shade-peek">
+    <_short>Shade Peek</_short>
+    <_long>Slide the foreground (windows and panel) off one screen edge while the lumen-desktop grid slides in from the opposite edge, like a window shade, over the stationary wallpaper.</_long>
+    <category>Desktop</category>
+    <option name="toggle" type="activator">
+      <_short>Toggle shade</_short>
+      <default>&lt;super&gt; KEY_S</default>
+    </option>
+    <option name="dismiss" type="activator">
+      <_short>Dismiss shade</_short>
+      <_long>Optional secondary binding that only closes the shade. Unset by default so it does not conflict with other plugins that consume Escape.</_long>
+      <default></default>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>350ms circle</default>
+    </option>
+    <option name="direction" type="string">
+      <_short>Slide direction</_short>
+      <_long>Which edge the desktop grid enters from. "top" slides the grid down from the top while the foreground exits off the bottom; "bottom" slides it up from the bottom while the foreground exits off the top.</_long>
+      <default>top</default>
+    </option>
+    <option name="desktop_app_id" type="string">
+      <_short>Desktop grid app-id</_short>
+      <_long>App-id (layer-shell namespace) of the desktop grid surface. It is kept hidden while the shade is closed and revealed only while it is open.</_long>
+      <default>lumen-desktop</default>
+    </option>
+  </plugin>
+</wayfire>

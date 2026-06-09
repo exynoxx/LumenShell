@@ -85,10 +85,15 @@ namespace LumenDesktop {
             }
         }
 
-        // Close the curtain (hide the desktop grid). No-op when the curtain is
-        // already idle on the compositor side.
+        // Close whichever reveal is active (hide the desktop grid). Only one of
+        // the two reveal plugins is ever loaded at a time, so the stop for the
+        // inactive one is a harmless no-op (its IPC method isn't registered);
+        // either way the desktop grid ends up hidden again. No-op too when the
+        // active reveal is already idle on the compositor side.
         public static bool close() {
-            return send_method("wayfire-curtain-peek/stop");
+            bool a = send_method("wayfire-curtain-peek/stop");
+            bool b = send_method("wayfire-shade-peek/stop");
+            return a || b;
         }
     }
 }
