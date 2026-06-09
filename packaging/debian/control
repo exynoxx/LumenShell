@@ -1,0 +1,42 @@
+Source: lumenshell
+Section: x11
+Priority: optional
+Maintainer: LumenShell <noreply@lumenshell>
+Build-Depends: debhelper-compat (= 13),
+               meson (>= 0.60),
+               ninja-build,
+               pkg-config,
+               valac,
+               gcc,
+               g++,
+               libglib2.0-dev,
+               libgee-0.8-dev,
+               libjson-glib-dev,
+               libgtk-4-dev,
+               libgtk4-layer-shell-dev,
+               libwayland-dev,
+               wayland-protocols,
+               libegl1-mesa-dev,
+               libgles2-mesa-dev,
+               libgl1-mesa-dev,
+               libxkbcommon-dev,
+               libfreetype-dev,
+               libxml2-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/nicholas/LumenShell
+Rules-Requires-Root: no
+
+Package: lumenshell
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         wayfire,
+         libgtk4-layer-shell0
+Description: ChromeOS-inspired Wayland desktop shell
+ LumenShell is a ChromeOS-inspired desktop shell for Wayland. It runs on the
+ Wayfire compositor as a collection of small gtk4-layer-shell apps written in
+ Vala: a bottom panel, an app-drawer desktop, an on-screen display, a
+ notification daemon, and a settings app.
+ .
+ Installing this package adds a "LumenShell" entry to the display manager's
+ session menu.
