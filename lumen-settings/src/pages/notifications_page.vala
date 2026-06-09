@@ -29,7 +29,57 @@ namespace LumenSettings {
                                      "show the Clear All button once the stack reaches this size"));
             box.append(behavior);
 
+            var test = new BoxedList("Test");
+            var test_row = new ActionRow("Send a test notification",
+                                         "posts a sample banner through the notification daemon");
+            var test_btn = new Gtk.Button.with_label("Send") {
+                valign = Gtk.Align.CENTER,
+            };
+            test_btn.add_css_class("suggested-action");
+            test_btn.clicked.connect(send_test_notification);
+            test_row.set_suffix(test_btn);
+            test.add_row(test_row);
+            box.append(test);
+
             return box;
+        }
+
+        public override string? restart_target() { return "lumen-notifications"; }
+
+        void send_test_notification() {
+            try {
+                var conn = Bus.get_sync(BusType.SESSION);
+
+                var actions = new VariantBuilder(new VariantType("as"));
+                actions.add("s", "ok");
+                actions.add("s", "OK");
+                actions.add("s", "later");
+                actions.add("s", "Later");
+
+                var hints = new VariantBuilder(new VariantType("a{sv}"));
+                hints.add("{sv}", "urgency", new Variant.byte(1));  // normal
+
+                conn.call_sync(
+                    "org.freedesktop.Notifications",
+                    "/org/freedesktop/Notifications",
+                    "org.freedesktop.Notifications",
+                    "Notify",
+                    new Variant("(susss@as@a{sv}i)",
+                                "Lumen Settings",
+                                (uint32) 0,
+                                "preferences-system-notifications-symbolic",
+                                "Test notification",
+                                "If you can read this, notifications are working.",
+                                actions.end(),
+                                hints.end(),
+                                (int32) 5000),
+                    new VariantType("(u)"),
+                    DBusCallFlags.NONE,
+                    -1,
+                    null);
+            } catch (Error e) {
+                warning("lumen-settings: test notification failed: %s", e.message);
+            }
         }
 
         SpinRow int_row(string key, string label, double min, double max,

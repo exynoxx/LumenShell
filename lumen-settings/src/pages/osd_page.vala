@@ -63,6 +63,8 @@ namespace LumenSettings {
             return box;
         }
 
+        public override string? restart_target() { return "lumen-osd"; }
+
         ColorRow color_row(string key, string label, string fallback, string subtitle) {
             var initial = store.get_string(key) ?? fallback;
             var row = new ColorRow(label, initial, subtitle);

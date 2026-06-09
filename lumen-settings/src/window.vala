@@ -6,6 +6,8 @@ namespace LumenSettings {
         Sidebar sidebar;
         Gtk.Stack stack;
         Gtk.Label title_label;
+        Gtk.Button restart_btn;
+        string? restart_target;
         PageRegistry registry;
 
         public SettingsWindow(Gtk.Application app, PageRegistry r) {
@@ -40,6 +42,15 @@ namespace LumenSettings {
             };
             title_label.add_css_class("title-1");
             header.append(title_label);
+
+            restart_btn = new Gtk.Button.with_label("Restart") {
+                valign = Gtk.Align.CENTER,
+                visible = false,
+            };
+            restart_btn.add_css_class("suggested-action");
+            restart_btn.clicked.connect(restart_current_page);
+            header.append(restart_btn);
+
             right.append(header);
 
             stack = new Gtk.Stack() {
@@ -63,10 +74,27 @@ namespace LumenSettings {
             sidebar.page_selected.connect((id) => {
                 stack.set_visible_child_name(id);
                 var page = registry.lookup(id);
-                if (page != null) title_label.label = page.title;
+                if (page != null) {
+                    title_label.label = page.title;
+                    restart_target = page.restart_target();
+                    restart_btn.visible = restart_target != null;
+                }
             });
 
             sidebar.select_first();
+        }
+
+        void restart_current_page() {
+            if (restart_target == null) return;
+            try {
+                // setsid -f fully detaches the new process so it outlives
+                // lumen-settings; the sleep lets the old surface tear down.
+                GLib.Process.spawn_command_line_async(
+                    "sh -c 'pkill -x %s; sleep 0.3; setsid -f %s'".printf(
+                        restart_target, restart_target));
+            } catch (GLib.SpawnError e) {
+                warning("lumen-settings: failed to restart %s: %s", restart_target, e.message);
+            }
         }
 
         void rebuild_stack() {

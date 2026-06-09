@@ -27,6 +27,18 @@ namespace LumenSettings {
             };
 
             var layout = new BoxedList("Layout");
+
+            string[] pos_labels = { "Bottom", "Top" };
+            string[] pos_values = { "bottom", "top" };
+            var pos_initial = store.get_value(SECTION, "position") ?? "bottom";
+            var position_row = new ComboRow("Position", pos_labels, pos_values, pos_initial,
+                "which screen edge the panel sits on");
+            position_row.value_changed.connect((v) => {
+                store.set_value(SECTION, "position", v);
+                store.save();
+            });
+            layout.add_row(position_row);
+
             var height_initial = parse_double(store.get_value(SECTION, "panel.height"), 60);
             var height_row = new SpinRow("Panel height", 40, 120, 1, height_initial, 0, "panel thickness in px");
             height_row.value_changed.connect((v) => {
@@ -126,27 +138,12 @@ namespace LumenSettings {
             });
             behavior_group.add_row(autohide_opacity_row);
 
-            var restart_row = new ActionRow("Restart panel",
-                "Kill the running panel and relaunch it to apply changes");
-            var restart_btn = new Gtk.Button.with_label("Restart");
-            restart_btn.add_css_class("suggested-action");
-            restart_btn.clicked.connect(() => {
-                try {
-                    // setsid -f fully detaches the new panel so it outlives
-                    // lumen-settings; the sleep lets the old surface tear down.
-                    GLib.Process.spawn_command_line_async(
-                        "sh -c 'pkill -x lumen-panel; sleep 0.3; setsid -f lumen-panel'");
-                } catch (GLib.SpawnError e) {
-                    warning("lumen-settings: failed to restart panel: %s", e.message);
-                }
-            });
-            restart_row.set_suffix(restart_btn);
-            behavior_group.add_row(restart_row);
-
             box.append(behavior_group);
 
             return box;
         }
+
+        public override string? restart_target() { return "lumen-panel"; }
 
         static double parse_double(string? s, double fallback) {
             if (s == null) return fallback;
