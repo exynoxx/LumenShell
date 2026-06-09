@@ -29,6 +29,27 @@
       <min>0</min>
       <max>400</max>
     </option>
+    <option name="fold_count" type="int">
+      <_short>Cloth fold count (pleats per half)</_short>
+      <_long>How many vertical pleats each curtain half gathers into as it slides aside. Higher looks like finer fabric.</_long>
+      <default>5</default>
+      <min>1</min>
+      <max>20</max>
+    </option>
+    <option name="fold_depth" type="double">
+      <_short>Cloth fold depth</_short>
+      <_long>How strongly each pleat pinches the snapshot horizontally. 0 keeps the slide flat; higher bunches the cloth more.</_long>
+      <default>0.4</default>
+      <min>0.0</min>
+      <max>0.9</max>
+    </option>
+    <option name="fold_shade" type="double">
+      <_short>Cloth fold shading</_short>
+      <_long>Opacity of the shadow/highlight overlay that fakes the lighting of the folds, giving the flat snapshot a 3D look.</_long>
+      <default>0.5</default>
+      <min>0.0</min>
+      <max>1.0</max>
+    </option>
     <option name="backdrop_color" type="color">
       <_short>Reveal backdrop colour</_short>
       <_long>Flat colour shown behind the lumen-desktop grid once the wallpaper splits away. Defaults to a GNOME-Shell-like grey.</_long>

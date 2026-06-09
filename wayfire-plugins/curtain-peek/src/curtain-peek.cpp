@@ -108,22 +108,35 @@ inline void curtain_backdrop_node_t::gen_render_instances(
 // ---------------------------------------------------------------------------
 // Screenshot curtain: a full-output node, sitting on the OVERLAY layer (above
 // everything), that draws a captured snapshot of the screen split down a
-// vertical seam. The left part of the snapshot is drawn shifted left, the
-// right part shifted right, so the single frozen image opens like a pair of
-// double doors. The widening gap reveals whatever is live behind it — here, the
-// desktop grid on top of the grey backdrop.
+// vertical seam, then gathers each half aside like a real fabric curtain.
+//
+// Instead of rigidly translating each half, every half is sliced into many
+// narrow vertical strips. As the curtain parts (progress 0 -> 1) the strips
+// bunch up toward the wall they are pulled to, and a sinusoidal fold function
+// modulates each strip's on-screen width — wide where a pleat faces the viewer,
+// narrow where the cloth turns away — so the snapshot scrunches into pleats.
+// A matching shadow/highlight overlay fakes the lighting of those folds, giving
+// the flat snapshot a 3D, cloth-like read. This is the standard cheap "vertex
+// displacement + cosine shading" curtain trick (cf. the qmlbook curtain shader)
+// expressed with axis-aligned textured strips rather than a custom GL shader.
 // ---------------------------------------------------------------------------
 class curtain_screenshot_node_t : public wf::scene::node_t
 {
   public:
     wf::geometry_t geo;            // full output, output-relative {0,0,W,H}
     wlr_texture   *tex = nullptr;  // the captured snapshot (owned by the plugin)
-    int   seam_x   = 0;            // seam position, output-relative
-    float left_dx  = 0.0f;         // left-half translation  (<= 0)
-    float right_dx = 0.0f;         // right-half translation (>= 0)
+    float tex_scale = 1.0f;        // output scale: logical px -> buffer texels
+    int   seam_x    = 0;           // seam position, output-relative
+    int   edge_px   = 0;           // residual gathered stack width per half (px)
+    float progress  = 0.0f;        // 0 = closed (flat), 1 = fully gathered open
 
-    curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t) :
-        wf::scene::node_t(false), geo(g), tex(t)
+    // Cloth-fold tunables (mirrored from plugin options).
+    int   fold_count  = 5;         // pleats across each half
+    float fold_depth  = 0.4f;      // strip-width modulation amplitude (0..1)
+    float shade_depth = 0.5f;      // peak fold shadow opacity (0..1)
+
+    curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t, float scale) :
+        wf::scene::node_t(false), geo(g), tex(t), tex_scale(scale)
     {}
 
     std::string stringify() const override
@@ -131,7 +144,7 @@ class curtain_screenshot_node_t : public wf::scene::node_t
         return "curtain-peek-screenshot";
     }
 
-    // The two halves only ever travel within the output, so the full output is
+    // The two halves only ever gather within the output, so the full output is
     // a safe (and simple) bounding box.
     wf::geometry_t get_bounding_box() override
     {
@@ -155,30 +168,108 @@ class curtain_screenshot_render_instance_t :
             return;
         }
 
-        wf::texture_t tex;
-        tex.texture = self->tex;
-
-        const auto g    = self->geo;
-        const int  ldx  = (int) std::lround(self->left_dx);
-        const int  rdx  = (int) std::lround(self->right_dx);
-        const int  seam = std::clamp(self->seam_x, g.x, g.x + g.width);
-
-        // Left half: the whole snapshot shifted by ldx, clipped to the columns
-        // that were left of the seam.
-        if (seam > g.x)
+        const auto  g = self->geo;          // logical, full output
+        const int   W = g.width;
+        if ((W <= 0) || (g.height <= 0))
         {
-            wf::geometry_t geo  = {g.x + ldx, g.y, g.width, g.height};
-            wf::geometry_t clip = {g.x + ldx, g.y, seam - g.x, g.height};
-            data.pass->add_texture(tex, data.target, geo, data.damage & clip);
+            return;
         }
 
-        // Right half.
-        if (seam < g.x + g.width)
+        const float p     = std::clamp(self->progress, 0.0f, 1.0f);
+        const int   seam  = std::clamp(self->seam_x, g.x, g.x + W) - g.x; // 0..W
+        const float sxk   = self->tex_scale;             // logical x -> texel
+        const float texH  = (float) g.height * sxk;
+        const int   folds = std::max(1, self->fold_count);
+        const float foldDepth  = std::clamp(self->fold_depth, 0.0f, 0.9f);
+        const float shadeDepth = std::clamp(self->shade_depth, 0.0f, 1.0f);
+
+        constexpr int   N      = 64;          // strips per half
+        constexpr float TWO_PI = 6.2831853f;
+        // Offsetting the shading phase from the geometric crease keeps the lit
+        // ridge and shadowed trough from landing exactly on the fold centres,
+        // which reads as a side light rather than flat ambient occlusion.
+        constexpr float LIGHT_PHASE = 1.2f;
+
+        // Ease the folds + shading in so a closed curtain is perfectly flat and
+        // the pleating only develops once the halves start to part.
+        const float foldP = std::sin(p * 1.5707963f);
+
+        auto render_half = [&] (int src_x0, int src_w, bool is_left)
         {
-            wf::geometry_t geo  = {g.x + rdx, g.y, g.width, g.height};
-            wf::geometry_t clip = {seam + rdx, g.y, (g.x + g.width) - seam, g.height};
-            data.pass->add_texture(tex, data.target, geo, data.damage & clip);
-        }
+            if (src_w <= 0)
+            {
+                return;
+            }
+
+            // The half gathers from its full width down to a thin stack.
+            const float gathered = std::min((float) self->edge_px, (float) src_w);
+            const float band_w   = src_w * (1.0f - p) + gathered * p;
+            if (band_w <= 0.5f)
+            {
+                return;
+            }
+
+            // Per-strip width weights: a pleat facing the viewer occupies more
+            // screen width, one turning away less. Normalised so the strips
+            // exactly tile the gathered band.
+            float weight[N];
+            float total = 0.0f;
+            for (int i = 0; i < N; i++)
+            {
+                const float sc   = (i + 0.5f) / N;
+                const float fold = std::cos(TWO_PI * folds * sc);
+                weight[i] = std::max(0.02f, 1.0f + foldDepth * foldP * fold);
+                total    += weight[i];
+            }
+
+            // Left half is pinned to the left wall, right half to the right.
+            float cursor = is_left ? (float) g.x : (float) (g.x + W) - band_w;
+            for (int i = 0; i < N; i++)
+            {
+                const float sc = (i + 0.5f) / N;
+                const float dw = weight[i] / total * band_w;
+
+                // Source columns of this strip, within the half (logical 0..W).
+                const float ulo = src_x0 + ((float) i / N) * src_w;
+                const float uhi = src_x0 + ((float) (i + 1) / N) * src_w;
+
+                wf::texture_t t;
+                t.texture     = self->tex;
+                t.filter_mode = WLR_SCALE_FILTER_BILINEAR;
+                t.source_box  = wlr_fbox{ulo * sxk, 0.0, (uhi - ulo) * sxk, texH};
+
+                // +0.75 px so neighbouring strips overlap and never let the
+                // backdrop show through on sub-pixel boundaries.
+                wlr_fbox dst{(double) cursor, (double) g.y,
+                    (double) dw + 0.75, (double) g.height};
+                wf::geometry_t clip{(int) std::floor(cursor), g.y,
+                    (int) std::ceil(dw) + 2, g.height};
+                wf::region_t dmg = data.damage & clip;
+
+                data.pass->add_texture(t, data.target, dst, dmg, 1.0f);
+
+                // Fold shading. add_rect blends premultiplied, so a black rect
+                // darkens the troughs and a white rect lifts the lit ridges.
+                const float lit  = std::cos(TWO_PI * folds * sc + LIGHT_PHASE);
+                const float dark = shadeDepth * foldP * std::max(0.0f, -lit);
+                const float high = 0.25f * shadeDepth * foldP * std::max(0.0f, lit);
+                if (dark > 0.004f)
+                {
+                    data.pass->add_rect(wf::color_t{0.0, 0.0, 0.0, dark},
+                        data.target, dst, dmg);
+                } else if (high > 0.004f)
+                {
+                    data.pass->add_rect(wf::color_t{high, high, high, high},
+                        data.target, dst, dmg);
+                }
+
+                cursor += dw;
+            }
+        };
+
+        // Left half: snapshot columns [0, seam]; right half: [seam, W].
+        render_half(0, seam, true);
+        render_half(seam, W - seam, false);
     }
 };
 
@@ -202,6 +293,9 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
     wf::option_wrapper_t<wf::color_t> backdrop_color_opt{"wayfire-curtain-peek/backdrop_color"};
     wf::option_wrapper_t<std::string> desktop_app_id_opt{"wayfire-curtain-peek/desktop_app_id"};
     wf::option_wrapper_t<wf::animation_description_t> duration_opt{"wayfire-curtain-peek/duration"};
+    wf::option_wrapper_t<int> fold_count_opt{"wayfire-curtain-peek/fold_count"};
+    wf::option_wrapper_t<double> fold_depth_opt{"wayfire-curtain-peek/fold_depth"};
+    wf::option_wrapper_t<double> fold_shade_opt{"wayfire-curtain-peek/fold_shade"};
 
     wf::animation::simple_animation_t anim{duration_opt};
 
@@ -214,10 +308,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
     // Grey fill drawn behind the desktop grid.
     std::shared_ptr<curtain_backdrop_node_t> backdrop;
-
-    // Full-open translations (recomputed per open from the current geometry).
-    float left_dx_full  = 0.0f;
-    float right_dx_full = 0.0f;
 
     // The desktop grid view (app-id == desktop_app_id). It is kept hidden while
     // the curtain is closed and revealed only while it is open; cached so we can
@@ -384,13 +474,11 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
         const auto rel = output->get_relative_geometry();
         const int W = rel.width;
+        const float scale = output->handle ? output->handle->scale : 1.0f;
         const double ratio = std::clamp((double) split_ratio_opt, 0.1, 0.9);
         const int seam_off = (int) std::lround(W * ratio);
         const int edge = std::clamp((int) edge_px_opt, 0,
             std::max(0, std::min(seam_off, W - seam_off)));
-
-        left_dx_full  = -(float) (seam_off - edge);
-        right_dx_full = (float) (W - seam_off - edge);
 
         // 1. Freeze the screen as it is right now. The desktop grid is still
         //    hidden at this point, so the snapshot is purely the wallpaper, app
@@ -428,8 +516,13 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
         // 5. Drop the snapshot on top of everything (OVERLAY) and start closed.
         screenshot_node = std::make_shared<curtain_screenshot_node_t>(
-            rel, screenshot_buf.get_texture());
-        screenshot_node->seam_x = rel.x + seam_off;
+            rel, screenshot_buf.get_texture(), scale);
+        screenshot_node->seam_x      = rel.x + seam_off;
+        screenshot_node->edge_px     = edge;
+        screenshot_node->progress    = 0.0f;
+        screenshot_node->fold_count  = std::max(1, (int) fold_count_opt);
+        screenshot_node->fold_depth  = (float) (double) fold_depth_opt;
+        screenshot_node->shade_depth = (float) (double) fold_shade_opt;
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY),
             screenshot_node);
 
@@ -459,8 +552,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             return;
         }
 
-        screenshot_node->left_dx  = (float) (left_dx_full * p);
-        screenshot_node->right_dx = (float) (right_dx_full * p);
+        screenshot_node->progress = (float) p;
         // Drive the animation: a continuous full-output repaint until the
         // simple_animation_t settles.
         output->render->damage_whole();
