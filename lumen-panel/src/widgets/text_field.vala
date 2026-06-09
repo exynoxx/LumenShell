@@ -54,8 +54,29 @@ public class LumenTextField : Gtk.Widget {
         });
         entry.add_controller(key);
 
-        // Repaint focus halo when focus changes.
-        entry.notify["has-focus"].connect(queue_draw);
+        // Repaint focus halo when focus changes — and reconcile the layer
+        // surface's keyboard interactivity (see sync_layer_keyboard).
+        entry.notify["has-focus"].connect(() => {
+            queue_draw();
+            sync_layer_keyboard();
+        });
+    }
+
+    // On a wlr-layer-shell surface the compositor only routes wl_keyboard
+    // events while the surface actually holds keyboard focus. ON_DEMAND alone
+    // does not reliably grant that on click under Wayfire — the desktop works
+    // around the same gap with a custom focus-keeper plugin — so the panel's
+    // ON_DEMAND password field would grab GTK-internal focus yet never see a
+    // keystroke. While this entry has focus we request EXCLUSIVE keyboard
+    // interactivity (legal above the shell layer) to force the grant, and hand
+    // it back to ON_DEMAND the moment focus leaves, by whatever path.
+    void sync_layer_keyboard () {
+        var win = get_root() as Gtk.Window;
+        if (win == null || !GtkLayerShell.is_layer_window(win)) return;
+        GtkLayerShell.set_keyboard_mode(
+            win,
+            entry.has_focus ? GtkLayerShell.KeyboardMode.EXCLUSIVE
+                            : GtkLayerShell.KeyboardMode.ON_DEMAND);
     }
 
     public void grab_text_focus () {
