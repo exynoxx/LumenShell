@@ -11,8 +11,8 @@ metadatadir = wayfire_dep.get_variable(
 )
 
 shared_module(
-  'wayfire-shade-peek',
-  'src/shade-peek.cpp',
+  'wayfire-slide-peek',
+  'src/slide-peek.cpp',
   dependencies: [wayfire_dep, wlroots_dep],
   cpp_args:     ['-std=c++17'],
   name_prefix:  'lib',
@@ -21,6 +21,6 @@ shared_module(
 )
 
 install_data(
-  'metadata/wayfire-shade-peek.xml',
+  'metadata/wayfire-slide-peek.xml',
   install_dir: metadatadir,
 )

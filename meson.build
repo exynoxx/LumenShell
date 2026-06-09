@@ -299,7 +299,7 @@ subdir('lumen-settings')
 # so users without Wayfire dev headers can disable any of them.
 if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
-   or get_option('with_shade_peek') \
+   or get_option('with_slide_peek') \
    or get_option('with_startup_zoom') \
    or get_option('with_default_focus')
   add_languages('cpp', native: false)
@@ -313,8 +313,8 @@ if get_option('with_curtain_peek')
   subdir('wayfire-plugins/curtain-peek')
 endif
 
-if get_option('with_shade_peek')
-  subdir('wayfire-plugins/shade-peek')
+if get_option('with_slide_peek')
+  subdir('wayfire-plugins/slide-peek')
 endif
 
 if get_option('with_startup_zoom')

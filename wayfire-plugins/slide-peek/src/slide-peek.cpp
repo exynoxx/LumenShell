@@ -30,15 +30,15 @@
 
 namespace
 {
-constexpr const char *SCREENSHOT_NODE_NAME = "wayfire-shade-peek-screenshot";
-constexpr const char *DESKTOP_TRANSFORMER_NAME = "wayfire-shade-peek-slide";
+constexpr const char *SCREENSHOT_NODE_NAME = "wayfire-slide-peek-screenshot";
+constexpr const char *DESKTOP_TRANSFORMER_NAME = "wayfire-slide-peek-slide";
 
 // Tmp logging, mirroring the curtain-peek/desktop-peek plugins' /tmp logs so a
 // single tail -f can follow every reveal variant. Append-only; truncate before
 // a session.
-inline void shade_log(const char *fmt, ...)
+inline void slide_log(const char *fmt, ...)
 {
-    FILE *fp = std::fopen("/tmp/wayfire-shade-peek.log", "a");
+    FILE *fp = std::fopen("/tmp/wayfire-slide-peek.log", "a");
     if (!fp)
     {
         return;
@@ -59,26 +59,26 @@ inline void shade_log(const char *fmt, ...)
 }
 
 // ---------------------------------------------------------------------------
-// Shade screenshot: a full-output node, sitting on the OVERLAY layer (above
+// Slide screenshot: a full-output node, sitting on the OVERLAY layer (above
 // everything), that draws a captured snapshot of the foreground (app windows +
-// panel, the wallpaper excluded) translated vertically. As the shade opens the
+// panel, the wallpaper excluded) translated vertically. As the slide opens the
 // snapshot slides off one screen edge while the live desktop grid slides in
 // from the opposite edge; the live wallpaper stays put behind them.
 // ---------------------------------------------------------------------------
-class shade_screenshot_node_t : public wf::scene::node_t
+class slide_screenshot_node_t : public wf::scene::node_t
 {
   public:
     wf::geometry_t geo;            // full output, output-relative {0,0,W,H}
     wlr_texture   *tex = nullptr;  // the captured snapshot (owned by the plugin)
     float translate_y = 0.0f;      // vertical translation (+ down, - up)
 
-    shade_screenshot_node_t(wf::geometry_t g, wlr_texture *t) :
+    slide_screenshot_node_t(wf::geometry_t g, wlr_texture *t) :
         wf::scene::node_t(false), geo(g), tex(t)
     {}
 
     std::string stringify() const override
     {
-        return "shade-peek-screenshot";
+        return "slide-peek-screenshot";
     }
 
     // The snapshot travels a full output height past either the top or the
@@ -92,8 +92,8 @@ class shade_screenshot_node_t : public wf::scene::node_t
         wf::scene::damage_callback push_damage, wf::output_t *shown_on) override;
 };
 
-class shade_screenshot_render_instance_t :
-    public wf::scene::simple_render_instance_t<shade_screenshot_node_t>
+class slide_screenshot_render_instance_t :
+    public wf::scene::simple_render_instance_t<slide_screenshot_node_t>
 {
   public:
     using simple_render_instance_t::simple_render_instance_t;
@@ -117,24 +117,24 @@ class shade_screenshot_render_instance_t :
     }
 };
 
-inline void shade_screenshot_node_t::gen_render_instances(
+inline void slide_screenshot_node_t::gen_render_instances(
     std::vector<wf::scene::render_instance_uptr>& instances,
     wf::scene::damage_callback push_damage, wf::output_t *shown_on)
 {
-    instances.push_back(std::make_unique<shade_screenshot_render_instance_t>(
+    instances.push_back(std::make_unique<slide_screenshot_render_instance_t>(
         this, push_damage, shown_on));
 }
 
 // ---------------------------------------------------------------------------
 // Per-output plugin instance.
 // ---------------------------------------------------------------------------
-class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
+class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 {
-    wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-shade-peek/toggle"};
-    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-shade-peek/dismiss"};
-    wf::option_wrapper_t<std::string> desktop_app_id_opt{"wayfire-shade-peek/desktop_app_id"};
-    wf::option_wrapper_t<std::string> direction_opt{"wayfire-shade-peek/direction"};
-    wf::option_wrapper_t<wf::animation_description_t> duration_opt{"wayfire-shade-peek/duration"};
+    wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-slide-peek/toggle"};
+    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-slide-peek/dismiss"};
+    wf::option_wrapper_t<std::string> desktop_app_id_opt{"wayfire-slide-peek/desktop_app_id"};
+    wf::option_wrapper_t<std::string> direction_opt{"wayfire-slide-peek/direction"};
+    wf::option_wrapper_t<wf::animation_description_t> duration_opt{"wayfire-slide-peek/duration"};
 
     wf::animation::simple_animation_t anim{duration_opt};
 
@@ -143,7 +143,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
 
     // The frozen snapshot of the foreground and the node that slides it.
     wf::auxilliary_buffer_t screenshot_buf;
-    std::shared_ptr<shade_screenshot_node_t> screenshot_node;
+    std::shared_ptr<slide_screenshot_node_t> screenshot_node;
 
     // Output height and slide sign, recomputed per open. slide_sign = +1 when
     // the grid enters from the top (foreground exits off the bottom), -1 when
@@ -152,7 +152,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
     int slide_sign = +1;
 
     // The desktop grid view (app-id == desktop_app_id). Kept hidden while the
-    // shade is closed and revealed only while it is open; cached so we can
+    // slide is closed and revealed only while it is open; cached so we can
     // toggle it even after we have disabled (and thus hidden) its node.
     wayfire_view desktop_view;
 
@@ -162,7 +162,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
     // No grab (capabilities = 0): while open, the revealed desktop grid must
     // stay clickable, same rationale as wayfire-curtain-peek.
     wf::plugin_activation_data_t activation = {
-        .name = "wayfire-shade-peek",
+        .name = "wayfire-slide-peek",
         .capabilities = 0,
         .cancel = [this] { hard_reset(); },
     };
@@ -195,7 +195,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
         return false;
     };
 
-    // Keep the desktop grid hidden until a shade peek reveals it. Catch it as
+    // Keep the desktop grid hidden until a slide peek reveals it. Catch it as
     // soon as it maps and hide it straight away if nothing is open.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
@@ -246,7 +246,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
   public:
     void init() override
     {
-        shade_log("per-output init on output=%p", (void *) output);
+        slide_log("per-output init on output=%p", (void *) output);
         output->add_activator(toggle_opt, &on_toggle);
         output->add_activator(dismiss_opt, &on_dismiss);
         output->connect(&on_view_mapped);
@@ -262,7 +262,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
 
     void fini() override
     {
-        shade_log("per-output fini on output=%p state=%d", (void *) output, (int) state);
+        slide_log("per-output fini on output=%p state=%d", (void *) output, (int) state);
         output->rem_binding(&on_toggle);
         output->rem_binding(&on_dismiss);
         on_view_mapped.disconnect();
@@ -313,10 +313,10 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
   private:
     bool start_open()
     {
-        shade_log("start_open: activating");
+        slide_log("start_open: activating");
         if (!output->activate_plugin(&activation))
         {
-            shade_log("start_open: activate_plugin returned false");
+            slide_log("start_open: activate_plugin returned false");
             return false;
         }
 
@@ -336,7 +336,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
 
         if (!captured)
         {
-            shade_log("start_open: capture failed");
+            slide_log("start_open: capture failed");
             output->deactivate_plugin(&activation);
             return false;
         }
@@ -369,12 +369,12 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
 
         // 5. Drop the snapshot on top of everything (OVERLAY) and start closed
         //    (translate_y == 0, covering the foreground's old position).
-        screenshot_node = std::make_shared<shade_screenshot_node_t>(
+        screenshot_node = std::make_shared<slide_screenshot_node_t>(
             rel, screenshot_buf.get_texture());
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY),
             screenshot_node);
 
-        shade_log("start_open: H=%d slide_sign=%d", H, slide_sign);
+        slide_log("start_open: H=%d slide_sign=%d", H, slide_sign);
 
         output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
         state = state_t::OPENING;
@@ -462,7 +462,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
 
     // Show or hide the desktop grid by toggling its scene node. The view stays
     // mapped throughout, so the GTK app keeps running; we just stop rendering it
-    // while the shade is closed.
+    // while the slide is closed.
     void set_desktop_visible(bool visible)
     {
         if (!desktop_view)
@@ -544,7 +544,7 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
         wf::scene::set_node_enabled(
             output->node_for_layer(wf::scene::layer::BACKGROUND), true);
 
-        // Shade closed → desktop grid goes back to hidden. Hand keyboard focus
+        // Slide closed → desktop grid goes back to hidden. Hand keyboard focus
         // back to whatever real window should hold it now that the grid's
         // surface is no longer visible.
         set_desktop_visible(false);
@@ -566,12 +566,12 @@ class wayfire_shade_peek_t : public wf::per_output_plugin_instance_t
 // Plugin wrapper: per-output instances + plugin-wide IPC surface, identical in
 // shape to wayfire-curtain-peek so lumen-desktop/lumen-panel can drive it.
 // ---------------------------------------------------------------------------
-class wayfire_shade_peek_plugin_t :
-    public wf::per_output_plugin_t<wayfire_shade_peek_t>
+class wayfire_slide_peek_plugin_t :
+    public wf::per_output_plugin_t<wayfire_slide_peek_t>
 {
     wf::shared_data::ref_ptr_t<wf::ipc::method_repository_t> ipc_repo;
 
-    wayfire_shade_peek_t *instance_for_active_output()
+    wayfire_slide_peek_t *instance_for_active_output()
     {
         auto seat = wf::get_core().seat.get();
         wf::output_t *active = seat ? seat->get_active_output() : nullptr;
@@ -620,21 +620,21 @@ class wayfire_shade_peek_plugin_t :
   public:
     void init() override
     {
-        shade_log("plugin init: registering IPC methods");
-        wf::per_output_plugin_t<wayfire_shade_peek_t>::init();
-        ipc_repo->register_method("wayfire-shade-peek/toggle", on_toggle_ipc);
-        ipc_repo->register_method("wayfire-shade-peek/start",  on_start_ipc);
-        ipc_repo->register_method("wayfire-shade-peek/stop",   on_stop_ipc);
+        slide_log("plugin init: registering IPC methods");
+        wf::per_output_plugin_t<wayfire_slide_peek_t>::init();
+        ipc_repo->register_method("wayfire-slide-peek/toggle", on_toggle_ipc);
+        ipc_repo->register_method("wayfire-slide-peek/start",  on_start_ipc);
+        ipc_repo->register_method("wayfire-slide-peek/stop",   on_stop_ipc);
     }
 
     void fini() override
     {
-        shade_log("plugin fini: unregistering IPC methods");
-        ipc_repo->unregister_method("wayfire-shade-peek/toggle");
-        ipc_repo->unregister_method("wayfire-shade-peek/start");
-        ipc_repo->unregister_method("wayfire-shade-peek/stop");
-        wf::per_output_plugin_t<wayfire_shade_peek_t>::fini();
+        slide_log("plugin fini: unregistering IPC methods");
+        ipc_repo->unregister_method("wayfire-slide-peek/toggle");
+        ipc_repo->unregister_method("wayfire-slide-peek/start");
+        ipc_repo->unregister_method("wayfire-slide-peek/stop");
+        wf::per_output_plugin_t<wayfire_slide_peek_t>::fini();
     }
 };
 
-DECLARE_WAYFIRE_PLUGIN(wayfire_shade_peek_plugin_t)
+DECLARE_WAYFIRE_PLUGIN(wayfire_slide_peek_plugin_t)

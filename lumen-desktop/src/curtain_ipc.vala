@@ -92,7 +92,7 @@ namespace LumenDesktop {
         // active reveal is already idle on the compositor side.
         public static bool close() {
             bool a = send_method("wayfire-curtain-peek/stop");
-            bool b = send_method("wayfire-shade-peek/stop");
+            bool b = send_method("wayfire-slide-peek/stop");
             return a || b;
         }
     }

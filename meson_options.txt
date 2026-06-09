@@ -20,10 +20,10 @@ option(
 )
 
 option(
-  'with_shade_peek',
+  'with_slide_peek',
   type: 'boolean',
   value: true,
-  description: 'Build the wayfire-shade-peek Wayfire plugin (slides the foreground off one edge while the desktop grid slides in from the opposite edge, like a window shade; needs Wayfire 0.10 dev headers).',
+  description: 'Build the wayfire-slide-peek Wayfire plugin (slides the foreground off one edge while the desktop grid slides in from the opposite edge; needs Wayfire 0.10 dev headers).',
 )
 
 option(
