@@ -34,5 +34,10 @@
       <_long>Flat colour shown behind the lumen-desktop grid once the wallpaper splits away. Defaults to a GNOME-Shell-like grey.</_long>
       <default>#242424FF</default>
     </option>
+    <option name="desktop_app_id" type="string">
+      <_short>Desktop grid app-id</_short>
+      <_long>App-id (layer-shell namespace) of the desktop grid surface. It is excluded from the split, kept hidden while the curtain is closed, and revealed only while it is open.</_long>
+      <default>lumen-desktop</default>
+    </option>
   </plugin>
 </wayfire>

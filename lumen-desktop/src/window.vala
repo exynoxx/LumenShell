@@ -103,25 +103,11 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     private PagedGrid grid;
     private SearchResults results;
     private PageDots dots;
-    private BlurBin blur_bin;
-
-    // Blur fade animation. Target = MAX while a normal toplevel is focused,
-    // 0 while the user is peeking the desktop (wallpaper click) — that's the
-    // "fade away when you click through, fade in while you work" feel.
-    private const double BLUR_MAX = 18.0;
-    private const int64  BLUR_IN_US  = 800 * 1000;   // ease-in while working
-    private const int64  BLUR_OUT_US = 300 * 1000;   // quick clear on peek
-    private uint   blur_tick_id = 0;
-    private int64  blur_anim_start_us = 0;
-    private int64  blur_anim_duration_us = 0;
-    private double blur_anim_from = 0.0;
-    private double blur_anim_to   = 0.0;
 
     // Local mirror of the compositor-side peek toggle. The wayfire plugin
     // slides windows with view transformers WITHOUT changing toplevel focus,
-    // so no focus_changed signal arrives when a peek ends — we have to track
-    // the toggle direction ourselves to know whether a wallpaper click is a
-    // peek-OUT (clear blur) or a peek-IN (restore blur from focus).
+    // so no focus_changed signal arrives when a peek ends — we track the toggle
+    // direction ourselves so a wallpaper click can reset the drawer on peek-IN.
     private bool peeking = false;
 
     public DesktopWindow(Gtk.Application app) {
@@ -163,21 +149,12 @@ public class DesktopWindow : Gtk.ApplicationWindow {
 
         map.connect(() => {
             search_entry.grab_focus();
-            // Sync blur to whatever the focus state is at map time — if a
-            // window is already focused, ramp up; otherwise stay clear.
-            sync_blur_to_focus();
             sync_keyboard_mode();
         });
 
         DesktopToplevels.instance.focus_changed.connect((any) => {
-            sync_blur_to_focus();
             sync_keyboard_mode();
         });
-    }
-
-    private void sync_blur_to_focus() {
-        bool focused = DesktopToplevels.instance.any_focused;
-        animate_blur_to(focused ? BLUR_MAX : 0.0, focused ? BLUR_IN_US : BLUR_OUT_US);
     }
 
     // The compositor (wayfire-desktop-peek) hands keyboard focus back to
@@ -188,40 +165,6 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         if (!DesktopToplevels.instance.any_focused) {
             search_entry.grab_focus();
         }
-    }
-
-    private void animate_blur_to(double target, int64 duration_us) {
-        if (blur_bin == null) return;
-        if (blur_bin.radius == target && blur_tick_id == 0) return;
-
-        blur_anim_from = blur_bin.radius;
-        blur_anim_to   = target;
-        blur_anim_duration_us = duration_us;
-
-        var clock = get_frame_clock();
-        blur_anim_start_us = (clock != null) ? clock.get_frame_time() : GLib.get_monotonic_time();
-
-        if (blur_tick_id == 0) {
-            blur_tick_id = add_tick_callback(on_blur_tick);
-        }
-    }
-
-    private bool on_blur_tick(Gtk.Widget w, Gdk.FrameClock clock) {
-        int64 now = clock.get_frame_time();
-        double t = (blur_anim_duration_us > 0)
-            ? double.min(1.0, (now - blur_anim_start_us) / (double) blur_anim_duration_us)
-            : 1.0;
-        // ease-out-cubic — matches the gentle ramp used elsewhere in the
-        // shell (panel reveal, banner fades).
-        double e = 1.0 - GLib.Math.pow(1.0 - t, 3.0);
-        blur_bin.radius = blur_anim_from + (blur_anim_to - blur_anim_from) * e;
-
-        if (t >= 1.0) {
-            blur_bin.radius = blur_anim_to;
-            blur_tick_id = 0;
-            return GLib.Source.REMOVE;
-        }
-        return GLib.Source.CONTINUE;
     }
 
     private void load_apps() {
@@ -272,22 +215,14 @@ public class DesktopWindow : Gtk.ApplicationWindow {
 
     private void trigger_peek(string reason) {
         // Mirror the compositor toggle so we know which way this click goes.
-        // Peek-OUT clears the blur (crisp tiles while windows slide aside);
-        // peek-IN restores it to whatever the focus state wants. We can't rely
-        // on focus_changed for the peek-IN restore because the plugin moves
-        // windows with transformers and never re-fires focus.
         peeking = !peeking;
         peek_log(@"trigger_peek from $reason -> peeking=$peeking");
         LumenDesktop.PeekIpc.toggle();
 
-        if (peeking) {
-            animate_blur_to(0.0, BLUR_OUT_US);
-        } else {
+        if (!peeking) {
             // Peek-IN: windows are coming back, so return the drawer to a
-            // clean state — clear any in-progress search and reset paging —
-            // and restore the blur to whatever the focus state wants.
+            // clean state — clear any in-progress search and reset paging.
             reset_view();
-            sync_blur_to_focus();
         }
     }
 
@@ -376,13 +311,7 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         dots.page_clicked.connect((p) => grid.goto_page(p));
         root.append(dots);
 
-        // Wrap the whole UI in a BlurBin so the GSK render pass applies a
-        // GPU Gaussian blur over the search row + grid + dots in one shot.
-        // The window's transparent background means the compositor wallpaper
-        // shows through unblurred — only our painted pixels get blurred.
-        blur_bin = new BlurBin();
-        blur_bin.set_child(root);
-        set_child(blur_bin);
+        set_child(root);
     }
 
     private static bool css_installed = false;

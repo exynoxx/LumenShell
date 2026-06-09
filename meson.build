@@ -253,7 +253,6 @@ desktop_sources = files(
   'lumen-desktop/src/searchdb.vala',
   'lumen-desktop/src/peek_ipc.vala',
   'lumen-desktop/src/wl/toplevels.vala',
-  'lumen-desktop/src/widgets/blur_bin.vala',
   'lumen-desktop/src/components/apptile.vala',
   'lumen-desktop/src/components/pagedgrid.vala',
   'lumen-desktop/src/components/searchresults.vala',
