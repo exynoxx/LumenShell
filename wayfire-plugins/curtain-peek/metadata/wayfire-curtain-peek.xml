@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-curtain-peek">
+    <_short>Curtain Peek</_short>
+    <_long>Split the screen down the middle and slide both halves aside to reveal the desktop.</_long>
+    <category>Desktop</category>
+    <option name="toggle" type="activator">
+      <_short>Toggle curtain</_short>
+      <default>&lt;super&gt; KEY_S</default>
+    </option>
+    <option name="dismiss" type="activator">
+      <_short>Dismiss curtain</_short>
+      <_long>Optional secondary binding that only closes the curtain. Unset by default so it does not conflict with other plugins that consume Escape.</_long>
+      <default></default>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>300ms circle</default>
+    </option>
+    <option name="split_ratio" type="double">
+      <_short>Seam position (fraction of width)</_short>
+      <default>0.5</default>
+      <min>0.1</min>
+      <max>0.9</max>
+    </option>
+    <option name="edge_px" type="int">
+      <_short>Sliver left at each edge (px)</_short>
+      <default>0</default>
+      <min>0</min>
+      <max>400</max>
+    </option>
+    <option name="backdrop_color" type="color">
+      <_short>Reveal backdrop colour</_short>
+      <_long>Flat colour shown behind the lumen-desktop grid once the wallpaper splits away. Defaults to a GNOME-Shell-like grey.</_long>
+      <default>#242424FF</default>
+    </option>
+  </plugin>
+</wayfire>

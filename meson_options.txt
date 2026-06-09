@@ -6,6 +6,13 @@ option(
 )
 
 option(
+  'with_curtain_peek',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-curtain-peek Wayfire plugin (splits the screen down the middle to reveal the desktop; needs Wayfire 0.10 dev headers).',
+)
+
+option(
   'with_panel_peek',
   type: 'boolean',
   value: true,

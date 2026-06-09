@@ -298,6 +298,7 @@ subdir('lumen-settings')
 # C++ shared modules (no link with the rest of the tree). Each is gated
 # so users without Wayfire dev headers can disable any of them.
 if get_option('with_desktop_peek') \
+   or get_option('with_curtain_peek') \
    or get_option('with_startup_zoom') \
    or get_option('with_default_focus')
   add_languages('cpp', native: false)
@@ -305,6 +306,10 @@ endif
 
 if get_option('with_desktop_peek')
   subdir('wayfire-plugins/desktop-peek')
+endif
+
+if get_option('with_curtain_peek')
+  subdir('wayfire-plugins/curtain-peek')
 endif
 
 if get_option('with_startup_zoom')
