@@ -76,6 +76,7 @@ if settings_wayfire_enabled
   settings_sources += files(
     'src/wayfire/metadata.vala',
     'src/wayfire/plugin_page.vala',
+    'src/wayfire/generic_section_page.vala',
     'src/wayfire/wayfire_pages.vala',
   )
 endif

@@ -11,6 +11,13 @@ namespace LumenSettings {
         JsonStore theme;
         const string SECTION = "panel";
 
+#if WITH_WAYFIRE_CONFIG
+        IniStore wf_store;
+        const string CURTAIN_PLUGIN = "wayfire-curtain-peek";
+        const string SLIDE_PLUGIN   = "wayfire-slide-peek";
+        const string SLIDE_SECTION  = "wayfire-slide-peek";
+#endif
+
         // Panel color is a shared RGB; normal mode ("at all times") and auto-hide
         // mode each layer their own opacity (alpha) on top of it.
         Gdk.RGBA panel_rgba;
@@ -47,6 +54,41 @@ namespace LumenSettings {
             });
             layout.add_row(height_row);
             box.append(layout);
+
+#if WITH_WAYFIRE_CONFIG
+            // App-drawer reveal: pick curtain (doors) vs slide-down and the
+            // slide's direction. The two reveals are mutually
+            // exclusive — enabling one disables the other in wayfire.ini's
+            // [core] plugins list, so only one is ever loaded at a time.
+            wf_store = new IniStore(Paths.wayfire_ini());
+
+            var reveal = new BoxedList("App drawer reveal");
+
+            string[] style_labels = { "Curtain (doors)", "Slide-down" };
+            string[] style_values = { "curtain", "slide" };
+            var style_initial = plugin_enabled(SLIDE_PLUGIN) ? "slide" : "curtain";
+            var style_row = new ComboRow("Reveal style", style_labels, style_values, style_initial,
+                "animation used to reveal the app drawer");
+            style_row.value_changed.connect((v) => {
+                bool slide = (v == "slide");
+                set_plugin_enabled(SLIDE_PLUGIN,   slide);
+                set_plugin_enabled(CURTAIN_PLUGIN, !slide);
+            });
+            reveal.add_row(style_row);
+
+            string[] dir_labels = { "Down from top", "Up from bottom" };
+            string[] dir_values = { "top", "bottom" };
+            var dir_initial = wf_store.get_value(SLIDE_SECTION, "direction") ?? "top";
+            var dir_row = new ComboRow("Slide direction", dir_labels, dir_values, dir_initial,
+                "edge the drawer slides in from (slide-down reveal only)");
+            dir_row.value_changed.connect((v) => {
+                wf_store.set_value(SLIDE_SECTION, "direction", v);
+                wf_store.save();
+            });
+            reveal.add_row(dir_row);
+
+            box.append(reveal);
+#endif
 
             var colors = new BoxedList("Colors");
 
@@ -144,6 +186,41 @@ namespace LumenSettings {
         }
 
         public override string? restart_target() { return "lumen-panel"; }
+
+#if WITH_WAYFIRE_CONFIG
+        bool plugin_enabled(string name) {
+            var raw = wf_store.get_value("core", "plugins") ?? "";
+            foreach (var tok in raw.split(" ")) {
+                if (tok.strip() == name) return true;
+            }
+            return false;
+        }
+
+        // Add/remove a plugin from wayfire.ini's [core] plugins list, preserving
+        // order and dropping duplicates. Mirrors WayfirePluginsPage.set_enabled.
+        void set_plugin_enabled(string name, bool on) {
+            var raw = wf_store.get_value("core", "plugins") ?? "";
+            var seen = new Gee.HashSet<string>();
+            var ordered = new Gee.ArrayList<string>();
+            foreach (var tok in raw.split(" ")) {
+                var t = tok.strip();
+                if (t == "") continue;
+                if (!seen.contains(t)) { seen.add(t); ordered.add(t); }
+            }
+            if (on) {
+                if (!seen.contains(name)) ordered.add(name);
+            } else {
+                ordered.remove(name);
+            }
+            var sb = new StringBuilder();
+            for (int i = 0; i < ordered.size; i++) {
+                if (i > 0) sb.append(" ");
+                sb.append(ordered.get(i));
+            }
+            wf_store.set_value("core", "plugins", sb.str);
+            wf_store.save();
+        }
+#endif
 
         static double parse_double(string? s, double fallback) {
             if (s == null) return fallback;

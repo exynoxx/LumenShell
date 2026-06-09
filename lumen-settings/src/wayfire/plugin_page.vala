@@ -19,12 +19,9 @@ namespace LumenSettings.Wayfire {
         }
 
         public Gtk.Widget build() {
-            var scroll = new Gtk.ScrolledWindow() {
-                hscrollbar_policy = Gtk.PolicyType.NEVER,
-                vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-                hexpand = true, vexpand = true,
-            };
-
+            // The window already wraps every page body in a ScrolledWindow, so
+            // this page must return a plain box — a second ScrolledWindow here
+            // would produce nested (double) scrollbars.
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
                 margin_top = 18, margin_bottom = 18,
                 margin_start = 18, margin_end = 18,
@@ -58,8 +55,7 @@ namespace LumenSettings.Wayfire {
                 box.append(grouped.get(k));
             }
 
-            scroll.set_child(box);
-            return scroll;
+            return box;
         }
 
         Gtk.Widget? build_row(OptionDef opt) {
