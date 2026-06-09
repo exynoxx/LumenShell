@@ -18,6 +18,14 @@ public class AppEntry : Gtk.Button {
     Gee.ArrayList<uint> window_ids = new Gee.ArrayList<uint>();
     int cycle_idx = 0;
 
+    // Drag-to-reorder state. drag_offset_x is the current rendered horizontal
+    // translate; drag_target_x is where AppBar wants this entry to slide to.
+    // Both are driven by AppBar except for the lifted (dragging) entry, whose
+    // offset follows the pointer directly.
+    public double drag_offset_x = 0;
+    public double drag_target_x = 0;
+    public bool   dragging      = false;
+
     Gtk.Image image;
     // Resolved once in load_icon(); used to draw the dimmed back copies of the
     // stacked-icon effect for multi-window apps. The front layer stays the
@@ -27,6 +35,12 @@ public class AppEntry : Gtk.Button {
 
     public signal void pin_toggled ();
     public signal void unpin_and_removable ();
+
+    // Drag-to-reorder: AppBar owns sibling order, so the gesture only reports
+    // begin / move / drop and lets AppBar compute the reordering.
+    public signal void drag_started ();
+    public signal void drag_moved   (double offset_x);
+    public signal void drag_dropped (double offset_x);
 
     public AppEntry (string app_id, AppMetadata meta) {
         GLib.Object(app_id: app_id);
@@ -51,7 +65,34 @@ public class AppEntry : Gtk.Button {
         var rclick = new Gtk.GestureClick() { button = Gdk.BUTTON_SECONDARY };
         rclick.released.connect((n, x, y) => show_popup());
         add_controller(rclick);
+
+        var drag = new Gtk.GestureDrag();
+        drag.drag_update.connect((ox, oy) => {
+            // Below the threshold, leave the gesture unclaimed so a near-still
+            // press still resolves as a normal click (activate/cycle windows).
+            if (!dragging && Math.fabs(ox) < DRAG_THRESHOLD) return;
+            if (!dragging) {
+                dragging = true;
+                add_css_class("dragging");
+                // Claiming cancels Gtk.Button's internal click gesture, so a
+                // real drag won't also activate the app on release.
+                drag.set_state(Gtk.EventSequenceState.CLAIMED);
+                drag_started();
+            }
+            drag_offset_x = ox;
+            drag_moved(ox);
+            queue_draw();
+        });
+        drag.drag_end.connect((ox, oy) => {
+            if (!dragging) return;
+            dragging = false;
+            remove_css_class("dragging");
+            drag_dropped(ox);
+        });
+        add_controller(drag);
     }
+
+    const double DRAG_THRESHOLD = 8.0;
 
     public bool has_open_windows () { return window_ids.size > 0; }
 
@@ -161,6 +202,17 @@ public class AppEntry : Gtk.Button {
     const int STACK_OFFSET = 4;     // px diagonal step per back layer
 
     public override void snapshot (Gtk.Snapshot s) {
+        // Drag-to-reorder: shift everything we draw by the current offset (and
+        // lift the dragged entry slightly) so the icon, stacked back-copies and
+        // underline all move together.
+        bool shifted = drag_offset_x != 0 || dragging;
+        if (shifted) {
+            s.save();
+            var t = Graphene.Point();
+            t.init((float) drag_offset_x, dragging ? -6f : 0f);
+            s.translate(t);
+        }
+
         // Back copies first so the real Gtk.Image (front) draws on top.
         if (window_ids.size > 1 && icon_paintable != null) {
             float cx = (get_width()  - ICON_SIZE) / 2f;
@@ -181,5 +233,7 @@ public class AppEntry : Gtk.Button {
             rect.init(9, get_height() - UNDERLINE_H, get_width() - 18, UNDERLINE_H);
             s.append_color(UNDERLINE_COLOR, rect);
         }
+
+        if (shifted) s.restore();
     }
 }

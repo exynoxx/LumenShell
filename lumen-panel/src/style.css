@@ -116,6 +116,10 @@ button.app-entry:hover {
 button.app-entry.launching {
     background: @app_launching;
 }
+button.app-entry.dragging {
+    background: @app_hover;
+    border-radius: 8px;
+}
 
 /* Page-level shared styling: title labels, page background, etc. */
 .page-title {
