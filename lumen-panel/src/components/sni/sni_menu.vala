@@ -35,9 +35,11 @@ public class SniMenu : GLib.Object {
                                  DBusCallFlags.NONE, -1, null);
             } catch (Error e) { /* optional; ignore */ }
 
+            // NB: '^as' (not 'as') — plain 'as' makes g_variant_new expect a
+            // GVariantBuilder* and aborts the whole panel on a string array.
             var reply = yield proxy.call(
                 "GetLayout",
-                new Variant("(iias)", 0, -1, new string[] {}),
+                new Variant("(ii^as)", 0, -1, new string[] {}),
                 DBusCallFlags.NONE, -1, null);
             // reply: (u revision, (ia{sv}av) layout)
             var node = reply.get_child_value(1);
@@ -109,6 +111,17 @@ public class SniMenu : GLib.Object {
                 var img = new Gtk.Image() { pixel_size = 16 };
                 img.set_from_icon_name(icon);
                 content.append(img);
+            } else {
+                // dbusmenu's other icon form: raw PNG bytes (Electron apps
+                // like Discord use this exclusively).
+                var data = props.lookup_value("icon-data", new VariantType("ay"));
+                if (data != null) {
+                    try {
+                        var tex = Gdk.Texture.from_bytes(data.get_data_as_bytes());
+                        var img = new Gtk.Image.from_paintable(tex) { pixel_size = 16 };
+                        content.append(img);
+                    } catch (Error e) { /* undecodable image; render label only */ }
+                }
             }
         }
 
@@ -127,19 +140,8 @@ public class SniMenu : GLib.Object {
         row.set_child(content);
 
         if (is_submenu) {
-            Gtk.Popover? sub = null;
             row.clicked.connect(() => {
-                if (sub == null) {
-                    sub = new Gtk.Popover() {
-                        autohide = true,
-                        has_arrow = false,
-                        position = Gtk.PositionType.RIGHT,
-                    };
-                    sub.add_css_class("systray-menu");
-                    sub.set_child(build_box(item, owner));
-                    sub.set_parent(row);
-                }
-                sub.popup();
+                open_submenu.begin(row, id, item, owner);
             });
         } else {
             row.clicked.connect(() => {
@@ -149,6 +151,37 @@ public class SniMenu : GLib.Object {
         }
 
         box.append(row);
+    }
+
+    // Submenus are re-fetched on every open: many appindicator apps only
+    // populate (or refresh) a submenu's children in response to AboutToShow.
+    // The node from the initial full-tree GetLayout is kept as a fallback.
+    async void open_submenu (Gtk.Widget row, int id, Variant fallback, Gtk.Popover owner) {
+        Variant node = fallback;
+        if (proxy != null) {
+            try {
+                yield proxy.call("AboutToShow", new Variant("(i)", id),
+                                 DBusCallFlags.NONE, -1, null);
+            } catch (Error e) { /* optional; ignore */ }
+            try {
+                var reply = yield proxy.call(
+                    "GetLayout",
+                    new Variant("(ii^as)", id, -1, new string[] {}),
+                    DBusCallFlags.NONE, -1, null);
+                node = reply.get_child_value(1);
+            } catch (Error e) { /* stale tree is better than none */ }
+        }
+
+        var sub = new Gtk.Popover() {
+            autohide = true,
+            has_arrow = false,
+            position = Gtk.PositionType.RIGHT,
+        };
+        sub.add_css_class("systray-menu");
+        sub.set_child(build_box(node, owner));
+        sub.set_parent(row);
+        sub.closed.connect(() => sub.unparent());
+        sub.popup();
     }
 
     void send_event (int id) {
