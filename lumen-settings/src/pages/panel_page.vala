@@ -86,6 +86,7 @@ namespace LumenSettings {
             colors.add_row(color_row("app.hover",             "App hover",             "#2c3140ff", "taskbar app background while the pointer is over it"));
             colors.add_row(color_row("app.launching",         "App launching",         "#3d7affff", "taskbar app background while the app is starting up"));
             colors.add_row(color_row("app.active-underline",  "Active app underline",  "#3d7affff", "underline color shown beneath the focused app"));
+            colors.add_row(color_row("app.open-indicator-color", "Open app indicator", "#3d7affff", "color of the open-app dot, brackets, or shade"));
             box.append(colors);
 
             var clock_group = new BoxedList("Clock");
@@ -137,6 +138,17 @@ namespace LumenSettings {
                 theme.save();
             });
             behavior_group.add_row(autohide_opacity_row);
+
+            string[] ind_labels = { "Bottom shade", "Dot", "Corner brackets", "Glass (hover look)", "None" };
+            string[] ind_values = { "shade", "dot", "corners", "glass", "none" };
+            var ind_initial = store.get_value(SECTION, "app.open-indicator") ?? "shade";
+            var ind_row = new ComboRow("Open app indicator", ind_labels, ind_values, ind_initial,
+                "how a running app is marked apart from a pinned, closed one");
+            ind_row.value_changed.connect((v) => {
+                store.set_value(SECTION, "app.open-indicator", v);
+                store.save();
+            });
+            behavior_group.add_row(ind_row);
 
             box.append(behavior_group);
 

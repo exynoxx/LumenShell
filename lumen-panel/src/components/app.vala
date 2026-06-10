@@ -196,6 +196,36 @@ public class AppEntry : Gtk.Button {
     // color is hard-coded here (matches @app_active_underline in style.css).
     static Gdk.RGBA UNDERLINE_COLOR = Utils.rgba(0.0f, 0.17f, 0.9f, 1.0f);
 
+    // Open-but-not-focused apps get one of several indicator styles (chosen via
+    // PanelConfig.open_indicator) so a running app is distinguishable from a
+    // pinned-but-closed one. The dot, corner brackets and shade are all tinted
+    // with the configurable `app.open-indicator-color` (resolved once below);
+    // the shade fades from transparent to that color at OPEN_SHADE_ALPHA.
+    const int   OPEN_SHADE_H     = 12;   // px height of the bottom shading band
+    const float OPEN_SHADE_ALPHA = 0.5f; // bottom-of-shade tint strength
+    const int   OPEN_DOT_D       = 6;    // px diameter of the centered dot
+    const int   OPEN_DOT_GAP     = 4;    // px from dot to the bottom edge
+    const int   OPEN_CORNER_LEN  = 8;    // px each corner bracket arm spans
+    const int   OPEN_CORNER_THICK = 3;   // px thickness of the corner brackets
+
+    // Resolved once from the theme; the panel re-reads on restart. Defaults to
+    // the active-underline accent blue (#3d7aff) when the key is unset.
+    static bool open_color_loaded = false;
+    static Gdk.RGBA open_color_val;
+    static Gdk.RGBA open_color () {
+        if (!open_color_loaded) {
+            open_color_val = Theme.color("app.open-indicator-color", "rgba(61,122,255,1)");
+            open_color_loaded = true;
+        }
+        return open_color_val;
+    }
+    // Glass: a frosted translucent fill drawn behind the icon, mimicking the
+    // CSS :hover background stuck on. Faint white sheen, brighter at the top.
+    static Gdk.RGBA OPEN_GLASS_TOP = Utils.rgba(1.0f, 1.0f, 1.0f, 0.22f);
+    static Gdk.RGBA OPEN_GLASS_BOT = Utils.rgba(1.0f, 1.0f, 1.0f, 0.08f);
+    const int OPEN_GLASS_INSET  = 4;   // px gap from the slot edge
+    const int OPEN_GLASS_RADIUS = 8;   // px corner rounding (matches .dragging)
+
     // Stacked-icon effect: an app with more than one window draws 2 copies of
     // its icon behind the real one, offset up-and-left, so a multi-window app
     // reads as a stack of papers at a glance.
@@ -211,6 +241,13 @@ public class AppEntry : Gtk.Button {
             var t = Graphene.Point();
             t.init((float) drag_offset_x, dragging ? -6f : 0f);
             s.translate(t);
+        }
+
+        // Glass fill goes behind everything (like the CSS :hover background) so
+        // the icon stays crisp on top. The edge-drawn styles run after base.
+        if (!is_active() && has_open_windows()
+            && PanelConfig.open_indicator == PanelConfig.OpenIndicator.GLASS) {
+            draw_glass(s);
         }
 
         // Back copies first so the real Gtk.Image (front) draws on top.
@@ -232,8 +269,86 @@ public class AppEntry : Gtk.Button {
             var rect = Graphene.Rect();
             rect.init(9, get_height() - UNDERLINE_H, get_width() - 18, UNDERLINE_H);
             s.append_color(UNDERLINE_COLOR, rect);
+        } else if (has_open_windows()) {
+            draw_open_indicator(s);
         }
 
         if (shifted) s.restore();
+    }
+
+    void draw_open_indicator (Gtk.Snapshot s) {
+        float w = get_width();
+        float h = get_height();
+        switch (PanelConfig.open_indicator) {
+            case PanelConfig.OpenIndicator.NONE:
+            case PanelConfig.OpenIndicator.GLASS:   // drawn behind the icon, pre-base
+                return;
+
+            case PanelConfig.OpenIndicator.DOT:
+                var dot = Graphene.Rect();
+                dot.init((w - OPEN_DOT_D) / 2f, h - OPEN_DOT_D - OPEN_DOT_GAP,
+                         OPEN_DOT_D, OPEN_DOT_D);
+                var rr = Gsk.RoundedRect();
+                rr.init_from_rect(dot, OPEN_DOT_D / 2f);
+                s.push_rounded_clip(rr);
+                s.append_color(open_color(), dot);
+                s.pop();
+                return;
+
+            case PanelConfig.OpenIndicator.CORNERS:
+                float L = OPEN_CORNER_LEN, t = OPEN_CORNER_THICK;
+                // Each corner gets an L: one arm along each edge meeting there.
+                fill(s, 0,     0,     L, t);  fill(s, 0,     0,     t, L);  // top-left
+                fill(s, w - L, 0,     L, t);  fill(s, w - t, 0,     t, L);  // top-right
+                fill(s, 0,     h - t, L, t);  fill(s, 0,     h - L, t, L);  // bottom-left
+                fill(s, w - L, h - t, L, t);  fill(s, w - t, h - L, t, L);  // bottom-right
+                return;
+
+            case PanelConfig.OpenIndicator.SHADE:
+            default:
+                var bounds = Graphene.Rect();
+                bounds.init(0, h - OPEN_SHADE_H, w, OPEN_SHADE_H);
+                var top = Graphene.Point();
+                top.init(0, h - OPEN_SHADE_H);
+                var bot = Graphene.Point();
+                bot.init(0, h);
+                var c = open_color();
+                var shade_top = c; shade_top.alpha = 0f;
+                var shade_bot = c; shade_bot.alpha = OPEN_SHADE_ALPHA;
+                Gsk.ColorStop[] stops = {
+                    { 0.0f, shade_top },
+                    { 1.0f, shade_bot },
+                };
+                s.append_linear_gradient(bounds, top, bot, stops);
+                return;
+        }
+    }
+
+    // Append a solid indicator-colored rectangle (corner-bracket arm).
+    void fill (Gtk.Snapshot s, float x, float y, float w, float h) {
+        var r = Graphene.Rect();
+        r.init(x, y, w, h);
+        s.append_color(open_color(), r);
+    }
+
+    // Frosted rounded fill behind the icon — a persistent hover-like sheen.
+    void draw_glass (Gtk.Snapshot s) {
+        float w = get_width(), h = get_height();
+        float inset = OPEN_GLASS_INSET;
+        var area = Graphene.Rect();
+        area.init(inset, inset, w - 2 * inset, h - 2 * inset);
+        var rr = Gsk.RoundedRect();
+        rr.init_from_rect(area, OPEN_GLASS_RADIUS);
+        s.push_rounded_clip(rr);
+        var top = Graphene.Point();
+        top.init(0, inset);
+        var bot = Graphene.Point();
+        bot.init(0, h - inset);
+        Gsk.ColorStop[] stops = {
+            { 0.0f, OPEN_GLASS_TOP },
+            { 1.0f, OPEN_GLASS_BOT },
+        };
+        s.append_linear_gradient(area, top, bot, stops);
+        s.pop();
     }
 }
