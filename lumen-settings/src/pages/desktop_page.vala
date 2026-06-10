@@ -69,6 +69,8 @@ namespace LumenSettings {
             return box;
         }
 
+        public override string? restart_target() { return "lumen-desktop"; }
+
 #if WITH_WAYFIRE_CONFIG
         bool plugin_enabled(string name) {
             var raw = wf_store.get_value("core", "plugins") ?? "";
