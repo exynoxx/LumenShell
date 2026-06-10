@@ -91,13 +91,20 @@ public class Banner : Gtk.Box {
 
     public void update_from(Notification n) {
         title_lbl.set_text(n.summary);
-        body_lbl.set_text(n.body);
+        set_body_markup(n.body);
         body_lbl.set_visible(n.body != "");
 
         set_icon(n);
         rebuild_actions(n.actions);
 
         queue_draw();
+    }
+
+    private void set_body_markup(string body) {
+        // body_to_markup yields balanced, escaped GtkLabel markup, so
+        // set_markup accepts it (note: GtkLabel's <a> support means we can't
+        // pre-validate with Pango.parse_markup, which rejects <a>).
+        body_lbl.set_markup(Utils.body_to_markup(body));
     }
 
     private void set_icon(Notification n) {
