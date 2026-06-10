@@ -267,6 +267,10 @@ public class DesktopWindow : Gtk.ApplicationWindow {
                           | Gdk.ModifierType.SUPER_MASK);
 
         switch (keyval) {
+            case Gdk.Key.Escape:
+                // Close the curtain over the grid, hiding the desktop again.
+                LumenDesktop.CurtainIpc.close();
+                return true;
             case Gdk.Key.Left:
                 if (!search_db.active && mods == 0) { grid.prev_page(); return true; }
                 return false;
