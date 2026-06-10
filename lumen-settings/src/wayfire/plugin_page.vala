@@ -19,9 +19,9 @@ namespace LumenSettings.Wayfire {
         }
 
         public Gtk.Widget build() {
-            // The window already wraps every page body in a ScrolledWindow, so
-            // this page must return a plain box — a second ScrolledWindow here
-            // would produce nested (double) scrollbars.
+            // This body is shown inside the Wayfire detail view, which wraps it
+            // in a ScrolledWindow beneath a pinned header, so return a plain box
+            // — a second ScrolledWindow here would produce nested scrollbars.
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
                 margin_top = 18, margin_bottom = 18,
                 margin_start = 18, margin_end = 18,

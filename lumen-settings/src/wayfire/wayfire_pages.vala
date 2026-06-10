@@ -39,6 +39,10 @@ namespace LumenSettings.Wayfire {
         public string title     { owned get { return "Wayfire Plugins"; } }
         public string icon_name { owned get { return "preferences-system-symbolic"; } }
 
+        // This page pins its own search bar / back button outside an inner
+        // ScrolledWindow, so it must not be wrapped in the window's scroller.
+        public bool scrolls_itself() { return true; }
+
         public WayfirePluginsPage(Gee.ArrayList<PluginDef> plugins, IniStore store) {
             this.plugins = plugins;
             this.store = store;
@@ -66,25 +70,34 @@ namespace LumenSettings.Wayfire {
             // Typing anywhere in the window reveals the search bar; it stays
             // hidden while empty (Escape clears and hides it again). Key
             // capture must hang off the toplevel — not this stack — since the
-            // stack rarely holds focus. We bind it only while the page is
-            // mapped so typing on other settings pages doesn't reach it.
-            stack.map.connect(() => {
-                var root = stack.get_root() as Gtk.Widget;
-                if (root != null) search_bar.set_key_capture_widget(root);
-            });
+            // stack rarely holds focus. We only bind it on the list view: on
+            // the detail view a BindingRow needs raw key events to capture
+            // shortcuts, and a toplevel capture would swallow them first.
+            stack.map.connect(update_search_capture);
             stack.unmap.connect(() => search_bar.set_key_capture_widget(null));
+            stack.notify["visible-child-name"].connect(update_search_capture);
             return stack;
         }
 
+        void update_search_capture() {
+            var root = stack.get_root() as Gtk.Widget;
+            if (root == null) return;
+            if (stack.get_mapped() && stack.visible_child_name == "list") {
+                search_bar.set_key_capture_widget(root);
+            } else {
+                search_bar.set_key_capture_widget(null);
+            }
+        }
+
         Gtk.Widget build_list_view() {
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
+            var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+                hexpand = true, vexpand = true,
             };
 
             // Search bar that filters the lists below as you type. It is a
             // revealer that stays collapsed until the user starts typing, so
-            // nothing is shown while the search is empty.
+            // nothing is shown while the search is empty. Pinned above the
+            // scroller so it stays visible no matter how far the list scrolls.
             search_entry = new Gtk.SearchEntry() {
                 placeholder_text = "Search plugins",
                 hexpand = true,
@@ -95,7 +108,12 @@ namespace LumenSettings.Wayfire {
             };
             search_bar.set_child(search_entry);
             search_bar.connect_entry(search_entry);
-            box.append(search_bar);
+            outer.append(search_bar);
+
+            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
+                margin_top = 18, margin_bottom = 18,
+                margin_start = 18, margin_end = 18,
+            };
 
             // Documented plugins: an enable toggle plus a clickable row that
             // opens the plugin's settings.
@@ -122,7 +140,14 @@ namespace LumenSettings.Wayfire {
                 box.append(other_list);
             }
 
-            return box;
+            var scroller = new Gtk.ScrolledWindow() {
+                hscrollbar_policy = Gtk.PolicyType.NEVER,
+                vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+                hexpand = true, vexpand = true,
+                child = box,
+            };
+            outer.append(scroller);
+            return outer;
         }
 
         Gtk.ListBoxRow make_plugin_row(PluginDef p) {
@@ -210,6 +235,8 @@ namespace LumenSettings.Wayfire {
                 hexpand = true, vexpand = true,
             };
 
+            // Header (back button + title) is pinned above the scroller so it
+            // stays in place while the plugin's options scroll beneath it.
             var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
                 margin_top = 18, margin_start = 18, margin_end = 18,
             };
@@ -226,7 +253,14 @@ namespace LumenSettings.Wayfire {
             header.append(lbl);
 
             box.append(header);
-            box.append(body);
+
+            var scroller = new Gtk.ScrolledWindow() {
+                hscrollbar_policy = Gtk.PolicyType.NEVER,
+                vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+                hexpand = true, vexpand = true,
+                child = body,
+            };
+            box.append(scroller);
             return box;
         }
 

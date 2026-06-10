@@ -57,13 +57,7 @@ namespace LumenSettings {
                 transition_type = Gtk.StackTransitionType.CROSSFADE,
                 hexpand = true, vexpand = true,
             };
-            var scroller = new Gtk.ScrolledWindow() {
-                hscrollbar_policy = Gtk.PolicyType.NEVER,
-                vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-                hexpand = true, vexpand = true,
-                child = stack,
-            };
-            right.append(scroller);
+            right.append(stack);
 
             root.append(right);
             set_child(root);
@@ -107,12 +101,25 @@ namespace LumenSettings {
             for (uint i = 0; i < registry.size; i++) {
                 var page = registry.get_at(i);
                 var body = page.build();
+                // Pages that scroll themselves (e.g. ones with a pinned search
+                // bar or back button) go in verbatim; everyone else gets the
+                // standard margins and a ScrolledWindow wrapper.
+                if (page.scrolls_itself()) {
+                    stack.add_named(body, page.id);
+                    continue;
+                }
                 var wrap = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
                     margin_start = 24, margin_end = 24,
                     margin_top = 6, margin_bottom = 24,
                 };
                 wrap.append(body);
-                stack.add_named(wrap, page.id);
+                var scroller = new Gtk.ScrolledWindow() {
+                    hscrollbar_policy = Gtk.PolicyType.NEVER,
+                    vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+                    hexpand = true, vexpand = true,
+                    child = wrap,
+                };
+                stack.add_named(scroller, page.id);
             }
         }
     }
