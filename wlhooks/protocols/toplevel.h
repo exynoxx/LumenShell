@@ -18,4 +18,10 @@ void toplevel_activate_by_id(uint32_t id);
 void toplevel_minimize_by_id(uint32_t id);
 void toplevel_close_by_id(uint32_t id);
 
+// Report the on-screen rectangle (taskbar button) for a window, in the
+// coordinate space of `surface`, as the compositor's minimize-animation hint.
+// No-op (with a warning) if the active backend can't express it.
+void toplevel_set_rectangle_by_id(uint32_t id, struct wl_surface *surface,
+                                  int32_t x, int32_t y, int32_t width, int32_t height);
+
 #endif

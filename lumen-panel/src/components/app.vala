@@ -100,7 +100,44 @@ public class AppEntry : Gtk.Button {
 
     public void add_window (uint id) {
         if (!window_ids.contains(id)) window_ids.add(id);
+        // A freshly-added window needs its minimize target right away, even if
+        // no re-layout follows (compute_bounds no-ops until we're allocated).
+        push_minimize_targets();
         queue_draw();
+    }
+
+    // Tell the compositor where this entry sits on the panel, so a minimize
+    // animation (Wayfire's squeezimize "genie") flies each of our windows into
+    // this button instead of collapsing the window into itself. Without a
+    // target rectangle the compositor squeezes toward the window's own origin,
+    // which is the "rolls up under itself" symptom. The rectangle is given in
+    // the panel surface's coordinate space — GTK root coordinates match it 1:1
+    // (layer-shell surface origin == window origin, same logical px).
+    void push_minimize_targets () {
+        if (window_ids.size == 0) return;
+        var root = get_root() as Gtk.Window;
+        if (root == null) return;
+        var gdk_surface = root.get_surface();
+        if (!(gdk_surface is Gdk.Wayland.Surface)) return;
+        unowned Wl.Surface wl = ((Gdk.Wayland.Surface) gdk_surface).get_wl_surface();
+
+        Graphene.Rect b;
+        if (!compute_bounds((Gtk.Widget) root, out b)) return;
+        int w = (int) b.get_width();
+        int h = (int) b.get_height();
+        if (w <= 0 || h <= 0) return;
+        int x = (int) b.get_x();
+        int y = (int) b.get_y();
+
+        foreach (var id in window_ids)
+            WLHooks.toplevel_set_rectangle_by_id(id, wl, x, y, w, h);
+    }
+
+    // Re-push targets whenever our slot moves or resizes (panel layout, tray
+    // expansion, drag-reorder drops all re-allocate us).
+    public override void size_allocate (int width, int height, int baseline) {
+        base.size_allocate(width, height, baseline);
+        push_minimize_targets();
     }
 
     public void remove_window (uint id) {

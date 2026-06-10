@@ -71,6 +71,11 @@ namespace WLHooks {
     [CCode(cname = "toplevel_close_by_id")]
     void toplevel_close_by_id(uint id);
 
+    // Report a window's taskbar-button rectangle, in `surface`'s coordinate
+    // space, as the compositor's minimize-animation target (e.g. squeezimize).
+    [CCode(cname = "toplevel_set_rectangle_by_id")]
+    void toplevel_set_rectangle_by_id(uint id, Wl.Surface surface, int x, int y, int width, int height);
+
     public delegate void SeatMouseEnter();
     public delegate void SeatMouseLeave();
     public delegate void SeatMouseDown(uint32 button);

@@ -41,3 +41,13 @@ static window_op_fn pick_op(const toplevel_window_t *w, size_t offset) {
 void toplevel_activate_by_id(uint32_t id) { DISPATCH(id, activate, "activate"); }
 void toplevel_minimize_by_id(uint32_t id) { DISPATCH(id, minimize, "minimize"); }
 void toplevel_close_by_id   (uint32_t id) { DISPATCH(id, close,    "close");    }
+
+// Not routed through DISPATCH (that macro only passes the window, and we want
+// silence rather than a warning here): the panel re-pushes rectangles on every
+// re-layout, so a window that closed a frame earlier must vanish quietly.
+void toplevel_set_rectangle_by_id(uint32_t id, struct wl_surface *surface,
+                                  int32_t x, int32_t y, int32_t width, int32_t height) {
+    toplevel_window_t *w = window_list_find(id);
+    if (!w || !w->ops || !w->ops->set_rectangle) return;
+    w->ops->set_rectangle(w, surface, x, y, width, height);
+}

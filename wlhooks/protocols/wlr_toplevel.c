@@ -28,6 +28,11 @@ static void op_close(toplevel_window_t *w) {
     zwlr_foreign_toplevel_handle_v1_close(w->handle);
 }
 
+static void op_set_rectangle(toplevel_window_t *w, struct wl_surface *surface,
+                             int32_t x, int32_t y, int32_t width, int32_t height) {
+    zwlr_foreign_toplevel_handle_v1_set_rectangle(w->handle, surface, x, y, width, height);
+}
+
 static void op_destroy_handle(toplevel_window_t *w) {
     if (w->handle) {
         zwlr_foreign_toplevel_handle_v1_destroy(w->handle);
@@ -39,6 +44,7 @@ static const toplevel_window_ops_t wlr_ops = {
     .activate       = op_activate,
     .minimize       = op_minimize,
     .close          = op_close,
+    .set_rectangle  = op_set_rectangle,
     .destroy_handle = op_destroy_handle,
 };
 
