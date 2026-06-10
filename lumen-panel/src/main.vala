@@ -81,6 +81,8 @@ public class App : GLib.Object {
         root.append(app_bar);
 
         tray = new TrayBar();
+        // App-tray (SNI) icons sit left-most, separated from the system trays.
+        tray.set_app_tray(new SysTray());
         tray.add_paged(new WifiTray());
         tray.add_paged(new BluetoothTray());
         tray.add_paged(new BatteryTray());

@@ -79,6 +79,49 @@ button.tray-icon label {
     font-weight: 500;
 }
 
+/* SNI app-tray. Items reuse .tray-icon chrome but in a tighter slot than the
+   48px system trays so several app icons don't crowd the bar. */
+.systray {
+    padding: 0;
+}
+button.systray-item {
+    min-width: 34px;
+    min-height: 48px;
+    margin: 0;
+    border-radius: 18px;
+}
+/* Divider between the app-tray and the predefined system trays. */
+.tray-app-sep {
+    background: rgba(255, 255, 255, 0.18);
+    min-width: 1px;
+    margin: 12px 8px;
+}
+
+/* DBusMenu popover (right-click app-tray menus). */
+.systray-menu {
+    padding: 4px;
+}
+.systray-menu-box {
+    min-width: 160px;
+}
+button.systray-menu-item {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: white;
+}
+button.systray-menu-item:hover {
+    background: @tray_icon_hover;
+}
+button.systray-menu-item:disabled {
+    opacity: 0.45;
+}
+button.systray-menu-item label {
+    color: white;
+}
+
 .clock {
     padding: 0 14px;
     margin: 0 4px;

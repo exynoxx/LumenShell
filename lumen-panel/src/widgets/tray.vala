@@ -94,6 +94,13 @@ public class TrayBar : Gtk.Box {
         icon_row.append(icon_w);
     }
 
+    // Place the SNI app-tray area at the very left of the icon row, ahead of
+    // the predefined system trays. The widget carries its own trailing
+    // separator and hides itself when it holds no app icons.
+    public void set_app_tray (Gtk.Widget app_tray) {
+        icon_row.prepend(app_tray);
+    }
+
     // Add a page-bearing icon. Clicking the icon toggles its page.
     public void add_paged (IPagedTrayItem item) {
         string id = "page-%d".printf(next_page_id++);

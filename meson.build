@@ -105,6 +105,7 @@ panel_vala_args = [
   '--pkg=json-glib-1.0',
   '--pkg=libwlhooks',
   '--pkg=cairo',
+  '--pkg=posix',
 ]
 
 # Desktop-peek-on-panel-click is opt-out: gate the peek IPC source, the
@@ -137,6 +138,10 @@ panel_sources = files(
   'lumen-panel/src/components/app.vala',
   'lumen-panel/src/components/apppopup.vala',
   'lumen-panel/src/components/panel.vala',
+  'lumen-panel/src/components/sni/sni_watcher.vala',
+  'lumen-panel/src/components/sni/sni_item.vala',
+  'lumen-panel/src/components/sni/sni_menu.vala',
+  'lumen-panel/src/components/sni/systray.vala',
   'lumen-panel/src/components/battery/battery.vala',
   'lumen-panel/src/components/battery/battery_service.vala',
   'lumen-panel/src/components/battery/batterypage.vala',
