@@ -7,6 +7,7 @@
 #include <wayfire/view-helpers.hpp>
 #include <wayfire/render-manager.hpp>
 #include <wayfire/render.hpp>
+#include <wayfire/opengl.hpp>
 #include <wayfire/option-wrapper.hpp>
 #include <wayfire/config/types.hpp>
 #include <wayfire/util/duration.hpp>
@@ -110,16 +111,127 @@ inline void curtain_backdrop_node_t::gen_render_instances(
 // everything), that draws a captured snapshot of the screen split down a
 // vertical seam, then gathers each half aside like a real fabric curtain.
 //
-// Instead of rigidly translating each half, every half is sliced into many
-// narrow vertical strips. As the curtain parts (progress 0 -> 1) the strips
-// bunch up toward the wall they are pulled to, and a sinusoidal fold function
-// modulates each strip's on-screen width — wide where a pleat faces the viewer,
-// narrow where the cloth turns away — so the snapshot scrunches into pleats.
-// A matching shadow/highlight overlay fakes the lighting of those folds, giving
-// the flat snapshot a 3D, cloth-like read. This is the standard cheap "vertex
-// displacement + cosine shading" curtain trick (cf. the qmlbook curtain shader)
-// expressed with axis-aligned textured strips rather than a custom GL shader.
+// Each half is drawn as a single warped triangle mesh through a small GLES
+// program. The vertex shader maps a regular (u, v) grid over the half's
+// snapshot region onto the gathered band: a sinusoidal fold function compresses
+// the cloth where a pleat turns away from the viewer and stretches it where one
+// faces forward (the classic "vertex displacement" curtain trick), while the
+// band's width grows quadratically toward the floor so the free inner edge
+// bows out in a smooth arc instead of a straight line. The fragment shader
+// samples the snapshot and shades it per-pixel with a cosine fold-lighting
+// term, giving the flat capture a 3D, cloth-like read with no banding. This is
+// two draw calls per frame — far cheaper, and far smoother, than the previous
+// approach of tiling the half with thousands of axis-aligned textured strips.
 // ---------------------------------------------------------------------------
+
+// Vertex shader: warp a (u, v) grid of the half onto the gathered, pleated,
+// arced band. All displacement is analytic so the grid can stay coarse.
+static const char *curtain_vert_source =
+    R"(
+#version 100
+attribute highp vec2 grid;          // (u, v), each in [0, 1]
+
+uniform mat4 matrix;                // logical output coords -> clip space
+uniform highp float u_p;            // raw progress 0 (closed) .. 1 (open)
+uniform highp float u_foldP;        // eased fold amount, 0 .. 1
+uniform highp float u_foldDepth;    // pleat compression amplitude, 0 .. <1
+uniform highp float u_folds;        // pleat count across the half
+uniform highp float u_W;            // full output width (logical px)
+uniform highp float u_gy;           // output top edge (logical px)
+uniform highp float u_H;            // output height (logical px)
+uniform highp float u_src_x0;       // half's source left edge (logical px)
+uniform highp float u_src_w;        // half's source width (logical px)
+uniform highp float u_gathered;     // residual stack width when fully open
+uniform highp float u_flare;        // extra width the base bows out by
+uniform highp float u_origin;       // logical x the band is pinned to
+uniform highp float u_cum_base;     // 0 for the left half, 1 for the right
+
+varying highp vec2  v_uv;
+varying highp float v_u;
+
+void main()
+{
+    const highp float TWO_PI = 6.2831853;
+    highp float u = grid.x;
+    highp float v = grid.y;
+
+    // Cumulative pleat position: the integral of the per-column width weight
+    // 1 + a*cos(2*pi*f*u), normalised to [0, 1]. Monotonic since a < 1, so the
+    // cloth never folds back on itself.
+    highp float a     = u_foldDepth * u_foldP;
+    highp float farg  = TWO_PI * u_folds;
+    highp float total = 1.0 + a * sin(farg) / farg;
+    highp float cum   = (u + a * sin(farg * u) / farg) / total;
+
+    // Band width: full at rest, shrinking to the gathered stack as it opens,
+    // and bowing out quadratically toward the floor for the curtain's arc.
+    highp float gw     = u_gathered + u_flare * v * v * u_foldP;
+    highp float band_w = u_src_w * (1.0 - u_p) + gw * u_p;
+
+    highp float x = u_origin + (cum - u_cum_base) * band_w;
+    highp float y = u_gy + v * u_H;
+
+    v_uv = vec2((u_src_x0 + u * u_src_w) / u_W, 1.0 - v);
+    v_u  = u;
+    gl_Position = matrix * vec4(x, y, 0.0, 1.0);
+}
+)";
+
+// Fragment shader: sample the snapshot and fake fold lighting. The phase offset
+// keeps the lit ridge and shadowed trough off the geometric crease, so it reads
+// as a side light rather than flat ambient occlusion.
+static const char *curtain_frag_source =
+    R"(
+#version 100
+@builtin_ext@
+@builtin@
+precision highp float;
+
+uniform float u_folds;
+uniform float u_foldP;
+uniform float u_shade;
+
+varying highp vec2  v_uv;
+varying highp float v_u;
+
+void main()
+{
+    const float TWO_PI = 6.2831853;
+    const float LIGHT_PHASE = 1.2;
+
+    vec4 c = get_pixel(v_uv);
+
+    float lit  = cos(TWO_PI * u_folds * v_u + LIGHT_PHASE);
+    float dark = u_shade * u_foldP * max(0.0, -lit);
+    float high = 0.25 * u_shade * u_foldP * max(0.0, lit);
+
+    vec3 rgb = c.rgb * (1.0 - dark);    // darken the troughs
+    rgb = rgb * (1.0 - high) + vec3(high); // lift the lit ridges
+    gl_FragColor = vec4(rgb, c.a);
+}
+)";
+
+// Build the static (u, v) grid for one half as a triangle list. The mesh is
+// identical every frame and for both halves, so it is built once and reused;
+// all the per-frame motion lives in the vertex shader's uniforms.
+inline std::vector<float> curtain_build_grid(int nu, int nv)
+{
+    std::vector<float> g;
+    g.reserve((size_t) nu * nv * 6 * 2);
+    auto push = [&] (float u, float v) { g.push_back(u); g.push_back(v); };
+    for (int j = 0; j < nv; j++)
+    {
+        const float v0 = (float) j / nv, v1 = (float) (j + 1) / nv;
+        for (int i = 0; i < nu; i++)
+        {
+            const float u0 = (float) i / nu, u1 = (float) (i + 1) / nu;
+            push(u0, v0); push(u1, v0); push(u1, v1);
+            push(u0, v0); push(u1, v1); push(u0, v1);
+        }
+    }
+    return g;
+}
+
 class curtain_screenshot_node_t : public wf::scene::node_t
 {
   public:
@@ -135,9 +247,20 @@ class curtain_screenshot_node_t : public wf::scene::node_t
     float fold_depth  = 0.4f;      // strip-width modulation amplitude (0..1)
     float shade_depth = 0.5f;      // peak fold shadow opacity (0..1)
 
+    // GLES warp program + cached mesh, compiled/built lazily on first render
+    // (the only point we are guaranteed a current GL context).
+    OpenGL::program_t  program;
+    bool               gl_ready = false;
+    std::vector<float> grid;
+
     curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t, float scale) :
         wf::scene::node_t(false), geo(g), tex(t), tex_scale(scale)
     {}
+
+    ~curtain_screenshot_node_t() override
+    {
+        wf::gles::run_in_context_if_gles([&] { program.free_resources(); });
+    }
 
     std::string stringify() const override
     {
@@ -161,6 +284,12 @@ class curtain_screenshot_render_instance_t :
   public:
     using simple_render_instance_t::simple_render_instance_t;
 
+    // Mesh resolution per half. The warp is analytic and interpolates smoothly,
+    // so a coarse grid suffices: NU across resolves the pleats, NV down resolves
+    // the inner-edge arc. 64 x 24 = ~9k verts/half, two draw calls per frame.
+    static constexpr int NU = 64;
+    static constexpr int NV = 24;
+
     void render(const wf::scene::render_instruction_t& data) override
     {
         if (!self->tex)
@@ -168,8 +297,8 @@ class curtain_screenshot_render_instance_t :
             return;
         }
 
-        const auto  g = self->geo;          // logical, full output
-        const int   W = g.width;
+        const auto g = self->geo;           // logical, full output
+        const int  W = g.width;
         if ((W <= 0) || (g.height <= 0))
         {
             return;
@@ -177,99 +306,80 @@ class curtain_screenshot_render_instance_t :
 
         const float p     = std::clamp(self->progress, 0.0f, 1.0f);
         const int   seam  = std::clamp(self->seam_x, g.x, g.x + W) - g.x; // 0..W
-        const float sxk   = self->tex_scale;             // logical x -> texel
-        const float texH  = (float) g.height * sxk;
         const int   folds = std::max(1, self->fold_count);
         const float foldDepth  = std::clamp(self->fold_depth, 0.0f, 0.9f);
         const float shadeDepth = std::clamp(self->shade_depth, 0.0f, 1.0f);
-
-        constexpr int   N      = 64;          // strips per half
-        constexpr float TWO_PI = 6.2831853f;
-        // Offsetting the shading phase from the geometric crease keeps the lit
-        // ridge and shadowed trough from landing exactly on the fold centres,
-        // which reads as a side light rather than flat ambient occlusion.
-        constexpr float LIGHT_PHASE = 1.2f;
 
         // Ease the folds + shading in so a closed curtain is perfectly flat and
         // the pleating only develops once the halves start to part.
         const float foldP = std::sin(p * 1.5707963f);
 
-        auto render_half = [&] (int src_x0, int src_w, bool is_left)
+        data.pass->custom_gles_subpass([&]
         {
-            if (src_w <= 0)
+            if (!self->gl_ready)
             {
-                return;
+                self->program.compile(curtain_vert_source, curtain_frag_source);
+                self->grid     = curtain_build_grid(NU, NV);
+                self->gl_ready = true;
             }
 
-            // The half gathers from its full width down to a thin stack.
-            const float gathered = std::min((float) self->edge_px, (float) src_w);
-            const float band_w   = src_w * (1.0f - p) + gathered * p;
-            if (band_w <= 0.5f)
+            const auto matrix =
+                wf::gles::render_target_orthographic_projection(data.target);
+            const int n_verts = (int) (self->grid.size() / 2);
+
+            wf::gles_texture_t gtex{self->tex};
+            self->program.use(wf::TEXTURE_TYPE_RGBA);
+            self->program.set_active_texture(gtex);
+            self->program.attrib_pointer("grid", 2, 0, self->grid.data());
+            self->program.uniformMatrix4f("matrix", matrix);
+
+            // Uniforms shared by both halves.
+            self->program.uniform1f("u_p", p);
+            self->program.uniform1f("u_foldP", foldP);
+            self->program.uniform1f("u_foldDepth", foldDepth);
+            self->program.uniform1f("u_folds", (float) folds);
+            self->program.uniform1f("u_shade", shadeDepth);
+            self->program.uniform1f("u_W", (float) W);
+            self->program.uniform1f("u_gy", (float) g.y);
+            self->program.uniform1f("u_H", (float) g.height);
+
+            // src_x0 / src_w are output-relative (the texture spans [0, W]); the
+            // left half is pinned to the left wall (origin g.x, cum 0..1) and the
+            // right half to the right wall (origin g.x+W, cum walks back to it).
+            auto draw_half = [&] (int src_x0, int src_w, bool is_left)
             {
-                return;
-            }
-
-            // Per-strip width weights: a pleat facing the viewer occupies more
-            // screen width, one turning away less. Normalised so the strips
-            // exactly tile the gathered band.
-            float weight[N];
-            float total = 0.0f;
-            for (int i = 0; i < N; i++)
-            {
-                const float sc   = (i + 0.5f) / N;
-                const float fold = std::cos(TWO_PI * folds * sc);
-                weight[i] = std::max(0.02f, 1.0f + foldDepth * foldP * fold);
-                total    += weight[i];
-            }
-
-            // Left half is pinned to the left wall, right half to the right.
-            float cursor = is_left ? (float) g.x : (float) (g.x + W) - band_w;
-            for (int i = 0; i < N; i++)
-            {
-                const float sc = (i + 0.5f) / N;
-                const float dw = weight[i] / total * band_w;
-
-                // Source columns of this strip, within the half (logical 0..W).
-                const float ulo = src_x0 + ((float) i / N) * src_w;
-                const float uhi = src_x0 + ((float) (i + 1) / N) * src_w;
-
-                wf::texture_t t;
-                t.texture     = self->tex;
-                t.filter_mode = WLR_SCALE_FILTER_BILINEAR;
-                t.source_box  = wlr_fbox{ulo * sxk, 0.0, (uhi - ulo) * sxk, texH};
-
-                // +0.75 px so neighbouring strips overlap and never let the
-                // backdrop show through on sub-pixel boundaries.
-                wlr_fbox dst{(double) cursor, (double) g.y,
-                    (double) dw + 0.75, (double) g.height};
-                wf::geometry_t clip{(int) std::floor(cursor), g.y,
-                    (int) std::ceil(dw) + 2, g.height};
-                wf::region_t dmg = data.damage & clip;
-
-                data.pass->add_texture(t, data.target, dst, dmg, 1.0f);
-
-                // Fold shading. add_rect blends premultiplied, so a black rect
-                // darkens the troughs and a white rect lifts the lit ridges.
-                const float lit  = std::cos(TWO_PI * folds * sc + LIGHT_PHASE);
-                const float dark = shadeDepth * foldP * std::max(0.0f, -lit);
-                const float high = 0.25f * shadeDepth * foldP * std::max(0.0f, lit);
-                if (dark > 0.004f)
+                if (src_w <= 0)
                 {
-                    data.pass->add_rect(wf::color_t{0.0, 0.0, 0.0, dark},
-                        data.target, dst, dmg);
-                } else if (high > 0.004f)
-                {
-                    data.pass->add_rect(wf::color_t{high, high, high, high},
-                        data.target, dst, dmg);
+                    return;
                 }
 
-                cursor += dw;
-            }
-        };
+                const float gathered = std::min((float) self->edge_px, (float) src_w);
+                const float flare = std::min((float) src_w * 0.22f,
+                    (float) src_w - gathered);
 
-        // Left half: snapshot columns [0, seam]; right half: [seam, W].
-        render_half(0, seam, true);
-        render_half(seam, W - seam, false);
+                self->program.uniform1f("u_src_x0", (float) src_x0);
+                self->program.uniform1f("u_src_w", (float) src_w);
+                self->program.uniform1f("u_gathered", gathered);
+                self->program.uniform1f("u_flare", flare);
+                self->program.uniform1f("u_origin",
+                    is_left ? (float) g.x : (float) (g.x + W));
+                self->program.uniform1f("u_cum_base", is_left ? 0.0f : 1.0f);
+
+                for (const auto& box : data.damage)
+                {
+                    wf::gles::render_target_logic_scissor(data.target,
+                        wlr_box_from_pixman_box(box));
+                    GL_CALL(glDrawArrays(GL_TRIANGLES, 0, n_verts));
+                }
+            };
+
+            // Left half: snapshot columns [0, seam]; right half: [seam, W].
+            draw_half(0, seam, true);
+            draw_half(seam, W - seam, false);
+
+            self->program.deactivate();
+            GL_CALL(glDisable(GL_SCISSOR_TEST));
+        });
     }
 };
 
