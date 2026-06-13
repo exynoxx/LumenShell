@@ -10,7 +10,7 @@ public class ExitPage : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.bridge = bridge;
         add_css_class("exit-page");
-        set_size_request(440, 240);
+        set_size_request(560, 240);
 
         var title = new Gtk.Label("Session") {
             xalign = 0,
@@ -29,9 +29,11 @@ public class ExitPage : Gtk.Box {
             margin_bottom = PAD,
         };
 
-        row.append(make_action("logout",   "Log Out",  () => bridge.terminate_session.begin()));
-        row.append(make_action("reboot",   "Reboot",   () => bridge.reboot.begin()));
-        row.append(make_action("shutdown", "Shutdown", () => bridge.power_off.begin()));
+        row.append(make_action("suspend",   "Suspend",   () => bridge.suspend.begin()));
+        row.append(make_action("hibernate", "Hibernate", () => bridge.hibernate.begin()));
+        row.append(make_action("logout",    "Log Out",   () => bridge.terminate_session.begin()));
+        row.append(make_action("reboot",    "Reboot",    () => bridge.reboot.begin()));
+        row.append(make_action("shutdown",  "Shutdown",  () => bridge.power_off.begin()));
 
         append(row);
     }

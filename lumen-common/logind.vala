@@ -126,6 +126,7 @@ public class LogindBridge : GLib.Object {
     // ---- session control ----------------------------------------------------
 
     public async void suspend()   { yield call_manager("Suspend"); }
+    public async void hibernate() { yield call_manager("Hibernate"); }
     public async void reboot()    { yield call_manager("Reboot"); }
     public async void power_off() { yield call_manager("PowerOff"); }
 
