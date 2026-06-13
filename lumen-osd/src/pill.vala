@@ -40,7 +40,6 @@ public class Pill : Gtk.Box {
         set_size_request(Theme.width, Theme.height);
     }
 
-    /** Show as a slider: icon + progress + (value%) label. */
     public void show_slider(string icon_name, double fraction, string text) {
         icon.set_from_icon_name(icon_name);
         progress.fraction = fraction;
@@ -49,7 +48,6 @@ public class Pill : Gtk.Box {
         label.set_visible(text != "");
     }
 
-    /** Show as a chip: icon + label, no bar. */
     public void show_chip(string icon_name, string text) {
         icon.set_from_icon_name(icon_name);
         progress.set_visible(false);

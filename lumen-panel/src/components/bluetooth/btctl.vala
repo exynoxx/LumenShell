@@ -1,8 +1,5 @@
 using GLib;
 
-/**
- * BtDevice — a known or discovered Bluetooth device.
- */
 public class BtDevice : GLib.Object {
     public string mac;        // AA:BB:CC:DD:EE:FF
     public string name;       // friendly name (falls back to mac)
@@ -20,24 +17,18 @@ public class BtDevice : GLib.Object {
 }
 
 /**
- * BtctlClient — all bluetoothctl shelling in one place.
- *
  * bluetoothctl accepts one-shot subcommands non-interactively, so reads use
  * Process.spawn_command_line_sync (blocking) and fire-and-forget actions use
- * Utils.spawn_argv — the same split NmcliClient uses for nmcli.
- *
- * Shared by BluetoothTray (icon state) and BluetoothPage (device list).
+ * Utils.spawn_argv.
  */
 public class BtctlClient : GLib.Object {
 
-    /** Value after the first ':' on a tab-indented "Key: value" info line. */
     private string field_value(string line) {
         int idx = line.index_of_char(':');
         if (idx < 0) return "";
         return line.substring(idx + 1).strip();
     }
 
-    /** True if the controller is powered on. False if powered off or absent. */
     public bool query_powered() {
         string out_str = "";
         try {
@@ -51,11 +42,6 @@ public class BtctlClient : GLib.Object {
         return false;
     }
 
-    /**
-     * Return the known device set, each enriched via `bluetoothctl info`.
-     * De-duplicated by MAC. `discovered_only_paired` skips the info probe and
-     * marks everything paired — used as a cheap fallback when power is off.
-     */
     public BtDevice[] fetch_devices() {
         string out_str = "";
         try {
@@ -79,7 +65,6 @@ public class BtctlClient : GLib.Object {
         return result;
     }
 
-    /** Full detail for one device via `bluetoothctl info <mac>`. */
     public BtDevice info(string mac) {
         string out_str = "";
         try {
@@ -104,7 +89,6 @@ public class BtctlClient : GLib.Object {
         return new BtDevice(mac, name, dev_icon, paired, connected);
     }
 
-    /** Block for `secs` while bluetoothctl discovers nearby devices. */
     public void scan(uint secs) {
         string out_str = "";
         try {
@@ -147,7 +131,6 @@ public class BtctlClient : GLib.Object {
         run_sync(new string[] { "bluetoothctl", "connect", mac });
     }
 
-    /** Unpair / forget a device. */
     public void remove(string mac) {
         Utils.spawn_argv(new string[] { "bluetoothctl", "remove", mac });
     }

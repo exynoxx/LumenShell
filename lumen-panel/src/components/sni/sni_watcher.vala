@@ -34,8 +34,6 @@ public class SniWatcher : GLib.Object {
     uint host_owner_id = 0;
     bool owns_name = false;
 
-    // --- DBus interface ------------------------------------------------------
-
     public signal void status_notifier_item_registered (string service);
     public signal void status_notifier_item_unregistered (string service);
     public signal void status_notifier_host_registered ();
@@ -71,7 +69,8 @@ public class SniWatcher : GLib.Object {
         if (items.has_key(key)) return;
 
         var rec = new ItemRec(bus, path, service);
-        // Drop the item when its owning connection disappears.
+        // Drop the item when its owning connection disappears (apps don't always
+        // call UnregisterStatusNotifierItem before quitting).
         rec.watch_id = Bus.watch_name(
             BusType.SESSION, bus, BusNameWatcherFlags.NONE,
             null,
@@ -89,10 +88,8 @@ public class SniWatcher : GLib.Object {
         status_notifier_host_registered();
     }
 
-    // --- Internal (not exported) --------------------------------------------
-
-    // Parsed add/remove for the SysTray widget. Hidden from the wire interface
-    // so they don't appear as bogus D-Bus signals.
+    // Hidden from the wire interface so they don't appear as bogus D-Bus
+    // signals.
     [DBus (visible = false)]
     public signal void item_added (string bus, string path, string key);
     [DBus (visible = false)]

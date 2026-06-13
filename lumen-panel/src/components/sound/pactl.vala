@@ -1,8 +1,5 @@
 using GLib;
 
-/**
- * SinkInfo — data record for one audio output device.
- */
 public class SinkInfo : GLib.Object {
     public string id;
     public string name;
@@ -13,12 +10,6 @@ public class SinkInfo : GLib.Object {
     }
 }
 
-/**
- * PactlClient — all pactl / wpctl shelling and parsing in one place.
- *
- * Exposes audio verbs (set_volume, toggle_mute, …). Callers never see
- * a shell command or the @DEFAULT_SINK@ token.
- */
 public class PactlClient : GLib.Object {
 
     public string query_default_sink() {

@@ -71,7 +71,6 @@ public class App : GLib.Object {
         // synchronously when AppBar subscribes inside its constructor.
         ToplevelStore.instance.bind();
 
-        // Root: AppBar on the left, TrayBar on the right.
         var root = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
             hexpand = true, vexpand = true,
             valign = at_top ? Gtk.Align.START : Gtk.Align.END,

@@ -1,12 +1,8 @@
 using GLib;
 
 /**
- * PowerProfileService — single power-profile state path for the battery page.
- *
- * Detects the backend (power-profiles-daemon, else TLP) and its supported
- * profiles once at construction, then re-queries the active profile every 10 s
- * (same cadence as BatteryService). state_changed fires whenever the active
- * profile changes. backend == NONE means the page hides the selector.
+ * Re-queries the active profile every 10 s (same cadence as BatteryService).
+ * backend == NONE means the page hides the selector.
  */
 public class PowerProfileService : GLib.Object {
 

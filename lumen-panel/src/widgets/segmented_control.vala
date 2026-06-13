@@ -1,9 +1,5 @@
 using Gtk;
 
-// SegmentedControl — snapshot-drawn pill selector (Performance | Balanced | …).
-// Modeled on WifiRow for click + hover and LumenProgressBar for rounded-rect
-// drawing. One rounded track holds N equal segments; the selected segment is a
-// filled accent pill, others draw dimmed labels with a faint hover highlight.
 public class SegmentedControl : Gtk.Widget {
 
     public const int CTRL_H = 34;
@@ -87,7 +83,6 @@ public class SegmentedControl : Gtk.Widget {
         int h = get_height();
         if (w <= 0 || h <= 0) return;
 
-        // Track
         var track_rect = Graphene.Rect();
         track_rect.init(0, 0, w, h);
         var track_rr = Gsk.RoundedRect();

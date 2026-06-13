@@ -1,14 +1,6 @@
 using Gtk;
 using GLib;
 
-// BatteryPage — full-panel battery information display.
-//
-// One custom widget; snapshot() draws the entire page directly so the
-// visual matches the original DrawKit version pixel-for-pixel: dimmed
-// title top-left, large color-coded percentage centered, status text
-// below, custom progress bar (LumenProgressBar) with embedded label
-// at the bottom, and a 2×2 stat grid for voltage / current / charge /
-// est-time.
 public class BatteryPage : Gtk.Widget {
 
     BatteryService service;
@@ -16,7 +8,6 @@ public class BatteryPage : Gtk.Widget {
     LumenProgressBar progress;
     SegmentedControl profile_seg;
 
-    // Layout constants — pixel-identical to the original.
     const int PAD       = 16;
     const int BAR_H     = 22;
     const int DY_TITLE  = PAD;
@@ -27,7 +18,6 @@ public class BatteryPage : Gtk.Widget {
     const int DY_STAT2  = DY_STAT1  + 32;
     const int BASE_MIN_H = DY_STAT2 + 32;
 
-    // Power-mode section, appended below the stat grid when a backend exists.
     const int DY_PROFILE_LABEL = BASE_MIN_H + 4;
     const int DY_PROFILE       = DY_PROFILE_LABEL + 20;
     const int PROFILE_MIN_H    = DY_PROFILE + SegmentedControl.CTRL_H + PAD;
@@ -182,7 +172,7 @@ public class BatteryPage : Gtk.Widget {
         draw_text(s, pct_str,   w / 2, DY_PCT, 40, pct_col,    true,  Pango.Weight.SEMIBOLD);
         draw_text(s, status_str, w / 2, DY_STATUS, 14, status_col, true, Pango.Weight.NORMAL);
 
-        base.snapshot(s); // progress bar (LumenProgressBar)
+        base.snapshot(s);
 
         int col1 = PAD;
         int col2 = w / 2;

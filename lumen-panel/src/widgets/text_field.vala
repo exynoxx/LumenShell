@@ -1,10 +1,5 @@
 using Gtk;
 
-// Lumen-styled text input. Wraps a Gtk.Text (the bare editable text widget
-// — no themed Entry chrome) inside a custom-drawn rounded container that
-// renders the focus glow and bg color from the original UiTextField. CSS
-// handles hover/focus background; snapshot() renders the outer focus halo
-// when focused.
 public class LumenTextField : Gtk.Widget {
 
     Gtk.Text entry;
@@ -101,8 +96,6 @@ public class LumenTextField : Gtk.Widget {
 
     public override void snapshot (Gtk.Snapshot s) {
         if (entry.has_focus) {
-            // 2 px outer halo above the CSS background, drawn with the
-            // original focus_glow_color.
             int w = get_width();
             int h = get_height();
             var rect = Graphene.Rect();

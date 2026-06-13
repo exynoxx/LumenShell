@@ -26,7 +26,6 @@ namespace LumenSettings.Wayfire {
         Gtk.Widget? detail_child;
         Gee.HashMap<Gtk.ListBoxRow, string> row_map;
 
-        // Live filter state for the list view.
         Gtk.SearchBar search_bar;
         Gtk.SearchEntry search_entry;
         BoxedList plugin_list;
@@ -51,9 +50,7 @@ namespace LumenSettings.Wayfire {
         }
 
         public Gtk.Widget build() {
-            // Master-detail inside one page: a "list" view of plugins/sections
-            // and a "detail" view built on demand when a row is clicked. The
-            // window already wraps this in a ScrolledWindow, so the children
+            // The window already wraps this in a ScrolledWindow, so the children
             // are plain boxes (no nested scrollbars).
             stack = new Gtk.Stack() {
                 transition_type = Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
@@ -94,8 +91,7 @@ namespace LumenSettings.Wayfire {
                 hexpand = true, vexpand = true,
             };
 
-            // Search bar that filters the lists below as you type. It is a
-            // revealer that stays collapsed until the user starts typing, so
+            // A revealer that stays collapsed until the user starts typing, so
             // nothing is shown while the search is empty. Pinned above the
             // scroller so it stays visible no matter how far the list scrolls.
             search_entry = new Gtk.SearchEntry() {
@@ -115,8 +111,6 @@ namespace LumenSettings.Wayfire {
                 margin_start = 18, margin_end = 18,
             };
 
-            // Documented plugins: an enable toggle plus a clickable row that
-            // opens the plugin's settings.
             plugin_list = new BoxedList("Plugins");
             foreach (var p in plugins) {
                 plugin_list.add_row(make_plugin_row(p));
@@ -194,8 +188,6 @@ namespace LumenSettings.Wayfire {
             return ar;
         }
 
-        // Show only rows matching the query; an entire group is hidden when
-        // none of its rows match. An empty query restores everything.
         void apply_filter() {
             var q = search_entry.text.strip().down();
             filter_group(plugin_list, plugin_rows, q);

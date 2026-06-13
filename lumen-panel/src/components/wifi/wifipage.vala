@@ -1,15 +1,5 @@
 using Gtk;
 
-// WifiPage — full-panel WiFi manager built from custom widgets to match the
-// original DrawKit look (no GtkSearchEntry / GtkListBox chrome).
-//
-// Layout:
-//   [Title  Refresh  Power   ...   ConnectionChip]   ← header (44 px)
-//   ──────────── 1 px separator ─────────────
-//   [ WifiRow ... ]                            ← scrolled list (custom rows)
-//   ──────────── 1 px separator ─────────────
-//   [ LumenTextField  Show  Connect/Disconnect ]  ← password panel, only shown
-//   [ status line ]                                 when a row is selected
 public class WifiPage : Gtk.Box {
 
     const int PAD          = 14;

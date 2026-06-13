@@ -1,8 +1,6 @@
 using Gtk;
 using Gee;
 
-// Left-aligned taskbar half: per-app-id buttons. Drives
-// ToplevelStore subscription and pinned-apps persistence.
 public class AppBar : Gtk.Box {
 
     HashMap<string, AppEntry> entries_by_app_id = new HashMap<string, AppEntry>();

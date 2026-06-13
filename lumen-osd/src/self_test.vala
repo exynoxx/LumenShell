@@ -1,9 +1,5 @@
 using GLib;
 
-/**
- * Development visualizer: cycles through every kind/icon/value combination
- * the daemon can emit so the rendering can be eyeballed end-to-end.
- */
 public class OsdSelfTest : Object {
 
     private struct Frame {

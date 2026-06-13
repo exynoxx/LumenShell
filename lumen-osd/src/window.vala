@@ -24,7 +24,6 @@ public class OsdWindow : Gtk.Window {
     }
 
     private void apply_position() {
-        // Reset all anchors first.
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP,    false);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.BOTTOM, false);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,   false);

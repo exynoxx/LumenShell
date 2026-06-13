@@ -1,10 +1,8 @@
 using Gtk;
 using Gee;
 
-// App-tray area: the SNI item icons (Discord, Telegram, …) plus a trailing
-// separator dividing them from the predefined system trays (wifi, battery, …).
-// Sits left-most in the TrayBar icon row. The whole widget hides itself when
-// there are no items so the separator never dangles on its own.
+// The whole widget hides itself when there are no items so the trailing
+// separator never dangles on its own.
 public class SysTray : Gtk.Box {
 
     Gtk.Box icons;

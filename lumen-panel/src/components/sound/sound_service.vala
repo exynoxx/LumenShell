@@ -1,11 +1,5 @@
 using GLib;
 
-/**
- * SoundService — single pactl ownership shared by SoundTray and SoundPage.
- *
- * Polls volume / mute / sinks at a steady cadence; state_changed fires on
- * the main thread after each successful refresh and after each user action.
- */
 public class SoundService : GLib.Object {
 
     public signal void state_changed();

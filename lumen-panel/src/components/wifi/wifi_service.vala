@@ -1,12 +1,5 @@
 using GLib;
 
-/**
- * WifiService — single nmcli ownership shared by WifiTray and WifiPage.
- *
- * Drives one periodic poll of the connected SSID in a background thread,
- * plus on-demand network scans. state_changed fires on the main thread
- * after each result is applied.
- */
 public class WifiService : GLib.Object {
 
     public signal void state_changed();
@@ -37,7 +30,6 @@ public class WifiService : GLib.Object {
         });
     }
 
-    /** Enable/disable the WiFi radio, then refresh. */
     public void set_radio(bool on) {
         // Optimistic: reflect the intent immediately so the toggle doesn't
         // bounce back while the (blocking) rfkill+nmcli sequence runs.
@@ -75,7 +67,6 @@ public class WifiService : GLib.Object {
         });
     }
 
-    /** Disconnect the wifi device, if any. */
     public void disconnect_active() {
         nmcli.disconnect();
         schedule_rescan(1000);

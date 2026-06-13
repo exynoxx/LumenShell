@@ -1,9 +1,5 @@
 using GLib;
 
-/**
- * Pushes a sample notification through the D-Bus service so the visual stack
- * can be eyeballed without an external sender.
- */
 public class NotifSelfTest : Object {
 
     private NotificationsService service;

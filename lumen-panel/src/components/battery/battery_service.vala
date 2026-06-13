@@ -1,10 +1,5 @@
 using GLib;
 
-/**
- * BatteryService — single sysfs read path shared by BatteryTray and BatteryPage.
- *
- * Polls every 10 s after construction; state_changed fires on each refresh.
- */
 public class BatteryService : GLib.Object {
 
     private const uint POLL_SEC = 10;
@@ -44,7 +39,6 @@ public class BatteryService : GLib.Object {
         state_changed();
     }
 
-    // Walks /sys/class/power_supply for any Mains/USB supply with online=1.
     // Captures non-BAT0 setups (AC, ADP0/1, USB-C PD), so the panel can
     // reflect "wired to charger" even when the battery driver reports a
     // status other than "charging" (e.g. "full" while topped-off).

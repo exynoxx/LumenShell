@@ -74,8 +74,7 @@ public class Utils {
         return null;
     }
 
-    // One KeyFile load per app_id replaces the three single-key loaders that
-    // each re-read the same file.
+    // One KeyFile load per app_id, rather than re-reading the file once per key.
     public static AppMetadata load_app_metadata (string app_id) {
         AppMetadata m = { app_id, "", "" };
 

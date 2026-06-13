@@ -1,6 +1,5 @@
 using Gtk;
 
-// Small rounded badge: bg + single text label. Auto-sizes from text.
 public class LumenChip : Gtk.Widget {
 
     string _text = "";

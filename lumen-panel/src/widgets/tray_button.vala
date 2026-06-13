@@ -1,7 +1,5 @@
 using Gtk;
 
-// Round 48x48 button with a 22px symbolic icon. Replaces HoverableIcon.
-// Resource path: "icons/<name>" — resolved against /dev/lumen/panel/.
 public class TrayButton : Gtk.Button {
 
     Gtk.Image image;

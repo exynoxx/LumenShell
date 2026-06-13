@@ -2,8 +2,7 @@ using Gtk;
 
 namespace LumenSettings {
 
-    /* Trailing button is a colored swatch; clicking it opens Gtk.ColorDialog
-     * (GTK4 modern API). Emits value_changed with #rrggbbaa. */
+    /* Emits value_changed with #rrggbbaa. */
     public class ColorRow : ActionRow {
         Gtk.Button button;
         Gdk.RGBA current;

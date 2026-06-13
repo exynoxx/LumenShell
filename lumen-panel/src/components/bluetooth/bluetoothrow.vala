@@ -1,9 +1,7 @@
 using Gtk;
 
-// One Bluetooth device row. Custom-drawn to match WifiRow: a device-type
-// glyph + name + (optional) disconnect button, with hover/selected states
-// drawn directly in snapshot(). BT RSSI is unreliable for paired devices, so
-// the left slot shows a device-type emoji instead of WifiRow's signal bars.
+// BT RSSI is unreliable for paired devices, so the left slot shows a
+// device-type glyph rather than signal bars.
 public class BluetoothRow : Gtk.Widget {
 
     public const int ROW_H = 36;
@@ -120,7 +118,6 @@ public class BluetoothRow : Gtk.Widget {
 
         base.snapshot(s);
 
-        // Device-type glyph at the left.
         var glyph_layout = create_pango_layout(glyph);
         var ga = new Pango.AttrList();
         ga.insert(Pango.AttrSize.new_absolute(14 * Pango.SCALE));
@@ -133,7 +130,6 @@ public class BluetoothRow : Gtk.Widget {
         s.append_layout(glyph_layout, is_connected ? conn_fg : norm_fg);
         s.restore();
 
-        // Device name.
         var layout = create_pango_layout(dev_name);
         var attrs = new Pango.AttrList();
         attrs.insert(Pango.AttrSize.new_absolute(15 * Pango.SCALE));

@@ -61,8 +61,6 @@ public class Theme : GLib.Object {
         return sb.str;
     }
 
-    // Loads the embedded base CSS, prepends @define-color overrides from JSON,
-    // and installs a CssProvider on the default display.
     public static void install () {
         seed_defaults();
         load_from_file();

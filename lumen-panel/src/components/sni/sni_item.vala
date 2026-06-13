@@ -1,17 +1,9 @@
 using Gtk;
 using GLib;
 
-// One StatusNotifierItem (one app's tray icon). Renders the icon and forwards
-// pointer interaction back over D-Bus:
-//   - left click   → Activate
-//   - middle click → SecondaryActivate
-//   - right click  → the app's DBusMenu (if any), else ContextMenu
-//   - scroll       → Scroll
-//
-// Properties are read from a single Properties.GetAll snapshot and re-read
-// whenever the item emits NewIcon/NewStatus/NewToolTip/NewTitle. We don't lean
-// on GDBusProxy's cached properties because SNI signals icon changes with its
-// own signals rather than PropertiesChanged, so the cache would go stale.
+// We don't lean on GDBusProxy's cached properties because SNI signals icon
+// changes with its own signals rather than PropertiesChanged, so the cache
+// would go stale.
 public class SniItem : Gtk.Button {
 
     const string IFACE = "org.kde.StatusNotifierItem";
@@ -52,7 +44,6 @@ public class SniItem : Gtk.Button {
             return;
         }
 
-        // Re-render on any of the SNI change signals.
         proxy.g_signal.connect((sender, signal_name, parms) => {
             switch (signal_name) {
                 case "NewIcon":
@@ -98,8 +89,6 @@ public class SniItem : Gtk.Button {
         add_controller(scroll);
     }
 
-    // --- D-Bus method forwarding --------------------------------------------
-
     void activate_item () {
         call_ignore("Activate", new Variant("(ii)", 0, 0));
     }
@@ -127,8 +116,6 @@ public class SniItem : Gtk.Button {
             catch (Error e) { /* item went away or refused; ignore */ }
         });
     }
-
-    // --- Property snapshot + render -----------------------------------------
 
     async void refresh () {
         if (proxy == null) return;
@@ -158,7 +145,6 @@ public class SniItem : Gtk.Button {
 
         status = lookup_string(props, "Status") ?? "Active";
 
-        // Tooltip: prefer the ToolTip struct's title, fall back to Title/Id.
         string? tip = null;
         var tt = props.lookup_value("ToolTip", new VariantType("(sa(iiay)ss)"));
         if (tt != null) {
@@ -169,7 +155,6 @@ public class SniItem : Gtk.Button {
         if (tip == null || tip == "") tip = lookup_string(props, "Title");
         set_tooltip_text(tip);
 
-        // Object path of the DBusMenu, if the app exports one.
         var menu_v = props.lookup_value("Menu", VariantType.OBJECT_PATH);
         menu_path = (menu_v != null) ? menu_v.get_string() : null;
 

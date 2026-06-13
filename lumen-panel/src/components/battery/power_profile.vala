@@ -11,8 +11,6 @@ public enum PowerProfile { UNKNOWN, PERFORMANCE, BALANCED, POWER_SAVER }
 public enum PowerBackend { NONE, PPD, TLP }
 
 /**
- * PowerProfileClient — all power-profile talking-to-the-system in one place.
- *
  * power-profiles-daemon is preferred (driven over its system-bus D-Bus
  * interface, no password via polkit, the cross-desktop standard used by Plasma
  * and GNOME alike, and by Fedora's tuned-ppd). TLP is the fallback; its mode

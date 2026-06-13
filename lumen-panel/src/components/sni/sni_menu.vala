@@ -1,12 +1,6 @@
 using Gtk;
 using GLib;
 
-// DBusMenu (com.canonical.dbusmenu) client. An SNI item points at one of these
-// via its Menu property; it's a separate protocol from the item itself.
-//
-// We fetch the whole tree in one GetLayout(0, -1, {}) call and build a
-// Gtk.Popover. Activating a leaf sends Event(id, "clicked"); submenus open as
-// nested popovers anchored to their row.
 public class SniMenu : GLib.Object {
 
     const string IFACE = "com.canonical.dbusmenu";
@@ -62,7 +56,6 @@ public class SniMenu : GLib.Object {
         }
     }
 
-    // Builds the vertical row box for one menu node's children.
     Gtk.Box build_box (Variant node, Gtk.Popover owner) {
         var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
         box.add_css_class("systray-menu-box");
@@ -96,7 +89,6 @@ public class SniMenu : GLib.Object {
 
         var content = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
 
-        // Toggle indicator (checkbox / radio).
         string toggle = lookup_string(props, "toggle-type") ?? "";
         if (toggle != "") {
             int state = lookup_int(props, "toggle-state", 0);

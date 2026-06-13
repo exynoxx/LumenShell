@@ -1,6 +1,5 @@
 using Gtk;
 
-// Clock tray item. Plain Gtk.Label refreshed once per second.
 public class Clock : Gtk.Box {
 
     Gtk.Label label;

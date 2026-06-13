@@ -1,10 +1,5 @@
 using GLib;
 
-/**
- * Maps a (kind, value, options) tuple to a concrete Pill render call.
- * Centralises icon selection and the chip-vs-slider decision so the
- * D-Bus service stays a thin adapter.
- */
 public class Presenter : Object {
 
     private Pill pill;
