@@ -91,6 +91,7 @@ panel_deps = [
   wlhooks_dep,
   glib_dep,
   gio_dep,
+  gio_unix_dep,
   gee_dep,
   json_dep,
   m_dep,
@@ -106,20 +107,29 @@ panel_vala_args = [
   '--pkg=libwlhooks',
   '--pkg=cairo',
   '--pkg=posix',
+  # gio-unix: UnixFDList for the logind delay-inhibitor (lumen-common/logind.vala)
+  '--pkg=gio-unix-2.0',
 ]
 
 # Desktop-peek-on-panel-click is opt-out: gate the peek IPC source, the
 # gio-unix dep it needs, and the PANEL_PEEK Vala define behind one option so a
 # standalone panel build has zero Wayfire coupling.
+# Shared source module(s) reused across components (SESSION_GLUE §3). Scoped to
+# what exists today; the lockscreen adds accounts.vala here later. Source-level
+# reuse only — no shared .so until a third consumer appears.
+lumen_common_sources = files(
+  'lumen-common/logind.vala',
+)
+
 panel_peek_sources = []
 if get_option('with_panel_peek')
-  panel_deps += gio_unix_dep
-  panel_vala_args += ['--pkg=gio-unix-2.0', '--define=PANEL_PEEK']
+  panel_vala_args += ['--define=PANEL_PEEK']
   panel_peek_sources = files('lumen-panel/src/peek_ipc.vala')
 endif
 
 panel_sources = files(
   'lumen-panel/src/main.vala',
+  'lumen-panel/src/panel_window.vala',
   'lumen-panel/src/theme.vala',
   'lumen-panel/src/ini.vala',
   'lumen-panel/src/panel_config.vala',
@@ -133,6 +143,7 @@ panel_sources = files(
   'lumen-panel/src/widgets/chip.vala',
   'lumen-panel/src/widgets/segmented_control.vala',
   'lumen-panel/src/components/clock/clock.vala',
+  'lumen-panel/src/components/system/logind_service.vala',
   'lumen-panel/src/components/exit/exit.vala',
   'lumen-panel/src/components/exit/exitpage.vala',
   'lumen-panel/src/components/app.vala',
@@ -164,7 +175,7 @@ panel_sources = files(
 )
 
 executable('lumen-panel',
-  panel_sources + panel_peek_sources + panel_resources,
+  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources,
   vala_args: panel_vala_args,
   dependencies: panel_deps,
   link_args: ['-Wl,--no-as-needed'],
@@ -297,6 +308,20 @@ executable('lumen-osdctl',
 
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
+
+# --- session / XDG portal glue ---
+# lumenshell-session.target binds graphical-session.target so
+# xdg-desktop-portal can start under Wayfire; the *-portals.conf routes portal
+# backends (Settings->gtk, ScreenCast/Screenshot->wlr). See nautilus-portal-bug.md.
+# systemd user units are arch-independent — always /usr/lib/systemd/user.
+install_data(
+  'data/systemd/lumenshell-session.target',
+  install_dir: get_option('prefix') / 'lib' / 'systemd' / 'user',
+)
+install_data(
+  'data/xdg-desktop-portal/lumenshell-portals.conf',
+  install_dir: get_option('datadir') / 'xdg-desktop-portal',
+)
 
 # --- wayfire-plugins/* (C++ Wayfire plugins) ---
 # All Wayfire plugins live under wayfire-plugins/ and are standalone

@@ -57,6 +57,10 @@ def install_ubuntu():
         'libgtk-4-dev',
         'libgtk4-layer-shell-dev',
         'wayfire',
+        'wlr-randr',
+        'xdg-desktop-portal',
+        'xdg-desktop-portal-gtk',
+        'xdg-desktop-portal-wlr',
     ]
 
     cmd = ['apt-get', 'install', '-y'] + packages
@@ -85,6 +89,10 @@ def install_fedora():
         'gtk4-devel',
         'gtk4-layer-shell-devel',
         'wayfire',
+        'wlr-randr',
+        'xdg-desktop-portal',
+        'xdg-desktop-portal-gtk',
+        'xdg-desktop-portal-wlr',
     ]
 
     cmd = ['dnf', 'install', '-y'] + packages
@@ -110,6 +118,10 @@ def install_arch():
         'gtk4',
         'gtk4-layer-shell',
         'wayfire',
+        'wlr-randr',
+        'xdg-desktop-portal',
+        'xdg-desktop-portal-gtk',
+        'xdg-desktop-portal-wlr',
     ]
 
     cmd = ['pacman', '-S', '--needed', '--noconfirm'] + packages

@@ -52,6 +52,7 @@ namespace WLHooks {
     public delegate void ToplevelWindowNew(uint id, string app_id, string title);
     public delegate void ToplevelWindowRemove(uint id);
     public delegate void ToplevelWindowFocus(uint id);
+    public delegate void ToplevelWindowOutput(uint id, string output_name, bool entered);
 
     [CCode(cname = "register_on_window_new")]
     public void register_on_window_new(ToplevelWindowNew cb);
@@ -61,6 +62,11 @@ namespace WLHooks {
 
     [CCode(cname = "register_on_window_focus")]
     public void register_on_window_focus(ToplevelWindowFocus cb);
+
+    // Fires when a toplevel enters/leaves an output (per-monitor taskbar
+    // filtering). output_name is the connector (matches Gdk.Monitor.connector).
+    [CCode(cname = "register_on_window_output_changed")]
+    public void register_on_window_output_changed(ToplevelWindowOutput cb);
 
     [CCode(cname = "toplevel_activate_by_id")]
     void toplevel_activate_by_id(uint id);

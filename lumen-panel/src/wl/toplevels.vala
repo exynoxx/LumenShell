@@ -8,6 +8,9 @@ public class Toplevel : GLib.Object {
     public string app_id      { get; set; }
     public string title       { get; set; }
     public bool   activated   { get; set; }
+    // Connector name of the output this window is on ("" if unknown). Used for
+    // per-monitor taskbar filtering.
+    public string output      { get; set; default = ""; }
 
     public Toplevel (uint id, string app_id, string title) {
         GLib.Object(id: id);
@@ -24,6 +27,7 @@ public class ToplevelStore : GLib.Object {
     public signal void added   (Toplevel t);
     public signal void removed (uint id);
     public signal void focused (uint id);
+    public signal void output_changed (uint id, string output);
 
     GLib.HashTable<uint, Toplevel> by_id =
         new GLib.HashTable<uint, Toplevel>(direct_hash, direct_equal);
@@ -51,6 +55,7 @@ public class ToplevelStore : GLib.Object {
         WLHooks.register_on_window_new   (on_new);
         WLHooks.register_on_window_rm    (on_rm);
         WLHooks.register_on_window_focus (on_focus);
+        WLHooks.register_on_window_output_changed (on_output);
         return true;
     }
 
@@ -79,5 +84,12 @@ public class ToplevelStore : GLib.Object {
         // the newly-activated window, so we have to clear siblings ourselves.)
         by_id.foreach((k, v) => v.activated = (k == id));
         focused(id);
+    }
+
+    void on_output (uint id, string output, bool entered) {
+        var t = by_id.lookup(id);
+        if (t == null) return;
+        t.output = entered ? output : (t.output == output ? "" : t.output);
+        output_changed(id, t.output);
     }
 }

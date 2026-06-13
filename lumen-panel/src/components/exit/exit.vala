@@ -6,9 +6,9 @@ public class ExitTray : GLib.Object, IPagedTrayItem {
     TrayButton icon;
     ExitPage page;
 
-    public ExitTray () {
+    public ExitTray (LogindBridge bridge) {
         icon = new TrayButton("leaving");
-        page = new ExitPage();
+        page = new ExitPage(bridge);
     }
 
     public Gtk.Button icon_widget () { return icon; }

@@ -8,9 +8,10 @@ static struct wl_list windows;
 // Start at 1 so 0 stays a valid "no window" sentinel for callers.
 static uint32_t next_window_id = 1;
 
-static toplevel_window_new   cb_new;   static void *cb_new_data   = NULL;
-static toplevel_window_rm    cb_rm;    static void *cb_rm_data    = NULL;
-static toplevel_window_focus cb_focus; static void *cb_focus_data = NULL;
+static toplevel_window_new    cb_new;    static void *cb_new_data    = NULL;
+static toplevel_window_rm     cb_rm;     static void *cb_rm_data     = NULL;
+static toplevel_window_focus  cb_focus;  static void *cb_focus_data  = NULL;
+static toplevel_window_output cb_output; static void *cb_output_data = NULL;
 
 static void emit_new_if_ready(toplevel_window_t *w) {
     if (!w || w->announced) return;
@@ -31,6 +32,7 @@ void window_list_cleanup(void) {
         wl_list_remove(&w->link);
         free(w->app_id);
         free(w->title);
+        free(w->output);
         free(w);
     }
 }
@@ -92,6 +94,23 @@ void window_list_set_activated(toplevel_window_t *w, bool activated) {
     cb_focus(0, cb_focus_data);
 }
 
+void window_list_set_output(toplevel_window_t *w, const char *output_name, bool entered) {
+    if (entered) {
+        free(w->output);
+        w->output = strdup(output_name);
+    } else {
+        // Only clear if leaving the output we were tracking.
+        if (w->output && strcmp(w->output, output_name) == 0) {
+            free(w->output);
+            w->output = NULL;
+        } else {
+            return;
+        }
+    }
+    if (cb_output && w->announced)
+        cb_output(w->id, w->output ? w->output : "", entered, cb_output_data);
+}
+
 void window_list_destroy(toplevel_window_t *w) {
     if (cb_rm && w->announced) {
         cb_rm(w->id, cb_rm_data);
@@ -99,6 +118,7 @@ void window_list_destroy(toplevel_window_t *w) {
     wl_list_remove(&w->link);
     free(w->app_id);
     free(w->title);
+    free(w->output);
     free(w);
 }
 
@@ -126,5 +146,17 @@ void window_list_register_focus(toplevel_window_focus cb, void *user_data) {
     toplevel_window_t *w;
     wl_list_for_each(w, &windows, link) {
         if (w->activated && w->announced) cb_focus(w->id, cb_focus_data);
+    }
+}
+
+void window_list_register_output(toplevel_window_output cb, void *user_data) {
+    cb_output = cb;
+    cb_output_data = user_data;
+    if (!cb_output) return;
+
+    // Replay current output for already-announced windows.
+    toplevel_window_t *w;
+    wl_list_for_each(w, &windows, link) {
+        if (w->announced && w->output) cb_output(w->id, w->output, true, cb_output_data);
     }
 }

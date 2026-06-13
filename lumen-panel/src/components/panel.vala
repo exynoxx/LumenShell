@@ -19,12 +19,22 @@ public class AppBar : Gtk.Box {
     uint tick_id = 0;
     int64 last_frame_us = 0;
 
-    public AppBar () {
+    // Per-monitor filtering. only_output is the connector this panel's monitor
+    // is on (null = show every window: single-monitor, or multi-monitor with
+    // per-monitor-apps off). is_tray_host is the primary panel, which also
+    // catches windows whose output couldn't be resolved so they're never lost.
+    string? only_output;
+    bool    is_tray_host;
+
+    public AppBar (string? only_output = null, bool is_tray_host = true) {
         GLib.Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 2);
         add_css_class("app-row");
         halign = Gtk.Align.START;
         valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
         hexpand = true;
+
+        this.only_output  = only_output;
+        this.is_tray_host = is_tray_host;
 
         pins_file = Path.build_filename(
             Environment.get_user_config_dir(), "lumen-panel", "pinned-apps.txt");
@@ -35,15 +45,38 @@ public class AppBar : Gtk.Box {
         store.added  .connect(on_added);
         store.removed.connect(on_removed);
         store.focused.connect(on_focused);
+        store.output_changed.connect(on_output_changed);
         // Replay any toplevels that were announced before we subscribed.
         foreach (unowned var t in store.all()) on_added(t);
     }
 
+    // Whether a window belongs on this panel's taskbar.
+    bool accepts (Toplevel t) {
+        if (only_output == null) return true;
+        if (t.output == only_output) return true;
+        // Unresolved output → only the primary panel shows it, never dropped.
+        if (t.output == "" && is_tray_host) return true;
+        return false;
+    }
+
     void on_added (Toplevel t) {
+        if (!accepts(t)) return;
         var entry = get_or_create(t.app_id);
         entry.add_window(t.id);
         entries_by_window[t.id] = entry;
         entry.queue_draw();
+    }
+
+    // A window moved between monitors (or its output was just resolved): add or
+    // drop its taskbar membership on this panel accordingly.
+    void on_output_changed (uint id, string output) {
+        if (only_output == null) return;
+        var t = ToplevelStore.instance.find(id);
+        if (t == null) return;
+        bool present = entries_by_window.has_key(id);
+        bool want = accepts(t);
+        if (want && !present) on_added(t);
+        else if (!want && present) on_removed(id);
     }
 
     void on_removed (uint id) {

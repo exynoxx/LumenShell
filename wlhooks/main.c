@@ -6,6 +6,7 @@
 #include "protocols/seat.h"
 #include "protocols/toplevel.h"
 #include "protocols/activation.h"
+#include "protocols/output.h"
 
 struct wl_display *wl_display = NULL;
 
@@ -63,6 +64,9 @@ int wlhooks_init_toplevel_with_display(struct wl_display *external) {
     toplevel_init();
     seat_init();
     activation_init();
+    // Bind wl_output too so foreign-toplevel output_enter/leave can be mapped
+    // to connector names (per-monitor taskbar filtering). Read-only listeners.
+    output_init();
 
     registry_init(wl_display);
     return 0;
@@ -71,6 +75,7 @@ int wlhooks_init_toplevel_with_display(struct wl_display *external) {
 void wlhooks_destroy_toplevel(void) {
     activation_cleanup();
     toplevel_cleanup();
+    output_destroy();
     seat_cleanup();
     registry_cleanup();
     // Do NOT disconnect: the caller (GTK/GDK) owns the wl_display.

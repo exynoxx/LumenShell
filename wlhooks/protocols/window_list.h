@@ -28,6 +28,7 @@ struct toplevel_window {
     uint32_t id;
     char    *app_id;
     char    *title;
+    char    *output;                       // last-entered output connector, or NULL
     bool     activated;
     bool     announced;
     void    *handle;                       // backend-owned protocol object
@@ -47,11 +48,13 @@ void window_list_set_title    (toplevel_window_t *w, const char *title);
 void window_list_set_app_id   (toplevel_window_t *w, const char *app_id);
 void window_list_emit_done    (toplevel_window_t *w);
 void window_list_set_activated(toplevel_window_t *w, bool activated);
+void window_list_set_output   (toplevel_window_t *w, const char *output_name, bool entered);
 void window_list_destroy      (toplevel_window_t *w); // remove + free + emit rm cb
 
 // Public callback registration (re-exported via toplevel.h).
 void window_list_register_new  (toplevel_window_new   cb, void *user_data);
 void window_list_register_rm   (toplevel_window_rm    cb, void *user_data);
 void window_list_register_focus(toplevel_window_focus cb, void *user_data);
+void window_list_register_output(toplevel_window_output cb, void *user_data);
 
 #endif

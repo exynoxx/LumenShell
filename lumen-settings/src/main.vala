@@ -50,8 +50,10 @@ namespace LumenSettings {
 
         void register_pages() {
             registry.add(new WallpaperPage(),     "LumenShell");
+            registry.add(new DisplayPage(),       "LumenShell");
             registry.add(new PanelPage(),         "LumenShell");
             registry.add(new DesktopPage(),       "LumenShell");
+            registry.add(new PowerPage(),         "LumenShell");
             registry.add(new OsdPage(),           "LumenShell");
             registry.add(new NotificationsPage(), "LumenShell");
 #if WITH_WAYFIRE_CONFIG

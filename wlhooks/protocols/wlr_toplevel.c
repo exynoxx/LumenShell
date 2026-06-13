@@ -2,6 +2,7 @@
 #include "window_list.h"
 #include "registry.h"
 #include "seat.h"
+#include "output.h"
 #include "../generated/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 #include <stdio.h>
@@ -68,8 +69,14 @@ static void on_state(void *data, struct zwlr_foreign_toplevel_handle_v1 *h, stru
     window_list_set_activated(data, activated);
 }
 
-static void on_output_enter(void *data, struct zwlr_foreign_toplevel_handle_v1 *h, struct wl_output *o) {}
-static void on_output_leave(void *data, struct zwlr_foreign_toplevel_handle_v1 *h, struct wl_output *o) {}
+static void on_output_enter(void *data, struct zwlr_foreign_toplevel_handle_v1 *h, struct wl_output *o) {
+    const char *name = output_name_for_proxy(o);
+    if (name) window_list_set_output(data, name, true);
+}
+static void on_output_leave(void *data, struct zwlr_foreign_toplevel_handle_v1 *h, struct wl_output *o) {
+    const char *name = output_name_for_proxy(o);
+    if (name) window_list_set_output(data, name, false);
+}
 static void on_parent      (void *data, struct zwlr_foreign_toplevel_handle_v1 *h, struct zwlr_foreign_toplevel_handle_v1 *p) {}
 
 static const struct zwlr_foreign_toplevel_handle_v1_listener handle_listener = {

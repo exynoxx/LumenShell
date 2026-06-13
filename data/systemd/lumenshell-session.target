@@ -1,0 +1,8 @@
+[Unit]
+Description=LumenShell session
+# Starting this target legally pulls up graphical-session.target (sway/labwc
+# pattern), which satisfies xdg-desktop-portal.service's
+# Requisite=graphical-session.target. Without it the portal never starts under
+# Wayfire and libadwaita apps fall back to light theme / ScreenCast is dead.
+BindsTo=graphical-session.target
+Before=graphical-session.target

@@ -152,6 +152,31 @@ namespace LumenSettings {
 
             box.append(behavior_group);
 
+            var multi_group = new BoxedList("Multi-monitor");
+            var multi_initial = (store.get_value(SECTION, "behavior.multi-monitor") ?? "false") == "true";
+            var multi_row = new SwitchRow("Show panel on every screen",
+                "Place a panel on each connected monitor", multi_initial);
+            multi_group.add_row(multi_row);
+
+            var per_initial = (store.get_value(SECTION, "behavior.per-monitor-apps") ?? "false") == "true";
+            var per_row = new SwitchRow("Show only this screen's apps",
+                "Each monitor's panel lists only the windows on that monitor", per_initial);
+            per_row.sw.set_sensitive(multi_initial);
+            multi_group.add_row(per_row);
+
+            multi_row.toggled.connect((v) => {
+                store.set_value(SECTION, "behavior.multi-monitor", v ? "true" : "false");
+                store.save();
+                per_row.sw.set_sensitive(v);
+                if (!v && per_row.sw.active) per_row.sw.active = false;
+            });
+            per_row.toggled.connect((v) => {
+                store.set_value(SECTION, "behavior.per-monitor-apps", v ? "true" : "false");
+                store.save();
+            });
+
+            box.append(multi_group);
+
             return box;
         }
 

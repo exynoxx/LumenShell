@@ -4,25 +4,71 @@
 // handling.
 public class DesktopApp : Gtk.Application {
 
-    private DesktopWindow? win = null;
+    private GLib.GenericArray<DesktopWindow> wins = new GLib.GenericArray<DesktopWindow>();
+    private bool bound = false;
+    private bool hotplug_wired = false;
 
     construct {
         application_id = "dev.lumen.desktop";
     }
 
     protected override void activate() {
-        if (win == null) {
-            // Bind foreign-toplevel before the window is shown so its
+        if (!bound) {
+            // Bind foreign-toplevel before any window is shown so its
             // focus_changed handler sees the initial state on map.
             DesktopToplevels.instance.bind();
-            win = new DesktopWindow(this);
-            // Start hidden behind a closed curtain. A no-op on a fresh session
-            // (the compositor keeps the grid hidden until the curtain opens),
-            // but if lumen-desktop is restarted while the curtain is open this
-            // makes sure the grid doesn't stay stranded on screen.
+            bound = true;
+
+            build_windows();
+
+            // Start hidden behind a closed curtain. A no-op on a fresh session,
+            // but if lumen-desktop restarted while peeked this hides the grid.
             LumenDesktop.CurtainIpc.close();
+
+            if (read_multi_monitor() && !hotplug_wired) {
+                var monitors = Gdk.Display.get_default().get_monitors();
+                monitors.items_changed.connect((p, r, a) => rebuild_windows());
+                hotplug_wired = true;
+            }
         }
-        win.present();
+        for (int i = 0; i < wins.length; i++) wins.get(i).present();
+    }
+
+    // One drawer per monitor when enabled; the first monitor is the focus owner
+    // (the only surface that grabs the keyboard — see DesktopWindow).
+    void build_windows() {
+        if (!read_multi_monitor()) {
+            wins.add(new DesktopWindow(this, null, true));
+            return;
+        }
+        var monitors = Gdk.Display.get_default().get_monitors();
+        uint n = monitors.get_n_items();
+        if (n == 0) {
+            wins.add(new DesktopWindow(this, null, true));
+            return;
+        }
+        for (uint i = 0; i < n; i++) {
+            var mon = monitors.get_item(i) as Gdk.Monitor;
+            wins.add(new DesktopWindow(this, mon, i == 0));
+        }
+    }
+
+    void rebuild_windows() {
+        for (int i = 0; i < wins.length; i++) wins.get(i).destroy();
+        wins = new GLib.GenericArray<DesktopWindow>();
+        build_windows();
+        for (int i = 0; i < wins.length; i++) wins.get(i).present();
+    }
+
+    static bool read_multi_monitor() {
+        var path = Environment.get_user_config_dir() + "/lumen-shell/desktop.ini";
+        var kf = new GLib.KeyFile();
+        try {
+            kf.load_from_file(path, GLib.KeyFileFlags.NONE);
+            return kf.get_boolean("desktop", "behavior.multi-monitor");
+        } catch (Error e) {
+            return false;
+        }
     }
 }
 

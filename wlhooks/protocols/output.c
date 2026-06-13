@@ -11,6 +11,7 @@
 typedef struct {
     struct wl_output *proxy;
     uint32_t          name;       // registry name (for global_remove)
+    char              conn[64];   // connector name (wl_output v4 .name event)
     int32_t           width;
     int32_t           height;
     int32_t           scale;
@@ -71,7 +72,11 @@ static void output_scale(void *data, struct wl_output *wl_output, int32_t factor
     o->scale = factor;
 }
 
-static void output_name(void *data, struct wl_output *wl_output, const char *name) {}
+static void output_name(void *data, struct wl_output *wl_output, const char *name) {
+    output_entry_t *o = find_by_proxy(wl_output);
+    if (!o || !name) return;
+    snprintf(o->conn, sizeof(o->conn), "%s", name);
+}
 static void output_description(void *data, struct wl_output *wl_output, const char *description) {}
 
 static const struct wl_output_listener output_listener = {
@@ -129,4 +134,10 @@ struct wl_output *output_get_primary(void) {
         if (outputs[i].has_mode) return outputs[i].proxy;
     }
     return outputs_count > 0 ? outputs[0].proxy : NULL;
+}
+
+const char *output_name_for_proxy(struct wl_output *proxy) {
+    output_entry_t *o = find_by_proxy(proxy);
+    if (!o || o->conn[0] == '\0') return NULL;
+    return o->conn;
 }

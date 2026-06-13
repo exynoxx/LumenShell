@@ -11,7 +11,12 @@ namespace LumenSettings {
                         string? initial_value = null, string subtitle = "") {
             base(title, subtitle);
             this.values = values;
-            var sl = new Gtk.StringList(labels);
+            // Build by append rather than `new Gtk.StringList(labels)`: that
+            // constructor expects a NULL-terminated array, but a dynamically
+            // built `string[]` (e.g. Gee `to_array()`) is not terminated and
+            // GTK walks off the end. Appending uses the array length safely.
+            var sl = new Gtk.StringList(null);
+            foreach (var l in labels) sl.append(l);
             drop = new Gtk.DropDown(sl, null);
 
             uint pick = 0;

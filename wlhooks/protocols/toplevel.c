@@ -21,6 +21,7 @@ void toplevel_cleanup(void) {
 void register_on_window_new  (toplevel_window_new   cb, void *user_data) { window_list_register_new  (cb, user_data); }
 void register_on_window_rm   (toplevel_window_rm    cb, void *user_data) { window_list_register_rm   (cb, user_data); }
 void register_on_window_focus(toplevel_window_focus cb, void *user_data) { window_list_register_focus(cb, user_data); }
+void register_on_window_output_changed(toplevel_window_output cb, void *user_data) { window_list_register_output(cb, user_data); }
 
 typedef void (*window_op_fn)(toplevel_window_t *);
 

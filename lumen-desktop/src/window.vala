@@ -104,11 +104,20 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     private SearchResults results;
     private PageDots dots;
 
-    public DesktopWindow(Gtk.Application app) {
+    // Only the focus-owner window (primary monitor) takes keyboard focus. With
+    // several lumen-desktop surfaces sharing one namespace, more than one
+    // grabbing focus would fight wayfire-default-focus, so secondaries are
+    // built with KeyboardMode.NONE and never grab the search entry.
+    private bool focus_owner;
+
+    public DesktopWindow(Gtk.Application app, Gdk.Monitor? monitor = null,
+                         bool focus_owner = true) {
         Object(application: app);
+        this.focus_owner = focus_owner;
 
         GtkLayerShell.init_for_window(this);
         GtkLayerShell.set_namespace(this, "lumen-desktop");
+        if (monitor != null) GtkLayerShell.set_monitor(this, monitor);
         // BOTTOM (not BACKGROUND) so we stack ABOVE wf-shell's wf-background
         // wallpaper surface — wf-background also lives on BACKGROUND and
         // tends to map after us, hiding us. BOTTOM still renders below all
@@ -130,7 +139,9 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         // the compositor side: wayfire-curtain-peek focuses this surface
         // when it reveals the grid, and wayfire-default-focus keeps focus
         // here whenever no toplevel holds it.
-        GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
+        GtkLayerShell.set_keyboard_mode(this,
+            focus_owner ? GtkLayerShell.KeyboardMode.ON_DEMAND
+                        : GtkLayerShell.KeyboardMode.NONE);
 
         decorated = false;
         add_css_class("lumen-desktop-root");
@@ -143,6 +154,7 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         install_key_controller();
 
         map.connect(() => {
+            if (!focus_owner) return;
             search_entry.grab_focus();
             sync_keyboard_mode();
         });
@@ -158,6 +170,7 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     // GTK-side focus target so the keys land there and not on some other
     // widget that happened to be last-focused.
     private void sync_keyboard_mode() {
+        if (!focus_owner) return;
         if (!DesktopToplevels.instance.any_focused) {
             search_entry.grab_focus();
         }

@@ -2,17 +2,20 @@
 #define TOPLEVEL_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include "../generated/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 typedef void (*toplevel_window_new)(uint32_t id, const char* app_id, const char* title, void* user_data);
 typedef void (*toplevel_window_rm)(uint32_t id, void* user_data);
 typedef void (*toplevel_window_focus)(uint32_t id, void* user_data);
+typedef void (*toplevel_window_output)(uint32_t id, const char* output_name, bool entered, void* user_data);
 
 void toplevel_init(void);
 void toplevel_cleanup(void);
 void register_on_window_new(toplevel_window_new cb, void* user_data);
 void register_on_window_rm(toplevel_window_rm cb, void* user_data);
 void register_on_window_focus(toplevel_window_focus cb, void* user_data);
+void register_on_window_output_changed(toplevel_window_output cb, void* user_data);
 
 void toplevel_activate_by_id(uint32_t id);
 void toplevel_minimize_by_id(uint32_t id);
