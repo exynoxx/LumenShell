@@ -22,6 +22,6 @@ public class Clock : Gtk.Box {
     }
 
     static string format_now () {
-        return new DateTime.now_local().format("%Y-%m-%d  %H:%M:%S");
+        return new DateTime.now_local().format(PanelConfig.clock_format);
     }
 }
