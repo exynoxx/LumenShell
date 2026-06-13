@@ -133,7 +133,10 @@ display_profiles_source = files(
 panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']
-  panel_peek_sources = files('lumen-panel/src/peek_ipc.vala')
+  panel_peek_sources = files(
+    'lumen-panel/src/peek_ipc.vala',
+    'lumen-panel/src/components/launcher.vala',
+  )
 endif
 
 panel_sources = files(

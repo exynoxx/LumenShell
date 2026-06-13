@@ -61,6 +61,14 @@ public class PanelWindow : Gtk.ApplicationWindow {
         // this window is pinned to a specific output.
         string? only_output = (PanelConfig.per_monitor_apps && monitor != null)
             ? monitor.get_connector() : null;
+
+#if PANEL_PEEK
+        // Persistent launcher button at the very left edge, ahead of the
+        // taskbar. Has its own click handler (toggles the app-drawer reveal)
+        // and, being a Gtk.Button, is skipped by the empty-panel peek gesture.
+        if (PanelConfig.show_launcher) root.append(new LauncherButton());
+#endif
+
         var app_bar = new AppBar(only_output, is_tray_host);
         root.append(app_bar);
 

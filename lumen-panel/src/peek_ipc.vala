@@ -74,5 +74,15 @@ public class PeekIpc : GLib.Object {
     public static bool toggle () {
         return send_method("wayfire-desktop-peek/toggle");
     }
+
+    // Toggle the app-drawer reveal (lumen-desktop). Only one of curtain-peek /
+    // slide-peek is ever loaded, so the toggle for the inactive one is a
+    // harmless no-op (its IPC method isn't registered) — same pattern as
+    // lumen-desktop's CurtainIpc.close(). Used by the optional launcher button.
+    public static bool app_drawer () {
+        bool a = send_method("wayfire-curtain-peek/toggle");
+        bool b = send_method("wayfire-slide-peek/toggle");
+        return a || b;
+    }
 }
 #endif

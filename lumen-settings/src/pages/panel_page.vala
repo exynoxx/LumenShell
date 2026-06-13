@@ -130,6 +130,16 @@ namespace LumenSettings {
             });
             behavior_group.add_row(auto_hide_row);
 
+            var launcher_initial = (store.get_value(SECTION, "app.launcher-button") ?? "false") == "true";
+            var launcher_row = new SwitchRow("Show app launcher button",
+                "Pin an app button to the left edge that opens the app drawer (peek)",
+                launcher_initial);
+            launcher_row.toggled.connect((v) => {
+                store.set_value(SECTION, "app.launcher-button", v ? "true" : "false");
+                store.save();
+            });
+            behavior_group.add_row(launcher_row);
+
             var autohide_opacity_row = new SpinRow("Auto-hide opacity", 0, 100, 1, autohide_opacity, 0,
                 "panel opacity while auto-hidden, in percent (uses the panel color)");
             autohide_opacity_row.value_changed.connect((v) => {

@@ -19,12 +19,18 @@ public class PanelConfig {
     public static bool multi_monitor = false;
     public static bool per_monitor_apps = false;
 
+    // When true a persistent launcher button (app glyph) sits at the left edge
+    // of the panel; clicking it toggles the app-drawer reveal (curtain/slide
+    // peek). Only effective in a PANEL_PEEK build.
+    public static bool show_launcher = false;
+
     public static void load () {
         var ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
         at_top = Ini.get_key_value(ini, "position") == "top";
         open_indicator = parse_indicator(Ini.get_key_value(ini, "app.open-indicator"));
         multi_monitor    = Ini.get_key_value(ini, "behavior.multi-monitor")    == "true";
         per_monitor_apps = Ini.get_key_value(ini, "behavior.per-monitor-apps") == "true";
+        show_launcher    = Ini.get_key_value(ini, "app.launcher-button")       == "true";
     }
 
     static OpenIndicator parse_indicator (string? s) {
