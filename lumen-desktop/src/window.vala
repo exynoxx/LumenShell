@@ -104,16 +104,8 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     private SearchResults results;
     private PageDots dots;
 
-    // Only the focus-owner window (primary monitor) takes keyboard focus. With
-    // several lumen-desktop surfaces sharing one namespace, more than one
-    // grabbing focus would fight wayfire-default-focus, so secondaries are
-    // built with KeyboardMode.NONE and never grab the search entry.
-    private bool focus_owner;
-
-    public DesktopWindow(Gtk.Application app, Gdk.Monitor? monitor = null,
-                         bool focus_owner = true) {
+    public DesktopWindow(Gtk.Application app, Gdk.Monitor? monitor = null) {
         Object(application: app);
-        this.focus_owner = focus_owner;
 
         GtkLayerShell.init_for_window(this);
         GtkLayerShell.set_namespace(this, "lumen-desktop");
@@ -131,16 +123,14 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         // 0 = do not consume an exclusive zone; foreground windows ignore
         // our presence when sizing.
         GtkLayerShell.set_exclusive_zone(this, 0);
-        // ON_DEMAND is the only legal keyboard mode for a BOTTOM-layer
-        // surface — wlr-layer-shell forbids EXCLUSIVE below the shell
-        // layer (it is silently ignored). Auto-handing the keyboard back
-        // to us when no toplevel is focused is therefore implemented on
-        // the compositor side: wayfire-curtain-peek focuses this surface
-        // when it reveals the grid, and wayfire-default-focus keeps focus
-        // here whenever no toplevel holds it.
-        GtkLayerShell.set_keyboard_mode(this,
-            focus_owner ? GtkLayerShell.KeyboardMode.ON_DEMAND
-                        : GtkLayerShell.KeyboardMode.NONE);
+        // ON_DEMAND on every drawer (one per monitor) — wlr-layer-shell forbids
+        // EXCLUSIVE below the shell layer (it is silently ignored). ON_DEMAND
+        // never grabs the keyboard on its own; the compositor decides which
+        // drawer receives it: wayfire-curtain-peek focuses the grid on the
+        // peeked output, and wayfire-default-focus keeps focus on the active
+        // output's grid whenever no toplevel holds it. Per-monitor grids must
+        // therefore all be focusable so a peek on a secondary output can type.
+        GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
         decorated = false;
         add_css_class("lumen-desktop-root");
@@ -153,7 +143,6 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         install_key_controller();
 
         map.connect(() => {
-            if (!focus_owner) return;
             search_entry.grab_focus();
             sync_keyboard_mode();
         });
@@ -169,7 +158,10 @@ public class DesktopWindow : Gtk.ApplicationWindow {
     // GTK-side focus target so the keys land there and not on some other
     // widget that happened to be last-focused.
     private void sync_keyboard_mode() {
-        if (!focus_owner) return;
+        // GTK-internal focus only (per-window, harmless to do on every drawer):
+        // keep this window's search entry as the key target so that whenever the
+        // compositor routes the keyboard to this output's grid, typing lands in
+        // the search box rather than some other last-focused widget.
         if (!DesktopToplevels.instance.any_focused) {
             search_entry.grab_focus();
         }
