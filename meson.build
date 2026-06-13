@@ -121,6 +121,13 @@ lumen_common_sources = files(
   'lumen-common/logind.vala',
 )
 
+# Remembered display layouts (written by lumen-settings, read by the upcoming
+# lumen-session daemon). Separate from lumen_common_sources so consumers don't
+# drag in logind/gio-unix just to read profiles.
+display_profiles_source = files(
+  'lumen-common/display_profiles.vala',
+)
+
 panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']

@@ -249,6 +249,7 @@ namespace LumenSettings {
             DiagLog.log("page: KEEP — persisting to disk");
             stop_countdown();
             persist();
+            save_profile();
             baseline = clone_list(working);
             dirty = false;
             apply_btn.sensitive = false;
@@ -299,6 +300,36 @@ namespace LumenSettings {
             disp.set_value("display", "primary", primary_name);
             disp.save();
             DiagLog.log("persist: wrote %s (primary=%s)", Paths.display_ini(), primary_name);
+        }
+
+        // Remember this layout, keyed by the connected monitor set (EDID), so
+        // the lumen-session daemon can re-apply it when the same set reconnects.
+        void save_profile() {
+            // connector name -> stable EDID identity, from the live heads.
+            var ident = new Gee.HashMap<string, string>();
+            WLHooks.output_mgmt_for_each_head_identity((idx, name, make, model, serial, desc) => {
+                ident.set(name, DisplayProfileStore.identity_for(make, model, serial, desc, name));
+            });
+
+            var prof = new DisplayProfile();
+            foreach (var o in working) {
+                var id = ident.has_key(o.name) ? ident.get(o.name)
+                       : DisplayProfileStore.identity_for("", "", "", o.description, o.name);
+                prof.outputs.add(id);
+                var s = new DisplayOutputState();
+                s.enabled = o.enabled && o.current_mode != null;
+                if (o.current_mode != null) {
+                    s.width       = o.current_mode.width;
+                    s.height      = o.current_mode.height;
+                    s.refresh_mhz = o.current_mode.refresh_mhz();
+                }
+                s.x = o.pos_x; s.y = o.pos_y;
+                s.transform = (int) o.transform;
+                prof.states.set(id, s);
+            }
+            DisplayProfileStore.save_or_update(prof);
+            DiagLog.log("profile: saved layout for set [%s] -> %s",
+                prof.set_key(), DisplayProfileStore.path());
         }
 
         // Snapshot the in-memory working layout to the diagnostic log.

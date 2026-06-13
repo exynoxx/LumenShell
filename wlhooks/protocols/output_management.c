@@ -20,6 +20,9 @@ typedef struct {
     struct zwlr_output_head_v1 *proxy;
     char    name[64];
     char    desc[256];
+    char    make[128];     // EDID make/model/serial (v2 events; may be empty)
+    char    model[128];
+    char    serial[128];
     bool    enabled;
     int32_t x, y;
     int32_t transform;
@@ -126,13 +129,13 @@ static void head_finished(void *data, struct zwlr_output_head_v1 *h) {
     om_head_t *hd = data; hd->finished = true; zwlr_output_head_v1_destroy(h);
 }
 static void head_make(void *data, struct zwlr_output_head_v1 *h, const char *s) {
-    (void) data; (void) h; (void) s;
+    (void) h; om_head_t *hd = data; snprintf(hd->make, sizeof(hd->make), "%s", s ? s : "");
 }
 static void head_model(void *data, struct zwlr_output_head_v1 *h, const char *s) {
-    (void) data; (void) h; (void) s;
+    (void) h; om_head_t *hd = data; snprintf(hd->model, sizeof(hd->model), "%s", s ? s : "");
 }
 static void head_serial_number(void *data, struct zwlr_output_head_v1 *h, const char *s) {
-    (void) data; (void) h; (void) s;
+    (void) h; om_head_t *hd = data; snprintf(hd->serial, sizeof(hd->serial), "%s", s ? s : "");
 }
 static void head_adaptive_sync(void *data, struct zwlr_output_head_v1 *h, uint32_t state) {
     (void) data; (void) h; (void) state;
@@ -252,6 +255,15 @@ void wlhooks_output_mgmt_for_each_head(output_mgmt_head_cb cb, void *user_data) 
         om_head_t *h = &s_heads[i];
         if (h->finished) continue;
         cb(i, h->name, h->desc, h->enabled ? 1 : 0, h->x, h->y, h->transform, h->scale, user_data);
+    }
+}
+
+void wlhooks_output_mgmt_for_each_head_identity(output_mgmt_head_id_cb cb, void *user_data) {
+    if (!cb) return;
+    for (int i = 0; i < s_head_count; i++) {
+        om_head_t *h = &s_heads[i];
+        if (h->finished) continue;
+        cb(i, h->name, h->make, h->model, h->serial, h->desc, user_data);
     }
 }
 
