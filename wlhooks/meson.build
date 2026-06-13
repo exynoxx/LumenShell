@@ -26,6 +26,7 @@ sources = [
   'protocols/wlr_toplevel.c',
   'protocols/ext_toplevel.c',
   'protocols/output.c',
+  'protocols/output_management.c',
   'protocols/shm.c',
   'protocols/screencopy.c',
   'protocols/activation.c',
@@ -34,7 +35,8 @@ sources = [
   'generated/wlr-foreign-toplevel-management-unstable-v1-protocol.c',
   'generated/wlr-screencopy-unstable.c',
   'generated/ext-foreign-toplevel-list-v1-protocol.c',
-  'generated/xdg-activation-v1-protocol.c'
+  'generated/xdg-activation-v1-protocol.c',
+  'generated/wlr-output-management-unstable-v1-protocol.c'
 ]
 
 wayland_unstable = static_library(

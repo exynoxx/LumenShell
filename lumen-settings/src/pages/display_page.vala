@@ -8,7 +8,7 @@ namespace LumenSettings {
         public string title     { owned get { return "Display"; } }
         public string icon_name { owned get { return "video-display-symbolic"; } }
 
-        WlrRandr wlr = new WlrRandr();
+        OutputManager wlr = new OutputManager();
         Gee.ArrayList<OutputInfo> baseline = new Gee.ArrayList<OutputInfo>();
         Gee.ArrayList<OutputInfo> working  = new Gee.ArrayList<OutputInfo>();
         string primary_name = "";
@@ -31,10 +31,11 @@ namespace LumenSettings {
                 margin_start = 18, margin_end = 18,
             };
 
-            if (!WlrRandr.available()) {
+            wlr.init();
+            if (!wlr.available()) {
                 var bl = new BoxedList("Display");
-                bl.add_row(new ActionRow("wlr-randr not found",
-                    "Install the wlr-randr package to configure displays."));
+                bl.add_row(new ActionRow("Output management unavailable",
+                    "The compositor does not expose wlr-output-management-v1, so displays can't be configured here."));
                 box.append(bl);
                 return box;
             }

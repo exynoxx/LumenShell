@@ -150,4 +150,45 @@ namespace WLHooks {
 
     [CCode (cname = "activation_activate_self")]
     public void activation_activate_self ();
+
+    // ---- wlr-output-management-v1 (display configuration) ------------------
+    // In-process replacement for the wlr-randr CLI. Runs on a private event
+    // queue (see protocols/output_management.c); roundtrips are synchronous and
+    // do not reenter GDK dispatch.
+
+    public delegate void OutputMgmtHead(int idx, string name, string description,
+                                        bool enabled, int x, int y, int transform, double scale);
+    public delegate void OutputMgmtMode(int head_idx, int width, int height,
+                                        int refresh_mhz, bool preferred, bool current);
+
+    [CCode (cname = "wlhooks_output_mgmt_init")]
+    public int output_mgmt_init (Wl.Display display);
+
+    [CCode (cname = "wlhooks_output_mgmt_destroy")]
+    public void output_mgmt_destroy ();
+
+    [CCode (cname = "wlhooks_output_mgmt_available")]
+    public bool output_mgmt_available ();
+
+    [CCode (cname = "wlhooks_output_mgmt_refresh")]
+    public void output_mgmt_refresh ();
+
+    [CCode (cname = "wlhooks_output_mgmt_for_each_head")]
+    public void output_mgmt_for_each_head (OutputMgmtHead cb);
+
+    [CCode (cname = "wlhooks_output_mgmt_for_each_mode")]
+    public void output_mgmt_for_each_mode (int head_idx, OutputMgmtMode cb);
+
+    [CCode (cname = "wlhooks_output_mgmt_config_begin")]
+    public int output_mgmt_config_begin ();
+
+    [CCode (cname = "wlhooks_output_mgmt_config_disable")]
+    public void output_mgmt_config_disable (string name);
+
+    [CCode (cname = "wlhooks_output_mgmt_config_enable")]
+    public void output_mgmt_config_enable (string name, int w, int h, int refresh_mhz,
+                                           int x, int y, int transform);
+
+    [CCode (cname = "wlhooks_output_mgmt_config_apply")]
+    public int output_mgmt_config_apply ();
 }

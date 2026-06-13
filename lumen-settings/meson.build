@@ -29,6 +29,11 @@ settings_deps = [
   json_dep,
   gtk4_dep,
   m_dep,
+  # Display page binds wlr-output-management-v1 in-process via wlhooks on GTK's
+  # wl_display (mirrors the lumen-panel link set).
+  gtk4_wayland_dep,
+  wayland_dep,
+  wlhooks_dep,
 ]
 
 settings_vala_args = [
@@ -39,6 +44,8 @@ settings_vala_args = [
   '--pkg=glib-2.0',
   '--pkg=gio-2.0',
   '--pkg=posix',
+  '--pkg=gtk4-wayland',
+  '--pkg=libwlhooks',
 ]
 
 settings_sources = files(
@@ -62,7 +69,7 @@ settings_sources = files(
   'src/stores/paths.vala',
   'src/stores/json_store.vala',
   'src/stores/ini_store.vala',
-  'src/stores/wlr_randr.vala',
+  'src/stores/output_manager.vala',
   'src/pages/wallpaper_page.vala',
   'src/pages/display_page.vala',
   'src/pages/panel_page.vala',
