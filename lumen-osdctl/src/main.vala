@@ -10,6 +10,7 @@ Actions:
   --kbd-brightness  raise | lower                 [--step N]
   --caps-lock
   --custom <text>   [--value 0.5] [--icon NAME]
+  --display-mode    cycle | internal | extend | external
 """;
 
 private static bool daemon_present(DBusConnection conn) {
@@ -136,6 +137,29 @@ private static int handle_brightness(string[] args, string kind) {
     return 0;
 }
 
+private static int handle_display_mode(string[] args) {
+    if (args.length < 3) { stderr.printf(USAGE); return 1; }
+
+    DisplayCtl.Mode? applied;
+    if (args[2] == "cycle") {
+        applied = DisplayCtl.cycle();
+    } else {
+        DisplayCtl.Mode? requested = DisplayCtl.Mode.parse(args[2]);
+        if (requested == null) { stderr.printf(USAGE); return 1; }
+        applied = DisplayCtl.apply((!) requested);
+    }
+
+    if (applied == null) {
+        stderr.printf("lumen-osdctl: display mode change failed\n");
+        return 1;
+    }
+
+    var opts = opts_new();
+    opts.insert("icon", new Variant.string(((!) applied).icon()));
+    send_show("display", 0.0, ((!) applied).label(), opts);
+    return 0;
+}
+
 public static int main(string[] args) {
     if (args.length < 2) { stderr.printf(USAGE); return 1; }
 
@@ -168,6 +192,9 @@ public static int main(string[] args) {
             if (icon != null) opts.insert("icon", new Variant.string((!) icon));
             send_show("custom", value, text, opts);
             return 0;
+
+        case "--display-mode":
+            return handle_display_mode(args);
 
         case "--help":
         case "-h":
