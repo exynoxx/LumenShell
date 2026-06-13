@@ -160,6 +160,8 @@ namespace WLHooks {
                                         bool enabled, int x, int y, int transform, double scale);
     public delegate void OutputMgmtMode(int head_idx, int width, int height,
                                         int refresh_mhz, bool preferred, bool current);
+    public delegate void OutputMgmtHeadId(int idx, string name, string make, string model,
+                                          string serial, string description);
 
     [CCode (cname = "wlhooks_output_mgmt_init")]
     public int output_mgmt_init (Wl.Display display);
@@ -175,6 +177,9 @@ namespace WLHooks {
 
     [CCode (cname = "wlhooks_output_mgmt_for_each_head")]
     public void output_mgmt_for_each_head (OutputMgmtHead cb);
+
+    [CCode (cname = "wlhooks_output_mgmt_for_each_head_identity")]
+    public void output_mgmt_for_each_head_identity (OutputMgmtHeadId cb);
 
     [CCode (cname = "wlhooks_output_mgmt_for_each_mode")]
     public void output_mgmt_for_each_mode (int head_idx, OutputMgmtMode cb);

@@ -20,6 +20,11 @@ typedef void (*output_mgmt_head_cb)(int idx, const char *name, const char *descr
                                     void *user_data);
 typedef void (*output_mgmt_mode_cb)(int head_idx, int width, int height, int refresh_mhz,
                                     int preferred, int is_current, void *user_data);
+// Stable identity of a head (EDID make/model/serial; any may be ""). Used to
+// key remembered display profiles independent of which connector/port is used.
+typedef void (*output_mgmt_head_id_cb)(int idx, const char *name, const char *make,
+                                       const char *model, const char *serial,
+                                       const char *description, void *user_data);
 
 // Bind the manager on `display` via a private queue and drain the initial
 // head/mode/done burst. Returns 0 if the manager bound, nonzero otherwise.
@@ -34,6 +39,7 @@ void wlhooks_output_mgmt_refresh(void);
 // Replay the current snapshot. `idx` passed to head_cb is the same value to
 // pass to for_each_mode().
 void wlhooks_output_mgmt_for_each_head(output_mgmt_head_cb cb, void *user_data);
+void wlhooks_output_mgmt_for_each_head_identity(output_mgmt_head_id_cb cb, void *user_data);
 void wlhooks_output_mgmt_for_each_mode(int head_idx, output_mgmt_mode_cb cb, void *user_data);
 
 // Build + apply a configuration (synchronous).

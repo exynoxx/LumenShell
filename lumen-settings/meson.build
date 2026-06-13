@@ -80,6 +80,10 @@ settings_sources = files(
   'src/pages/about_page.vala',
 )
 
+# Shared display-profile store (lumen-common) — the Display page saves the
+# applied layout here, keyed by the connected monitor set.
+settings_sources += display_profiles_source
+
 libxml_settings_dep = dependency('libxml-2.0', required: false)
 settings_wayfire_enabled = libxml_settings_dep.found()
 
