@@ -208,4 +208,32 @@ namespace WLHooks {
 
     [CCode (cname = "wlhooks_output_mgmt_config_apply")]
     public int output_mgmt_config_apply ();
+
+    // ---- ext-idle-notify-v1 (lumen-lockscreen idle auto-lock) --------------
+    // Binds wl_seat + ext_idle_notifier_v1 on GTK's wl_display; the GDK main
+    // loop dispatches the idled/resumed callbacks. Init BEFORE arming.
+
+    public delegate void IdleNotifyCallback ();
+
+    // Returns 0 if the notifier was bound, -1 if the compositor lacks
+    // ext-idle-notify-v1 (caller should fall back / skip idle lock).
+    [CCode (cname = "wlhooks_idle_notify_init")]
+    public int idle_notify_init (Wl.Display display);
+
+    [CCode (cname = "wlhooks_idle_notify_available")]
+    public bool idle_notify_available ();
+
+    // Arm a single notification: `idled` after timeout_ms of seat inactivity,
+    // `resumed` on the next input. Replaces any previously-armed one.
+    [CCode (cname = "wlhooks_idle_notify_register")]
+    public int idle_notify_register (uint32 timeout_ms,
+                                     IdleNotifyCallback idled,
+                                     IdleNotifyCallback resumed);
+
+    // Disarm (e.g. while already locked, so it does not re-fire).
+    [CCode (cname = "wlhooks_idle_notify_unregister")]
+    public void idle_notify_unregister ();
+
+    [CCode (cname = "wlhooks_idle_notify_destroy")]
+    public void idle_notify_destroy ();
 }

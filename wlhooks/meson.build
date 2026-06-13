@@ -30,13 +30,15 @@ sources = [
   'protocols/shm.c',
   'protocols/screencopy.c',
   'protocols/activation.c',
+  'protocols/idle_notify.c',
   'generated/wlr-layer-shell-unstable-v1-protocol.c',
   'generated/xdg-shell-client-protocol.c',
   'generated/wlr-foreign-toplevel-management-unstable-v1-protocol.c',
   'generated/wlr-screencopy-unstable.c',
   'generated/ext-foreign-toplevel-list-v1-protocol.c',
   'generated/xdg-activation-v1-protocol.c',
-  'generated/wlr-output-management-unstable-v1-protocol.c'
+  'generated/wlr-output-management-unstable-v1-protocol.c',
+  'generated/ext-idle-notify-v1-protocol.c'
 ]
 
 wayland_unstable = static_library(

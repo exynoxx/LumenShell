@@ -7,6 +7,7 @@
 #include "protocols/toplevel.h"
 #include "protocols/activation.h"
 #include "protocols/output.h"
+#include "protocols/idle_notify.h"
 
 struct wl_display *wl_display = NULL;
 
@@ -80,4 +81,42 @@ void wlhooks_destroy_toplevel(void) {
     registry_cleanup();
     // Do NOT disconnect: the caller (GTK/GDK) owns the wl_display.
     wl_display = NULL;
+}
+
+// ---- ext-idle-notify-v1 (lumen-lockscreen idle auto-lock) ------------------
+// Minimal init on a caller-owned wl_display (GTK's): bind wl_seat + the idle
+// notifier, then let the GDK main loop dispatch idled/resumed events. Self-
+// contained — the lockscreen needs neither toplevel nor activation hooks.
+int wlhooks_idle_notify_init(struct wl_display *external) {
+    if (!external) return -1;
+    wl_display = external;
+
+    seat_set_minimal_mode(true);   // GTK owns input; we only need wl_seat exposed
+    seat_init();
+    idle_notify_init();
+
+    registry_init(wl_display);
+    return idle_notify_available() ? 0 : -1;
+}
+
+void wlhooks_idle_notify_destroy(void) {
+    idle_notify_cleanup();
+    seat_cleanup();
+    registry_cleanup();
+    // Do NOT disconnect: GTK/GDK owns the wl_display.
+    wl_display = NULL;
+}
+
+int wlhooks_idle_notify_register(uint32_t timeout_ms,
+                                 idle_notify_cb idled, void *idled_data,
+                                 idle_notify_cb resumed, void *resumed_data) {
+    return idle_notify_register(timeout_ms, idled, idled_data, resumed, resumed_data);
+}
+
+void wlhooks_idle_notify_unregister(void) {
+    idle_notify_unregister();
+}
+
+bool wlhooks_idle_notify_available(void) {
+    return idle_notify_available();
 }
