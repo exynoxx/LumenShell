@@ -582,13 +582,15 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        // Layout (global) geometry, not relative: the snapshot is rendered from
-        // the global scene root and the overlay/backdrop nodes are placed in the
-        // output's render target, both of which use layout coordinates. On a
-        // non-primary output relative geometry is still {0,0,W,H}, which would
-        // capture the primary output's region (black/garbage) and draw the
-        // curtain off-screen — the multi-monitor bug this fixes.
-        const auto rel = output->get_layout_geometry();
+        // Relative (output-local) geometry: the backdrop/screenshot nodes are
+        // added under output->node_for_layer(), whose output_node_t renders its
+        // children in a coordinate system pinned to {0,0} and re-applies the
+        // output's layout offset itself (see wayfire/scene.hpp output_node_t).
+        // Using layout geometry here would double-offset every node by (x,y) on
+        // any output not at the layout origin, drawing the curtain off-screen.
+        // (capture_output() renders the GLOBAL scene and so legitimately needs
+        // layout geometry — the two coordinate spaces are genuinely different.)
+        const auto rel = output->get_relative_geometry();
         const int W = rel.width;
         const float scale = output->handle ? output->handle->scale : 1.0f;
         const double ratio = std::clamp((double) split_ratio_opt, 0.1, 0.9);
