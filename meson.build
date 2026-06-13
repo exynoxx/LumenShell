@@ -130,6 +130,14 @@ display_profiles_source = files(
   'lumen-common/display_profiles.vala',
 )
 
+# AccountsService client (avatar/real-name read + last-session write). Shared by
+# lumen-lockscreen (reads) and lumen-session (writes). Kept separate from
+# lumen_common_sources for the same reason as display_profiles_source: a
+# consumer pulls in only what it needs.
+accounts_source = files(
+  'lumen-common/accounts.vala',
+)
+
 panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']
@@ -346,7 +354,7 @@ session_sources = files(
 )
 
 executable('lumen-session',
-  session_sources + display_profiles_source,
+  session_sources + display_profiles_source + accounts_source,
   vala_args: session_vala_args,
   dependencies: session_deps,
   install: true,
@@ -354,6 +362,110 @@ executable('lumen-session',
 
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
+
+# --- lumen-lockscreen + lumen-lockctl (ext-session-lock-v1 lock screen) ---
+# Gated behind `with_lockscreen` (auto). The lock SURFACE is created by
+# gtk4-session-lock (sister lib to gtk4-layer-shell — see vapi/gtk4-session-lock-0.vapi);
+# auth is PAM via the in-tree pam_auth.c helper. Idle auto-lock is delegated to
+# an external idle daemon (swayidle → `lumen-lockctl lock`), so wlhooks is
+# untouched. When either dep is missing and the feature is 'auto', the whole
+# component is silently skipped and the rest of the tree still builds.
+gtk4_session_lock_dep = dependency('gtk4-session-lock-0', required: get_option('with_lockscreen'))
+pam_dep               = cc.find_library('pam', required: get_option('with_lockscreen'))
+
+if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and pam_dep.found()
+
+  lockscreen_resources = gnome.compile_resources(
+    'lumen-lockscreen-resources',
+    'lumen-lockscreen/src/resources.gresource.xml',
+    source_dir: 'lumen-lockscreen/src',
+    c_name: 'lumen_lockscreen',
+  )
+
+  lockscreen_deps = [
+    # gtk4-session-lock MUST precede gtk4/wayland in the link line (same rule as
+    # gtk4-layer-shell), or the lock-surface protocol hook silently no-ops.
+    gtk4_session_lock_dep,
+    gtk4_dep,
+    # gtk4-wayland + wayland + wlhooks: idle auto-lock binds ext-idle-notify-v1
+    # on GTK's wl_display (IdleWatcher), same link set as lumen-panel.
+    gtk4_wayland_dep,
+    wayland_dep,
+    wlhooks_dep,
+    glib_dep,
+    gio_dep,
+    # logind.vala (lumen_common) uses UnixFDList for the sleep delay-inhibitor.
+    gio_unix_dep,
+    json_dep,
+    pam_dep,
+    m_dep,
+  ]
+
+  lockscreen_vala_args = [
+    '--vapidir=' + vapi_dir,
+    '--pkg=gtk4',
+    '--pkg=gtk4-session-lock-0',
+    '--pkg=gtk4-wayland',
+    '--pkg=libwlhooks',
+    '--pkg=json-glib-1.0',
+    '--pkg=glib-2.0',
+    '--pkg=gio-2.0',
+    '--pkg=gio-unix-2.0',
+    '--pkg=posix',
+    '--pkg=pam_auth',
+  ]
+
+  lockscreen_sources = files(
+    'lumen-lockscreen/src/main.vala',
+    'lumen-lockscreen/src/manager.vala',
+    'lumen-lockscreen/src/window.vala',
+    'lumen-lockscreen/src/theme.vala',
+    'lumen-lockscreen/src/utils.vala',
+    'lumen-lockscreen/src/dbus.vala',
+    'lumen-lockscreen/src/auth.vala',
+    'lumen-lockscreen/src/idle.vala',
+    'lumen-lockscreen/src/self_test.vala',
+    'lumen-lockscreen/src/widgets/clock.vala',
+    'lumen-lockscreen/src/widgets/avatar.vala',
+    'lumen-lockscreen/src/widgets/password.vala',
+    'lumen-lockscreen/src/widgets/power_menu.vala',
+    'lumen-lockscreen/src/pam_auth.c',
+  )
+
+  executable('lumen-lockscreen',
+    lockscreen_sources + lockscreen_resources + lumen_common_sources + accounts_source,
+    vala_args: lockscreen_vala_args,
+    dependencies: lockscreen_deps,
+    include_directories: include_directories('lumen-lockscreen/src'),
+    link_args: ['-Wl,--no-as-needed'],
+    install: true,
+  )
+
+  executable('lumen-lockctl',
+    files(
+      'lumen-lockctl/src/main.vala',
+      'lumen-lockctl/src/dbus_proxy.vala',
+    ),
+    vala_args: ['--pkg=gio-2.0', '--pkg=glib-2.0'],
+    dependencies: [glib_dep, gio_dep, m_dep],
+    install: true,
+  )
+
+  install_data(
+    'lumen-lockscreen/default-lockscreen-theme.json',
+    install_dir: get_option('datadir') / 'lumen-lockscreen',
+  )
+
+  # PAM service file — see SESSION_GLUE.md §2. Always /etc/pam.d (not prefixed).
+  install_data(
+    'lumen-lockscreen/data/pam.d/lumen-lockscreen',
+    install_dir: '/etc/pam.d',
+  )
+
+  message('lumen-lockscreen: enabled')
+else
+  message('lumen-lockscreen: disabled (need gtk4-session-lock-0 + pam)')
+endif
 
 # --- session / XDG portal glue ---
 # lumenshell-session.target binds graphical-session.target so

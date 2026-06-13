@@ -60,6 +60,13 @@ def install_ubuntu():
         'xdg-desktop-portal',
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
+        # lumen-lockscreen: PAM (build) + keyring/accounts (runtime).
+        # gtk4-session-lock is NOT in Debian/Ubuntu repos — build from source
+        # (https://github.com/wmww/gtk4-session-lock); the lockscreen is
+        # auto-skipped by meson until it is present.
+        'libpam0g-dev',
+        'gnome-keyring',
+        'accountsservice',
     ]
 
     cmd = ['apt-get', 'install', '-y'] + packages
@@ -91,6 +98,13 @@ def install_fedora():
         'xdg-desktop-portal',
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
+        # lumen-lockscreen: PAM (build) + keyring/accounts (runtime).
+        # gtk4-session-lock is NOT in Fedora repos — build from source
+        # (https://github.com/wmww/gtk4-session-lock); the lockscreen is
+        # auto-skipped by meson until it is present.
+        'pam-devel',
+        'gnome-keyring',
+        'accountsservice',
     ]
 
     cmd = ['dnf', 'install', '-y'] + packages
@@ -119,6 +133,12 @@ def install_arch():
         'xdg-desktop-portal',
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
+        # lumen-lockscreen: PAM (build) + keyring/accounts (runtime).
+        # gtk4-session-lock is in the AUR (gtk4-session-lock) — install with an
+        # AUR helper; the lockscreen is auto-skipped by meson until it is present.
+        'pam',
+        'gnome-keyring',
+        'accountsservice',
     ]
 
     cmd = ['pacman', '-S', '--needed', '--noconfirm'] + packages

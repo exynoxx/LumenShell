@@ -1,0 +1,11 @@
+# PAM stack for lumen-lockscreen (SESSION_GLUE.md §2).
+#
+# auth/account delegate to the system policy (password, fingerprint, smartcard,
+# 2FA, password-expiry — all inherited, no lockscreen code). The pam_gnome_keyring
+# lines hand the typed password to the keyring daemon on unlock so libsecret
+# consumers (NetworkManager PSKs, online accounts) come back. Both keyring lines
+# are `optional`: minimal / KDE installs without gnome-keyring still authenticate.
+auth      include     system-auth
+auth      optional    pam_gnome_keyring.so
+account   include     system-auth
+session   optional    pam_gnome_keyring.so auto_start

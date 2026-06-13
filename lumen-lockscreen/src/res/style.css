@@ -1,0 +1,72 @@
+/* lumen-lockscreen — stock-widget styling. Drawn chrome is plain GTK; this
+ * sheet themes the bits that are stock widgets (entry, labels, power buttons).
+ * Color tokens come from Theme.generate_root_css() (@define-color …). */
+
+.lockscreen-root {
+    background-color: @lockscreen_entry_background;
+}
+
+.lockscreen-clock {
+    color: @lockscreen_text;
+}
+
+.lockscreen-date,
+.lockscreen-caps,
+.lockscreen-status {
+    color: @lockscreen_muted_text;
+}
+
+.lockscreen-name {
+    color: @lockscreen_text;
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.lockscreen-status-error {
+    color: @lockscreen_entry_error;
+}
+
+.lockscreen-entry {
+    background-color: @lockscreen_entry_background;
+    border: 1px solid @lockscreen_entry_border;
+    border-radius: 12px;
+    padding: 6px 10px;
+    color: @lockscreen_text;
+}
+
+.lockscreen-entry:focus-within {
+    border-color: @lockscreen_accent;
+}
+
+.lockscreen-avatar {
+    border-radius: 9999px;
+    background-color: @lockscreen_entry_background;
+    border: 2px solid @lockscreen_accent;
+}
+
+.lockscreen-avatar-fallback {
+    color: @lockscreen_muted_text;
+}
+
+.lockscreen-power-button {
+    background-color: @lockscreen_entry_background;
+    border: 1px solid @lockscreen_entry_border;
+    color: @lockscreen_text;
+}
+
+.lockscreen-power-button:hover {
+    border-color: @lockscreen_accent;
+}
+
+/* Failure shake on the password column. */
+@keyframes lockscreen-shake {
+    0%, 100% { margin-left: 0; margin-right: 0; }
+    20%      { margin-left: 8px; margin-right: -8px; }
+    40%      { margin-left: -8px; margin-right: 8px; }
+    60%      { margin-left: 6px; margin-right: -6px; }
+    80%      { margin-left: -4px; margin-right: 4px; }
+}
+
+.shake {
+    animation: lockscreen-shake 0.4s ease-in-out 1;
+}

@@ -1,0 +1,17 @@
+{
+    "lockscreen.background":           "#101218ff",
+    "lockscreen.background-image":     "",
+    "lockscreen.text":                 "#ffffffff",
+    "lockscreen.muted-text":           "#a0a4adff",
+    "lockscreen.entry-background":     "#1c1f28e0",
+    "lockscreen.entry-border":         "#2a2f3aff",
+    "lockscreen.entry-error":          "#e25a5aff",
+    "lockscreen.accent":               "#7aa2f7ff",
+    "lockscreen.clock-font-size":      96,
+    "lockscreen.date-font-size":       18,
+    "lockscreen.avatar-size":          96,
+    "lockscreen.corner-radius":        16,
+    "lockscreen.idle-timeout-ms":      300000,
+    "lockscreen.failure-backoff-ms":   3000,
+    "lockscreen.show-power-menu":      true
+}

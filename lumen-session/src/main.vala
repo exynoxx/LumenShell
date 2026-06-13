@@ -87,6 +87,16 @@ namespace LumenSession {
         run_best_effort("systemctl --user import-environment " + vars);
         run_best_effort("dbus-update-activation-environment --systemd " + vars);
         run_best_effort("systemctl --user start lumenshell-session.target");
+
+        // Stamp the chosen session onto the user's AccountsService record so a
+        // Wayland login manager preselects LumenShell next time. This is the one
+        // responsibility the (junked) lumen-greeter would have owned — the
+        // greeter is unprivileged and read-only w.r.t. AccountsService, so the
+        // *session* self-sets it instead (greeter PLAN, "Deferred"). Guarded on
+        // our own desktop id so a dev-run under another DE never clobbers the
+        // user's real last-session; fail-soft inside AccountsClient.
+        if (Environment.get_variable("XDG_CURRENT_DESKTOP") == "LumenShell")
+            AccountsClient.set_current_session("lumenshell");
     }
 
     static void run_best_effort(string cmdline) {

@@ -39,3 +39,10 @@ option(
   value: true,
   description: 'Build the wayfire-default-focus Wayfire plugin (needs Wayfire 0.10 dev headers and wlr-protocols).',
 )
+
+option(
+  'with_lockscreen',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build lumen-lockscreen + lumen-lockctl (ext-session-lock-v1 lock screen; needs gtk4-session-lock and pam at build time). Auto: built only when both are present.',
+)
