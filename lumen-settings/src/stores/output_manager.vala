@@ -188,6 +188,11 @@ namespace LumenSettings {
 
         public bool available() { return WLHooks.output_mgmt_available(); }
 
+        // Roundtrip the private queue so any pending head/done events (e.g. a
+        // monitor hotplug) get dispatched. Cheap; safe to call on a timer — it
+        // is the same roundtrip apply_all() already does on GDK's wl_display.
+        public void pump() { WLHooks.output_mgmt_refresh(); }
+
         public Gee.ArrayList<OutputInfo> enumerate() {
             WLHooks.output_mgmt_refresh();
 

@@ -25,6 +25,9 @@ namespace LumenSettings {
         uint countdown_id = 0;
         int countdown_left = 0;
 
+        uint watch_id = 0;            // periodic queue pump that surfaces hotplugs
+        bool reload_pending = false;
+
         public Gtk.Widget build() {
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
                 margin_top = 18, margin_bottom = 18,
@@ -94,10 +97,51 @@ namespace LumenSettings {
             box.append(bar);
 
             rebuild_controls();
+            start_output_watch();
             return box;
         }
 
         public override string? restart_target() { return null; }
+
+        // ---- live hotplug watch --------------------------------------------
+
+        // Re-enumerate the page when a monitor is plugged in or unplugged while
+        // the window is open. wlhooks fires `outputs_changed` only when the
+        // connected SET of heads changes — but it only fires while the private
+        // queue is dispatched, so a 1 s roundtrip drives it. Self-contained: no
+        // fd watch to contend with GDK's read of the shared wl_display.
+        void start_output_watch() {
+            if (watch_id != 0) return;
+            WLHooks.output_mgmt_register_outputs_changed(on_outputs_changed);
+            watch_id = Timeout.add_seconds(1, () => {
+                wlr.pump();
+                return GLib.Source.CONTINUE;
+            });
+        }
+
+        void on_outputs_changed() {
+            // Fired from inside pump()'s roundtrip; defer the reload to idle so
+            // we never re-enter wl_display_roundtrip_queue reentrantly.
+            if (reload_pending) return;
+            reload_pending = true;
+            Idle.add(() => { reload_pending = false; reload_outputs(); return GLib.Source.REMOVE; });
+        }
+
+        // A monitor was added/removed: the live layout is now authoritative, so
+        // discard any unsaved edits and rebuild from the new set.
+        void reload_outputs() {
+            DiagLog.log("page: outputs changed — reloading display list");
+            stop_countdown();
+            if (confirm_revealer != null) confirm_revealer.reveal_child = false;
+            baseline = wlr.enumerate();
+            working  = clone_list(baseline);
+            primary_name = read_primary();
+            sel = working.size > 0 ? 0 : -1;
+            arranger.set_outputs(working);
+            rebuild_controls();
+            dirty = false;
+            if (apply_btn != null) apply_btn.sensitive = false;
+        }
 
         // ---- controls -------------------------------------------------------
 
