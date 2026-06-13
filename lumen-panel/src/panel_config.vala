@@ -18,6 +18,9 @@ public class PanelConfig {
     // windows on its own monitor.
     public static bool multi_monitor = false;
     public static bool per_monitor_apps = false;
+    // When true (and multi_monitor is on) every secondary panel also shows the
+    // tray area — minus the system-tray (SNI) icons, which stay on the host.
+    public static bool tray_all_monitors = false;
 
     // When true a persistent launcher button (app glyph) sits at the left edge
     // of the panel; clicking it toggles the app-drawer reveal (curtain/slide
@@ -30,6 +33,7 @@ public class PanelConfig {
         open_indicator = parse_indicator(Ini.get_key_value(ini, "app.open-indicator"));
         multi_monitor    = Ini.get_key_value(ini, "behavior.multi-monitor")    == "true";
         per_monitor_apps = Ini.get_key_value(ini, "behavior.per-monitor-apps") == "true";
+        tray_all_monitors = Ini.get_key_value(ini, "behavior.tray-all-monitors") == "true";
         show_launcher    = Ini.get_key_value(ini, "app.launcher-button")       == "true";
     }
 

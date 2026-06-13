@@ -174,14 +174,26 @@ namespace LumenSettings {
             per_row.sw.set_sensitive(multi_initial);
             multi_group.add_row(per_row);
 
+            var tray_initial = (store.get_value(SECTION, "behavior.tray-all-monitors") ?? "false") == "true";
+            var tray_row = new SwitchRow("Show tray on every screen",
+                "Each monitor's panel shows the tray area (system-tray icons stay on the primary)", tray_initial);
+            tray_row.sw.set_sensitive(multi_initial);
+            multi_group.add_row(tray_row);
+
             multi_row.toggled.connect((v) => {
                 store.set_value(SECTION, "behavior.multi-monitor", v ? "true" : "false");
                 store.save();
                 per_row.sw.set_sensitive(v);
+                tray_row.sw.set_sensitive(v);
                 if (!v && per_row.sw.active) per_row.sw.active = false;
+                if (!v && tray_row.sw.active) tray_row.sw.active = false;
             });
             per_row.toggled.connect((v) => {
                 store.set_value(SECTION, "behavior.per-monitor-apps", v ? "true" : "false");
+                store.save();
+            });
+            tray_row.toggled.connect((v) => {
+                store.set_value(SECTION, "behavior.tray-all-monitors", v ? "true" : "false");
                 store.save();
             });
 
