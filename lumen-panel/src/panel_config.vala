@@ -27,6 +27,12 @@ public class PanelConfig {
     // peek). Only effective in a PANEL_PEEK build.
     public static bool show_launcher = false;
 
+    // strftime pattern the clock renders with. The default writes the weekday
+    // with letters (e.g. "Sat 13 Jun  14:30"). Kept in sync with the
+    // lumen-settings panel page default.
+    public const string DEFAULT_CLOCK_FORMAT = "%a %d %b  %H:%M";
+    public static string clock_format = DEFAULT_CLOCK_FORMAT;
+
     public static void load () {
         var ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
         at_top = Ini.get_key_value(ini, "position") == "top";
@@ -35,6 +41,8 @@ public class PanelConfig {
         per_monitor_apps = Ini.get_key_value(ini, "behavior.per-monitor-apps") == "true";
         tray_all_monitors = Ini.get_key_value(ini, "behavior.tray-all-monitors") == "true";
         show_launcher    = Ini.get_key_value(ini, "app.launcher-button")       == "true";
+        var fmt = Ini.get_key_value(ini, "clock.format");
+        if (fmt != null && fmt.strip() != "") clock_format = fmt;
     }
 
     static OpenIndicator parse_indicator (string? s) {

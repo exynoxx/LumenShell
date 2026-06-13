@@ -91,7 +91,7 @@ namespace LumenSettings {
 
             var clock_group = new BoxedList("Clock");
 
-            var fmt_initial = store.get_value(SECTION, "clock.format") ?? "%H:%M";
+            var fmt_initial = store.get_value(SECTION, "clock.format") ?? "%a %d %b  %H:%M";
             var fmt_row = new EntryRow("Format", fmt_initial, "strftime pattern, e.g. %H:%M or %Y-%m-%d %H:%M");
             fmt_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "clock.format", v);
