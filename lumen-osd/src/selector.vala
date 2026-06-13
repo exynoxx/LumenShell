@@ -56,10 +56,13 @@ public class Selector : Gtk.Box {
                 var img = new Gtk.Image.from_icon_name(icons[i]);
                 img.pixel_size = 46;
                 img.set_halign(Gtk.Align.CENTER);
+                img.set_vexpand(true);
+                img.set_valign(Gtk.Align.CENTER);
                 tile.append(img);
 
                 var lbl = new Gtk.Label(labels[i]);
                 lbl.set_halign(Gtk.Align.CENTER);
+                lbl.set_valign(Gtk.Align.END);
                 lbl.set_justify(Gtk.Justification.CENTER);
                 lbl.set_wrap(true);
                 lbl.set_max_width_chars(12);

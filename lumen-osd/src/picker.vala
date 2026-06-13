@@ -19,16 +19,18 @@ public class Picker : Object {
     // Mirrors lumen-osdctl's DisplayCtl.Mode (icons/labels) and SELECTOR_MODES
     // order. Three stable entries — duplicated across the process boundary the
     // same way the old plugin held its own copy.
-    private const string[] KEYS   = { "internal", "extend", "external" };
+    private const string[] KEYS   = { "internal", "extend", "external", "abort" };
     private const string[] ICONS  = {
         "video-single-display-symbolic",
         "video-joined-displays-symbolic",
         "video-display-symbolic",
+        "window-close-symbolic",
     };
     private const string[] LABELS = {
         "Built-in display",
         "Extend",
         "External display",
+        "",
     };
 
     // Safety net: if key activity stops for this long (a missed Super-release,
@@ -115,6 +117,8 @@ public class Picker : Object {
 
     private void commit() {
         if (!_active) return;
+        // The trailing "abort" tile dismisses without applying anything.
+        if (KEYS[index] == "abort") { cancel(); return; }
         _active    = false;
         last_index = index;
         cancel_dismiss();
