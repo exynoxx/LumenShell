@@ -1,13 +1,5 @@
 using GLib;
 
-/**
- * BluetoothService — single bluetoothctl ownership shared by BluetoothTray
- * and BluetoothPage.
- *
- * Mirrors WifiService: one periodic poll of power + connection state in a
- * background thread, plus on-demand device scans. state_changed fires on the
- * main thread after each result is applied.
- */
 public class BluetoothService : GLib.Object {
 
     public signal void state_changed();
@@ -34,7 +26,6 @@ public class BluetoothService : GLib.Object {
         });
     }
 
-    /** Power the adapter on/off, then refresh. */
     public void set_power(bool on) {
         // Optimistic: reflect the intent immediately so the toggle doesn't
         // bounce back while the (blocking) rfkill+bluetoothctl sequence runs.
@@ -62,7 +53,6 @@ public class BluetoothService : GLib.Object {
         schedule_rescan(1000);
     }
 
-    /** Pair a new device (pair→trust→connect) on a background thread. */
     public void pair_device(string mac) {
         new GLib.Thread<void>("bt-pair", () => {
             btctl.pair(mac);
@@ -73,13 +63,11 @@ public class BluetoothService : GLib.Object {
         });
     }
 
-    /** Forget a device. */
     public void remove_device(string mac) {
         btctl.remove(mac);
         schedule_rescan(800);
     }
 
-    /** Full device list refresh. rescan=true runs a timed discovery scan first. */
     public void refresh_scan(bool rescan = false) {
         if (scan_in_flight) return;
         scan_in_flight = true;

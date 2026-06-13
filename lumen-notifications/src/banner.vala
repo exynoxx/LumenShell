@@ -14,7 +14,6 @@ public class Banner : Gtk.Box {
     private bool           has_actions = false;
     private string[]       current_actions = {};
 
-    // Leave (slide-out / fade-out) animation state.
     private bool         leaving = false;
     private DismissStyle leave_style = DismissStyle.SLIDE_RIGHT;
     private int64        leave_started_us = 0;
@@ -31,7 +30,6 @@ public class Banner : Gtk.Box {
         margin_top    = 0;
         margin_bottom = 0;
 
-        // -- top row: icon + text column ---------------------------------
         var top_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, Theme.spacing);
         top_row.margin_start  = Theme.padding;
         top_row.margin_end    = Theme.padding;
@@ -67,8 +65,6 @@ public class Banner : Gtk.Box {
         top_row.append(text_col);
         append(top_row);
 
-        // -- action row -------------------------------------------------
-        // GNOME-shell-style: edge-to-edge, full width, buttons share space.
         actions_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
         actions_row.set_halign(Gtk.Align.FILL);
         actions_row.set_hexpand(true);
@@ -136,7 +132,6 @@ public class Banner : Gtk.Box {
     private void rebuild_actions(string[] actions) {
         if (actions_equal(actions, current_actions)) return;
 
-        // Strip previous buttons.
         Gtk.Widget? child = actions_row.get_first_child();
         while (child != null) {
             var next = ((!) child).get_next_sibling();

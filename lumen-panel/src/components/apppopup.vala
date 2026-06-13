@@ -1,9 +1,7 @@
 using Gtk;
 
-// Right-click context menu for an AppEntry. Wraps Gtk.Popover with three
-// buttons (Pin/Unpin, New window, Close windows). Edge-clamping is handled
-// by GTK; on Wayfire with a bottom-anchored layer surface the popover
-// extends upward correctly.
+// Edge-clamping is handled by GTK; on Wayfire with a bottom-anchored layer
+// surface the popover extends upward correctly.
 public class AppPopupMenu : Gtk.Popover {
 
     weak AppEntry entry;

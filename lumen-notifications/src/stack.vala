@@ -1,8 +1,6 @@
 using Gtk;
 
 /**
- * Vertical column of banner widgets.
- *
  *   - `by_id` maps id → Banner only for *active* (not-yet-leaving) banners.
  *     A banner whose leave animation is running has already been removed
  *     from this map so it does not get included in `cascade_dismiss` or
@@ -16,7 +14,6 @@ public class BannerStack : Gtk.Box {
 
     public signal void empty();
     public signal void count_changed(int active_count);
-    /** Fired when the user requests close-via-cascade for a specific id. */
     public signal void close_requested(uint32 id);
 
     private HashTable<uint32, Banner> by_id
@@ -40,10 +37,7 @@ public class BannerStack : Gtk.Box {
         return by_id.contains(id) ? by_id.get(id) : null;
     }
 
-    /**
-     * Begin the leave animation for `id` and remove the widget after it
-     * finishes. Safe to call on an unknown id (no-op).
-     */
+    /** Safe to call on an unknown id (no-op). */
     public void dismiss_banner(uint32 id) {
         if (!by_id.contains(id)) return;
         var b = by_id.get(id);
@@ -63,11 +57,7 @@ public class BannerStack : Gtk.Box {
         return (int) by_id.size();
     }
 
-    /**
-     * Walk all currently-active banners in visual (top→bottom) order and
-     * fire `close_requested(id)` for each, staggered by `Theme.cascade_ms`.
-     * Uses one repeating source rather than N independent timeouts.
-     */
+    /** Uses one repeating source rather than N independent timeouts. */
     public void cascade_dismiss() {
         uint32[] ids = {};
         Gtk.Widget? child = get_first_child();
@@ -80,7 +70,6 @@ public class BannerStack : Gtk.Box {
 
         int step = Theme.cascade_ms > 0 ? Theme.cascade_ms : 60;
         int index = 0;
-        // Fire the first immediately, then one every `step` ms.
         close_requested(ids[index++]);
         if (index >= ids.length) return;
 

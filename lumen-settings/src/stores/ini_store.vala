@@ -53,7 +53,6 @@ namespace LumenSettings {
         }
 
         public void set_value(string section, string key, string value) {
-            // 1. In-place update of existing key.
             for (int i = 0; i < lines.size; i++) {
                 var l = lines.get(i);
                 if (l.kind == "kv" && l.section == section && l.key == key) {
@@ -63,9 +62,9 @@ namespace LumenSettings {
                 }
             }
 
-            // 2. Find insertion point: last line that still belongs to <section>
-            //    (kv or raw inside section). If section header doesn't exist,
-            //    append a new one at EOF first.
+            // Find insertion point: last line that still belongs to <section>
+            // (kv or raw inside section). If section header doesn't exist,
+            // append a new one at EOF first.
             int section_start = -1;
             int insert_after  = -1;
             for (int i = 0; i < lines.size; i++) {

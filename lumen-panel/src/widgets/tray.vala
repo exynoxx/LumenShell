@@ -1,34 +1,16 @@
 using Gtk;
 
-// Page-bearing tray icon. Each icon owns a Gtk.Button to show when the tray
-// is expanded with that icon active. Implementors register with TrayBar
-// via add_paged().
 public interface IPagedTrayItem : GLib.Object {
     public abstract Gtk.Button icon_widget ();
     public abstract Gtk.Widget page_widget ();
 }
 
-// Right-aligned tray. Visual model matches the original DrawKit panel:
-// a single rounded rectangle anchored at the bottom-right of the panel
-// whose top edge grows upward when a paged icon is activated. The icon
-// row sits at the TOP of the expanded rectangle; the active page fills
-// the area BELOW the icons but still above the screen edge.
-//
-// Interactions:
-//   - Click a paged icon → its page slides in; the tray expands.
-//   - Click the currently-active icon → tray collapses.
-//   - Click another paged icon while expanded → the page-stack crossfades/
-//     slides to the new page (direction follows icon order in the stack).
-//   - ESC anywhere on the panel → tray collapses (wired by main.vala via
-//     the public collapse() entry point).
 public class TrayBar : Gtk.Box {
 
     Gtk.Box icon_row;
     public Gtk.Revealer revealer { get; private set; }
     Gtk.Stack page_stack;
 
-    // Per-paged-icon bookkeeping so we can toggle the .active CSS class on
-    // the right icon as the active page changes.
     GLib.HashTable<string, Gtk.Widget> icon_by_page =
         new GLib.HashTable<string, Gtk.Widget>(str_hash, str_equal);
     // Keeps IPagedTrayItem instances alive. Vala connects signal handlers
@@ -89,19 +71,14 @@ public class TrayBar : Gtk.Box {
         append(revealer);
     }
 
-    // Add a leaf icon (no page). E.g. Clock, Exit.
     public void add_icon (Gtk.Widget icon_w) {
         icon_row.append(icon_w);
     }
 
-    // Place the SNI app-tray area at the very left of the icon row, ahead of
-    // the predefined system trays. The widget carries its own trailing
-    // separator and hides itself when it holds no app icons.
     public void set_app_tray (Gtk.Widget app_tray) {
         icon_row.prepend(app_tray);
     }
 
-    // Add a page-bearing icon. Clicking the icon toggles its page.
     public void add_paged (IPagedTrayItem item) {
         string id = "page-%d".printf(next_page_id++);
 
@@ -118,7 +95,6 @@ public class TrayBar : Gtk.Box {
             collapse();
             return;
         }
-        // Clear previous icon's active state; mark the new one.
         if (active_page_id != null) {
             var prev = icon_by_page.lookup(active_page_id);
             if (prev != null) prev.remove_css_class("active");

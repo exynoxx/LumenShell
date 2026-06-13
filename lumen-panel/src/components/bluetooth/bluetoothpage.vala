@@ -1,15 +1,5 @@
 using Gtk;
 
-// BluetoothPage — full-panel Bluetooth manager, mirroring WifiPage.
-//
-// Layout:
-//   [Title  Scan  Power   ...   ConnectionChip]   ← header (44 px)
-//   ──────────── 1 px separator ─────────────
-//   [ BluetoothRow ... ]                           ← scrolled list (custom rows)
-//   ──────────── 1 px separator ─────────────
-//   [ <device name>        Connect/Disconnect/Pair ] ← action bar (54 px),
-//                                                      only shown when a row
-//                                                      is selected
 public class BluetoothPage : Gtk.Box {
 
     const int PAD      = 14;

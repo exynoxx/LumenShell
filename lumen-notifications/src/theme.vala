@@ -49,7 +49,6 @@ public class Theme {
 
     public static int expire_default_ms = 5000;
 
-    // Dismiss animation: slide-right or fade.
     public static DismissStyle dismiss_style = DismissStyle.SLIDE_RIGHT;
     public static int          cascade_ms       = 80;
     public static int          clear_threshold  = 3;

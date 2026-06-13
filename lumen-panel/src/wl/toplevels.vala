@@ -1,7 +1,6 @@
 using GLib;
 
-// One running window. Backed by zwlr-foreign-toplevel-management-unstable-v1
-// via wlhooks; the id is the same opaque uint32 wlhooks issues, which is what
+// The id is the same opaque uint32 wlhooks issues, which is what
 // activate/close/minimize accept.
 public class Toplevel : GLib.Object {
     public uint   id          { get; construct; }
@@ -20,8 +19,6 @@ public class Toplevel : GLib.Object {
     }
 }
 
-// Live set of toplevels. Backed by wlhooks's foreign-toplevel callbacks on the
-// GTK-owned wl_display.
 public class ToplevelStore : GLib.Object {
 
     public signal void added   (Toplevel t);

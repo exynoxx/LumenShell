@@ -1,8 +1,7 @@
 using Gtk;
 
-// 5-bar Wi-Fi signal strength indicator. Custom widget — drawing five
-// rounded rects of increasing height in a snapshot() override is cheaper
-// than building five Gtk widgets per row.
+// Drawing the bars in a snapshot() override is cheaper than building five
+// Gtk widgets per row.
 public class SignalBars : Gtk.Widget {
 
     const int BAR_COUNT = 5;

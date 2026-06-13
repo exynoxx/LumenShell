@@ -1,9 +1,5 @@
 using Gtk;
 
-// ExitPage — three round action buttons offering session-end choices:
-// Log Out (terminates the compositor → returns to the login manager),
-// Reboot, and Shutdown. Mirrors the structural pattern of the other
-// expandable tray pages (Battery / WiFi / Sound).
 public class ExitPage : Gtk.Box {
 
     const int PAD = 14;

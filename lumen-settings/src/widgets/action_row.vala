@@ -2,9 +2,6 @@ using Gtk;
 
 namespace LumenSettings {
 
-    /* GNOME-style "action row": title + optional subtitle on the left, an
-     * arbitrary trailing widget on the right. Subclasses (SwitchRow,
-     * ComboRow, ...) plug a control into set_suffix(). */
     public class ActionRow : Gtk.ListBoxRow {
         protected Gtk.Box content;
         protected Gtk.Box text_col;

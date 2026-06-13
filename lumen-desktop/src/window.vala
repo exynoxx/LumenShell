@@ -129,8 +129,7 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP,    true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.BOTTOM, true);
         // 0 = do not consume an exclusive zone; foreground windows ignore
-        // our presence when sizing. Distinct from Kickoff's -1 (which forces
-        // full-output coverage at the cost of overlapping other layers).
+        // our presence when sizing.
         GtkLayerShell.set_exclusive_zone(this, 0);
         // ON_DEMAND is the only legal keyboard mode for a BOTTOM-layer
         // surface — wlr-layer-shell forbids EXCLUSIVE below the shell
@@ -281,7 +280,6 @@ public class DesktopWindow : Gtk.ApplicationWindow {
 
         switch (keyval) {
             case Gdk.Key.Escape:
-                // Close the curtain over the grid, hiding the desktop again.
                 LumenDesktop.CurtainIpc.close();
                 return true;
             case Gdk.Key.Left:

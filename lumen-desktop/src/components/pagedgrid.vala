@@ -206,9 +206,6 @@ public class PagedGrid : Gtk.Widget {
             grid.attach(tile, col, row, 1, 1);
         }
 
-        // Outer page: full bleed with edge margins matching drawkit's
-        // PADDING_EDGES_X / PADDING_EDGES_Y. The grid then spans the area
-        // inside those margins.
         var page = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
             hexpand       = true,
             vexpand       = true,

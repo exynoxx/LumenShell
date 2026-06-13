@@ -54,7 +54,7 @@ public class OsdApp : Gtk.Application {
                     stderr.printf("lumen-osd: register_object failed: %s\n", e.message);
                 }
             },
-            () => { /* name acquired */ },
+            () => { },
             () => {
                 stderr.printf("lumen-osd: could not acquire org.lumenshell.OSD (already running?)\n");
                 quit();

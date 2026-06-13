@@ -1,8 +1,5 @@
 using Gtk;
 
-// One scanned-network row. Custom-drawn to match the original UiSignalBars +
-// SSID + lock + (optional) disconnect button layout. Hover and selected
-// states are drawn directly in snapshot() — no CSS list-row chrome.
 public class WifiRow : Gtk.Widget {
 
     public const int ROW_H = 36;

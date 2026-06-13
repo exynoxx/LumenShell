@@ -7,8 +7,6 @@ public class Backends {
         public bool   muted;
     }
 
-    // ---- shared helpers ----
-
     private static string run_sync(string cmd) {
         string outp = "";
         try {
@@ -24,8 +22,6 @@ public class Backends {
             Process.spawn_command_line_async(cmd);
         } catch (SpawnError e) {}
     }
-
-    // ---- pactl: sink (output volume) ----
 
     public static State output_volume_raise(int step) {
         run_sync("pactl set-sink-volume @DEFAULT_SINK@ +%d%%".printf(step));
@@ -51,8 +47,6 @@ public class Backends {
                 "env LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@").down().contains("yes")
         };
     }
-
-    // ---- pactl: source (mic) ----
 
     public static State input_volume_raise(int step) {
         run_sync("pactl set-source-volume @DEFAULT_SOURCE@ +%d%%".printf(step));
@@ -92,8 +86,6 @@ public class Backends {
         return 0;
     }
 
-    // ---- brightnessctl ----
-
     public static State brightness_raise(int step) {
         run_sync("brightnessctl set %d%%+".printf(step));
         return query_brightness("");
@@ -124,8 +116,6 @@ public class Backends {
         }
         return State() { value = v, muted = false };
     }
-
-    // ---- caps lock (sysfs) ----
 
     public static bool caps_lock_on() {
         try {

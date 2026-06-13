@@ -1,7 +1,6 @@
 using Gtk;
 using Gee;
 
-// One taskbar entry. Drives icon, hover, active-window underline, popover.
 public class AppEntry : Gtk.Button {
 
     public const int SLOT_WIDTH  = 70;

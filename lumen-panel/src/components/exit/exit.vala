@@ -1,7 +1,5 @@
 using Gtk;
 
-// Right-most tray item — expands a page offering session-end actions
-// (log out, reboot, shutdown).
 public class ExitTray : GLib.Object, IPagedTrayItem {
     TrayButton icon;
     ExitPage page;

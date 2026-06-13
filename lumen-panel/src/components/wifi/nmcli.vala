@@ -10,9 +10,6 @@ public enum WifiConnectResult {
     FAILED
 }
 
-/**
- * WifiNet — a scanned network record.
- */
 public class WifiNet : GLib.Object {
     public string ssid;
     public int    signal;
@@ -32,11 +29,6 @@ public class WifiNet : GLib.Object {
     }
 }
 
-/**
- * NmcliClient — all nmcli shelling in one place.
- *
- * Shared by WifiTray (for icon state) and WifiPage (for the full network list).
- */
 public class NmcliClient : GLib.Object {
 
     /**
@@ -78,7 +70,6 @@ public class NmcliClient : GLib.Object {
         return parts;
     }
 
-    /** Return the SSID of the currently connected WiFi network, or "". */
     public string query_connected() {
         string out_str = "";
         try {
@@ -95,7 +86,6 @@ public class NmcliClient : GLib.Object {
         return "";
     }
 
-    /** True if any wired ethernet device is in the connected state. */
     public bool query_ethernet_connected() {
         string out_str = "";
         try {
@@ -112,7 +102,6 @@ public class NmcliClient : GLib.Object {
         return false;
     }
 
-    /** Return the name of the WiFi network interface, or "". */
     public string get_wifi_device() {
         string out_str = "";
         try {
@@ -129,7 +118,6 @@ public class NmcliClient : GLib.Object {
         return "";
     }
 
-    /** True if the WiFi radio is enabled (`nmcli radio wifi` → "enabled"). */
     public bool query_enabled() {
         string out_str = "";
         try {
@@ -139,9 +127,8 @@ public class NmcliClient : GLib.Object {
     }
 
     /**
-     * Enable or disable the WiFi radio. Blocking — call from a background
-     * thread. rfkill unblock clears any hard/soft block first, mirroring the
-     * bluetooth power path, otherwise `nmcli radio wifi on` can no-op.
+     * Blocking — call from a background thread. rfkill unblock clears any
+     * hard/soft block first, otherwise `nmcli radio wifi on` can no-op.
      */
     public void set_enabled(bool on) {
         if (on) run_sync(new string[] { "rfkill", "unblock", "wifi" });
@@ -157,7 +144,7 @@ public class NmcliClient : GLib.Object {
         } catch (SpawnError e) {}
     }
 
-    /** Ask nmcli to re-probe visible networks. Blocking. */
+    /** Blocking. */
     public void rescan() {
         Utils.spawn_argv(new string[] { "nmcli", "device", "wifi", "rescan" });
     }
@@ -228,14 +215,12 @@ public class NmcliClient : GLib.Object {
         return saved;
     }
 
-    /** Disconnect the wifi device, if any. No-op when there is no wifi device. */
     public void disconnect() {
         string dev = get_wifi_device();
         if (dev == "") return;
         Utils.spawn_argv(new string[] { "nmcli", "device", "disconnect", dev });
     }
 
-    /** Scan and return the list of visible networks (de-duplicated by SSID). */
     public WifiNet[] fetch_nets() {
         string out_str = "";
         try {

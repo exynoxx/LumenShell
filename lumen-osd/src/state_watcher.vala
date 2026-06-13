@@ -46,11 +46,6 @@ public class StateWatcher : Object {
         }
     }
 
-    /**
-     * Find an entry under `parent` matching `suffix` (or any entry exposing
-     * `brightness` when `suffix` is null), and capture its brightness path
-     * plus optional max_brightness reading.
-     */
     private static void discover(out string? path, out int max,
                                  string parent, string? suffix,
                                  bool read_max) {

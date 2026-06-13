@@ -2,7 +2,6 @@ using Gtk;
 
 namespace LumenSettings {
 
-    /* Vertical container with a group title above a boxed listbox. */
     public class BoxedList : Gtk.Box {
         public Gtk.ListBox list { get; private set; }
 

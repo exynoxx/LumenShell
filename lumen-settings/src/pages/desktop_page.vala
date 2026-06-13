@@ -92,7 +92,7 @@ namespace LumenSettings {
         }
 
         // Add/remove a plugin from wayfire.ini's [core] plugins list, preserving
-        // order and dropping duplicates. Mirrors WayfirePluginsPage.set_enabled.
+        // order and dropping duplicates.
         void set_plugin_enabled(string name, bool on) {
             var raw = wf_store.get_value("core", "plugins") ?? "";
             var seen = new Gee.HashSet<string>();

@@ -1,8 +1,5 @@
 using Gtk;
 
-// Snapshot-drawn progress bar matching the original DrawKit UiProgressBar.
-// Rounded-rect track (always full width) + rounded-rect fill (proportional)
-// + small percentage label centered vertically on the right side of the bar.
 public class LumenProgressBar : Gtk.Widget {
 
     int _value = 0;
@@ -32,7 +29,6 @@ public class LumenProgressBar : Gtk.Widget {
 
         float radius = (float) int.min(h / 2, 12);
 
-        // Track
         var track_rect = Graphene.Rect();
         track_rect.init(0, 0, w, h);
         var track_rr = Gsk.RoundedRect();
@@ -41,7 +37,6 @@ public class LumenProgressBar : Gtk.Widget {
         s.append_color(track_color, track_rect);
         s.pop();
 
-        // Fill
         int fill_w = (int) (w * _value / 100.0f);
         if (fill_w > 0) {
             var fill_rect = Graphene.Rect();
@@ -53,7 +48,6 @@ public class LumenProgressBar : Gtk.Widget {
             s.pop();
         }
 
-        // Embedded percentage label, right-aligned with 8 px inset.
         var layout = create_pango_layout(null);
         var attrs = new Pango.AttrList();
         attrs.insert(Pango.AttrSize.new_absolute(11 * Pango.SCALE));
