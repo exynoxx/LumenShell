@@ -267,6 +267,10 @@ public class AppEntry : Gtk.Button {
     // its icon behind the real one, offset up-and-left, so a multi-window app
     // reads as a stack of papers at a glance.
     const int STACK_OFFSET = 4;     // px diagonal step per back layer
+    // The back copies all sit up-and-left of the front, so the group's bounding
+    // box leans into the top-left corner. Shift the whole icon group back down-
+    // and-right by half the stack's total span so it reads as centered.
+    const float STACK_RECENTER = STACK_OFFSET;  // == (STACK_OFFSET * 2) / 2
 
     public override void snapshot (Gtk.Snapshot s) {
         // Drag-to-reorder: shift everything we draw by the current offset (and
@@ -287,8 +291,18 @@ public class AppEntry : Gtk.Button {
             draw_glass(s);
         }
 
+        // Recenter the whole icon group (front + back copies) for multi-window
+        // apps so the up-and-left stack doesn't lean into the corner.
+        bool stacked = window_ids.size > 1 && icon_paintable != null;
+        if (stacked) {
+            s.save();
+            var r = Graphene.Point();
+            r.init(STACK_RECENTER, STACK_RECENTER);
+            s.translate(r);
+        }
+
         // Back copies first so the real Gtk.Image (front) draws on top.
-        if (window_ids.size > 1 && icon_paintable != null) {
+        if (stacked) {
             float cx = (get_width()  - ICON_SIZE) / 2f;
             float cy = (get_height() - ICON_SIZE) / 2f;
             for (int layer = 2; layer >= 1; layer--) {   // furthest first
@@ -302,6 +316,8 @@ public class AppEntry : Gtk.Button {
         }
 
         base.snapshot(s);
+
+        if (stacked) s.restore();  // stack recenter
         if (is_active()) {
             var rect = Graphene.Rect();
             rect.init(9, get_height() - UNDERLINE_H, get_width() - 18, UNDERLINE_H);
