@@ -39,9 +39,11 @@ namespace LumenSettings {
                 return box;
             }
 
+            DiagLog.log("page: build() — enumerating displays");
             baseline = wlr.enumerate();
             working = clone_list(baseline);
             primary_name = read_primary();
+            DiagLog.log("page: primary=%s", primary_name != "" ? primary_name : "(none)");
             if (working.size > 0) sel = 0;
 
             arranger = new DisplayArranger();
@@ -152,14 +154,14 @@ namespace LumenSettings {
                 string[] fvalues = new string[rmodes.size];
                 for (int i = 0; i < rmodes.size; i++) {
                     flabels[i] = rmodes.get(i).refresh_label();
-                    fvalues[i] = "%.3f".printf(rmodes.get(i).refresh);
+                    fvalues[i] = rmodes.get(i).refresh_key();
                 }
-                var rinit = "%.3f".printf(o.current_mode.refresh);
+                var rinit = o.current_mode.refresh_key();
                 var ref_row = new ComboRow("Refresh rate", flabels, fvalues, rinit, "");
                 ref_row.value_changed.connect((v) => {
                     if (building) return;
                     foreach (var m in rmodes) {
-                        if ("%.3f".printf(m.refresh) == v) { o.current_mode = m; break; }
+                        if (m.refresh_key() == v) { o.current_mode = m; break; }
                     }
                     mark_dirty();
                 });
@@ -217,6 +219,7 @@ namespace LumenSettings {
         // ---- apply / revert -------------------------------------------------
 
         void on_apply() {
+            log_working("apply requested");
             var err = wlr.apply_all(working);
             if (err != null) {
                 confirm_label.label = "Failed to apply: " + err;
@@ -242,6 +245,7 @@ namespace LumenSettings {
         }
 
         void on_keep() {
+            DiagLog.log("page: KEEP — persisting to disk");
             stop_countdown();
             persist();
             baseline = clone_list(working);
@@ -251,6 +255,7 @@ namespace LumenSettings {
         }
 
         void on_revert() {
+            DiagLog.log("page: REVERT — restoring baseline (no disk write)");
             stop_countdown();
             wlr.apply_all(baseline);
             working = clone_list(baseline);
@@ -274,6 +279,7 @@ namespace LumenSettings {
                 var sect = "output:" + o.name;
                 if (!o.enabled) {
                     wf.set_value(sect, "mode", "off");
+                    DiagLog.log("persist: [%s] mode=off", sect);
                     continue;
                 }
                 if (o.current_mode != null) {
@@ -281,12 +287,29 @@ namespace LumenSettings {
                 }
                 wf.set_value(sect, "position", "%d,%d".printf(o.pos_x, o.pos_y));
                 wf.set_value(sect, "transform", o.transform.to_arg());
+                DiagLog.log("persist: [%s] mode=%s position=%d,%d transform=%s", sect,
+                    o.current_mode != null ? o.current_mode.to_wayfire_arg() : "(none)",
+                    o.pos_x, o.pos_y, o.transform.to_arg());
             }
             wf.save();
+            DiagLog.log("persist: wrote %s", Paths.wayfire_ini());
 
             var disp = new IniStore(Paths.display_ini());
             disp.set_value("display", "primary", primary_name);
             disp.save();
+            DiagLog.log("persist: wrote %s (primary=%s)", Paths.display_ini(), primary_name);
+        }
+
+        // Snapshot the in-memory working layout to the diagnostic log.
+        void log_working(string why) {
+            DiagLog.log("page: working layout (%s):", why);
+            foreach (var o in working) {
+                DiagLog.log("    %s  enabled=%s  mode=%s  pos=%d,%d  transform=%s  primary=%s",
+                    o.name, o.enabled.to_string(),
+                    (o.enabled && o.current_mode != null) ? o.current_mode.to_arg() : "(off)",
+                    o.pos_x, o.pos_y, o.transform.to_arg(),
+                    (primary_name == o.name).to_string());
+            }
         }
 
         string read_primary() {

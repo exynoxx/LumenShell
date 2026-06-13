@@ -38,10 +38,12 @@ settings_vala_args = [
   '--pkg=json-glib-1.0',
   '--pkg=glib-2.0',
   '--pkg=gio-2.0',
+  '--pkg=posix',
 ]
 
 settings_sources = files(
   'src/main.vala',
+  'src/diaglog.vala',
   'src/window.vala',
   'src/sidebar.vala',
   'src/page.vala',

@@ -64,6 +64,7 @@ namespace LumenSettings {
     }
 
     public static int main(string[] args) {
+        DiagLog.install();
         var app = new SettingsApp();
         return app.run(args);
     }

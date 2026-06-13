@@ -11,9 +11,17 @@ namespace LumenSettings {
         public bool   preferred;
         public bool   current;
 
+        // Locale-independent 3-decimal refresh string ("59.951"). Built from
+        // integer millihertz so it never picks up a locale decimal separator
+        // (da_DK etc. would otherwise yield "59,951" via %.3f, which wlr-randr
+        // rejects with "invalid refresh rate").
+        public string refresh_key() {
+            int mhz = (int) Math.round(refresh * 1000);
+            return "%d.%03d".printf(mhz / 1000, mhz % 1000);
+        }
         // Argument for `wlr-randr --mode` (Hz form).
         public string to_arg() {
-            return "%dx%d@%.3fHz".printf(width, height, refresh);
+            return "%dx%d@%sHz".printf(width, height, refresh_key());
         }
         // Value for wayfire.ini `mode =` (Wayfire wants millihertz).
         public string to_wayfire_arg() {
@@ -178,8 +186,12 @@ namespace LumenSettings {
                     null, out outp, out errp, out status);
             } catch (SpawnError e) {
                 warning("wlr-randr: %s", e.message);
+                DiagLog.log("enumerate: spawn failed: %s", e.message);
                 return outs;
             }
+            DiagLog.log("enumerate: exit-status=%d  stderr=%s", status,
+                (errp != null && errp.strip() != "") ? errp.strip() : "(none)");
+            DiagLog.block("enumerate: raw wlr-randr output:", outp ?? "(null)");
             if (outp == null) return outs;
 
             OutputInfo? cur = null;
@@ -235,6 +247,13 @@ namespace LumenSettings {
                     cur.scale = double.parse(line.substring(6).strip());
                 }
             }
+            DiagLog.log("enumerate: parsed %d output(s):", outs.size);
+            foreach (var o in outs) {
+                DiagLog.log("    %s \"%s\"  enabled=%s  modes=%d  current=%s  pos=%d,%d  transform=%s  scale=%.2f",
+                    o.name, o.description, o.enabled.to_string(), o.modes.size,
+                    o.current_mode != null ? o.current_mode.to_arg() : "(none)",
+                    o.pos_x, o.pos_y, o.transform.to_arg(), o.scale);
+            }
             return outs;
         }
 
@@ -280,6 +299,7 @@ namespace LumenSettings {
                 argv.add("--transform"); argv.add(o.transform.to_arg());
             }
             string[] args = argv.to_array();
+            DiagLog.log("apply: %s", string.joinv(" ", args));
             string outp, errp;
             int status;
             try {
@@ -287,8 +307,12 @@ namespace LumenSettings {
                     SpawnFlags.SEARCH_PATH, null, out outp, out errp, out status);
             } catch (SpawnError e) {
                 warning("wlr-randr apply: %s", e.message);
+                DiagLog.log("apply: spawn failed: %s", e.message);
                 return e.message;
             }
+            DiagLog.log("apply: raw-status=%d  stdout=%s  stderr=%s", status,
+                (outp != null && outp.strip() != "") ? outp.strip() : "(none)",
+                (errp != null && errp.strip() != "") ? errp.strip() : "(none)");
             // exit_status is a raw waitpid() status — interpret it properly
             // rather than comparing to 0 directly.
             try {
@@ -296,8 +320,10 @@ namespace LumenSettings {
             } catch (Error e) {
                 var detail = (errp != null && errp.strip() != "") ? errp.strip() : e.message;
                 warning("wlr-randr apply failed: %s\n  cmd: %s", detail, string.joinv(" ", args));
+                DiagLog.log("apply: FAILED: %s", detail);
                 return detail;
             }
+            DiagLog.log("apply: ok");
             return null;
         }
     }
