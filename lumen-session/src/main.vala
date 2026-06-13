@@ -19,6 +19,12 @@ namespace LumenSession {
     public static int main(string[] args) {
         loop = new MainLoop();
 
+        // Session bootstrap (the Nautilus/libadwaita portal fix) MUST run first,
+        // before any Wayland work, so it happens even on a compositor without
+        // wlr-output-management-v1 (where we exit early below). See
+        // nautilus-portal-bug.md.
+        session_bootstrap();
+
         // Own Wayland connection — no GDK in this process. Mirror
         // wl_display_connect(NULL): honour $WAYLAND_DISPLAY, else "wayland-0".
         string sock = Environment.get_variable("WAYLAND_DISPLAY") ?? "wayland-0";
@@ -65,6 +71,38 @@ namespace LumenSession {
 
         WLHooks.output_mgmt_destroy();
         return 0;
+    }
+
+    // Push the Wayland session environment into systemd/D-Bus and activate
+    // lumenshell-session.target. Under Wayfire nothing else does this, so
+    // xdg-desktop-portal (Requisite=graphical-session.target) never starts and
+    // libadwaita apps (Nautilus, etc.) fall back to light theme / ScreenCast is
+    // dead. lumen-session is the right owner: it runs as a child of Wayfire, so
+    // $WAYLAND_DISPLAY and the XDG_* identity vars are already in our
+    // environment, and it outlives the GUI shell. All steps are best-effort —
+    // failures are logged, never fatal (keeps ./build dev-runs and non-systemd
+    // distros harmless). Idempotent, so a daemon restart safely re-runs it.
+    static void session_bootstrap() {
+        string vars = "WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP";
+        run_best_effort("systemctl --user import-environment " + vars);
+        run_best_effort("dbus-update-activation-environment --systemd " + vars);
+        run_best_effort("systemctl --user start lumenshell-session.target");
+    }
+
+    static void run_best_effort(string cmdline) {
+        try {
+            string[] argv;
+            Shell.parse_argv(cmdline, out argv);
+            int status;
+            Process.spawn_sync(null, argv, null,
+                SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL
+                    | SpawnFlags.STDERR_TO_DEV_NULL,
+                null, null, null, out status);
+            if (status != 0)
+                warning("lumen-session: `%s` exited with status %d", cmdline, status);
+        } catch (Error e) {
+            warning("lumen-session: could not run `%s`: %s", cmdline, e.message);
+        }
     }
 
     // Coalesce change events and defer the apply to idle so it runs OUTSIDE the
