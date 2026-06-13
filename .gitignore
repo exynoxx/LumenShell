@@ -3,3 +3,4 @@ main
 .agents
 *.md
 /swayosd*
+.claude/worktrees/
