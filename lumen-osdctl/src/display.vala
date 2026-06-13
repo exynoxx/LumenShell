@@ -274,6 +274,14 @@ public class DisplayCtl {
         return mode;
     }
 
+    // The mode the live layout currently represents (used to seed the Win+P
+    // selector highlight). null if no outputs are visible to wlr-randr.
+    public static Mode? current() {
+        var outs = enumerate();
+        if (outs.length == 0) return null;
+        return current_state(outs);
+    }
+
     // Advance to the next mode: INTERNAL_ONLY → EXTEND → EXTERNAL_ONLY → …
     // With no external display connected, stays on INTERNAL_ONLY.
     public static Mode? cycle() {

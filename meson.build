@@ -48,6 +48,8 @@ osd_sources = files(
   'lumen-osd/src/utils.vala',
   'lumen-osd/src/theme.vala',
   'lumen-osd/src/pill.vala',
+  'lumen-osd/src/selector.vala',
+  'lumen-osd/src/picker.vala',
   'lumen-osd/src/presenter.vala',
   'lumen-osd/src/dbus.vala',
   'lumen-osd/src/state_watcher.vala',

@@ -80,7 +80,9 @@ public class Theme {
 
     public static string generate_root_css() {
         return (".lumen-osd-root { background-color: transparent; }" +
-                ".lumen-osd-root label { color: %s; }").printf(text.to_string());
+                ".lumen-osd-root label { color: %s; }" +
+                ".lumen-osd-root image { color: %s; }").printf(
+                    text.to_string(), text.to_string());
     }
 
     private static void apply_int(string key, int v) {
