@@ -66,6 +66,10 @@ public class Selector : Gtk.Box {
                 lbl.set_justify(Gtk.Justification.CENTER);
                 lbl.set_wrap(true);
                 lbl.set_max_width_chars(12);
+                // An empty label (the abort tile) must not reserve a line of
+                // height, or the vexpanding icon would centre above it instead
+                // of in the middle of the box.
+                lbl.set_visible(labels[i] != "");
                 tile.append(lbl);
 
                 int idx = i;
@@ -88,6 +92,7 @@ public class Selector : Gtk.Box {
                 img.set_from_icon_name(icons[i]);
                 var lbl = (Gtk.Label) img.get_next_sibling();
                 lbl.set_text(labels[i]);
+                lbl.set_visible(labels[i] != "");
             }
         }
 

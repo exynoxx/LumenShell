@@ -202,8 +202,140 @@ public class DisplayCtl {
         return mode;
     }
 
+    /* ---- Remembered EXTEND arrangement ---------------------------------- *
+     * The canned builder below lays outputs left-to-right at x=0,0 — fine the
+     * first time, but it would clobber any custom extended arrangement (a
+     * monitor placed left of the laptop, stacked vertically, a non-default
+     * resolution, …). So whenever the Win+P picker observes a live EXTEND
+     * state we snapshot each output's position + mode, keyed by the connected
+     * SET, and restore that snapshot when the user cycles back to EXTEND. */
+
+    private class SavedPos {
+        public int x; public int y; public int w; public int h; public int mhz;
+    }
+
+    private static string extend_state_path() {
+        return Environment.get_user_config_dir() + "/lumen-shell/display-extend.conf";
+    }
+
+    // Order-independent key for the connected set (sorted connector names).
+    private static string set_key(GLib.GenericArray<Out> outs) {
+        int n = outs.length;
+        var names = new string[n];
+        for (int i = 0; i < n; i++) names[i] = outs.get(i).name;
+        for (int i = 1; i < n; i++) {           // insertion sort (n is tiny)
+            string key = names[i];
+            int j = i - 1;
+            while (j >= 0 && strcmp(names[j], key) > 0) { names[j + 1] = names[j]; j--; }
+            names[j + 1] = key;
+        }
+        return string.joinv("|", names);
+    }
+
+    // Persist the current extended layout if (and only if) we're live-EXTEND.
+    private static void maybe_save_extend(GLib.GenericArray<Out> outs) {
+        if (current_state(outs) != Mode.EXTEND) return;
+
+        var kf = new KeyFile();
+        var path = extend_state_path();
+        try { kf.load_from_file(path, KeyFileFlags.NONE); } catch (Error e) { /* fresh file */ }
+
+        string grp = set_key(outs);
+        if (kf.has_group(grp)) { try { kf.remove_group(grp); } catch (Error e) {} }
+
+        for (int i = 0; i < outs.length; i++) {
+            var o = outs.get(i);
+            var m = o.current_mode;
+            int w   = m != null ? m.width : 0;
+            int h   = m != null ? m.height : 0;
+            int mhz = m != null ? (int) Math.round(m.refresh * 1000) : 0;
+            // Semicolon-separated, plain ints — locale-independent on purpose.
+            kf.set_string(grp, o.name, "%d;%d;%d;%d;%d".printf(o.pos_x, o.pos_y, w, h, mhz));
+        }
+
+        try {
+            DirUtils.create_with_parents(Path.get_dirname(path), 0755);
+            FileUtils.set_contents(path, kf.to_data());
+        } catch (Error e) {
+            warning("display-extend save: %s", e.message);
+        }
+    }
+
+    // Load the saved layout for the current connected set, or null if there is
+    // none (or it's incomplete — every connected output must have an entry).
+    private static HashTable<string, SavedPos>? load_extend_layout(GLib.GenericArray<Out> outs) {
+        var kf = new KeyFile();
+        try { kf.load_from_file(extend_state_path(), KeyFileFlags.NONE); }
+        catch (Error e) { return null; }
+
+        string grp = set_key(outs);
+        if (!kf.has_group(grp)) return null;
+
+        var map = new HashTable<string, SavedPos>(str_hash, str_equal);
+        for (int i = 0; i < outs.length; i++) {
+            var name = outs.get(i).name;
+            string raw;
+            try {
+                if (!kf.has_key(grp, name)) return null;
+                raw = kf.get_string(grp, name);
+            } catch (Error e) { return null; }
+            var parts = raw.split(";");
+            if (parts.length < 5) return null;
+            var p = new SavedPos();
+            p.x   = int.parse(parts[0]);
+            p.y   = int.parse(parts[1]);
+            p.w   = int.parse(parts[2]);
+            p.h   = int.parse(parts[3]);
+            p.mhz = int.parse(parts[4]);
+            map.set(name, p);
+        }
+        return map;
+    }
+
+    // Closest available mode matching a saved resolution (nearest refresh),
+    // or null when none of the output's modes match that resolution anymore.
+    private static OutMode? match_mode(Out o, int w, int h, int mhz) {
+        OutMode? best = null;
+        int best_d = int.MAX;
+        for (int i = 0; i < o.modes.length; i++) {
+            var m = o.modes.get(i);
+            if (m.width != w || m.height != h) continue;
+            int d = (int) Math.round(m.refresh * 1000) - mhz;
+            if (d < 0) d = -d;
+            if (d < best_d) { best_d = d; best = m; }
+        }
+        return best;
+    }
+
+    // Re-apply a remembered extended arrangement (all outputs on, at their
+    // saved positions + modes).
+    private static bool run_extend_restore(GLib.GenericArray<Out> outs,
+                                           HashTable<string, SavedPos> saved) {
+        var argv = new GLib.GenericArray<string>();
+        argv.add("wlr-randr");
+        for (int i = 0; i < outs.length; i++) {
+            var o = outs.get(i);
+            var p = saved.get(o.name);
+            argv.add("--output"); argv.add(o.name);
+            argv.add("--on");
+            OutMode? m = (p.w > 0) ? match_mode(o, p.w, p.h, p.mhz) : null;
+            if (m == null) m = o.pick_mode();
+            if (m != null) { argv.add("--mode"); argv.add(m.to_arg()); }
+            argv.add("--pos"); argv.add("%d,%d".printf(p.x, p.y));
+        }
+        var args = new string[argv.length + 1];
+        for (int i = 0; i < argv.length; i++) args[i] = argv.get(i);
+        return run_wlr(args);
+    }
+
     // Build a single wlr-randr invocation for `mode` and run it.
     private static bool build_and_run(GLib.GenericArray<Out> outs, Mode mode) {
+        // Returning to EXTEND restores the last remembered arrangement, if any.
+        if (mode == Mode.EXTEND) {
+            var saved = load_extend_layout(outs);
+            if (saved != null) return run_extend_restore(outs, saved);
+        }
+
         // Deterministic placement order: internal first, then externals.
         var ordered = new GLib.GenericArray<Out>();
         for (int i = 0; i < outs.length; i++)
@@ -269,6 +401,9 @@ public class DisplayCtl {
             warning("wlr-randr listed no outputs (not running under Wayfire?)");
             return null;
         }
+        // Snapshot the arrangement before we change it, so a later return to
+        // EXTEND can restore whatever the user had set up.
+        maybe_save_extend(outs);
         var mode = resolve(outs, requested);
         if (!build_and_run(outs, mode)) return null;
         return mode;
@@ -279,6 +414,9 @@ public class DisplayCtl {
     public static Mode? current() {
         var outs = enumerate();
         if (outs.length == 0) return null;
+        // The picker queries this when it opens — the ideal moment to capture a
+        // live extended arrangement before the user starts cycling away from it.
+        maybe_save_extend(outs);
         return current_state(outs);
     }
 
@@ -290,6 +428,7 @@ public class DisplayCtl {
             warning("wlr-randr listed no outputs (not running under Wayfire?)");
             return null;
         }
+        maybe_save_extend(outs);
         Mode next;
         if (!has_external(outs)) {
             next = Mode.INTERNAL_ONLY;
