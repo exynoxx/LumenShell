@@ -48,24 +48,37 @@ class wayfire_default_focus_t : public wf::plugin_interface_t
             maybe_refocus();
         };
 
-    wayfire_view find_target_view()
+    bool matches_namespace(wayfire_view v)
     {
         const std::string target_ns = (std::string) ns_opt;
-        if (target_ns.empty()) return nullptr;
+        if (target_ns.empty()) return false;
+        if (!v || !v->is_mapped()) return false;
+        auto wlr_surf = v->get_wlr_surface();
+        if (!wlr_surf) return false;
+        auto ls = wlr_layer_surface_v1_try_from_wlr_surface(wlr_surf);
+        if (!ls) return false;
+        const char *ns = ls->namespace_t;
+        return ns && (target_ns == (std::string) ns);
+    }
 
+    // Prefer the matching surface on the active output. With one grid per
+    // monitor (multi-monitor lumen-desktop) all share the namespace, so without
+    // this a peek on a secondary output would have its keyboard yanked back to
+    // the primary output's grid. Falls back to the first match if the active
+    // output has none.
+    wayfire_view find_target_view()
+    {
+        auto seat = wf::get_core().seat.get();
+        wf::output_t *active = seat ? seat->get_active_output() : nullptr;
+
+        wayfire_view fallback = nullptr;
         for (auto& v : wf::get_core().get_all_views())
         {
-            if (!v || !v->is_mapped()) continue;
-            auto wlr_surf = v->get_wlr_surface();
-            if (!wlr_surf) continue;
-            auto ls = wlr_layer_surface_v1_try_from_wlr_surface(wlr_surf);
-            if (!ls) continue;
-            const char *ns = ls->namespace_t;
-            if (!ns) continue;
-            if (target_ns != ns) continue;
-            return v;
+            if (!matches_namespace(v)) continue;
+            if (!fallback) fallback = v;
+            if (active && (v->get_output() == active)) return v;
         }
-        return nullptr;
+        return fallback;
     }
 
     void maybe_refocus()
@@ -77,6 +90,14 @@ class wayfire_default_focus_t : public wf::plugin_interface_t
         // only step in when the keyboard would otherwise land nowhere.
         auto active = seat->get_active_view();
         if (active && active->is_mapped() && (active->role == wf::VIEW_ROLE_TOPLEVEL))
+        {
+            return;
+        }
+
+        // Already on one of our grids (e.g. the one a peek just focused on a
+        // secondary output) — leave it rather than dragging focus to another
+        // monitor's grid.
+        if (matches_namespace(active))
         {
             return;
         }

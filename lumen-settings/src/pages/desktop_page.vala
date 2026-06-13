@@ -31,16 +31,10 @@ namespace LumenSettings {
             group.add_row(int_row("grid.margin", "Page margin", 0, 200, 40, "px of empty space around the grid"));
             box.append(group);
 
-            var behavior = new BoxedList("Behavior");
-            var multi_initial = (store.get_value(SECTION, "behavior.multi-monitor") ?? "false") == "true";
-            var multi_row = new SwitchRow("Show app drawer on every screen",
-                "Place the app drawer on each connected monitor", multi_initial);
-            multi_row.toggled.connect((v) => {
-                store.set_value(SECTION, "behavior.multi-monitor", v ? "true" : "false");
-                store.save();
-            });
-            behavior.add_row(multi_row);
-            box.append(behavior);
+            // The app drawer is always placed on every connected monitor: the
+            // curtain/slide peek is per-output, so a grid must exist on each
+            // output for a peek there to reveal anything. (No toggle — a missing
+            // grid on the peeked monitor would just show the grey backdrop.)
 
 #if WITH_WAYFIRE_CONFIG
             // App-drawer reveal: pick curtain (doors) vs slide-down and the

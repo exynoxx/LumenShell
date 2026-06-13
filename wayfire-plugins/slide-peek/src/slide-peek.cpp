@@ -320,7 +320,10 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        const auto rel = output->get_relative_geometry();
+        // Layout (global) geometry, not relative: see capture_output() — on a
+        // non-primary output relative geometry is {0,0,W,H}, which captures the
+        // wrong region and slides the snapshot off-screen.
+        const auto rel = output->get_layout_geometry();
         H = rel.height;
         slide_sign = ((std::string) direction_opt == "bottom") ? -1 : +1;
 
@@ -491,7 +494,9 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     // (re-enabled by the caller) show through behind the sliding snapshot.
     bool capture_output()
     {
-        const auto rel = output->get_relative_geometry();
+        // Layout geometry so the correct (possibly non-primary) region of the
+        // global scene is captured rather than the top-left of the layout.
+        const auto rel = output->get_layout_geometry();
         const float scale = output->handle ? output->handle->scale : 1.0f;
         if ((rel.width <= 0) || (rel.height <= 0))
         {
