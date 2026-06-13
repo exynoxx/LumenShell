@@ -320,10 +320,15 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        // Layout (global) geometry, not relative: see capture_output() — on a
-        // non-primary output relative geometry is {0,0,W,H}, which captures the
-        // wrong region and slides the snapshot off-screen.
-        const auto rel = output->get_layout_geometry();
+        // Relative (output-local) geometry: the screenshot node is added under
+        // output->node_for_layer(), whose output_node_t renders its children in
+        // a coordinate system pinned to {0,0} and re-applies the output's layout
+        // offset itself (see wayfire/scene.hpp output_node_t). Using layout
+        // geometry here would double-offset the node by (x,y) on any output not
+        // at the layout origin, sliding the snapshot off-screen. (capture_output()
+        // renders the GLOBAL scene and so legitimately needs layout geometry —
+        // the two coordinate spaces are genuinely different.)
+        const auto rel = output->get_relative_geometry();
         H = rel.height;
         slide_sign = ((std::string) direction_opt == "bottom") ? -1 : +1;
 
