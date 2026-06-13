@@ -27,6 +27,10 @@ public class Presenter : Object {
                 pill.show_chip(icon, text != "" ? text : "Caps");
                 break;
 
+            case "display":
+                pill.show_chip(icon, text != "" ? text : "Display");
+                break;
+
             case "custom":
             default:
                 if (text != "" && value <= 0.0) {
@@ -58,6 +62,8 @@ public class Presenter : Object {
                 return "keyboard-brightness-symbolic";
             case "caps-lock":
                 return "keyboard-symbolic";
+            case "display":
+                return "video-display-symbolic";
             case "custom":
             default:
                 return "dialog-information-symbolic";

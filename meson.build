@@ -296,6 +296,7 @@ osdctl_vala_args = [
 osdctl_sources = files(
   'lumen-osdctl/src/main.vala',
   'lumen-osdctl/src/backends.vala',
+  'lumen-osdctl/src/display.vala',
   'lumen-osdctl/src/dbus_proxy.vala',
 )
 
