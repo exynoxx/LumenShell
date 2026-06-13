@@ -49,6 +49,12 @@ static struct zwlr_output_configuration_v1 *s_config = NULL;
 static int  s_apply_result = -1;   // -1 pending, 0 ok, 1 failed, 2 cancelled
 static bool s_apply_done   = false;
 
+// outputs-changed notification (headless daemon hotplug). Fired from `done`,
+// but only when the connected SET of heads changes (see compute_set_sig).
+static output_mgmt_outputs_changed_cb s_changed_cb   = NULL;
+static void                          *s_changed_data = NULL;
+static char                           s_set_sig[1024] = "";
+
 // ---- lookup helpers --------------------------------------------------------
 
 static om_head_t *head_by_name(const char *name) {
@@ -67,6 +73,33 @@ static void resolve_current_modes(void) {
         for (int m = 0; m < h->mode_count; m++) {
             if (h->modes[m].proxy == h->current_mode_proxy) { h->current_mode_idx = m; break; }
         }
+    }
+}
+
+// Signature of the currently-connected SET of heads: their connector names,
+// sorted, '|'-joined. Independent of per-head properties (position, mode,
+// enabled) so a property-only `done` — including the one our own apply
+// triggers — yields an unchanged signature and is suppressed.
+static void compute_set_sig(char *out, size_t cap) {
+    const char *names[OM_MAX_HEADS];
+    int n = 0;
+    for (int i = 0; i < s_head_count; i++) {
+        if (s_heads[i].finished) continue;
+        names[n++] = s_heads[i].name;
+    }
+    for (int i = 1; i < n; i++) {                 // insertion sort (n is tiny)
+        const char *key = names[i];
+        int j = i - 1;
+        while (j >= 0 && strcmp(names[j], key) > 0) { names[j + 1] = names[j]; j--; }
+        names[j + 1] = key;
+    }
+    size_t len = 0;
+    if (cap) out[0] = '\0';
+    for (int i = 0; i < n && len + 1 < cap; i++) {
+        int w = snprintf(out + len, cap - len, "%s%s", i ? "|" : "", names[i]);
+        if (w < 0) break;
+        len += (size_t) w;
+        if (len >= cap) { out[cap - 1] = '\0'; break; }
     }
 }
 
@@ -173,6 +206,15 @@ static void mgr_done(void *data, struct zwlr_output_manager_v1 *mgr, uint32_t se
     (void) data; (void) mgr;
     s_serial = serial; s_have_serial = true;
     resolve_current_modes();
+
+    if (s_changed_cb) {
+        char sig[sizeof s_set_sig];
+        compute_set_sig(sig, sizeof sig);
+        if (strcmp(sig, s_set_sig) != 0) {
+            snprintf(s_set_sig, sizeof s_set_sig, "%s", sig);
+            s_changed_cb(s_changed_data);
+        }
+    }
 }
 static void mgr_finished(void *data, struct zwlr_output_manager_v1 *mgr) {
     (void) data;
@@ -244,6 +286,25 @@ int wlhooks_output_mgmt_init(struct wl_display *display) {
 }
 
 bool wlhooks_output_mgmt_available(void) { return s_manager != NULL; }
+
+void wlhooks_output_mgmt_register_outputs_changed(output_mgmt_outputs_changed_cb cb, void *user_data) {
+    s_changed_cb   = cb;
+    s_changed_data = user_data;
+    // Baseline the current set so the callback does not fire for the
+    // already-connected heads (nor for the `done` our first apply triggers).
+    compute_set_sig(s_set_sig, sizeof s_set_sig);
+}
+
+int wlhooks_output_mgmt_get_fd(void) {
+    return s_display ? wl_display_get_fd(s_display) : -1;
+}
+
+int wlhooks_output_mgmt_dispatch(void) {
+    if (!s_display || !s_queue) return -1;
+    int n = wl_display_dispatch_queue(s_display, s_queue);
+    wl_display_flush(s_display);
+    return n;
+}
 
 void wlhooks_output_mgmt_refresh(void) {
     if (s_display && s_queue) wl_display_roundtrip_queue(s_display, s_queue);
@@ -345,4 +406,7 @@ void wlhooks_output_mgmt_destroy(void) {
     if (s_queue)    { wl_event_queue_destroy(s_queue); s_queue = NULL; }
     s_display = NULL;
     s_have_serial = false;
+    s_changed_cb = NULL;
+    s_changed_data = NULL;
+    s_set_sig[0] = '\0';
 }

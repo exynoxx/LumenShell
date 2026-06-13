@@ -314,6 +314,39 @@ executable('lumen-osdctl',
   install: true,
 )
 
+# --- lumen-session (headless display-profile restore daemon; no GTK) ---
+# Owns its own Wayland connection and re-applies remembered monitor layouts on
+# hotplug. Reuses the shared display-profile store (display_profiles_source,
+# defined above) — the same format lumen-settings writes on "Keep".
+session_deps = [
+  glib_dep,
+  gio_dep,
+  json_dep,
+  wayland_dep,
+  wlhooks_dep,
+  m_dep,
+]
+
+session_vala_args = [
+  '--vapidir=' + vapi_dir,
+  '--pkg=glib-2.0',
+  '--pkg=gio-2.0',
+  '--pkg=json-glib-1.0',
+  '--pkg=wayland-client',
+  '--pkg=libwlhooks',
+]
+
+session_sources = files(
+  'lumen-session/src/main.vala',
+)
+
+executable('lumen-session',
+  session_sources + display_profiles_source,
+  vala_args: session_vala_args,
+  dependencies: session_deps,
+  install: true,
+)
+
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
 
@@ -329,6 +362,28 @@ install_data(
 install_data(
   'data/xdg-desktop-portal/lumenshell-portals.conf',
   install_dir: get_option('datadir') / 'xdg-desktop-portal',
+)
+
+# Display-manager session glue. These files live under lumen-lockscreen/data/
+# (where they were first drafted) but are session-level config, owned and
+# installed here so a system install is greeter-ready:
+#   * wayland-sessions/lumenshell.desktop — the session a Wayland-aware login
+#     manager (GDM/SDDM/greetd/…) lists; its Exec= runs start-lumenshell.
+#   * start-lumenshell — the session launcher (sets XDG_*; execs wayfire).
+#   * autostart.ini — reference Wayfire [autostart] snippet (the .desktop and
+#     start-lumenshell comments point users at this installed path).
+install_data(
+  'lumen-lockscreen/data/wayland-sessions/lumenshell.desktop',
+  install_dir: get_option('datadir') / 'wayland-sessions',
+)
+install_data(
+  'lumen-lockscreen/data/bin/start-lumenshell',
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
+install_data(
+  'lumen-lockscreen/data/wayfire/lumenshell.ini.d/autostart.ini',
+  install_dir: get_option('datadir') / 'lumenshell' / 'wayfire.ini.d',
 )
 
 # --- wayfire-plugins/* (C++ Wayfire plugins) ---

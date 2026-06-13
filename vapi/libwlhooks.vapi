@@ -162,9 +162,21 @@ namespace WLHooks {
                                         int refresh_mhz, bool preferred, bool current);
     public delegate void OutputMgmtHeadId(int idx, string name, string make, string model,
                                           string serial, string description);
+    // Fired on hotplug, only when the connected SET of heads changes.
+    public delegate void OutputMgmtOutputsChanged();
 
     [CCode (cname = "wlhooks_output_mgmt_init")]
     public int output_mgmt_init (Wl.Display display);
+
+    // Headless-daemon hotplug + main-loop integration (lumen-session).
+    [CCode (cname = "wlhooks_output_mgmt_register_outputs_changed")]
+    public void output_mgmt_register_outputs_changed (OutputMgmtOutputsChanged cb);
+
+    [CCode (cname = "wlhooks_output_mgmt_get_fd")]
+    public int output_mgmt_get_fd ();
+
+    [CCode (cname = "wlhooks_output_mgmt_dispatch")]
+    public int output_mgmt_dispatch ();
 
     [CCode (cname = "wlhooks_output_mgmt_destroy")]
     public void output_mgmt_destroy ();
