@@ -217,8 +217,9 @@ namespace LumenSettings {
         // ---- apply / revert -------------------------------------------------
 
         void on_apply() {
-            if (!wlr.apply_all(working)) {
-                confirm_label.label = "Failed to apply — check that wlr-randr supports these settings.";
+            var err = wlr.apply_all(working);
+            if (err != null) {
+                confirm_label.label = "Failed to apply: " + err;
                 confirm_revealer.reveal_child = true;
                 return;
             }

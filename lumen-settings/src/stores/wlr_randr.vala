@@ -261,8 +261,9 @@ namespace LumenSettings {
             if (m.current) o.current_mode = m;
         }
 
-        // Apply a whole layout in one wlr-randr invocation (atomic).
-        public bool apply_all(Gee.ArrayList<OutputInfo> outs) {
+        // Apply a whole layout in one wlr-randr invocation (atomic). Returns
+        // null on success, or wlr-randr's error text (for the UI) on failure.
+        public string? apply_all(Gee.ArrayList<OutputInfo> outs) {
             var argv = new Gee.ArrayList<string>();
             argv.add("wlr-randr");
             foreach (var o in outs) {
@@ -286,13 +287,18 @@ namespace LumenSettings {
                     SpawnFlags.SEARCH_PATH, null, out outp, out errp, out status);
             } catch (SpawnError e) {
                 warning("wlr-randr apply: %s", e.message);
-                return false;
+                return e.message;
             }
-            if (status != 0) {
-                warning("wlr-randr apply failed (%d): %s", status, errp ?? "");
-                return false;
+            // exit_status is a raw waitpid() status — interpret it properly
+            // rather than comparing to 0 directly.
+            try {
+                Process.check_wait_status(status);
+            } catch (Error e) {
+                var detail = (errp != null && errp.strip() != "") ? errp.strip() : e.message;
+                warning("wlr-randr apply failed: %s\n  cmd: %s", detail, string.joinv(" ", args));
+                return detail;
             }
-            return true;
+            return null;
         }
     }
 }
