@@ -418,6 +418,13 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     '--pkg=pam_auth',
   ]
 
+  # Bake the resolved install datadir into the binary so the packaged default
+  # theme is found regardless of prefix (e.g. /usr vs /usr/local). Utils reads
+  # LUMEN_DATADIR; see lumen-lockscreen/src/utils.vala.
+  lockscreen_c_args = [
+    '-DLUMEN_DATADIR="' + (get_option('prefix') / get_option('datadir')) + '"',
+  ]
+
   lockscreen_sources = files(
     'lumen-lockscreen/src/main.vala',
     'lumen-lockscreen/src/manager.vala',
@@ -440,6 +447,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
   executable('lumen-lockscreen',
     lockscreen_sources + lockscreen_resources + lumen_common_sources + accounts_source,
     vala_args: lockscreen_vala_args,
+    c_args: lockscreen_c_args,
     dependencies: lockscreen_deps,
     include_directories: include_directories('lumen-lockscreen/src'),
     link_args: ['-Wl,--no-as-needed'],

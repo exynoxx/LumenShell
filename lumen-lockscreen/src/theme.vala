@@ -19,7 +19,7 @@ public class Theme {
     public static string background_image;    // fallback when no snapshot ("" = solid)
     public static int    clock_font_size   = 96;
     public static int    date_font_size    = 18;
-    public static int    avatar_size       = 96;
+    public static int    avatar_size       = 56;
     public static int    corner_radius     = 16;
     public static int    blur_radius       = 12;       // light GSK frost over the wallpaper
     public static int    idle_timeout_ms   = 300000;   // ext-idle-notify-v1; 0 disables auto-lock
