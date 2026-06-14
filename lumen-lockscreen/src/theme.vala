@@ -14,24 +14,28 @@ public class Theme {
     public static Gdk.RGBA entry_border;
     public static Gdk.RGBA entry_error;
     public static Gdk.RGBA accent;
+    public static Gdk.RGBA scrim;             // tint over the blurred desktop snapshot
 
-    public static string background_image;    // "" = solid background color
+    public static string background_image;    // fallback when no snapshot ("" = solid)
     public static int    clock_font_size   = 96;
     public static int    date_font_size    = 18;
     public static int    avatar_size       = 96;
     public static int    corner_radius     = 16;
-    public static int    idle_timeout_ms   = 300000;   // advisory; see PLAN (external idle daemon)
+    public static int    blur_radius       = 48;       // GSK blur over the desktop snapshot
+    public static int    idle_timeout_ms   = 300000;   // ext-idle-notify-v1; 0 disables auto-lock
     public static int    failure_backoff_ms = 3000;
     public static bool   show_power_menu   = true;
 
     public static void load() {
         background       = rgba(0.06f, 0.07f, 0.09f, 1.00f);
         text             = rgba(1.00f, 1.00f, 1.00f, 1.00f);
-        muted_text       = rgba(0.63f, 0.64f, 0.68f, 1.00f);
-        entry_background = rgba(0.11f, 0.12f, 0.16f, 0.88f);
-        entry_border     = rgba(0.16f, 0.18f, 0.23f, 1.00f);
-        entry_error      = rgba(0.89f, 0.35f, 0.35f, 1.00f);
-        accent           = rgba(0.48f, 0.64f, 0.97f, 1.00f);
+        muted_text       = rgba(0.90f, 0.90f, 0.94f, 0.75f);
+        // Apple-style translucent-white password pill on a blurred backdrop.
+        entry_background = rgba(1.00f, 1.00f, 1.00f, 0.18f);
+        entry_border     = rgba(1.00f, 1.00f, 1.00f, 0.28f);
+        entry_error      = rgba(0.95f, 0.42f, 0.42f, 1.00f);
+        accent           = rgba(1.00f, 1.00f, 1.00f, 0.92f);
+        scrim            = rgba(0.00f, 0.00f, 0.00f, 0.35f);
         background_image = "";
 
         var path = Utils.THEME_FILE;
@@ -82,6 +86,7 @@ public class Theme {
             case "lockscreen.entry-border":     entry_border     = (!) c; break;
             case "lockscreen.entry-error":      entry_error      = (!) c; break;
             case "lockscreen.accent":           accent           = (!) c; break;
+            case "lockscreen.scrim":            scrim            = (!) c; break;
             default:
                 warning("lumen-lockscreen: unknown theme key: %s", key);
                 break;
@@ -94,6 +99,7 @@ public class Theme {
             case "lockscreen.date-font-size":     date_font_size     = v; break;
             case "lockscreen.avatar-size":        avatar_size        = v; break;
             case "lockscreen.corner-radius":      corner_radius      = v; break;
+            case "lockscreen.blur-radius":        blur_radius        = v; break;
             case "lockscreen.idle-timeout-ms":    idle_timeout_ms    = v; break;
             case "lockscreen.failure-backoff-ms": failure_backoff_ms = v; break;
             default:

@@ -8,6 +8,7 @@
 #include "protocols/activation.h"
 #include "protocols/output.h"
 #include "protocols/idle_notify.h"
+#include "protocols/screencopy.h"
 
 struct wl_display *wl_display = NULL;
 
@@ -119,4 +120,37 @@ void wlhooks_idle_notify_unregister(void) {
 
 bool wlhooks_idle_notify_available(void) {
     return idle_notify_available();
+}
+
+// ---- lumen-lockscreen combined init ----------------------------------------
+// A lock screen needs three read-only hooks on GTK's wl_display: idle
+// (ext-idle-notify-v1, auto-lock), screencopy (wlr-screencopy, snapshot the
+// desktop to blur behind the card — the desktop is gone once the session is
+// locked, so we grab it just before), and wl_output (screencopy targets one).
+// registry_init can only run once, so they are all bound here in a single
+// pass. Use instead of wlhooks_idle_notify_init when both idle and capture are
+// wanted. Availability of each is queried separately (idle_notify_available /
+// screencopy via the capture failed callback).
+int wlhooks_lockscreen_init(struct wl_display *external) {
+    if (!external) return -1;
+    wl_display = external;
+
+    seat_set_minimal_mode(true);   // GTK owns input; we only need wl_seat for idle
+    seat_init();
+    idle_notify_init();
+    output_init();
+    screencopy_init();
+
+    registry_init(wl_display);
+    return 0;
+}
+
+void wlhooks_lockscreen_destroy(void) {
+    screencopy_cleanup();
+    output_destroy();
+    idle_notify_cleanup();
+    seat_cleanup();
+    registry_cleanup();
+    // Do NOT disconnect: GTK/GDK owns the wl_display.
+    wl_display = NULL;
 }

@@ -1,31 +1,50 @@
 using Gtk;
 
-// Password input column: the entry, a caps-lock warning, and a status line that
-// doubles as the error/working banner. Emits `submitted` on Enter. The manager
-// drives the rest (disable while authenticating, set_error / shake on failure).
+// Apple-style password pill: a translucent rounded field with a trailing
+// circular arrow "go" button. Enter OR the arrow submits — including an empty
+// string, which is how no-password users log in (PAM nullok succeeds). Below
+// it sit the caps-lock warning and the error/working status line.
 public class PasswordField : Gtk.Box {
 
     public signal void submitted(string password);
 
-    private Gtk.PasswordEntry entry;
-    private Gtk.Label caps_label;
-    private Gtk.Label status_label;
+    private Gtk.Text   entry;
+    private Gtk.Button go;
+    private Gtk.Label  caps_label;
+    private Gtk.Label  status_label;
 
     public PasswordField() {
-        Object(orientation: Gtk.Orientation.VERTICAL, spacing: 8);
+        Object(orientation: Gtk.Orientation.VERTICAL, spacing: 10);
         set_halign(Gtk.Align.CENTER);
 
-        entry = new Gtk.PasswordEntry() {
-            show_peek_icon = true,
-            placeholder_text = "Password",
-            width_request = 280,
+        // The pill: [ masked text .......... (→) ]
+        var pill = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 4) {
             halign = Gtk.Align.CENTER,
         };
-        entry.add_css_class("lockscreen-entry");
-        entry.activate.connect(() => {
-            submitted(entry.text);
-        });
-        append(entry);
+        pill.add_css_class("lockscreen-pill");
+
+        entry = new Gtk.Text() {
+            visibility = false,                 // masked
+            placeholder_text = "Enter Password",
+            hexpand = true,
+            width_request = 230,
+            valign = Gtk.Align.CENTER,
+        };
+        entry.add_css_class("lockscreen-pill-text");
+        entry.activate.connect(() => submitted(entry.text));
+        pill.append(entry);
+
+        go = new Gtk.Button() {
+            valign = Gtk.Align.CENTER,
+            tooltip_text = "Log in",
+        };
+        go.add_css_class("lockscreen-go");
+        go.add_css_class("circular");
+        go.child = new Gtk.Image.from_icon_name("go-next-symbolic") { pixel_size = 16 };
+        go.clicked.connect(() => submitted(entry.text));
+        pill.append(go);
+
+        append(pill);
 
         caps_label = new Gtk.Label("⇪ Caps Lock is on") {
             halign = Gtk.Align.CENTER,
@@ -42,7 +61,7 @@ public class PasswordField : Gtk.Box {
         append(status_label);
 
         // Caps-lock detection: GTK4 exposes no caps query, so watch the
-        // modifier state on every key event into the entry.
+        // modifier state on key events into the field.
         var keys = new Gtk.EventControllerKey();
         keys.key_pressed.connect((kv, kc, state) => {
             caps_label.visible = (state & Gdk.ModifierType.LOCK_MASK) != 0;
@@ -65,6 +84,7 @@ public class PasswordField : Gtk.Box {
     // Disable input + show a working banner while PAM runs.
     public void set_busy(bool busy) {
         entry.sensitive = !busy;
+        go.sensitive    = !busy;
         if (busy) {
             status_label.remove_css_class("lockscreen-status-error");
             status_label.label = "Signing in…";
@@ -72,9 +92,9 @@ public class PasswordField : Gtk.Box {
         }
     }
 
-    // Re-enable for another attempt (e.g. after a wrong password).
     public void set_input_enabled(bool enabled) {
         entry.sensitive = enabled;
+        go.sensitive    = enabled;
         if (enabled) focus_entry();
     }
 
@@ -82,7 +102,6 @@ public class PasswordField : Gtk.Box {
         status_label.add_css_class("lockscreen-status-error");
         status_label.label = message;
         status_label.visible = true;
-        // Brief shake to signal rejection.
         add_css_class("shake");
         Timeout.add(420, () => { remove_css_class("shake"); return Source.REMOVE; });
     }

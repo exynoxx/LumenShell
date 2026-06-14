@@ -20,7 +20,9 @@ public class LockSelfTest : Object {
         var user = AccountsClient.load_current_user();
         // PowerMenu needs a LogindBridge; in self-test the buttons are live but
         // harmless to leave unclicked.
-        var win = new LockWindow(app, true, user, new LogindBridge());
+        // No wlhooks/screencopy in self-test → null snapshot (theme image or
+        // solid scrim backdrop). Exercises the card, not the live blur.
+        var win = new LockWindow(app, true, user, new LogindBridge(), null);
         win.default_width = 1280;
         win.default_height = 800;
         win.decorated = true;

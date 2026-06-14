@@ -1,61 +1,107 @@
-/* lumen-lockscreen — stock-widget styling. Drawn chrome is plain GTK; this
- * sheet themes the bits that are stock widgets (entry, labels, power buttons).
- * Color tokens come from Theme.generate_root_css() (@define-color …). */
+/* lumen-lockscreen — Apple-style lock card over a blurred desktop snapshot.
+ * The backdrop blur + scrim are drawn in GSK (LockBackdrop). This sheet themes
+ * the stock widgets on the card. Color tokens come from Theme.generate_root_css
+ * (@define-color …). */
 
 .lockscreen-root {
-    background-color: @lockscreen_entry_background;
+    background-color: @lockscreen_text;   /* never seen (backdrop fills); opaque base */
 }
 
+.lockscreen-backdrop {
+    background-color: black;               /* shows through blur edges */
+}
+
+/* Clock (secondary outputs). */
 .lockscreen-clock {
     color: @lockscreen_text;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
-
-.lockscreen-date,
-.lockscreen-caps,
-.lockscreen-status {
+.lockscreen-date {
     color: @lockscreen_muted_text;
 }
 
+/* Name under the avatar. */
 .lockscreen-name {
     color: @lockscreen_text;
     font-weight: 600;
-    font-size: 1.1em;
+    font-size: 1.35em;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
+.lockscreen-caps,
+.lockscreen-status {
+    color: @lockscreen_muted_text;
+    font-size: 0.9em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
 .lockscreen-status-error {
     color: @lockscreen_entry_error;
 }
 
-.lockscreen-entry {
-    background-color: @lockscreen_entry_background;
-    border: 1px solid @lockscreen_entry_border;
-    border-radius: 12px;
-    padding: 6px 10px;
-    color: @lockscreen_text;
-}
-
-.lockscreen-entry:focus-within {
-    border-color: @lockscreen_accent;
-}
-
+/* Avatar — round, soft accent ring (Apple). */
 .lockscreen-avatar {
     border-radius: 9999px;
     background-color: @lockscreen_entry_background;
-    border: 2px solid @lockscreen_accent;
+    border: 2px solid @lockscreen_entry_border;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
 }
-
 .lockscreen-avatar-fallback {
-    color: @lockscreen_muted_text;
-}
-
-.lockscreen-power-button {
-    background-color: @lockscreen_entry_background;
-    border: 1px solid @lockscreen_entry_border;
     color: @lockscreen_text;
 }
 
-.lockscreen-power-button:hover {
+/* The password pill: translucent frosted white, rounded, with the masked text
+ * and the trailing circular go button living inside it. */
+.lockscreen-pill {
+    background-color: @lockscreen_entry_background;
+    border: 1px solid @lockscreen_entry_border;
+    border-radius: 9999px;
+    padding: 4px 4px 4px 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+.lockscreen-pill:focus-within {
     border-color: @lockscreen_accent;
+}
+.lockscreen-pill-text {
+    background: none;
+    background-color: transparent;
+    color: @lockscreen_text;
+    caret-color: @lockscreen_text;
+    border: none;
+    box-shadow: none;
+    outline: none;
+    min-height: 28px;
+}
+.lockscreen-pill-text:disabled {
+    color: alpha(@lockscreen_text, 0.5);
+}
+
+/* Trailing arrow "go" button — circular, accent-tinted on hover. */
+.lockscreen-go {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
+    border-radius: 9999px;
+    background-color: alpha(@lockscreen_text, 0.14);
+    color: @lockscreen_text;
+    border: none;
+    box-shadow: none;
+}
+.lockscreen-go:hover {
+    background-color: alpha(@lockscreen_text, 0.26);
+}
+.lockscreen-go:disabled {
+    opacity: 0.4;
+}
+
+/* Power buttons. */
+.lockscreen-power-button {
+    background-color: alpha(@lockscreen_text, 0.12);
+    color: @lockscreen_text;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+.lockscreen-power-button:hover {
+    background-color: alpha(@lockscreen_text, 0.24);
 }
 
 /* Failure shake on the password column. */
@@ -66,7 +112,6 @@
     60%      { margin-left: 6px; margin-right: -6px; }
     80%      { margin-left: -4px; margin-right: 4px; }
 }
-
 .shake {
     animation: lockscreen-shake 0.4s ease-in-out 1;
 }

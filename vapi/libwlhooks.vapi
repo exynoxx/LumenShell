@@ -236,4 +236,13 @@ namespace WLHooks {
 
     [CCode (cname = "wlhooks_idle_notify_destroy")]
     public void idle_notify_destroy ();
+
+    // Combined lock-screen init: binds idle + screencopy + wl_output in one
+    // registry pass on GTK's wl_display. Use instead of idle_notify_init when
+    // the lock screen also wants a desktop snapshot (WLHooks.capture, above).
+    [CCode (cname = "wlhooks_lockscreen_init")]
+    public int lockscreen_init (Wl.Display display);
+
+    [CCode (cname = "wlhooks_lockscreen_destroy")]
+    public void lockscreen_destroy ();
 }

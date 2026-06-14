@@ -142,6 +142,7 @@ panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']
   panel_peek_sources = files(
+    'lumen-common/wayfire_ipc.vala',
     'lumen-panel/src/peek_ipc.vala',
     'lumen-panel/src/components/launcher.vala',
   )
@@ -284,6 +285,7 @@ desktop_vala_args = [
 ]
 
 desktop_sources = files(
+  'lumen-common/wayfire_ipc.vala',
   'lumen-desktop/src/main.vala',
   'lumen-desktop/src/window.vala',
   'lumen-desktop/src/appentry.vala',
@@ -425,6 +427,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     'lumen-lockscreen/src/auth.vala',
     'lumen-lockscreen/src/idle.vala',
     'lumen-lockscreen/src/self_test.vala',
+    'lumen-lockscreen/src/widgets/background.vala',
     'lumen-lockscreen/src/widgets/clock.vala',
     'lumen-lockscreen/src/widgets/avatar.vala',
     'lumen-lockscreen/src/widgets/password.vala',

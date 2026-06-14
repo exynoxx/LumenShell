@@ -10,7 +10,7 @@ public class ExitPage : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.bridge = bridge;
         add_css_class("exit-page");
-        set_size_request(560, 240);
+        set_size_request(660, 240);
 
         var title = new Gtk.Label("Session") {
             xalign = 0,
@@ -29,6 +29,7 @@ public class ExitPage : Gtk.Box {
             margin_bottom = PAD,
         };
 
+        row.append(make_action("lock",      "Lock",      () => lock_session()));
         row.append(make_action("suspend",   "Suspend",   () => bridge.suspend.begin()));
         row.append(make_action("hibernate", "Hibernate", () => bridge.hibernate.begin()));
         row.append(make_action("logout",    "Log Out",   () => bridge.terminate_session.begin()));
@@ -36,6 +37,23 @@ public class ExitPage : Gtk.Box {
         row.append(make_action("shutdown",  "Shutdown",  () => bridge.power_off.begin()));
 
         append(row);
+    }
+
+    // Ask lumen-lockscreen to lock, over DBus (org.lumenshell.Lock1). Decoupled
+    // from the binary: works whenever the daemon is running, no-op otherwise.
+    // Fire-and-forget so the click never blocks the panel.
+    void lock_session () {
+        Bus.get.begin(BusType.SESSION, null, (obj, res) => {
+            try {
+                var conn = Bus.get.end(res);
+                conn.call.begin(
+                    "org.lumenshell.Lock", "/org/lumenshell/Lock",
+                    "org.lumenshell.Lock1", "Lock", null, null,
+                    DBusCallFlags.NONE, 1000, null);
+            } catch (Error e) {
+                warning("lumen-panel: lock request failed: %s", e.message);
+            }
+        });
     }
 
     delegate void ActionFunc ();

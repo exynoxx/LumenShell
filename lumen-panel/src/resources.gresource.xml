@@ -14,6 +14,7 @@
     <file alias="hibernate.svg">res/hibernate.svg</file>
     <file alias="high.svg">res/high.svg</file>
     <file alias="leaving.svg">res/leaving.svg</file>
+    <file alias="lock.svg">res/lock.svg</file>
     <file alias="logout.svg">res/logout.svg</file>
     <file alias="low.svg">res/low.svg</file>
     <file alias="mid.svg">res/mid.svg</file>

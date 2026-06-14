@@ -45,4 +45,11 @@ int  wlhooks_idle_notify_register(uint32_t timeout_ms,
 void wlhooks_idle_notify_unregister(void);
 bool wlhooks_idle_notify_available(void);
 
+// Combined init for a lock-screen client: idle + screencopy + wl_output bound
+// in a single registry pass on a caller-owned wl_display. See main.c. Pair
+// with screencopy_capture() (declared in protocols/screencopy.h) for the
+// desktop snapshot and wlhooks_idle_notify_register() for auto-lock.
+int  wlhooks_lockscreen_init(struct wl_display *external);
+void wlhooks_lockscreen_destroy(void);
+
 #endif // LIB_LAYER_SHELL_H
