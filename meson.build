@@ -428,6 +428,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     'lumen-lockscreen/src/idle.vala',
     'lumen-lockscreen/src/self_test.vala',
     'lumen-lockscreen/src/widgets/background.vala',
+    'lumen-lockscreen/src/widgets/blurred_wallpaper.vala',
     'lumen-lockscreen/src/widgets/clock.vala',
     'lumen-lockscreen/src/widgets/avatar.vala',
     'lumen-lockscreen/src/widgets/password.vala',
@@ -490,8 +491,7 @@ install_data(
 #   * wayland-sessions/lumenshell.desktop — the session a Wayland-aware login
 #     manager (GDM/SDDM/greetd/…) lists; its Exec= runs start-lumenshell.
 #   * start-lumenshell — the session launcher (sets XDG_*; execs wayfire).
-#   * autostart.ini — reference Wayfire [autostart] snippet (the .desktop and
-#     start-lumenshell comments point users at this installed path).
+# The Wayfire [autostart] block lives directly in the user's ~/.config/wayfire.ini.
 install_data(
   'lumen-lockscreen/data/wayland-sessions/lumenshell.desktop',
   install_dir: get_option('datadir') / 'wayland-sessions',
@@ -501,10 +501,6 @@ install_data(
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x',
 )
-install_data(
-  'lumen-lockscreen/data/wayfire/lumenshell.ini.d/autostart.ini',
-  install_dir: get_option('datadir') / 'lumenshell' / 'wayfire.ini.d',
-)
 
 # --- wayfire-plugins/* (C++ Wayfire plugins) ---
 # All Wayfire plugins live under wayfire-plugins/ and are standalone
@@ -513,7 +509,7 @@ install_data(
 if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
    or get_option('with_slide_peek') \
-   or get_option('with_startup_zoom') \
+   or get_option('with_startup_zoom')
   add_languages('cpp', native: false)
 endif
 
@@ -532,3 +528,19 @@ endif
 if get_option('with_startup_zoom')
   subdir('wayfire-plugins/startup-zoom')
 endif
+
+# --- dev environment (replaces the old hand-written env.sh) -----------------
+# `meson devenv -C build` (or `meson devenv -C build ./lumen-panel`) runs the
+# uninstalled build-tree binaries with these set, so resource/theme lookups
+# resolve into the source tree instead of /usr/share. meson devenv already puts
+# the built executables on PATH; these vars are the LUMEN_* overrides the
+# binaries read (see lumen-panel/src/utils.vala and each theme.vala). The
+# GSK_RENDERER pin mirrors start-lumenshell so dev runs match the real session.
+devenv = environment()
+devenv.set('LUMEN_RES_DIR', meson.project_source_root() / 'lumen-panel' / 'src' / 'res' + '/')
+devenv.set('LUMEN_THEME_FILE', meson.project_source_root() / 'default-theme.json')
+devenv.set('LUMEN_OSD_THEME_FILE', meson.project_source_root() / 'lumen-osd' / 'default-theme.json')
+devenv.set('LUMEN_NOTIFICATIONS_THEME_FILE', meson.project_source_root() / 'lumen-notifications' / 'default-notifications-theme.json')
+devenv.set('LUMEN_LOCKSCREEN_THEME_FILE', meson.project_source_root() / 'lumen-lockscreen' / 'default-lockscreen-theme.json')
+devenv.set('GSK_RENDERER', 'ngl')
+meson.add_devenv(devenv)
