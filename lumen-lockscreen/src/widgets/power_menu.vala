@@ -10,33 +10,51 @@ public class PowerMenu : Gtk.Box {
     private LogindBridge logind;
 
     public PowerMenu(LogindBridge logind) {
-        Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 18);
+        Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 64);
         this.logind = logind;
         set_halign(Gtk.Align.CENTER);
         add_css_class("lockscreen-power-menu");
 
-        append(make_button("system-suspend-symbolic", "Suspend", () => {
+        append(make_button("suspend", "Suspend", () => {
             logind.suspend.begin();
         }));
-        append(make_button("system-reboot-symbolic", "Restart", () => {
+        append(make_button("reboot", "Restart", () => {
             logind.reboot.begin();
         }));
-        append(make_button("system-shutdown-symbolic", "Shut Down", () => {
+        append(make_button("shutdown", "Shut Down", () => {
             logind.power_off.begin();
         }));
     }
 
     private delegate void Action();
 
-    private Gtk.Button make_button(string icon, string tooltip, owned Action act) {
+    // macOS-style stacked action: a round icon button with its label beneath.
+    // Icons are bundled in the GResource (set_from_resource) rather than looked
+    // up in the system icon theme — symbolic names like system-suspend-symbolic
+    // are missing from some themes (e.g. Adwaita), which left the button blank.
+    private Gtk.Widget make_button(string icon, string label_text, owned Action act) {
+        var col = new Gtk.Box(Gtk.Orientation.VERTICAL, 8) {
+            halign = Gtk.Align.CENTER,
+        };
+
         var btn = new Gtk.Button() {
-            tooltip_text = tooltip,
-            valign = Gtk.Align.CENTER,
+            tooltip_text = label_text,
+            halign = Gtk.Align.CENTER,
         };
         btn.add_css_class("lockscreen-power-button");
         btn.add_css_class("circular");
-        btn.child = new Gtk.Image.from_icon_name(icon) { pixel_size = 22 };
+        var img = new Gtk.Image() { pixel_size = 22 };
+        img.set_from_resource("/org/lumenshell/lockscreen/res/" + icon + ".svg");
+        btn.child = img;
         btn.clicked.connect(() => act());
-        return btn;
+        col.append(btn);
+
+        var lbl = new Gtk.Label(label_text) {
+            halign = Gtk.Align.CENTER,
+        };
+        lbl.add_css_class("lockscreen-power-label");
+        col.append(lbl);
+
+        return col;
     }
 }

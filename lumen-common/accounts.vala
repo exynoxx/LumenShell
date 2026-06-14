@@ -47,9 +47,18 @@ public class AccountsClient : GLib.Object {
         }
     }
 
+    // The current user's identity never changes during a session, so the
+    // (system-bus-blocking) lookup is memoized after the first call. This keeps
+    // it off the lock critical path: lumen-lockscreen warms it once at startup
+    // and every subsequent make_window() reads the cache. See load_current_user.
+    static UserInfo? cached = null;
+
     // Synchronous, fail-soft. Fallback chain for the avatar:
-    // AccountsService IconFile → ~/.face → "".
+    // AccountsService IconFile → ~/.face → "". Result is memoized.
     public static UserInfo load_current_user() {
+        if (cached != null)
+            return cached;
+
         var info = UserInfo() {
             real_name = "",
             icon_path = "",

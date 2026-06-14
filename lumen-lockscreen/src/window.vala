@@ -36,12 +36,6 @@ public class LockWindow : Gtk.ApplicationWindow {
 
             password = new PasswordField();
             center.append(password);
-
-            if (Theme.show_power_menu) {
-                var pm = new PowerMenu(logind);
-                pm.margin_top = 28;
-                center.append(pm);
-            }
         } else {
             // Secondary outputs: just the clock over the backdrop.
             center.append(new ClockWidget());
@@ -50,6 +44,18 @@ public class LockWindow : Gtk.ApplicationWindow {
         var overlay = new Gtk.Overlay();
         overlay.set_child(new LockBackdrop(snapshot));
         overlay.add_overlay(center);
+
+        // Power actions hug the bottom edge (macOS-style), separate from the
+        // centered auth cluster so they stay pinned regardless of card height.
+        if (is_primary && Theme.show_power_menu) {
+            var pm = new PowerMenu(logind) {
+                halign = Gtk.Align.CENTER,
+                valign = Gtk.Align.END,
+                margin_bottom = 48,
+            };
+            overlay.add_overlay(pm);
+        }
+
         set_child(overlay);
     }
 }

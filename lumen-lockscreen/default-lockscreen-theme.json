@@ -10,7 +10,7 @@
     "lockscreen.scrim":                "#00000059",
     "lockscreen.clock-font-size":      96,
     "lockscreen.date-font-size":       18,
-    "lockscreen.avatar-size":          110,
+    "lockscreen.avatar-size":          128,
     "lockscreen.corner-radius":        16,
     "lockscreen.blur-radius":          12,
     "lockscreen.idle-timeout-ms":      300000,

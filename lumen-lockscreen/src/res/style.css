@@ -93,15 +93,24 @@
     opacity: 0.4;
 }
 
-/* Power buttons. */
+/* Power buttons — flat round icon over a label (macOS-style). No shadow. */
 .lockscreen-power-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 9999px;
     background-color: alpha(@lockscreen_text, 0.12);
     color: @lockscreen_text;
     border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
 }
 .lockscreen-power-button:hover {
     background-color: alpha(@lockscreen_text, 0.24);
+}
+.lockscreen-power-label {
+    color: @lockscreen_text;
+    font-size: 0.85em;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
 /* Failure shake on the password column. */

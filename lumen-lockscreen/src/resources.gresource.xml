@@ -2,5 +2,8 @@
 <gresources>
   <gresource prefix="/org/lumenshell/lockscreen">
     <file>res/style.css</file>
+    <file>res/suspend.svg</file>
+    <file>res/reboot.svg</file>
+    <file>res/shutdown.svg</file>
   </gresource>
 </gresources>
