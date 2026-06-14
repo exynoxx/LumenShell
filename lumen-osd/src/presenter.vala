@@ -2,10 +2,10 @@ using GLib;
 
 public class Presenter : Object {
 
-    private Pill pill;
+    private OsdWindowGroup group;
 
-    public Presenter(Pill pill) {
-        this.pill = pill;
+    public Presenter(OsdWindowGroup group) {
+        this.group = group;
     }
 
     public void present(string kind, double value, string text,
@@ -14,6 +14,12 @@ public class Presenter : Object {
                       ? (!) icon_override
                       : icon_for(kind, value, muted);
 
+        foreach (var w in group.windows())
+            apply(w.pill, kind, value, text, icon);
+    }
+
+    private static void apply(Pill pill, string kind, double value,
+                              string text, string icon) {
         switch (kind) {
             case "volume":
             case "mic":

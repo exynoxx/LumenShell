@@ -45,6 +45,7 @@ osd_vala_args = [
 osd_sources = files(
   'lumen-osd/src/main.vala',
   'lumen-osd/src/window.vala',
+  'lumen-osd/src/window_group.vala',
   'lumen-osd/src/utils.vala',
   'lumen-osd/src/theme.vala',
   'lumen-osd/src/pill.vala',

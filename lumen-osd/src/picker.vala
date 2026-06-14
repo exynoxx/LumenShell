@@ -38,6 +38,7 @@ public class Picker : Object {
     // forever. Re-armed on every keypress, so deliberate picking never trips it.
     private const uint IDLE_DISMISS_MS = 8000;
 
+    private OsdWindowGroup group;
     private OsdWindow window;
     private bool      _active        = false;
     private bool      saw_super      = false;
@@ -48,8 +49,9 @@ public class Picker : Object {
 
     public bool active { get { return _active; } }
 
-    public Picker(OsdWindow window) {
-        this.window = window;
+    public Picker(OsdWindowGroup group) {
+        this.group  = group;
+        this.window = group.primary;
 
         var keys = new Gtk.EventControllerKey();
         // CAPTURE so we win over any focusable child the selector might gain.
@@ -83,6 +85,7 @@ public class Picker : Object {
         index      = last_index;
 
         refresh();
+        group.hide_mirrors();
         window.grab_keyboard();
         window.set_visible(true);
         arm_dismiss();

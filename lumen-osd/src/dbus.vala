@@ -3,15 +3,15 @@ using GLib;
 [DBus(name = "org.lumenshell.OSD1")]
 public class OsdService : Object {
 
-    private OsdWindow window;
-    private Presenter presenter;
-    private Picker    picker;
-    private uint      hide_source = 0;
+    private OsdWindowGroup group;
+    private Presenter      presenter;
+    private Picker         picker;
+    private uint           hide_source = 0;
 
-    public OsdService(OsdWindow window) {
-        this.window = window;
-        this.presenter = new Presenter(window.pill);
-        this.picker = new Picker(window);
+    public OsdService(OsdWindowGroup group) {
+        this.group = group;
+        this.presenter = new Presenter(group);
+        this.picker = new Picker(group);
         do_hide();
     }
 
@@ -31,8 +31,8 @@ public class OsdService : Object {
 
         presenter.present(kind, value, text, icon_override, muted);
 
-        window.show_pill_view();
-        window.set_visible(true);
+        group.show_pill_view();
+        group.set_pill_visible(true);
         arm_hide(timeout);
     }
 
@@ -52,9 +52,10 @@ public class OsdService : Object {
                               int                          selected,
                               HashTable<string, Variant>   opts) throws DBusError, IOError {
         cancel_hide();
-        window.selector.set_items(icons, labels, selected);
-        window.show_selector_view();
-        window.set_visible(true);
+        group.hide_mirrors();
+        group.primary.selector.set_items(icons, labels, selected);
+        group.primary.show_selector_view();
+        group.primary.set_visible(true);
     }
 
     public void hide() throws DBusError, IOError {
@@ -63,7 +64,7 @@ public class OsdService : Object {
     }
 
     private void do_hide() {
-        window.set_visible(false);
+        group.set_pill_visible(false);
     }
 
     private void cancel_hide() {

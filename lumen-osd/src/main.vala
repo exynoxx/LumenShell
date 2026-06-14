@@ -2,8 +2,8 @@ using Gtk;
 
 public class OsdApp : Gtk.Application {
 
-    private OsdWindow    window;
-    private OsdService   service;
+    private OsdWindowGroup group;
+    private OsdService     service;
     private StateWatcher watcher;
     private uint         owner_id = 0;
     private bool         activated = false;
@@ -26,20 +26,19 @@ public class OsdApp : Gtk.Application {
         activated = true;
 
         Theme.load();
-        window = new OsdWindow(this);
         install_root_css();
-        // Realize but stay hidden until a Show request arrives.
-        window.present();
-        window.set_visible(false);
+        // One window per monitor (primary + mirrors), each realized hidden until
+        // a Show request arrives.
+        group = new OsdWindowGroup(this);
 
-        service = new OsdService(window);
+        service = new OsdService(group);
         watcher = new StateWatcher(service);
         own_bus_name();
 
         // Keep the application alive even with no visible window.
         hold();
 
-        if (test_mode) new OsdSelfTest(this, window).run();
+        if (test_mode) new OsdSelfTest(this, group.primary).run();
     }
 
     private void own_bus_name() {
