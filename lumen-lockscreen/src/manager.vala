@@ -43,10 +43,12 @@ public class LockManager : GLib.Object {
         idle.idled.connect(() => lock_now());
         idle.arm();
 
-        // Warm the blurred-wallpaper cache off the main loop so the first lock
-        // doesn't pay the GL-realize + blur cost (it's cached for the session).
+        // Warm the blurred-wallpaper cache and the user-identity lookup off the
+        // main loop so the first lock doesn't pay the GL-realize + blur cost nor
+        // the system-bus AccountsService roundtrip (both cached for the session).
         Idle.add(() => {
             BlurredWallpaper.get_texture();
+            AccountsClient.load_current_user();
             return Source.REMOVE;
         });
 

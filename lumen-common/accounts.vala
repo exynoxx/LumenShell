@@ -92,6 +92,7 @@ public class AccountsClient : GLib.Object {
         if (info.real_name == "")
             info.real_name = Environment.get_real_name();   // GECOS, else "Unknown"
 
+        cached = info;
         return info;
     }
 
