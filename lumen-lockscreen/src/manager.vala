@@ -27,16 +27,14 @@ public class LockManager : GLib.Object {
     private bool authenticating = false;
     private int  failures = 0;
 
-    private bool         wl_ready = false;
-    private bool         capture_pending = false;
-    private Gdk.Texture? backdrop = null;     // desktop snapshot for the current lock
+    private Gdk.Texture? backdrop = null;     // cached blurred wallpaper for the lock
 
     public LockManager(Gtk.Application app) {
         this.app = app;
         this.pam = new PamAuth(Utils.PAM_SERVICE);
         this.windows = new HashTable<Gdk.Monitor, LockWindow>(direct_hash, direct_equal);
 
-        // Bind idle + screencopy on GTK's wl_display (one registry pass).
+        // Bind ext-idle-notify-v1 on GTK's wl_display for idle auto-lock.
         init_wlhooks();
 
         // Idle auto-lock. Arm immediately; disarm while locked so it can't
@@ -44,6 +42,13 @@ public class LockManager : GLib.Object {
         this.idle = new IdleWatcher((uint32) Theme.idle_timeout_ms);
         idle.idled.connect(() => lock_now());
         idle.arm();
+
+        // Warm the blurred-wallpaper cache off the main loop so the first lock
+        // doesn't pay the GL-realize + blur cost (it's cached for the session).
+        Idle.add(() => {
+            BlurredWallpaper.get_texture();
+            return Source.REMOVE;
+        });
 
         this.logind = new LogindBridge();
         logind.lock_requested.connect(() => lock_now());
@@ -66,54 +71,24 @@ public class LockManager : GLib.Object {
         var gdk = Gdk.Display.get_default();
         if (gdk is Gdk.Wayland.Display) {
             unowned Wl.Display wl = ((Gdk.Wayland.Display) gdk).get_wl_display();
-            if (WLHooks.lockscreen_init(wl) == 0) {
-                wl_ready = true;
+            if (WLHooks.idle_notify_init(wl) == 0)
                 return;
-            }
         }
-        warning("lumen-lockscreen: wlhooks lock init failed; no idle/snapshot");
+        warning("lumen-lockscreen: idle-notify init failed; idle auto-lock disabled");
     }
 
     public void lock_now() {
-        if (is_locked || instance != null || capture_pending) return;
+        if (is_locked || instance != null) return;
 
         if (!GtkSessionLock.is_supported()) {
             warning("lumen-lockscreen: compositor lacks ext-session-lock-v1; cannot lock");
             return;
         }
 
-        // Snapshot the live desktop BEFORE locking (ext-session-lock blanks it),
-        // then start the lock from the capture callback. Best-effort: any
-        // failure or timeout just locks with no backdrop (theme image / scrim).
-        capture_backdrop_then_lock();
-    }
-
-    private void capture_backdrop_then_lock() {
-        if (!wl_ready) { begin_lock(null); return; }
-
-        capture_pending = true;
-
-        // Safety net: if neither screencopy callback fires, lock anyway.
-        Timeout.add(800, () => {
-            if (capture_pending) {
-                capture_pending = false;
-                begin_lock(null);
-            }
-            return Source.REMOVE;
-        });
-
-        WLHooks.capture(
-            (buf) => {
-                if (!capture_pending) return;
-                capture_pending = false;
-                begin_lock(texture_from_buffer(buf));
-            },
-            () => {
-                if (!capture_pending) return;
-                capture_pending = false;
-                begin_lock(null);
-            }
-        );
+        // v1 backdrop: the wallpaper blurred once and cached (BlurredWallpaper).
+        // No live screencopy — that shared GDK's Wayland display and crashed the
+        // daemon. Null backdrop falls back to the theme image / a solid scrim.
+        begin_lock(BlurredWallpaper.get_texture());
     }
 
     private void begin_lock(Gdk.Texture? texture) {
@@ -130,21 +105,6 @@ public class LockManager : GLib.Object {
             instance = null;
             backdrop = null;
         }
-    }
-
-    // Wrap a wlr-screencopy buffer as a Gdk.Texture. wl_shm ARGB8888/XRGB8888
-    // are little-endian, i.e. B,G,R,(A) byte order in memory. Copies the pixels
-    // (the wlhooks buffer is freed once this callback returns).
-    private static Gdk.Texture? texture_from_buffer(WLHooks.Buffer buf) {
-        if (buf.width == 0 || buf.height == 0 || buf.stride == 0) return null;
-        size_t size = (size_t) buf.stride * (size_t) buf.height;
-        unowned uint8[] raw = buf.data;
-        raw.length = (int) size;
-        var bytes = new GLib.Bytes(raw);
-        var fmt = (buf.format == 1) ? Gdk.MemoryFormat.B8G8R8X8
-                                    : Gdk.MemoryFormat.B8G8R8A8;
-        return new Gdk.MemoryTexture((int) buf.width, (int) buf.height,
-                                     fmt, bytes, buf.stride);
     }
 
     // Compositor granted the lock — NOW we may create lock surfaces.

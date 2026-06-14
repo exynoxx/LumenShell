@@ -21,9 +21,9 @@
 # The lumenshell.desktop file's Exec= must match this path.
 #
 # Running locally for development (without installing):
-#   1. Make sure the build tree binaries are on PATH:
-#        source env.sh
-#        export PATH="$PWD/build:$PATH"
+#   1. Enter the build-tree dev environment (puts ./build binaries on PATH and
+#      sets the LUMEN_* resource/theme + GSK_RENDERER vars from meson.build):
+#        meson devenv -C build
 #   2. Run this script from a TTY (Ctrl+Alt+F3, log in, then `./start-lumenshell`)
 #      OR from inside an existing session for a nested Wayfire (depends on
 #      Wayfire's nested-mode support on your distro).
@@ -49,6 +49,12 @@ set -e
 export XDG_CURRENT_DESKTOP=LumenShell
 export XDG_SESSION_DESKTOP=lumenshell
 export XDG_SESSION_TYPE=wayland
+
+# GTK4 GSK renderer: pin NGL — Vulkan misbehaves on some host GPUs. Wayfire
+# inherits this and passes it to the GTK binaries it autostarts (panel, osd,
+# notifications, desktop, lockscreen). Override by exporting GSK_RENDERER before
+# this script, or unset it here to let GTK auto-select.
+export GSK_RENDERER="${GSK_RENDERER:-ngl}"
 
 # --- 2. Optional pre-start hooks --------------------------------------------
 if [ -d /etc/lumenshell/pre-start.d ]; then

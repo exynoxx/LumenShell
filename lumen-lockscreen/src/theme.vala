@@ -21,7 +21,7 @@ public class Theme {
     public static int    date_font_size    = 18;
     public static int    avatar_size       = 96;
     public static int    corner_radius     = 16;
-    public static int    blur_radius       = 48;       // GSK blur over the desktop snapshot
+    public static int    blur_radius       = 12;       // light GSK frost over the wallpaper
     public static int    idle_timeout_ms   = 300000;   // ext-idle-notify-v1; 0 disables auto-lock
     public static int    failure_backoff_ms = 3000;
     public static bool   show_power_menu   = true;
