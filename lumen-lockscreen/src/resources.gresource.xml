@@ -5,5 +5,6 @@
     <file>res/suspend.svg</file>
     <file>res/reboot.svg</file>
     <file>res/shutdown.svg</file>
+    <file>res/default-avatar.svg</file>
   </gresource>
 </gresources>

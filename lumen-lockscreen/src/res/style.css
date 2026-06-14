@@ -38,12 +38,12 @@
     color: @lockscreen_entry_error;
 }
 
-/* Avatar — round, soft accent ring (Apple). */
+/* Avatar — round, flat, edgeless (no ring, no shadow). */
 .lockscreen-avatar {
     border-radius: 9999px;
     background-color: @lockscreen_entry_background;
-    border: 2px solid @lockscreen_entry_border;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    border: none;
+    box-shadow: none;
 }
 .lockscreen-avatar-fallback {
     color: @lockscreen_text;
@@ -53,13 +53,10 @@
  * and the trailing circular go button living inside it. */
 .lockscreen-pill {
     background-color: @lockscreen_entry_background;
-    border: 1px solid @lockscreen_entry_border;
+    border: none;
     border-radius: 9999px;
     padding: 4px 4px 4px 16px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
-}
-.lockscreen-pill:focus-within {
-    border-color: @lockscreen_accent;
+    box-shadow: none;
 }
 .lockscreen-pill-text {
     background: none;
