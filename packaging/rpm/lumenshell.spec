@@ -63,8 +63,7 @@ notification daemon, and a settings app. Installing this package adds a
 %meson \
     -Dwith_desktop_peek=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false} \
     -Dwith_curtain_peek=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false} \
-    -Dwith_startup_zoom=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false} \
-    -Dwith_default_focus=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false}
+    -Dwith_startup_zoom=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false}
 %meson_build
 
 %install

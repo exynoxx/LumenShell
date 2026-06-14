@@ -514,7 +514,6 @@ if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
    or get_option('with_slide_peek') \
    or get_option('with_startup_zoom') \
-   or get_option('with_default_focus')
   add_languages('cpp', native: false)
 endif
 
@@ -532,8 +531,4 @@ endif
 
 if get_option('with_startup_zoom')
   subdir('wayfire-plugins/startup-zoom')
-endif
-
-if get_option('with_default_focus')
-  subdir('wayfire-plugins/default-focus')
 endif

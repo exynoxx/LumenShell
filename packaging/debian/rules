@@ -13,5 +13,4 @@ override_dh_auto_configure:
 	dh_auto_configure -- \
 		-Dwith_desktop_peek=false \
 		-Dwith_curtain_peek=false \
-		-Dwith_startup_zoom=false \
-		-Dwith_default_focus=false
+		-Dwith_startup_zoom=false
