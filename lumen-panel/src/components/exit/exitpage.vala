@@ -10,7 +10,7 @@ public class ExitPage : Gtk.Box {
         GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.bridge = bridge;
         add_css_class("exit-page");
-        set_size_request(660, 240);
+        set_size_request(440, 320);
 
         var title = new Gtk.Label("Session") {
             xalign = 0,
@@ -21,7 +21,7 @@ public class ExitPage : Gtk.Box {
         title.add_css_class("page-title");
         append(title);
 
-        var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 24) {
+        var rows = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
             halign = Gtk.Align.CENTER,
             valign = Gtk.Align.CENTER,
             hexpand = true,
@@ -29,14 +29,23 @@ public class ExitPage : Gtk.Box {
             margin_bottom = PAD,
         };
 
-        row.append(make_action("lock",      "Lock",      () => lock_session()));
-        row.append(make_action("suspend",   "Suspend",   () => bridge.suspend.begin()));
-        row.append(make_action("hibernate", "Hibernate", () => bridge.hibernate.begin()));
-        row.append(make_action("logout",    "Log Out",   () => bridge.terminate_session.begin()));
-        row.append(make_action("reboot",    "Reboot",    () => bridge.reboot.begin()));
-        row.append(make_action("shutdown",  "Shutdown",  () => bridge.power_off.begin()));
+        var row1 = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 24) {
+            halign = Gtk.Align.CENTER,
+        };
+        row1.append(make_action("lock",      "Lock",      () => lock_session()));
+        row1.append(make_action("suspend",   "Suspend",   () => bridge.suspend.begin()));
+        row1.append(make_action("hibernate", "Hibernate", () => bridge.hibernate.begin()));
+        rows.append(row1);
 
-        append(row);
+        var row2 = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 24) {
+            halign = Gtk.Align.CENTER,
+        };
+        row2.append(make_action("logout",    "Log Out",   () => bridge.terminate_session.begin()));
+        row2.append(make_action("reboot",    "Reboot",    () => bridge.reboot.begin()));
+        row2.append(make_action("shutdown",  "Shutdown",  () => bridge.power_off.begin()));
+        rows.append(row2);
+
+        append(rows);
     }
 
     // Ask lumen-lockscreen to lock, over DBus (org.lumenshell.Lock1). Decoupled
