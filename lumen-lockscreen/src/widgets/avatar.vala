@@ -38,8 +38,26 @@ public class AvatarWidget : Gtk.Box {
             pic.margin_end = inset;
             pic.set_size_request(size - 2 * inset, size - 2 * inset);
         }
-        pic.halign = Gtk.Align.CENTER;
-        pic.valign = Gtk.Align.CENTER;
+        // FILL (not CENTER): the picture must take exactly the allocation we
+        // give it so content_fit scales the image DOWN into `size`. With CENTER
+        // a Gtk.Picture is allocated its image's intrinsic resolution (e.g. the
+        // 512×512 viewBox of default-avatar.svg), which is what made the avatar
+        // render far larger than `size`.
+        pic.halign = Gtk.Align.FILL;
+        pic.valign = Gtk.Align.FILL;
         append(pic);
+    }
+
+    // Hard-cap the widget's size. set_size_request is only a MINIMUM, and a
+    // Gtk.Box reports a natural size as large as its child's natural size — so
+    // the child Picture's intrinsic image resolution would otherwise propagate
+    // up and the centered parent in window.vala would allocate that huge size.
+    // Returning a fixed natural size makes the avatar exactly `avatar-size` px.
+    protected override void measure(Gtk.Orientation orientation, int for_size,
+                                    out int minimum, out int natural,
+                                    out int minimum_baseline,
+                                    out int natural_baseline) {
+        minimum = natural = Theme.avatar_size;
+        minimum_baseline = natural_baseline = -1;
     }
 }
