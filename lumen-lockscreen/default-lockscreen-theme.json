@@ -15,5 +15,8 @@
     "lockscreen.blur-radius":          12,
     "lockscreen.idle-timeout-ms":      300000,
     "lockscreen.failure-backoff-ms":   3000,
-    "lockscreen.show-power-menu":      true
+    "lockscreen.show-power-menu":      true,
+    "lockscreen.effect":               "converge",
+    "lockscreen.flip-axis":            "y",
+    "lockscreen.effect-duration-ms":   300
 }

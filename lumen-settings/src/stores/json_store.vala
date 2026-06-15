@@ -36,6 +36,18 @@ namespace LumenSettings {
             values.insert(key, n);
         }
 
+        public bool get_bool(string key, bool fallback) {
+            var n = values.lookup(key);
+            if (n == null || n.get_value_type() != typeof(bool)) return fallback;
+            return n.get_boolean();
+        }
+
+        public void set_bool(string key, bool val) {
+            var n = new Json.Node(Json.NodeType.VALUE);
+            n.set_boolean(val);
+            values.insert(key, n);
+        }
+
         public void save() {
             Paths.ensure_dir();
             var obj = new Json.Object();

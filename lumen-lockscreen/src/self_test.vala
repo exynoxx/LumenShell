@@ -22,7 +22,11 @@ public class LockSelfTest : Object {
         // harmless to leave unclicked.
         // No wlhooks/screencopy in self-test → null snapshot (theme image or
         // solid scrim backdrop). Exercises the card, not the live blur.
-        var win = new LockWindow(app, true, user, new LogindBridge(), null);
+        // Preview the configured reveal (flip/expand) standalone — the
+        // compositor IPC is a no-op off a Wayfire session, but the GTK-side
+        // reveal still plays so the effect is iterable by hand.
+        var effect = LockEffect.from_config();
+        var win = new LockWindow(app, true, user, new LogindBridge(), null, effect);
         win.default_width = 1280;
         win.default_height = 800;
         win.decorated = true;
@@ -42,5 +46,7 @@ public class LockSelfTest : Object {
         }
 
         win.present();
+        // Exercise the reveal standalone (no compositor needed).
+        win.play_reveal(effect.reveal_ms > 0 ? effect.reveal_ms : 300);
     }
 }

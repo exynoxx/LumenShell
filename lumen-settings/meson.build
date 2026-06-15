@@ -77,6 +77,7 @@ settings_sources = files(
   'src/pages/power_page.vala',
   'src/pages/osd_page.vala',
   'src/pages/notifications_page.vala',
+  'src/pages/lockscreen_page.vala',
   'src/pages/about_page.vala',
 )
 

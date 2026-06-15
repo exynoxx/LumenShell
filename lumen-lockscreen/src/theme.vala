@@ -26,6 +26,12 @@ public class Theme {
     public static int    failure_backoff_ms = 3000;
     public static bool   show_power_menu   = true;
 
+    // Pre-lock transition (see LockEffect). effect: "none" | "converge" | "flip".
+    // flip_axis: "y" (rotate about the vertical axis) | "x" (horizontal axis).
+    public static string effect             = "converge";
+    public static string flip_axis          = "y";
+    public static int    effect_duration_ms = 300;
+
     public static void load() {
         background       = rgba(0.06f, 0.07f, 0.09f, 1.00f);
         text             = rgba(1.00f, 1.00f, 1.00f, 1.00f);
@@ -37,6 +43,9 @@ public class Theme {
         accent           = rgba(1.00f, 1.00f, 1.00f, 0.92f);
         scrim            = rgba(0.00f, 0.00f, 0.00f, 0.35f);
         background_image = "";
+        effect             = "converge";
+        flip_axis          = "y";
+        effect_duration_ms = 300;
 
         var path = Utils.THEME_FILE;
         if (!FileUtils.test(path, FileTest.EXISTS)) return;
@@ -67,6 +76,14 @@ public class Theme {
     private static void apply_string(string key, string val) {
         if (key == "lockscreen.background-image") {
             background_image = val;
+            return;
+        }
+        if (key == "lockscreen.effect") {
+            effect = val;
+            return;
+        }
+        if (key == "lockscreen.flip-axis") {
+            flip_axis = val;
             return;
         }
         if (!val.has_prefix("#")) {
@@ -102,6 +119,7 @@ public class Theme {
             case "lockscreen.blur-radius":        blur_radius        = v; break;
             case "lockscreen.idle-timeout-ms":    idle_timeout_ms    = v; break;
             case "lockscreen.failure-backoff-ms": failure_backoff_ms = v; break;
+            case "lockscreen.effect-duration-ms": effect_duration_ms = v; break;
             default:
                 warning("lumen-lockscreen: unknown theme key: %s", key);
                 break;

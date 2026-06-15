@@ -56,6 +56,7 @@ namespace LumenSettings {
             registry.add(new PowerPage(),         "LumenShell");
             registry.add(new OsdPage(),           "LumenShell");
             registry.add(new NotificationsPage(), "LumenShell");
+            registry.add(new LockscreenPage(),    "LumenShell");
 #if WITH_WAYFIRE_CONFIG
             Wayfire.WayfirePages.register(registry);
 #endif

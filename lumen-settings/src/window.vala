@@ -83,9 +83,17 @@ namespace LumenSettings {
             try {
                 // setsid -f fully detaches the new process so it outlives
                 // lumen-settings; the sleep lets the old surface tear down.
+                //
+                // pkill -x matches against the kernel's `comm`, which is capped
+                // at 15 chars (TASK_COMM_LEN-1), so the full name of a longer
+                // target (lumen-lockscreen=16, lumen-notifications=19) never
+                // matches and the old daemon survives — then the freshly spawned
+                // one can't own its bus name and quits. Match the truncated comm.
+                var comm = restart_target.length > 15
+                    ? restart_target.substring(0, 15) : restart_target;
                 GLib.Process.spawn_command_line_async(
                     "sh -c 'pkill -x %s; sleep 0.3; setsid -f %s'".printf(
-                        restart_target, restart_target));
+                        comm, restart_target));
             } catch (GLib.SpawnError e) {
                 warning("lumen-settings: failed to restart %s: %s", restart_target, e.message);
             }

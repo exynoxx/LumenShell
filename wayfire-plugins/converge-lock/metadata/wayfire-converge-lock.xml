@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-converge-lock">
+    <_short>Converge Lock</_short>
+    <_long>Freeze the screen and slide both halves inward to collapse onto the centre vertical seam over black, then hold. A pre-lock transition driven over IPC by lumen-lockscreen; the held collapsed frame is what the lock surface expands back out of.</_long>
+    <category>Desktop</category>
+    <option name="toggle" type="activator">
+      <_short>Toggle converge (dev)</_short>
+      <_long>Optional keybinding to play the converge by hand. Unset by default — the real driver is the lumen-lockscreen daemon over IPC.</_long>
+      <default></default>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>300ms circle</default>
+    </option>
+    <option name="backdrop_color" type="color">
+      <_short>Collapse backdrop colour</_short>
+      <_long>Flat colour shown in the widening gap as the halves squish to the seam. Black by default so the desktop appears sucked into the void.</_long>
+      <default>#000000FF</default>
+    </option>
+    <option name="safety_timeout" type="int">
+      <_short>Auto-restore safety timeout (ms, 0 = off)</_short>
+      <_long>If the driving daemon dies and never sends stop, restore the desktop after this long rather than freezing forever.</_long>
+      <default>30000</default>
+      <min>0</min>
+      <max>600000</max>
+    </option>
+  </plugin>
+</wayfire>

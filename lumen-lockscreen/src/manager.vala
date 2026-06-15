@@ -29,8 +29,17 @@ public class LockManager : GLib.Object {
 
     private Gdk.Texture? backdrop = null;     // cached blurred wallpaper for the lock
 
+    // Pre-lock transition (converge / flip / none), selected from lockscreen.json.
+    // The compositor phase plays first (effect.start_compositor), we wait
+    // effect.compositor_ms, then request the lock; each lock surface then reveals
+    // out of the held frame over effect.reveal_ms. See LockEffect.
+    private LockEffect effect;
+    private bool transitioning = false;       // compositor phase running, lock not yet begun
+    private bool revealing_in  = false;       // true only while the INITIAL lock windows are built
+
     public LockManager(Gtk.Application app) {
         this.app = app;
+        this.effect = LockEffect.from_config();
         this.pam = new PamAuth(Utils.PAM_SERVICE);
         this.windows = new HashTable<Gdk.Monitor, LockWindow>(direct_hash, direct_equal);
 
@@ -57,7 +66,7 @@ public class LockManager : GLib.Object {
         logind.unlock_requested.connect(() => unlock_now());   // loginctl already authenticated
         logind.prepare_for_sleep.connect((starting) => {
             if (starting) {
-                lock_now();
+                lock_now_immediate();   // no transition — screen is powering off
                 // Lock request is in flight; let the kernel proceed to sleep.
                 logind.release_delay_inhibitor();
             } else {
@@ -79,8 +88,22 @@ public class LockManager : GLib.Object {
         warning("lumen-lockscreen: idle-notify init failed; idle auto-lock disabled");
     }
 
+    // Animated lock: play the compositor transition first, then lock + reveal.
+    // Used by every interactive trigger (Win+L/DBus, logind Lock, idle).
     public void lock_now() {
-        if (is_locked || instance != null) return;
+        lock_internal(true);
+    }
+
+    // Immediate lock with no transition. Used on PrepareForSleep: animating
+    // while racing the kernel to sleep is pointless (the screen is about to power
+    // off) and we don't want to perturb the delay-inhibitor timing.
+    public void lock_now_immediate() {
+        lock_internal(false);
+    }
+
+    private void lock_internal(bool animated) {
+        // Re-entrancy guard: already locked, lock in flight, OR transition running.
+        if (is_locked || instance != null || transitioning) return;
 
         if (!GtkSessionLock.is_supported()) {
             warning("lumen-lockscreen: compositor lacks ext-session-lock-v1; cannot lock");
@@ -90,7 +113,26 @@ public class LockManager : GLib.Object {
         // v1 backdrop: the wallpaper blurred once and cached (BlurredWallpaper).
         // No live screencopy — that shared GDK's Wayland display and crashed the
         // daemon. Null backdrop falls back to the theme image / a solid scrim.
-        begin_lock(BlurredWallpaper.get_texture());
+        if (!animated || effect.compositor_ms == 0) {
+            begin_lock(BlurredWallpaper.get_texture());
+            return;
+        }
+
+        // Play the compositor transition, then lock once it has gathered.
+        // Timer-driven so the lock ALWAYS proceeds even if the IPC was a no-op
+        // (self-test / plugin not loaded).
+        transitioning = true;
+        effect.start_compositor();
+        Timeout.add(effect.compositor_ms, () => {
+            transitioning = false;
+            // A racing external lock/unlock could have landed during the transition.
+            if (is_locked || instance != null) {
+                effect.stop_compositor();   // never leave the plugin held
+                return Source.REMOVE;
+            }
+            begin_lock(BlurredWallpaper.get_texture());
+            return Source.REMOVE;
+        });
     }
 
     private void begin_lock(Gdk.Texture? texture) {
@@ -106,6 +148,7 @@ public class LockManager : GLib.Object {
             warning("lumen-lockscreen: lock request could not be sent");
             instance = null;
             backdrop = null;
+            effect.stop_compositor();   // lock never happened — restore the desktop
         }
     }
 
@@ -118,10 +161,16 @@ public class LockManager : GLib.Object {
         var display = Gdk.Display.get_default();
         if (display == null) {
             warning("lumen-lockscreen: no default display");
+            effect.stop_compositor();
             return;
         }
 
+        // The initial lock windows reveal out of the held frame; any window
+        // created by a later hotplug reconcile appears instantly (the transition
+        // is long over).
+        revealing_in = true;
         reconcile_monitors();
+        revealing_in = false;
 
         // Track hotplug while locked: the protocol requires a surface per
         // output, so a newly-attached monitor needs a lock window immediately.
@@ -132,11 +181,18 @@ public class LockManager : GLib.Object {
         locked();
     }
 
+    // The primary surface finished revealing out of the held frame — it now fully
+    // covers the transitioned desktop, so reset the compositor plugin underneath.
+    private void on_reveal_finished() {
+        effect.stop_compositor();
+    }
+
     private void on_failed() {
         warning("lumen-lockscreen: another locker holds the session; aborting");
         teardown_windows();
         instance = null;
         is_locked = false;
+        effect.stop_compositor();   // lock rejected — restore the desktop
     }
 
     // ---- unlock ------------------------------------------------------------
@@ -286,13 +342,22 @@ public class LockManager : GLib.Object {
 
     private void make_window(Gdk.Monitor mon, bool is_primary) {
         var user = AccountsClient.load_current_user();
-        var win = new LockWindow(app, is_primary, user, logind, backdrop);
+        var win = new LockWindow(app, is_primary, user, logind, backdrop, effect);
         // Assign to the output BEFORE present() so gtk4-session-lock makes it a
         // lock surface on that monitor.
         instance.assign_window_to_monitor(win, mon);
         if (is_primary && win.password != null)
             win.password.submitted.connect((pw) => try_auth(pw));
-        win.present();
+
+        if (revealing_in && effect.reveal_ms > 0) {
+            // Only the primary drives the plugin reset, so stop() fires once.
+            if (is_primary)
+                win.reveal.finished.connect(on_reveal_finished);
+            win.present();
+            win.play_reveal(effect.reveal_ms);
+        } else {
+            win.present();   // hotplug mid-lock (or no effect): appear instantly
+        }
         windows.set(mon, win);
     }
 

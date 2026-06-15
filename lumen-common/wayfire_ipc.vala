@@ -31,6 +31,12 @@ namespace LumenCommon {
         // server-side handler runs before we close. Returns false on no socket
         // or any IPC error; the reply payload is read best-effort and discarded.
         public static bool send_method(string method) {
+            return send_method_data(method, "{}");
+        }
+
+        // As send_method, but with a caller-supplied JSON object for the "data"
+        // field (e.g. {"axis":"y"}). data_json must be a valid JSON object body.
+        public static bool send_method_data(string method, string data_json) {
             var path = socket_path();
             if (path == null) return false;
 
@@ -39,7 +45,7 @@ namespace LumenCommon {
                 var addr   = new GLib.UnixSocketAddress(path);
                 var conn   = client.connect(addr, null);
 
-                var body  = @"{\"method\":\"$method\",\"data\":{}}";
+                var body  = @"{\"method\":\"$method\",\"data\":$data_json}";
                 var bytes = body.data;
                 uint32 len = (uint32) bytes.length;
 

@@ -27,6 +27,20 @@ option(
 )
 
 option(
+  'with_converge_lock',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-converge-lock Wayfire plugin (collapses both screen halves onto the centre seam over black and holds; the pre-lock transition the lockscreen expands out of; needs Wayfire 0.10 dev headers).',
+)
+
+option(
+  'with_flip_lock',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-flip-lock Wayfire plugin (rotates the frozen screen edge-on about the Y or X axis over black and holds; the pre-lock transition the lockscreen rotates out of, lock on the back side; needs Wayfire 0.10 dev headers).',
+)
+
+option(
   'with_startup_zoom',
   type: 'boolean',
   value: true,
