@@ -148,7 +148,17 @@ public class LockManager : GLib.Object {
     }
 
     private void on_unlocked() {
-        teardown_windows();
+        // gtk4-session-lock emits `unlocked` from inside its unlock() call
+        // BEFORE it sends ext_session_lock_v1.unlock_and_destroy to the
+        // compositor and BEFORE it unmaps + gtk_window_destroy()s our lock
+        // windows itself (see clear_lock_state() in the library). Destroying
+        // the windows from here would tear down the lock-surface wl_surfaces
+        // while the session is *still* locked — Wayfire is then briefly locked
+        // with no lock surface to draw, which flashes a stale frame for an
+        // instant before the real unlock reveals the desktop. So we must NOT
+        // touch the windows here; the library destroys them for us, correctly
+        // ordered after unlock_and_destroy. We only drop our bookkeeping.
+        release_bookkeeping();
         instance = null;
         is_locked = false;
         failures = 0;
@@ -156,16 +166,27 @@ public class LockManager : GLib.Object {
         unlocked();
     }
 
-    private void teardown_windows() {
+    // Drop the manager's references and the hotplug watch WITHOUT destroying the
+    // lock windows — gtk4-session-lock owns their lifecycle once they are lock
+    // surfaces. The GtkApplication keeps each window alive until the library's
+    // own gtk_window_destroy() runs, so clearing our HashTable here is safe.
+    private void release_bookkeeping() {
         var display = Gdk.Display.get_default();
         if (display != null && monitors_handler != 0) {
             SignalHandler.disconnect(display.get_monitors(), monitors_handler);
             monitors_handler = 0;
         }
-        windows.foreach((mon, win) => win.destroy());
         windows.remove_all();
         primary_monitor = null;
         backdrop = null;   // release the snapshot texture
+    }
+
+    // Hard teardown for the `failed` path: the lock was never granted, so the
+    // library will NOT destroy anything for us. Destroy whatever we built (a
+    // no-op when the lock failed before any surface was created).
+    private void teardown_windows() {
+        windows.foreach((mon, win) => win.destroy());
+        release_bookkeeping();
     }
 
     // ---- auth --------------------------------------------------------------
