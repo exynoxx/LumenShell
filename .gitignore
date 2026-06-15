@@ -2,5 +2,6 @@
 main
 .agents
 *.md
+!README.md
 /swayosd*
 .claude/worktrees/
