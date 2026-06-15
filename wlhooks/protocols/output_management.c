@@ -115,7 +115,9 @@ static void mode_preferred(void *data, struct zwlr_output_mode_v1 *m) {
     (void) m; om_mode_t *mode = data; mode->preferred = true;
 }
 static void mode_finished(void *data, struct zwlr_output_mode_v1 *m) {
-    (void) data; zwlr_output_mode_v1_destroy(m);
+    om_mode_t *mode = data;
+    zwlr_output_mode_v1_destroy(m);
+    if (mode) mode->proxy = NULL;   // don't let teardown re-destroy this proxy
 }
 static const struct zwlr_output_mode_v1_listener mode_listener = {
     .size = mode_size, .refresh = mode_refresh,
@@ -159,7 +161,10 @@ static void head_scale(void *data, struct zwlr_output_head_v1 *h, wl_fixed_t sca
     (void) h; om_head_t *hd = data; hd->scale = wl_fixed_to_double(scale);
 }
 static void head_finished(void *data, struct zwlr_output_head_v1 *h) {
-    om_head_t *hd = data; hd->finished = true; zwlr_output_head_v1_destroy(h);
+    om_head_t *hd = data;
+    hd->finished = true;
+    zwlr_output_head_v1_destroy(h);
+    hd->proxy = NULL;               // don't let teardown re-destroy this proxy
 }
 static void head_make(void *data, struct zwlr_output_head_v1 *h, const char *s) {
     (void) h; om_head_t *hd = data; snprintf(hd->make, sizeof(hd->make), "%s", s ? s : "");
