@@ -48,6 +48,7 @@ namespace LumenSettings {
 #if WITH_WAYFIRE_CONFIG
                 // Keep the push plugin's edge aligned with the panel position.
                 if (current_mode() == "push") {
+                    wf_store.reload();
                     wf_store.set_value(PUSH_SECTION, "direction", v);
                     wf_store.save();
                 }
@@ -64,6 +65,7 @@ namespace LumenSettings {
                 // The push distance must match the panel height so the freed
                 // strip exactly fits the revealed panel.
                 if (current_mode() == "push") {
+                    wf_store.reload();
                     wf_store.set_value(PUSH_SECTION, "push_px", "%d".printf((int) v));
                     wf_store.save();
                 }
@@ -249,6 +251,7 @@ namespace LumenSettings {
 #if WITH_WAYFIRE_CONFIG
         // Mirror the push plugin's edge + distance to the panel position/height.
         void sync_push_options() {
+            wf_store.reload();   // pick up any [core] plugins edits from the Wayfire page
             var pos = store.get_value(SECTION, "position") ?? "bottom";
             var h   = store.get_value(SECTION, "panel.height") ?? "60";
             wf_store.set_value(PUSH_SECTION, "direction", pos);
@@ -259,6 +262,7 @@ namespace LumenSettings {
         // Add/remove a plugin from wayfire.ini's [core] plugins list, preserving
         // order and dropping duplicates.
         void set_plugin_enabled(string name, bool on) {
+            wf_store.reload();   // fresh [core] plugins so we don't clobber the Wayfire page
             var raw = wf_store.get_value("core", "plugins") ?? "";
             var seen = new Gee.HashSet<string>();
             var ordered = new Gee.ArrayList<string>();

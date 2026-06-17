@@ -34,6 +34,13 @@ namespace LumenSettings.Wayfire {
         Gee.ArrayList<Gtk.ListBoxRow> other_rows;
         Gee.HashMap<Gtk.ListBoxRow, string> search_text;
 
+        // plugin name -> its enable switch, so we can refresh on show when the
+        // file was changed elsewhere (the Panel page enabling wayfire-panel-push).
+        Gee.HashMap<string, Gtk.Switch> plugin_switches;
+        // Guards the switch's notify handler while we set state programmatically
+        // during a refresh, so a refresh doesn't trigger a redundant save.
+        bool suppress_toggle = false;
+
         public string id        { owned get { return "wayfire-plugins"; } }
         public string title     { owned get { return "Wayfire Plugins"; } }
         public string icon_name { owned get { return "preferences-system-symbolic"; } }
@@ -60,6 +67,7 @@ namespace LumenSettings.Wayfire {
             search_text = new Gee.HashMap<Gtk.ListBoxRow, string>();
             plugin_rows = new Gee.ArrayList<Gtk.ListBoxRow>();
             other_rows = new Gee.ArrayList<Gtk.ListBoxRow>();
+            plugin_switches = new Gee.HashMap<string, Gtk.Switch>();
 
             stack.add_named(build_list_view(), "list");
             stack.set_visible_child_name("list");
@@ -73,7 +81,24 @@ namespace LumenSettings.Wayfire {
             stack.map.connect(update_search_capture);
             stack.unmap.connect(() => search_bar.set_key_capture_widget(null));
             stack.notify["visible-child-name"].connect(update_search_capture);
+
+            // Re-read wayfire.ini whenever this page is shown: another page
+            // (the Panel page's push mode) may have toggled wayfire-panel-push
+            // in [core] plugins since this page was built at startup.
+            stack.map.connect(refresh_states);
             return stack;
+        }
+
+        // Reload the file and sync every plugin switch to the on-disk state,
+        // without firing set_enabled (which would write a stale list back).
+        void refresh_states() {
+            store.reload();
+            suppress_toggle = true;
+            foreach (var e in plugin_switches.entries) {
+                bool en = is_enabled(e.key);
+                if (e.value.active != en) e.value.active = en;
+            }
+            suppress_toggle = false;
         }
 
         void update_search_capture() {
@@ -154,7 +179,11 @@ namespace LumenSettings.Wayfire {
             };
             // The switch consumes its own clicks, so toggling enable/disable
             // does not trigger row activation (navigation).
-            sw.notify["active"].connect(() => set_enabled(p.name, sw.active));
+            sw.notify["active"].connect(() => {
+                if (suppress_toggle) return;
+                set_enabled(p.name, sw.active);
+            });
+            plugin_switches.set(p.name, sw);
 
             var chevron = new Gtk.Image.from_icon_name("go-next-symbolic") {
                 valign = Gtk.Align.CENTER,
@@ -265,6 +294,7 @@ namespace LumenSettings.Wayfire {
         }
 
         void set_enabled(string name, bool on) {
+            store.reload();   // fresh list so we don't clobber the Panel page's push toggle
             var raw = store.get_value("core", "plugins") ?? "";
             var seen = new Gee.HashSet<string>();
             var ordered = new Gee.ArrayList<string>();

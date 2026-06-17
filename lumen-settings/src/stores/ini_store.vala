@@ -25,6 +25,15 @@ namespace LumenSettings {
             load();
         }
 
+        // Re-read the backing file from disk, discarding the in-memory copy.
+        // Needed when more than one page mutates the SAME file (e.g. the Panel
+        // page and the Wayfire Plugins page both edit wayfire.ini's [core]
+        // plugins): each holds its own IniStore, so a writer must reload first
+        // or it clobbers the other's changes with its stale snapshot.
+        public void reload() {
+            load();
+        }
+
         public string? get_value(string section, string key) {
             foreach (var l in lines) {
                 if (l.kind == "kv" && l.section == section && l.key == key) return l.value;
