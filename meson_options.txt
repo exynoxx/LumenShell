@@ -41,6 +41,13 @@ option(
 )
 
 option(
+  'with_panel_push',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-panel-push Wayfire plugin (slides the whole scene away from one edge to free a strip for lumen-panel\'s push-reveal mode; needs Wayfire 0.10 dev headers).',
+)
+
+option(
   'with_startup_zoom',
   type: 'boolean',
   value: true,

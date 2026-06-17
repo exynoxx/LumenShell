@@ -22,5 +22,16 @@ public class PeekIpc : GLib.Object {
         bool b = LumenCommon.WayfireIpc.send_method("wayfire-slide-peek/toggle");
         return a || b;
     }
+
+    // Push-reveal mode: slide the whole scene (wallpaper + windows) away from
+    // the panel's edge so the panel can reveal into the freed strip. Harmless
+    // no-op if wayfire-panel-push isn't loaded (verb unregistered).
+    public static bool push_start () {
+        return LumenCommon.WayfireIpc.send_method("wayfire-panel-push/start");
+    }
+
+    public static bool push_stop () {
+        return LumenCommon.WayfireIpc.send_method("wayfire-panel-push/stop");
+    }
 }
 #endif

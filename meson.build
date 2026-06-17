@@ -525,6 +525,7 @@ install_data(
 if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
    or get_option('with_slide_peek') \
+   or get_option('with_panel_push') \
    or get_option('with_converge_lock') \
    or get_option('with_flip_lock') \
    or get_option('with_startup_zoom')
@@ -541,6 +542,10 @@ endif
 
 if get_option('with_slide_peek')
   subdir('wayfire-plugins/slide-peek')
+endif
+
+if get_option('with_panel_push')
+  subdir('wayfire-plugins/panel-push')
 endif
 
 if get_option('with_converge_lock')

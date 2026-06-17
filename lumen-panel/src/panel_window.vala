@@ -7,10 +7,19 @@ using Gtk;
 // exist exactly once, so secondary panels show the AppBar alone.
 public class PanelWindow : Gtk.ApplicationWindow {
 
+    // NORMAL: always visible, reserves an exclusive zone.
+    // HIDDEN: auto-hide overlay — slides off the edge, reveals over windows.
+    // PUSH:   like HIDDEN, but a Wayfire plugin slides the whole scene
+    //         (wallpaper + windows) away from the edge so the panel reveals
+    //         into the freed strip instead of overlapping anything.
+    public enum Mode { NORMAL, HIDDEN, PUSH }
+
     TrayBar? tray;                  // null on non-host windows
     Gtk.Box  root;
 
-    bool auto_hide = false;
+    Mode mode = Mode.NORMAL;
+    // HIDDEN and PUSH share the slide/sliver auto-reveal machinery.
+    bool hides { get { return mode != Mode.NORMAL; } }
     bool at_top = false;
     GtkLayerShell.Edge slide_edge = GtkLayerShell.Edge.BOTTOM;
     bool reveal_target = false;
@@ -30,7 +39,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         set_default_size(-1, 60);
 
         var panel_ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
-        auto_hide = Ini.get_key_value(panel_ini, "behavior.auto-hide") == "true";
+        mode = parse_mode(Ini.get_key_value(panel_ini, "behavior.mode"),
+                          Ini.get_key_value(panel_ini, "behavior.auto-hide"));
         at_top = PanelConfig.at_top;
         slide_edge = at_top ? GtkLayerShell.Edge.TOP : GtkLayerShell.Edge.BOTTOM;
 
@@ -43,7 +53,10 @@ public class PanelWindow : Gtk.ApplicationWindow {
         GtkLayerShell.set_anchor(this, slide_edge, true);
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
-        if (auto_hide) {
+        if (hides) {
+            // Both HIDDEN and PUSH start off-edge with only the sliver showing
+            // and reserve no space; in PUSH the scene-push plugin frees the
+            // strip the panel reveals into.
             GtkLayerShell.set_exclusive_zone(this, 0);
             current_margin = App.HIDDEN_MARGIN;
             GtkLayerShell.set_margin(this, slide_edge, App.HIDDEN_MARGIN);
@@ -135,10 +148,10 @@ public class PanelWindow : Gtk.ApplicationWindow {
         win_motion.notify["contains-pointer"].connect(() => {
             if (win_motion.contains_pointer) {
                 cancel_collapse();
-                if (auto_hide) set_reveal(true);
+                if (hides) set_reveal(true);
                 return;
             }
-            if ((tray != null && tray.is_expanded()) || auto_hide) schedule_collapse();
+            if ((tray != null && tray.is_expanded()) || hides) schedule_collapse();
         });
         ((Gtk.Widget) this).add_controller(win_motion);
     }
@@ -153,13 +166,35 @@ public class PanelWindow : Gtk.ApplicationWindow {
         return t;
     }
 
+    // Resolve behavior.mode, falling back to the legacy behavior.auto-hide bool
+    // when the key is absent (auto-hide = true → HIDDEN).
+    static Mode parse_mode (string? mode_str, string? legacy_auto_hide) {
+        if (mode_str != null) {
+            switch (mode_str.strip()) {
+                case "push":   return Mode.PUSH;
+                case "hidden": return Mode.HIDDEN;
+                default:       return Mode.NORMAL;
+            }
+        }
+        return (legacy_auto_hide == "true") ? Mode.HIDDEN : Mode.NORMAL;
+    }
+
     void set_reveal (bool reveal) {
-        if (!auto_hide) return;
+        if (!hides) return;
         if (reveal == reveal_target && slide_tick_id == 0) {
             int settled = reveal ? 0 : App.HIDDEN_MARGIN;
             if (current_margin == settled) return;
         }
         reveal_target = reveal;
+#if PANEL_PEEK
+        // PUSH mode: tell the compositor to slide the whole scene away from the
+        // edge (reveal) / back (collapse), synchronised with the panel's own
+        // margin slide below. No-op if the plugin isn't loaded.
+        if (mode == Mode.PUSH) {
+            if (reveal) PeekIpc.push_start();
+            else        PeekIpc.push_stop();
+        }
+#endif
         start_slide_tracking();
     }
 
@@ -204,7 +239,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         collapse_timeout_id = GLib.Timeout.add(App.COLLAPSE_DELAY_MS, () => {
             collapse_timeout_id = 0;
             if (tray != null && tray.is_expanded()) tray.collapse();
-            if (auto_hide && (tray == null || !tray.is_expanded())) set_reveal(false);
+            if (hides && (tray == null || !tray.is_expanded())) set_reveal(false);
             return GLib.Source.REMOVE;
         });
     }
@@ -225,12 +260,12 @@ public class PanelWindow : Gtk.ApplicationWindow {
 
         var region = new Cairo.Region();
 
-        if (auto_hide && slide_tick_id != 0) {
+        if (hides && slide_tick_id != 0) {
             region.union_rectangle(Cairo.RectangleInt() { x = 0, y = 0, width = sw, height = sh });
             gdk_surface.set_input_region(region);
             return;
         }
-        if (auto_hide && !reveal_target) {
+        if (hides && !reveal_target) {
             int hy = at_top ? sh - App.SLIVER_PX : 0;
             region.union_rectangle(Cairo.RectangleInt() { x = 0, y = hy, width = sw, height = App.SLIVER_PX });
             gdk_surface.set_input_region(region);

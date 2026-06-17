@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-panel-push">
+    <_short>Panel Push</_short>
+    <_long>Slide the whole scene (wallpaper + windows) away from one screen edge by a fixed amount to free a strip for a push-reveal panel. Driven over IPC by lumen-panel's "push" mode; the panel slides in as the scene slides away.</_long>
+    <category>Desktop</category>
+    <option name="toggle" type="activator">
+      <_short>Toggle push</_short>
+      <_long>Optional keybinding that toggles the push directly, for debugging. lumen-panel normally drives this over IPC.</_long>
+      <default></default>
+    </option>
+    <option name="dismiss" type="activator">
+      <_short>Dismiss push</_short>
+      <_long>Optional secondary binding that only restores the pushed scene. Unset by default so it does not conflict with other consumers of Escape.</_long>
+      <default></default>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>250ms circle</default>
+    </option>
+    <option name="push_px" type="int">
+      <_short>Push distance (px)</_short>
+      <_long>How far the scene slides away from the edge — should match the panel height.</_long>
+      <default>60</default>
+      <min>0</min>
+      <max>400</max>
+    </option>
+    <option name="direction" type="string">
+      <_short>Edge</_short>
+      <_long>Which edge the panel sits on: "top" slides the scene down, "bottom" slides it up.</_long>
+      <default>top</default>
+    </option>
+    <option name="exclude_app_id" type="string">
+      <_short>Excluded app id</_short>
+      <_long>app-id / layer-shell namespace of the view that must NOT be pushed (the panel itself).</_long>
+      <default>lumen-panel</default>
+    </option>
+  </plugin>
+</wayfire>

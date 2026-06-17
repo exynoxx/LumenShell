@@ -11,6 +11,12 @@ namespace LumenSettings {
         JsonStore theme;
         const string SECTION = "panel";
 
+#if WITH_WAYFIRE_CONFIG
+        IniStore wf_store;
+        const string PUSH_PLUGIN  = "wayfire-panel-push";
+        const string PUSH_SECTION = "wayfire-panel-push";
+#endif
+
         // Panel color is a shared RGB; normal mode ("at all times") and auto-hide
         // mode each layer their own opacity (alpha) on top of it.
         Gdk.RGBA panel_rgba;
@@ -20,6 +26,9 @@ namespace LumenSettings {
         public Gtk.Widget build() {
             store = new IniStore(Paths.panel_ini());
             theme = new JsonStore(Paths.theme_json());
+#if WITH_WAYFIRE_CONFIG
+            wf_store = new IniStore(Paths.wayfire_ini());
+#endif
 
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
                 margin_top = 18, margin_bottom = 18,
@@ -36,6 +45,13 @@ namespace LumenSettings {
             position_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "position", v);
                 store.save();
+#if WITH_WAYFIRE_CONFIG
+                // Keep the push plugin's edge aligned with the panel position.
+                if (current_mode() == "push") {
+                    wf_store.set_value(PUSH_SECTION, "direction", v);
+                    wf_store.save();
+                }
+#endif
             });
             layout.add_row(position_row);
 
@@ -44,6 +60,14 @@ namespace LumenSettings {
             height_row.value_changed.connect((v) => {
                 store.set_value(SECTION, "panel.height", "%d".printf((int) v));
                 store.save();
+#if WITH_WAYFIRE_CONFIG
+                // The push distance must match the panel height so the freed
+                // strip exactly fits the revealed panel.
+                if (current_mode() == "push") {
+                    wf_store.set_value(PUSH_SECTION, "push_px", "%d".printf((int) v));
+                    wf_store.save();
+                }
+#endif
             });
             layout.add_row(height_row);
             box.append(layout);
@@ -120,15 +144,25 @@ namespace LumenSettings {
             box.append(clock_group);
 
             var behavior_group = new BoxedList("Behavior");
-            var auto_hide_initial = (store.get_value(SECTION, "behavior.auto-hide") ?? "false") == "true";
-            var auto_hide_row = new SwitchRow("Auto-hide panel",
-                "Hide the panel and reveal it when the pointer reaches the bottom edge",
-                auto_hide_initial);
-            auto_hide_row.toggled.connect((v) => {
-                store.set_value(SECTION, "behavior.auto-hide", v ? "true" : "false");
+
+            string[] mode_labels = { "Always visible", "Auto-hide (overlay)", "Push reveal" };
+            string[] mode_values = { "normal", "hidden", "push" };
+            var mode_initial = current_mode();
+            var mode_row = new ComboRow("Panel mode", mode_labels, mode_values, mode_initial,
+                "Always visible reserves space; Auto-hide reveals over windows; Push slides the whole screen aside to reveal the panel");
+            mode_row.value_changed.connect((v) => {
+                store.set_value(SECTION, "behavior.mode", v);
+                // Keep the legacy bool in sync for older panel builds.
+                store.set_value(SECTION, "behavior.auto-hide",
+                    (v == "hidden" || v == "push") ? "true" : "false");
                 store.save();
+#if WITH_WAYFIRE_CONFIG
+                bool push = (v == "push");
+                set_plugin_enabled(PUSH_PLUGIN, push);
+                if (push) sync_push_options();
+#endif
             });
-            behavior_group.add_row(auto_hide_row);
+            behavior_group.add_row(mode_row);
 
             var launcher_initial = (store.get_value(SECTION, "app.launcher-button") ?? "false") == "true";
             var launcher_row = new SwitchRow("Show app launcher button",
@@ -203,6 +237,50 @@ namespace LumenSettings {
         }
 
         public override string? restart_target() { return "lumen-panel"; }
+
+        // Resolve the current panel mode, migrating the legacy auto-hide bool.
+        string current_mode() {
+            var m = store.get_value(SECTION, "behavior.mode");
+            if (m != null) return m;
+            return (store.get_value(SECTION, "behavior.auto-hide") ?? "false") == "true"
+                ? "hidden" : "normal";
+        }
+
+#if WITH_WAYFIRE_CONFIG
+        // Mirror the push plugin's edge + distance to the panel position/height.
+        void sync_push_options() {
+            var pos = store.get_value(SECTION, "position") ?? "bottom";
+            var h   = store.get_value(SECTION, "panel.height") ?? "60";
+            wf_store.set_value(PUSH_SECTION, "direction", pos);
+            wf_store.set_value(PUSH_SECTION, "push_px", h);
+            wf_store.save();
+        }
+
+        // Add/remove a plugin from wayfire.ini's [core] plugins list, preserving
+        // order and dropping duplicates.
+        void set_plugin_enabled(string name, bool on) {
+            var raw = wf_store.get_value("core", "plugins") ?? "";
+            var seen = new Gee.HashSet<string>();
+            var ordered = new Gee.ArrayList<string>();
+            foreach (var tok in raw.split(" ")) {
+                var t = tok.strip();
+                if (t == "") continue;
+                if (!seen.contains(t)) { seen.add(t); ordered.add(t); }
+            }
+            if (on) {
+                if (!seen.contains(name)) ordered.add(name);
+            } else {
+                ordered.remove(name);
+            }
+            var sb = new StringBuilder();
+            for (int i = 0; i < ordered.size; i++) {
+                if (i > 0) sb.append(" ");
+                sb.append(ordered.get(i));
+            }
+            wf_store.set_value("core", "plugins", sb.str);
+            wf_store.save();
+        }
+#endif
 
         static double parse_double(string? s, double fallback) {
             if (s == null) return fallback;
