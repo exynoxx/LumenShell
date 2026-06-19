@@ -28,7 +28,7 @@ public class Theme {
 
     // Pre-lock transition (see LockEffect). effect: "none" | "converge" | "flip".
     // flip_axis: "y" (rotate about the vertical axis) | "x" (horizontal axis).
-    public static string effect             = "converge";
+    public static string effect             = "flip";
     public static string flip_axis          = "y";
     public static int    effect_duration_ms = 300;
 
@@ -43,7 +43,7 @@ public class Theme {
         accent           = rgba(1.00f, 1.00f, 1.00f, 0.92f);
         scrim            = rgba(0.00f, 0.00f, 0.00f, 0.35f);
         background_image = "";
-        effect             = "converge";
+        effect             = "flip";
         flip_axis          = "y";
         effect_duration_ms = 300;
 

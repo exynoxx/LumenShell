@@ -27,7 +27,8 @@ public class LockManager : GLib.Object {
     private bool authenticating = false;
     private int  failures = 0;
 
-    private Gdk.Texture? backdrop = null;     // cached blurred wallpaper for the lock
+    private Gdk.Texture? backdrop = null;       // cached blurred wallpaper (card backdrop)
+    private Gdk.Texture? live_snapshot = null;  // live screen capture (flip front face)
 
     // Pre-lock transition (converge / flip / none), selected from lockscreen.json.
     // The compositor phase plays first (effect.start_compositor), we wait
@@ -36,6 +37,7 @@ public class LockManager : GLib.Object {
     private LockEffect effect;
     private bool transitioning = false;       // compositor phase running, lock not yet begun
     private bool revealing_in  = false;       // true only while the INITIAL lock windows are built
+    private bool capture_pending = false;     // screencopy in flight (flip front face)
 
     public LockManager(Gtk.Application app) {
         this.app = app;
@@ -82,10 +84,14 @@ public class LockManager : GLib.Object {
         var gdk = Gdk.Display.get_default();
         if (gdk is Gdk.Wayland.Display) {
             unowned Wl.Display wl = ((Gdk.Wayland.Display) gdk).get_wl_display();
-            if (WLHooks.idle_notify_init(wl) == 0)
+            // Combined init: binds ext-idle-notify-v1 (idle auto-lock) AND
+            // wlr-screencopy + wl_output (the live desktop snapshot the flip
+            // reveal turns over) in one registry pass on GTK's wl_display.
+            if (WLHooks.lockscreen_init(wl) == 0)
                 return;
         }
-        warning("lumen-lockscreen: idle-notify init failed; idle auto-lock disabled");
+        warning("lumen-lockscreen: wlhooks init failed; idle auto-lock and "
+                + "live-screen flip disabled");
     }
 
     // Animated lock: play the compositor transition first, then lock + reveal.
@@ -110,11 +116,35 @@ public class LockManager : GLib.Object {
             return;
         }
 
-        // v1 backdrop: the wallpaper blurred once and cached (BlurredWallpaper).
-        // No live screencopy — that shared GDK's Wayland display and crashed the
-        // daemon. Null backdrop falls back to the theme image / a solid scrim.
+        // In-process flip: snapshot the LIVE desktop (windows + wallpaper) for the
+        // reveal's front face, then lock. The capture is async (wlr-screencopy on
+        // GTK's wl_display); the screen stays live until begin_lock(), so there is
+        // no blank during capture, and the lock surface's first frame — the
+        // screenshot at 0° — is pixel-identical to what was on screen.
+        if (animated && effect.needs_snapshot) {
+            transitioning = true;
+            capture_pending = true;
+            WLHooks.capture(on_snapshot_ready, on_snapshot_failed);
+            // Safety: a security-critical lock must never wedge on a capture that
+            // never reports back. If neither callback has fired, lock anyway
+            // (without a front face).
+            Timeout.add(700, () => {
+                if (!capture_pending) return Source.REMOVE;
+                warning("lumen-lockscreen: screencopy timed out; locking without flip");
+                capture_pending = false;
+                transitioning = false;
+                if (!(is_locked || instance != null)) {
+                    live_snapshot = null;
+                    begin_lock();
+                }
+                return Source.REMOVE;
+            });
+            return;
+        }
+
+        // Immediate, or a compositor-coordinated effect (converge) with no phase.
         if (!animated || effect.compositor_ms == 0) {
-            begin_lock(BlurredWallpaper.get_texture());
+            begin_lock();
             return;
         }
 
@@ -130,14 +160,55 @@ public class LockManager : GLib.Object {
                 effect.stop_compositor();   // never leave the plugin held
                 return Source.REMOVE;
             }
-            begin_lock(BlurredWallpaper.get_texture());
+            begin_lock();
             return Source.REMOVE;
         });
     }
 
-    private void begin_lock(Gdk.Texture? texture) {
+    // wlr-screencopy delivered the live desktop frame: turn it into a texture
+    // (the flip's front face) and lock.
+    private void on_snapshot_ready(WLHooks.Buffer buf) {
+        if (!capture_pending) return;                 // safety timeout already fired
+        capture_pending = false;
+        transitioning = false;
+        if (is_locked || instance != null) return;    // raced an external lock
+        live_snapshot = buffer_to_texture(buf);
+        begin_lock();
+    }
+
+    // Capture failed (compositor lacks wlr-screencopy): lock with no front face.
+    // FlipReveal with a null front isn't played, so the card just appears over
+    // its blurred backdrop — fail-soft, no blank flip.
+    private void on_snapshot_failed() {
+        if (!capture_pending) return;                 // safety timeout already fired
+        capture_pending = false;
+        transitioning = false;
         if (is_locked || instance != null) return;
-        backdrop = texture;
+        live_snapshot = null;
+        begin_lock();
+    }
+
+    // Copy the shm pixels into a self-contained CPU texture. The wl_shm formats
+    // are little-endian: ARGB8888 / XRGB8888 land as B,G,R,A bytes in memory.
+    // XRGB (and any non-ARGB fourcc) is treated as opaque (X channel ignored).
+    private Gdk.Texture? buffer_to_texture(WLHooks.Buffer buf) {
+        if (buf.data == null || buf.width == 0 || buf.height == 0) return null;
+        size_t size = (size_t) buf.stride * buf.height;
+        uint8[] copy = new uint8[size];
+        Memory.copy(copy, buf.data, size);
+        var bytes = new Bytes.take((owned) copy);
+        var fmt = (buf.format == 0)               // 0 = WL_SHM_FORMAT_ARGB8888
+            ? Gdk.MemoryFormat.B8G8R8A8
+            : Gdk.MemoryFormat.B8G8R8X8;          // 1 = XRGB8888 (+ opaque fallback)
+        return new Gdk.MemoryTexture((int) buf.width, (int) buf.height,
+                                     fmt, bytes, buf.stride);
+    }
+
+    private void begin_lock() {
+        if (is_locked || instance != null) return;
+        // Card backdrop: the wallpaper blurred once and cached (BlurredWallpaper).
+        // Null falls back to the theme image / a solid scrim.
+        backdrop = BlurredWallpaper.get_texture();
 
         instance = new GtkSessionLock.Instance();
         instance.locked.connect(on_locked);
@@ -234,7 +305,8 @@ public class LockManager : GLib.Object {
         }
         windows.remove_all();
         primary_monitor = null;
-        backdrop = null;   // release the snapshot texture
+        backdrop = null;        // release the blurred-wallpaper texture
+        live_snapshot = null;   // release the live-screen capture
     }
 
     // Hard teardown for the `failed` path: the lock was never granted, so the
@@ -342,21 +414,29 @@ public class LockManager : GLib.Object {
 
     private void make_window(Gdk.Monitor mon, bool is_primary) {
         var user = AccountsClient.load_current_user();
-        var win = new LockWindow(app, is_primary, user, logind, backdrop, effect);
+        // The flip's front face is the live screen of the captured (primary)
+        // output only; secondary outputs have no matching screenshot.
+        Gdk.Texture? front = is_primary ? live_snapshot : null;
+        var win = new LockWindow(app, is_primary, user, logind, backdrop, effect, front);
         // Assign to the output BEFORE present() so gtk4-session-lock makes it a
         // lock surface on that monitor.
         instance.assign_window_to_monitor(win, mon);
         if (is_primary && win.password != null)
             win.password.submitted.connect((pw) => try_auth(pw));
 
-        if (revealing_in && effect.reveal_ms > 0) {
+        // Play the reveal only for the initial lock windows, and — for an effect
+        // that needs a snapshot (flip) — only where we actually have one. Without
+        // it the card just appears (over its blurred backdrop).
+        bool do_reveal = revealing_in && effect.reveal_ms > 0
+                         && !(effect.needs_snapshot && front == null);
+        if (do_reveal) {
             // Only the primary drives the plugin reset, so stop() fires once.
             if (is_primary)
                 win.reveal.finished.connect(on_reveal_finished);
             win.present();
             win.play_reveal(effect.reveal_ms);
         } else {
-            win.present();   // hotplug mid-lock (or no effect): appear instantly
+            win.present();   // hotplug mid-lock / no snapshot / no effect: instant
         }
         windows.set(mon, win);
     }

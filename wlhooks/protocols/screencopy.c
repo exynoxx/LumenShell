@@ -152,6 +152,7 @@ static void frame_handle_ready(void *data,
     if (state->frame) {
         zwlr_screencopy_frame_v1_destroy(state->frame);
     }
+    screencopy_buffer_free(state->result);
     free(state->result);
     free(state);
 }

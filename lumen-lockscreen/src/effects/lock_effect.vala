@@ -1,31 +1,34 @@
 using Gtk;
 
-// LockEffect — the pluggable pre-lock transition. Generalises what used to be
-// the hard-wired converge: a compositor-side phase (a Wayfire plugin animating
-// the live desktop away over IPC) followed by a GTK-side reveal (each lock
-// surface animating out of the held frame). Selected once from lockscreen.json
-// (Theme.effect) and owned by LockManager.
+// LockEffect — the pluggable pre-lock transition. Two shapes:
 //
-//   compositor_ms : how long to wait after start_compositor() before requesting
-//                   the lock (must match the plugin's animation duration). 0
-//                   means there is no compositor phase — lock immediately.
-//   reveal_ms     : how long the lock-surface reveal runs. 0 means no reveal —
-//                   surfaces just appear.
-//   start/stop_compositor : drive the Wayfire plugin (no-op when not under
-//                   Wayfire or the plugin isn't loaded; the lock still proceeds).
-//   create_reveal : the LockReveal wrapper for a surface's content.
+//   * Compositor-coordinated (converge): a Wayfire plugin animates the live
+//     desktop away over IPC (compositor_ms), holds an edge-on/collapsed frame,
+//     then each lock surface reveals out of it (reveal_ms). compositor_ms and
+//     reveal_ms are both > 0 and start/stop_compositor drive the plugin.
+//   * In-process (flip): no compositor phase (compositor_ms == 0). The manager
+//     captures a live screenshot first (needs_snapshot), then the lock surface
+//     plays the WHOLE animation itself (reveal_ms > 0) from that screenshot —
+//     see FlipReveal. start/stop_compositor are no-ops.
+//   * None: lock immediately, surfaces just appear (both durations 0).
 //
-// An effect either has BOTH phases (compositor_ms > 0 && reveal_ms > 0) or
-// NEITHER (none). LockManager relies on that to guarantee stop_compositor() is
-// always reached after a start_compositor().
+// Selected once from lockscreen.json (Theme.effect) and owned by LockManager.
+//
+//   needs_snapshot : the reveal's front face is a live desktop screenshot; the
+//                    manager grabs it via wlr-screencopy before locking and
+//                    threads it into create_reveal().
+//   create_reveal  : the LockReveal wrapper for a surface's content; `snapshot`
+//                    is the captured front-face texture (null unless
+//                    needs_snapshot, or for a non-captured secondary output).
 public interface LockEffect : GLib.Object {
 
     public abstract uint compositor_ms { get; }
     public abstract uint reveal_ms     { get; }
+    public abstract bool needs_snapshot { get; }
 
     public abstract void start_compositor();
     public abstract void stop_compositor();
-    public abstract LockReveal create_reveal(Gtk.Widget content);
+    public abstract LockReveal create_reveal(Gtk.Widget content, Gdk.Texture? snapshot);
 
     // Build the configured effect. Unknown names fall back to "converge".
     public static LockEffect from_config() {
@@ -47,9 +50,12 @@ public interface LockEffect : GLib.Object {
 public class NoneEffect : GLib.Object, LockEffect {
     public uint compositor_ms { get { return 0; } }
     public uint reveal_ms     { get { return 0; } }
+    public bool needs_snapshot { get { return false; } }
     public void start_compositor() {}
     public void stop_compositor() {}
-    public LockReveal create_reveal(Gtk.Widget content) { return new ExpandReveal(content); }
+    public LockReveal create_reveal(Gtk.Widget content, Gdk.Texture? snapshot) {
+        return new ExpandReveal(content);
+    }
 }
 
 // Converge: wayfire-converge-lock collapses the desktop to the centre seam; each
@@ -59,14 +65,18 @@ public class ConvergeEffect : GLib.Object, LockEffect {
     public ConvergeEffect(uint duration_ms) { this.dur = duration_ms; }
     public uint compositor_ms { get { return dur; } }
     public uint reveal_ms     { get { return dur; } }
+    public bool needs_snapshot { get { return false; } }
     public void start_compositor() { ConvergeIpc.start(); }
     public void stop_compositor()  { ConvergeIpc.stop(); }
-    public LockReveal create_reveal(Gtk.Widget content) { return new ExpandReveal(content); }
+    public LockReveal create_reveal(Gtk.Widget content, Gdk.Texture? snapshot) {
+        return new ExpandReveal(content);
+    }
 }
 
-// Flip: wayfire-flip-lock rotates the desktop edge-on about the Y or X axis; each
-// lock surface rotates back out of the edge-on frame (FlipReveal), so the lock
-// reads as the "back side" of the flip.
+// Flip: a single in-process 2D-plane rotation. No compositor phase — the manager
+// captures the live screen, then the lock surface itself flips that screenshot
+// (front face) over 180° to reveal the pre-rendered lock card on the back
+// (FlipReveal). One process, one projection, one easing — see FlipReveal.
 public class FlipEffect : GLib.Object, LockEffect {
     private bool horizontal;   // true = Y axis, false = X axis
     private uint dur;
@@ -74,11 +84,12 @@ public class FlipEffect : GLib.Object, LockEffect {
         this.horizontal = horizontal;
         this.dur = duration_ms;
     }
-    public uint compositor_ms { get { return dur; } }
+    public uint compositor_ms { get { return 0; } }     // in-process: no compositor phase
     public uint reveal_ms     { get { return dur; } }
-    public void start_compositor() { FlipIpc.start(horizontal ? "y" : "x"); }
-    public void stop_compositor()  { FlipIpc.stop(); }
-    public LockReveal create_reveal(Gtk.Widget content) {
-        return new FlipReveal(content, horizontal);
+    public bool needs_snapshot { get { return true; } }
+    public void start_compositor() {}
+    public void stop_compositor()  {}
+    public LockReveal create_reveal(Gtk.Widget content, Gdk.Texture? snapshot) {
+        return new FlipReveal(content, horizontal, snapshot);
     }
 }

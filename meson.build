@@ -436,7 +436,6 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     'lumen-lockscreen/src/auth.vala',
     'lumen-lockscreen/src/idle.vala',
     'lumen-lockscreen/src/converge_ipc.vala',
-    'lumen-lockscreen/src/flip_ipc.vala',
     'lumen-lockscreen/src/effects/lock_effect.vala',
     'lumen-lockscreen/src/self_test.vala',
     'lumen-lockscreen/src/widgets/background.vala',
@@ -527,7 +526,6 @@ if get_option('with_desktop_peek') \
    or get_option('with_slide_peek') \
    or get_option('with_panel_push') \
    or get_option('with_converge_lock') \
-   or get_option('with_flip_lock') \
    or get_option('with_startup_zoom')
   add_languages('cpp', native: false)
 endif
@@ -550,10 +548,6 @@ endif
 
 if get_option('with_converge_lock')
   subdir('wayfire-plugins/converge-lock')
-endif
-
-if get_option('with_flip_lock')
-  subdir('wayfire-plugins/flip-lock')
 endif
 
 if get_option('with_startup_zoom')

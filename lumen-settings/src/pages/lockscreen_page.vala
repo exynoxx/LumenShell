@@ -8,13 +8,13 @@ namespace LumenSettings {
     // choice. Restarting lumen-lockscreen re-reads the file and re-selects the
     // effect (LockEffect.from_config()).
     //
-    // The compositor-side phase of converge/flip is a Wayfire plugin
-    // (wayfire-converge-lock / wayfire-flip-lock); only the plugin loaded in
-    // wayfire.ini's [core] plugins actually animates the live desktop. The two
-    // are mutually exclusive, so selecting an effect also swaps the matching
-    // plugin into that list (and "none" removes both) — otherwise the IPC call
-    // is a silent no-op and the effect never visibly takes hold. Mirrors how
-    // DesktopPage swaps curtain/slide-peek.
+    // Flip runs entirely inside lumen-lockscreen (it captures the live screen and
+    // rotates that snapshot over to the lock card — no compositor plugin).
+    // Converge, by contrast, has a compositor-side phase in a Wayfire plugin
+    // (wayfire-converge-lock); it only animates the live desktop when that plugin
+    // is in wayfire.ini's [core] plugins. So selecting converge loads the plugin
+    // and anything else removes it — otherwise the IPC call is a silent no-op.
+    // Mirrors how DesktopPage swaps curtain/slide-peek.
     public class LockscreenPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "lockscreen"; } }
         public string title     { owned get { return "Lock Screen"; } }
@@ -26,7 +26,6 @@ namespace LumenSettings {
 #if WITH_WAYFIRE_CONFIG
         IniStore wf_store;
         const string CONVERGE_PLUGIN = "wayfire-converge-lock";
-        const string FLIP_PLUGIN     = "wayfire-flip-lock";
 #endif
 
         public Gtk.Widget build() {
@@ -45,7 +44,7 @@ namespace LumenSettings {
 
             string[] fx_labels = { "None", "Converge", "Flip" };
             string[] fx_values = { "none", "converge", "flip" };
-            var fx_initial = store.get_string("lockscreen.effect") ?? "converge";
+            var fx_initial = store.get_string("lockscreen.effect") ?? "flip";
             var fx_row = new ComboRow("Effect", fx_labels, fx_values, fx_initial,
                 "animation played as the desktop hands off to the lock screen");
             fx_row.value_changed.connect((v) => {
@@ -113,10 +112,10 @@ namespace LumenSettings {
         public override string? restart_target() { return "lumen-lockscreen"; }
 
 #if WITH_WAYFIRE_CONFIG
-        // Load exactly the Wayfire plugin matching the chosen effect into
-        // wayfire.ini's [core] plugins list: flip → wayfire-flip-lock, converge
-        // → wayfire-converge-lock, none → neither. Preserves order, drops
-        // duplicates, and only rewrites wayfire.ini when membership changes.
+        // Keep wayfire.ini's [core] plugins list in sync with the chosen effect:
+        // converge → load wayfire-converge-lock, anything else → remove it (flip
+        // is in-process and needs no plugin). Preserves order, drops duplicates,
+        // and only rewrites wayfire.ini when membership changes.
         void apply_effect_plugins(string effect) {
             var raw = wf_store.get_value("core", "plugins") ?? "";
             var seen = new Gee.HashSet<string>();
@@ -127,13 +126,10 @@ namespace LumenSettings {
                 if (!seen.contains(t)) { seen.add(t); ordered.add(t); }
             }
 
-            bool want_flip     = (effect == "flip");
             bool want_converge = (effect == "converge");
-            if (seen.contains(FLIP_PLUGIN) == want_flip &&
-                seen.contains(CONVERGE_PLUGIN) == want_converge)
+            if (seen.contains(CONVERGE_PLUGIN) == want_converge)
                 return;   // already in sync — leave wayfire.ini untouched
 
-            set_in_list(ordered, seen, FLIP_PLUGIN,     want_flip);
             set_in_list(ordered, seen, CONVERGE_PLUGIN, want_converge);
 
             var sb = new StringBuilder();
