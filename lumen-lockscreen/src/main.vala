@@ -22,6 +22,9 @@ public class LockApp : Gtk.Application {
         if (activated) return;
         activated = true;
 
+        DiagLog.log("activate: test_mode=%s session-lock-supported=%s",
+            test_mode.to_string(), GtkSessionLock.is_supported().to_string());
+
         Theme.load();
         install_root_css();
 
@@ -47,13 +50,17 @@ public class LockApp : Gtk.Application {
             (conn) => {
                 try {
                     conn.register_object("/org/lumenshell/Lock", service);
+                    DiagLog.log("bus: acquired org.lumenshell.Lock, object registered");
                 } catch (IOError e) {
-                    stderr.printf("lumen-lockscreen: register_object failed: %s\n", e.message);
+                    warning("lumen-lockscreen: register_object failed: %s", e.message);
                 }
             },
             () => { },
             () => {
-                stderr.printf("lumen-lockscreen: could not acquire org.lumenshell.Lock (already running?)\n");
+                // The silent-exit path: another owner holds the name, so this
+                // instance quits. Persist it — this is exactly what left no
+                // trace when the daemon failed to come up.
+                warning("lumen-lockscreen: could not acquire org.lumenshell.Lock (already running?); exiting");
                 quit();
             }
         );
@@ -67,7 +74,7 @@ public class LockApp : Gtk.Application {
             var combined = Theme.generate_root_css() + "\n" + (string) bytes.get_data();
             provider.load_from_string(combined);
         } catch (Error e) {
-            stderr.printf("lumen-lockscreen: failed to load CSS: %s\n", e.message);
+            warning("lumen-lockscreen: failed to load CSS: %s", e.message);
             return;
         }
         Gtk.StyleContext.add_provider_for_display(
@@ -79,6 +86,12 @@ public class LockApp : Gtk.Application {
 }
 
 public static int main(string[] args) {
+    // First thing, before any GTK/GLib work: persistent diagnostics + a fatal
+    // signal handler. DiagLog.install() must precede the crash handler so the
+    // log file exists for the backtrace to append to.
+    DiagLog.install();
+    CrashHandler.install(DiagLog.PATH);
+
     var app = new LockApp();
     if (Environment.get_variable("LUMEN_LOCKSCREEN_SELF_TEST") == "1")
         app.test_mode = true;

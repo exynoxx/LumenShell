@@ -45,13 +45,17 @@ public class LockManager : GLib.Object {
         this.pam = new PamAuth(Utils.PAM_SERVICE);
         this.windows = new HashTable<Gdk.Monitor, LockWindow>(direct_hash, direct_equal);
 
+        DiagLog.log("manager: effect=%s compositor_ms=%u reveal_ms=%u needs_snapshot=%s idle_timeout_ms=%d",
+            Theme.effect, effect.compositor_ms, effect.reveal_ms,
+            effect.needs_snapshot.to_string(), Theme.idle_timeout_ms);
+
         // Bind ext-idle-notify-v1 on GTK's wl_display for idle auto-lock.
         init_wlhooks();
 
         // Idle auto-lock. Arm immediately; disarm while locked so it can't
         // re-fire, re-arm on unlock.
         this.idle = new IdleWatcher((uint32) Theme.idle_timeout_ms);
-        idle.idled.connect(() => lock_now());
+        idle.idled.connect(() => { DiagLog.log("trigger: idle timeout"); lock_now(); });
         idle.arm();
 
         // Warm the blurred-wallpaper cache and the user-identity lookup off the
@@ -64,9 +68,10 @@ public class LockManager : GLib.Object {
         });
 
         this.logind = new LogindBridge();
-        logind.lock_requested.connect(() => lock_now());
-        logind.unlock_requested.connect(() => unlock_now());   // loginctl already authenticated
+        logind.lock_requested.connect(() => { DiagLog.log("trigger: logind Lock"); lock_now(); });
+        logind.unlock_requested.connect(() => { DiagLog.log("trigger: logind Unlock"); unlock_now(); });   // loginctl already authenticated
         logind.prepare_for_sleep.connect((starting) => {
+            DiagLog.log("trigger: PrepareForSleep starting=%s", starting.to_string());
             if (starting) {
                 lock_now_immediate();   // no transition — screen is powering off
                 // Lock request is in flight; let the kernel proceed to sleep.
@@ -87,8 +92,10 @@ public class LockManager : GLib.Object {
             // Combined init: binds ext-idle-notify-v1 (idle auto-lock) AND
             // wlr-screencopy + wl_output (the live desktop snapshot the flip
             // reveal turns over) in one registry pass on GTK's wl_display.
-            if (WLHooks.lockscreen_init(wl) == 0)
+            if (WLHooks.lockscreen_init(wl) == 0) {
+                DiagLog.log("wlhooks: lockscreen_init ok (idle + screencopy bound)");
                 return;
+            }
         }
         warning("lumen-lockscreen: wlhooks init failed; idle auto-lock and "
                 + "live-screen flip disabled");
@@ -108,8 +115,15 @@ public class LockManager : GLib.Object {
     }
 
     private void lock_internal(bool animated) {
+        DiagLog.log("lock requested: animated=%s (is_locked=%s instance=%s transitioning=%s)",
+            animated.to_string(), is_locked.to_string(),
+            (instance != null).to_string(), transitioning.to_string());
+
         // Re-entrancy guard: already locked, lock in flight, OR transition running.
-        if (is_locked || instance != null || transitioning) return;
+        if (is_locked || instance != null || transitioning) {
+            DiagLog.log("lock ignored: re-entrancy guard");
+            return;
+        }
 
         if (!GtkSessionLock.is_supported()) {
             warning("lumen-lockscreen: compositor lacks ext-session-lock-v1; cannot lock");
@@ -124,6 +138,7 @@ public class LockManager : GLib.Object {
         if (animated && effect.needs_snapshot) {
             transitioning = true;
             capture_pending = true;
+            DiagLog.log("capture: requesting wlr-screencopy for flip front face");
             WLHooks.capture(on_snapshot_ready, on_snapshot_failed);
             // Safety: a security-critical lock must never wedge on a capture that
             // never reports back. If neither callback has fired, lock anyway
@@ -173,6 +188,8 @@ public class LockManager : GLib.Object {
         transitioning = false;
         if (is_locked || instance != null) return;    // raced an external lock
         live_snapshot = buffer_to_texture(buf);
+        DiagLog.log("capture: ready %ux%u (texture=%s)",
+            buf.width, buf.height, (live_snapshot != null).to_string());
         begin_lock();
     }
 
@@ -184,6 +201,7 @@ public class LockManager : GLib.Object {
         capture_pending = false;
         transitioning = false;
         if (is_locked || instance != null) return;
+        DiagLog.log("capture: failed (no wlr-screencopy); locking without flip front");
         live_snapshot = null;
         begin_lock();
     }
@@ -215,6 +233,7 @@ public class LockManager : GLib.Object {
         instance.failed.connect(on_failed);
         instance.unlocked.connect(on_unlocked);
 
+        DiagLog.log("begin_lock: requesting ext-session-lock");
         if (!instance.@lock()) {
             warning("lumen-lockscreen: lock request could not be sent");
             instance = null;
@@ -227,6 +246,7 @@ public class LockManager : GLib.Object {
     private void on_locked() {
         is_locked = true;
         failures = 0;
+        DiagLog.log("locked: compositor granted lock; building surfaces");
         idle.disarm();   // already locked — don't let idle re-fire
 
         var display = Gdk.Display.get_default();
@@ -290,6 +310,7 @@ public class LockManager : GLib.Object {
         is_locked = false;
         failures = 0;
         idle.arm();      // re-arm idle auto-lock for the unlocked session
+        DiagLog.log("unlocked: session unlocked, idle re-armed");
         unlocked();
     }
 
@@ -329,6 +350,8 @@ public class LockManager : GLib.Object {
 
         pam.authenticate_async(password, (ok) => {
             authenticating = false;
+            // Outcome only — the password buffer is never logged anywhere.
+            DiagLog.log("auth: %s", ok ? "success" : "failure");
             if (ok) {
                 unlock_now();
             } else {

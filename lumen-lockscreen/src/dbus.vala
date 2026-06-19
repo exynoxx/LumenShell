@@ -19,6 +19,7 @@ public class LockService : Object {
     }
 
     public void Lock() throws DBusError, IOError {
+        DiagLog.log("trigger: DBus Lock");
         manager.lock_now();
     }
 
@@ -26,6 +27,7 @@ public class LockService : Object {
     // an authenticated agent) is trusted. The password path lives entirely in
     // LockManager.try_auth; it is not exposed on the bus.
     public void Unlock() throws DBusError, IOError {
+        DiagLog.log("trigger: DBus Unlock");
         manager.unlock_now();
     }
 

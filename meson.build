@@ -416,6 +416,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     '--pkg=gio-unix-2.0',
     '--pkg=posix',
     '--pkg=pam_auth',
+    '--pkg=lockscreen_crash',
   ]
 
   # Bake the resolved install datadir into the binary so the packaged default
@@ -428,6 +429,8 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
   lockscreen_sources = files(
     'lumen-common/wayfire_ipc.vala',
     'lumen-lockscreen/src/main.vala',
+    'lumen-lockscreen/src/diaglog.vala',
+    'lumen-lockscreen/src/crash_handler.c',
     'lumen-lockscreen/src/manager.vala',
     'lumen-lockscreen/src/window.vala',
     'lumen-lockscreen/src/theme.vala',
@@ -456,7 +459,9 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     c_args: lockscreen_c_args,
     dependencies: lockscreen_deps,
     include_directories: include_directories('lumen-lockscreen/src'),
-    link_args: ['-Wl,--no-as-needed'],
+    # -rdynamic exports the dynamic symbol table so backtrace_symbols_fd() in
+    # crash_handler.c prints function names, not bare addresses.
+    link_args: ['-Wl,--no-as-needed', '-rdynamic'],
     install: true,
   )
 
