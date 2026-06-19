@@ -18,8 +18,8 @@ public class BtDevice : GLib.Object {
 
 /**
  * bluetoothctl accepts one-shot subcommands non-interactively, so reads use
- * Process.spawn_command_line_sync (blocking) and fire-and-forget actions use
- * Utils.spawn_argv.
+ * LumenCommon.Proc.run_capture (blocking) and fire-and-forget actions use
+ * LumenCommon.Proc.spawn_detached.
  */
 public class BtctlClient : GLib.Object {
 
@@ -30,10 +30,8 @@ public class BtctlClient : GLib.Object {
     }
 
     public bool query_powered() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync("bluetoothctl show", out out_str, null, null);
-        } catch (SpawnError e) { return false; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{ "bluetoothctl", "show" });
+        if (out_str == null) return false;
 
         foreach (var line in out_str.split("\n")) {
             var t = line.strip();
@@ -43,10 +41,8 @@ public class BtctlClient : GLib.Object {
     }
 
     public BtDevice[] fetch_devices() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync("bluetoothctl devices", out out_str, null, null);
-        } catch (SpawnError e) { return {}; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{ "bluetoothctl", "devices" });
+        if (out_str == null) return {};
 
         BtDevice[] result = {};
         var seen = new GLib.HashTable<string, bool>(str_hash, str_equal);
@@ -66,12 +62,8 @@ public class BtctlClient : GLib.Object {
     }
 
     public BtDevice info(string mac) {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync("bluetoothctl info " + mac, out out_str, null, null);
-        } catch (SpawnError e) {
-            return new BtDevice(mac, mac, "", false, false);
-        }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{ "bluetoothctl", "info", mac });
+        if (out_str == null) return new BtDevice(mac, mac, "", false, false);
 
         string name      = mac;
         string dev_icon  = "";
@@ -90,12 +82,9 @@ public class BtctlClient : GLib.Object {
     }
 
     public void scan(uint secs) {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "bluetoothctl --timeout %u scan on".printf(secs),
-                out out_str, null, null);
-        } catch (SpawnError e) {}
+        LumenCommon.Proc.run_capture(new string[]{
+            "bluetoothctl", "--timeout", "%u".printf(secs), "scan", "on"
+        });
     }
 
     /**
@@ -105,19 +94,19 @@ public class BtctlClient : GLib.Object {
      */
     public void set_powered(bool on) {
         if (on) {
-            run_sync(new string[] { "rfkill", "unblock", "bluetooth" });
-            run_sync(new string[] { "bluetoothctl", "power", "on" });
+            LumenCommon.Proc.run_capture(new string[] { "rfkill", "unblock", "bluetooth" });
+            LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "power", "on" });
         } else {
-            run_sync(new string[] { "bluetoothctl", "power", "off" });
+            LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "power", "off" });
         }
     }
 
     public void connect(string mac) {
-        Utils.spawn_argv(new string[] { "bluetoothctl", "connect", mac });
+        LumenCommon.Proc.spawn_detached(new string[] { "bluetoothctl", "connect", mac });
     }
 
     public void disconnect(string mac) {
-        Utils.spawn_argv(new string[] { "bluetoothctl", "disconnect", mac });
+        LumenCommon.Proc.spawn_detached(new string[] { "bluetoothctl", "disconnect", mac });
     }
 
     /**
@@ -126,21 +115,12 @@ public class BtctlClient : GLib.Object {
      * handled. Call from a background thread — each step blocks.
      */
     public void pair(string mac) {
-        run_sync(new string[] { "bluetoothctl", "pair",    mac });
-        run_sync(new string[] { "bluetoothctl", "trust",   mac });
-        run_sync(new string[] { "bluetoothctl", "connect", mac });
+        LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "pair",    mac });
+        LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "trust",   mac });
+        LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "connect", mac });
     }
 
     public void remove(string mac) {
-        Utils.spawn_argv(new string[] { "bluetoothctl", "remove", mac });
-    }
-
-    private void run_sync(string[] argv) {
-        try {
-            Process.spawn_sync(null, argv, null,
-                SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL
-                    | SpawnFlags.STDERR_TO_DEV_NULL,
-                null, null, null, null);
-        } catch (SpawnError e) {}
+        LumenCommon.Proc.spawn_detached(new string[] { "bluetoothctl", "remove", mac });
     }
 }

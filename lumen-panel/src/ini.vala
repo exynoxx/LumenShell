@@ -2,30 +2,20 @@ using Gee;
 using GLib;
 
 public class Ini {
-    public static string? get_key_value(string file_path, string key){
-        if (!FileUtils.test(file_path, FileTest.EXISTS))
-        return null;
-
-        string? value = null;
-
-        FileStream stream = FileStream.open (file_path, "r");
-        assert (stream != null);
-
-        string? line = null;
-        while ((line = stream.read_line ()) != null) {
-            string l = line.strip();
-            if(!l.contains("=")){
-                continue;
-            }
-
-            string[] parts = l.split("=", 2);
-            if (parts[0].strip() == key) {
-                value = parts[1].strip();
-                break;
-            }
+    // Read one key from a grouped INI file via GLib.KeyFile. Returns null if the
+    // file/group/key is absent or unparseable (fail-soft, same contract as the
+    // old line scanner). Value is stripped so trailing/leading spaces from the
+    // "key = value" writer never leak into comparisons.
+    public static string? get_value(string file_path, string group, string key) {
+        if (!FileUtils.test(file_path, FileTest.EXISTS)) return null;
+        var kf = new KeyFile();
+        try {
+            kf.load_from_file(file_path, KeyFileFlags.NONE);
+            if (!kf.has_group(group) || !kf.has_key(group, key)) return null;
+            return kf.get_string(group, key).strip();
+        } catch (Error e) {
+            return null;
         }
-
-        return value;
     }
 
     public static ArrayList<string> read_lines(string file_path){

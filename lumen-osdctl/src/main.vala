@@ -34,27 +34,6 @@ private static string mode_key(DisplayCtl.Mode m) {
     }
 }
 
-private static bool daemon_present(DBusConnection conn) {
-    try {
-        var r = conn.call_sync(
-            "org.freedesktop.DBus",
-            "/org/freedesktop/DBus",
-            "org.freedesktop.DBus",
-            "NameHasOwner",
-            new Variant("(s)", "org.lumenshell.OSD"),
-            new VariantType("(b)"),
-            DBusCallFlags.NONE,
-            500,
-            null
-        );
-        bool has = false;
-        r.get("(b)", out has);
-        return has;
-    } catch (Error e) {
-        return false;
-    }
-}
-
 private static OsdProxy? connect_proxy() {
     DBusConnection conn;
     try {
@@ -64,7 +43,7 @@ private static OsdProxy? connect_proxy() {
         return null;
     }
 
-    if (!daemon_present(conn)) {
+    if (!LumenCommon.DbusCli.name_has_owner(conn, "org.lumenshell.OSD")) {
         stderr.printf("lumen-osdctl: lumen-osd daemon is not running\n");
         return null;
     }

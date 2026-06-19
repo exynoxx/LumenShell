@@ -33,18 +33,6 @@ public class Utils {
         return c;
     }
 
-    // argv form avoids shell quoting entirely — bytes pass through unchanged
-    // and can never be reinterpreted by /bin/sh. Errors swallowed because the
-    // panel can't do anything useful with a failed pactl/nmcli spawn beyond
-    // the next poll picking up the real state.
-    public static void spawn_argv (string[] argv) {
-        try {
-            Pid pid;
-            Process.spawn_async(null, argv, null, SpawnFlags.SEARCH_PATH, null, out pid);
-            Process.close_pid(pid);
-        } catch (SpawnError e) {}
-    }
-
     static string[] xdg_app_dirs () {
         var dirs = new Gee.ArrayList<string>();
         dirs.add(Environment.get_user_data_dir());
@@ -52,13 +40,9 @@ public class Utils {
         return dirs.to_array();
     }
 
+    // Case-insensitive prefix scan as a fallback for app_ids whose case
+    // doesn't match the .desktop filename. Returns a full path or null.
     static string? find_desktop_file (string app_id) {
-        foreach (string data_dir in xdg_app_dirs()) {
-            string p = Path.build_filename(data_dir, "applications", app_id + ".desktop");
-            if (FileUtils.test(p, FileTest.EXISTS)) return p;
-        }
-        // Case-insensitive prefix scan as a fallback for app_ids whose case
-        // doesn't match the .desktop filename.
         string needle = app_id.down();
         foreach (string data_dir in xdg_app_dirs()) {
             string apps_dir = Path.build_filename(data_dir, "applications");
@@ -74,32 +58,37 @@ public class Utils {
         return null;
     }
 
-    // One KeyFile load per app_id, rather than re-reading the file once per key.
+    // Pull Name/Icon/Exec out of a resolved DesktopAppInfo into the struct.
+    // Icon stays the raw "Icon" name string (the panel stores a name, not a
+    // GIcon); Exec is field-code-stripped via sanitize_exec.
+    static void fill_from_info (DesktopAppInfo info, ref AppMetadata m) {
+        string? nm = info.get_name();
+        if (nm != null) m.name = nm;
+        string? ic = info.get_string("Icon");
+        if (ic != null) m.icon = ic;
+        m.launch_cmd = sanitize_exec(info.get_string("Exec") ?? "");
+    }
+
+    // Resolve app metadata via GLib.DesktopAppInfo (which does the XDG search).
+    // Falls back to a case-insensitive prefix scan when the exact <app_id>.desktop
+    // file doesn't exist.
     public static AppMetadata load_app_metadata (string app_id) {
         AppMetadata m = { app_id, "", "" };
 
-        string? path = find_desktop_file(app_id);
-        if (path == null) return m;
-
-        var kf = new KeyFile();
-        try {
-            kf.load_from_file(path, KeyFileFlags.NONE);
-        } catch (Error e) {
+        var info = new DesktopAppInfo(app_id + ".desktop");
+        if (info != null) {
+            fill_from_info(info, ref m);
             return m;
         }
 
-        try { if (kf.has_key("Desktop Entry", "Name"))
-            m.name = kf.get_string("Desktop Entry", "Name");
-        } catch (Error e) {}
+        // Fuzzy fallback: prefix-match a .desktop filename, then load it by path.
+        string? path = find_desktop_file(app_id);
+        if (path == null) return m;
 
-        try { if (kf.has_key("Desktop Entry", "Icon"))
-            m.icon = kf.get_string("Desktop Entry", "Icon");
-        } catch (Error e) {}
+        var finfo = new DesktopAppInfo.from_filename(path);
+        if (finfo == null) return m;
 
-        try { if (kf.has_key("Desktop Entry", "Exec"))
-            m.launch_cmd = sanitize_exec(kf.get_string("Desktop Entry", "Exec"));
-        } catch (Error e) {}
-
+        fill_from_info(finfo, ref m);
         return m;
     }
 

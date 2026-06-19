@@ -71,12 +71,10 @@ public class NmcliClient : GLib.Object {
     }
 
     public string query_connected() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device",
-                out out_str, null, null);
-        } catch (SpawnError e) { return ""; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{
+            "nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"
+        });
+        if (out_str == null) return "";
 
         foreach (var line in out_str.split("\n")) {
             var p = split_terse(line, 4);
@@ -87,12 +85,10 @@ public class NmcliClient : GLib.Object {
     }
 
     public bool query_ethernet_connected() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "nmcli -t -f DEVICE,TYPE,STATE device",
-                out out_str, null, null);
-        } catch (SpawnError e) { return false; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{
+            "nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device"
+        });
+        if (out_str == null) return false;
 
         foreach (var line in out_str.split("\n")) {
             var p = split_terse(line, 3);
@@ -103,12 +99,10 @@ public class NmcliClient : GLib.Object {
     }
 
     public string get_wifi_device() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "nmcli -t -f DEVICE,TYPE,STATE device",
-                out out_str, null, null);
-        } catch (SpawnError e) { return ""; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{
+            "nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device"
+        });
+        if (out_str == null) return "";
 
         foreach (var line in out_str.split("\n")) {
             var p = split_terse(line, 3);
@@ -119,10 +113,8 @@ public class NmcliClient : GLib.Object {
     }
 
     public bool query_enabled() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync("nmcli radio wifi", out out_str, null, null);
-        } catch (SpawnError e) { return false; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{ "nmcli", "radio", "wifi" });
+        if (out_str == null) return false;
         return out_str.strip() == "enabled";
     }
 
@@ -131,22 +123,13 @@ public class NmcliClient : GLib.Object {
      * hard/soft block first, otherwise `nmcli radio wifi on` can no-op.
      */
     public void set_enabled(bool on) {
-        if (on) run_sync(new string[] { "rfkill", "unblock", "wifi" });
-        run_sync(new string[] { "nmcli", "radio", "wifi", on ? "on" : "off" });
-    }
-
-    private void run_sync(string[] argv) {
-        try {
-            Process.spawn_sync(null, argv, null,
-                SpawnFlags.SEARCH_PATH | SpawnFlags.STDOUT_TO_DEV_NULL
-                    | SpawnFlags.STDERR_TO_DEV_NULL,
-                null, null, null, null);
-        } catch (SpawnError e) {}
+        if (on) LumenCommon.Proc.run_capture(new string[] { "rfkill", "unblock", "wifi" });
+        LumenCommon.Proc.run_capture(new string[] { "nmcli", "radio", "wifi", on ? "on" : "off" });
     }
 
     /** Blocking. */
     public void rescan() {
-        Utils.spawn_argv(new string[] { "nmcli", "device", "wifi", "rescan" });
+        LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "device", "wifi", "rescan" });
     }
 
     /**
@@ -200,12 +183,10 @@ public class NmcliClient : GLib.Object {
      */
     public Gee.HashSet<string> saved_ssids() {
         var saved = new Gee.HashSet<string>();
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "nmcli -t -f NAME,TYPE connection show",
-                out out_str, null, null);
-        } catch (SpawnError e) { return saved; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{
+            "nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"
+        });
+        if (out_str == null) return saved;
 
         foreach (var line in out_str.split("\n")) {
             var p = split_terse(line, 2);
@@ -218,16 +199,14 @@ public class NmcliClient : GLib.Object {
     public void disconnect() {
         string dev = get_wifi_device();
         if (dev == "") return;
-        Utils.spawn_argv(new string[] { "nmcli", "device", "disconnect", dev });
+        LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "device", "disconnect", dev });
     }
 
     public WifiNet[] fetch_nets() {
-        string out_str = "";
-        try {
-            Process.spawn_command_line_sync(
-                "nmcli -t -f SSID,SIGNAL,SECURITY device wifi list",
-                out out_str, null, null);
-        } catch (SpawnError e) { return {}; }
+        string? out_str = LumenCommon.Proc.run_capture(new string[]{
+            "nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"
+        });
+        if (out_str == null) return {};
 
         var saved = saved_ssids();
         WifiNet[] result = {};

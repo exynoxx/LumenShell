@@ -35,13 +35,13 @@ public class PanelConfig {
 
     public static void load () {
         var ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
-        at_top = Ini.get_key_value(ini, "position") == "top";
-        open_indicator = parse_indicator(Ini.get_key_value(ini, "app.open-indicator"));
-        multi_monitor    = Ini.get_key_value(ini, "behavior.multi-monitor")    == "true";
-        per_monitor_apps = Ini.get_key_value(ini, "behavior.per-monitor-apps") == "true";
-        tray_all_monitors = Ini.get_key_value(ini, "behavior.tray-all-monitors") == "true";
-        show_launcher    = Ini.get_key_value(ini, "app.launcher-button")       == "true";
-        var fmt = Ini.get_key_value(ini, "clock.format");
+        at_top = Ini.get_value(ini, "panel", "position") == "top";
+        open_indicator = parse_indicator(Ini.get_value(ini, "panel", "app.open-indicator"));
+        multi_monitor    = Ini.get_value(ini, "panel", "behavior.multi-monitor")    == "true";
+        per_monitor_apps = Ini.get_value(ini, "panel", "behavior.per-monitor-apps") == "true";
+        tray_all_monitors = Ini.get_value(ini, "panel", "behavior.tray-all-monitors") == "true";
+        show_launcher    = Ini.get_value(ini, "panel", "app.launcher-button")       == "true";
+        var fmt = Ini.get_value(ini, "panel", "clock.format");
         if (fmt != null && fmt.strip() != "") clock_format = fmt;
     }
 

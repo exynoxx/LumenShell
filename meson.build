@@ -139,6 +139,18 @@ accounts_source = files(
   'lumen-common/accounts.vala',
 )
 
+# Shared GLib.Subprocess spawn helper (run_capture / spawn_detached). Used by
+# lumen-panel and lumen-osdctl. Kept separate so consumers pull only what they need.
+proc_source = files(
+  'lumen-common/proc.vala',
+)
+
+# Shared DBus CLI helper (name_has_owner "is the daemon running?" check). Used by
+# lumen-osdctl and lumen-lockctl.
+dbus_cli_source = files(
+  'lumen-common/dbus_cli.vala',
+)
+
 panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']
@@ -197,7 +209,7 @@ panel_sources = files(
 )
 
 executable('lumen-panel',
-  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources,
+  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source,
   vala_args: panel_vala_args,
   dependencies: panel_deps,
   link_args: ['-Wl,--no-as-needed'],
@@ -324,7 +336,7 @@ osdctl_sources = files(
 )
 
 executable('lumen-osdctl',
-  osdctl_sources,
+  osdctl_sources + proc_source + dbus_cli_source,
   vala_args: osdctl_vala_args,
   dependencies: osdctl_deps,
   install: true,
@@ -465,7 +477,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     files(
       'lumen-lockctl/src/main.vala',
       'lumen-lockctl/src/dbus_proxy.vala',
-    ),
+    ) + dbus_cli_source,
     vala_args: ['--pkg=gio-2.0', '--pkg=glib-2.0'],
     dependencies: [glib_dep, gio_dep, m_dep],
     install: true,

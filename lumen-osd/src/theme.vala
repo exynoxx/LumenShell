@@ -62,16 +62,16 @@ public class Theme {
             warning("lumen-osd: unknown theme key: %s", key);
             return;
         }
-        Gdk.RGBA? c = parse_hex(val.substring(1));
-        if (c == null) {
+        var c = Gdk.RGBA();
+        if (!c.parse(val)) {
             warning("lumen-osd: invalid color for %s: %s", key, val);
             return;
         }
         switch (key) {
-            case "osd.background":     background     = (!) c; break;
-            case "osd.text":           text           = (!) c; break;
-            case "osd.progress.track": progress_track = (!) c; break;
-            case "osd.progress.fill":  progress_fill  = (!) c; break;
+            case "osd.background":     background     = c; break;
+            case "osd.text":           text           = c; break;
+            case "osd.progress.track": progress_track = c; break;
+            case "osd.progress.fill":  progress_fill  = c; break;
             default:
                 warning("lumen-osd: unknown theme key: %s", key);
                 break;
@@ -105,43 +105,5 @@ public class Theme {
         var c = Gdk.RGBA();
         c.red = r; c.green = g; c.blue = b; c.alpha = a;
         return c;
-    }
-
-    private static Gdk.RGBA? parse_hex(string hex) {
-        string s = hex;
-        if (s.length == 3 || s.length == 4) {
-            var sb = new StringBuilder();
-            for (int i = 0; i < s.length; i++) {
-                sb.append_c(s[i]);
-                sb.append_c(s[i]);
-            }
-            s = sb.str;
-        }
-        if (s.length != 6 && s.length != 8) return null;
-
-        uint64 v = 0;
-        for (int i = 0; i < s.length; i++) {
-            char ch = s[i];
-            uint64 nibble;
-            if (ch >= '0' && ch <= '9')      nibble = ch - '0';
-            else if (ch >= 'a' && ch <= 'f') nibble = ch - 'a' + 10;
-            else if (ch >= 'A' && ch <= 'F') nibble = ch - 'A' + 10;
-            else return null;
-            v = (v << 4) | nibble;
-        }
-
-        float r, g, b, a;
-        if (s.length == 6) {
-            r = ((v >> 16) & 0xFF) / 255f;
-            g = ((v >>  8) & 0xFF) / 255f;
-            b = ( v        & 0xFF) / 255f;
-            a = 1f;
-        } else {
-            r = ((v >> 24) & 0xFF) / 255f;
-            g = ((v >> 16) & 0xFF) / 255f;
-            b = ((v >>  8) & 0xFF) / 255f;
-            a = ( v        & 0xFF) / 255f;
-        }
-        return rgba(r, g, b, a);
     }
 }

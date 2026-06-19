@@ -7,69 +7,65 @@ public class Backends {
         public bool   muted;
     }
 
-    private static string run_sync(string cmd) {
-        string outp = "";
-        try {
-            Process.spawn_command_line_sync(cmd, out outp, null, null);
-        } catch (SpawnError e) {
-            return "";
-        }
-        return outp;
-    }
-
-    private static void run_async(string cmd) {
-        try {
-            Process.spawn_command_line_async(cmd);
-        } catch (SpawnError e) {}
-    }
-
     public static State output_volume_raise(int step) {
-        run_sync("pactl set-sink-volume @DEFAULT_SINK@ +%d%%".printf(step));
-        run_sync("pactl set-sink-mute   @DEFAULT_SINK@ 0");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+%d%%".printf(step) });
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-sink-mute", "@DEFAULT_SINK@", "0" });
         return query_sink();
     }
 
     public static State output_volume_lower(int step) {
-        run_sync("pactl set-sink-volume @DEFAULT_SINK@ -%d%%".printf(step));
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "-%d%%".printf(step) });
         return query_sink();
     }
 
     public static State output_volume_mute_toggle() {
-        run_sync("pactl set-sink-mute @DEFAULT_SINK@ toggle");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle" });
         return query_sink();
     }
 
     public static State query_sink() {
+        string? vol = LumenCommon.Proc.run_capture(
+            new string[]{ "env", "LC_ALL=C", "pactl", "get-sink-volume", "@DEFAULT_SINK@" });
+        string? mute = LumenCommon.Proc.run_capture(
+            new string[]{ "env", "LC_ALL=C", "pactl", "get-sink-mute", "@DEFAULT_SINK@" });
         return State() {
-            value = parse_percent(run_sync(
-                "env LC_ALL=C pactl get-sink-volume @DEFAULT_SINK@")),
-            muted = run_sync(
-                "env LC_ALL=C pactl get-sink-mute @DEFAULT_SINK@").down().contains("yes")
+            value = parse_percent(vol ?? ""),
+            muted = (mute ?? "").down().contains("yes")
         };
     }
 
     public static State input_volume_raise(int step) {
-        run_sync("pactl set-source-volume @DEFAULT_SOURCE@ +%d%%".printf(step));
-        run_sync("pactl set-source-mute   @DEFAULT_SOURCE@ 0");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-source-volume", "@DEFAULT_SOURCE@", "+%d%%".printf(step) });
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-source-mute", "@DEFAULT_SOURCE@", "0" });
         return query_source();
     }
 
     public static State input_volume_lower(int step) {
-        run_sync("pactl set-source-volume @DEFAULT_SOURCE@ -%d%%".printf(step));
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-source-volume", "@DEFAULT_SOURCE@", "-%d%%".printf(step) });
         return query_source();
     }
 
     public static State input_volume_mute_toggle() {
-        run_sync("pactl set-source-mute @DEFAULT_SOURCE@ toggle");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "pactl", "set-source-mute", "@DEFAULT_SOURCE@", "toggle" });
         return query_source();
     }
 
     public static State query_source() {
+        string? vol = LumenCommon.Proc.run_capture(
+            new string[]{ "env", "LC_ALL=C", "pactl", "get-source-volume", "@DEFAULT_SOURCE@" });
+        string? mute = LumenCommon.Proc.run_capture(
+            new string[]{ "env", "LC_ALL=C", "pactl", "get-source-mute", "@DEFAULT_SOURCE@" });
         return State() {
-            value = parse_percent(run_sync(
-                "env LC_ALL=C pactl get-source-volume @DEFAULT_SOURCE@")),
-            muted = run_sync(
-                "env LC_ALL=C pactl get-source-mute @DEFAULT_SOURCE@").down().contains("yes")
+            value = parse_percent(vol ?? ""),
+            muted = (mute ?? "").down().contains("yes")
         };
     }
 
@@ -87,26 +83,33 @@ public class Backends {
     }
 
     public static State brightness_raise(int step) {
-        run_sync("brightnessctl set %d%%+".printf(step));
-        return query_brightness("");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "brightnessctl", "set", "%d%%+".printf(step) });
+        return query_brightness(null);
     }
     public static State brightness_lower(int step) {
-        run_sync("brightnessctl set %d%%-".printf(step));
-        return query_brightness("");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "brightnessctl", "set", "%d%%-".printf(step) });
+        return query_brightness(null);
     }
     public static State kbd_brightness_raise(int step) {
-        run_sync("brightnessctl --device='*::kbd_backlight' set %d%%+".printf(step));
-        return query_brightness("--device='*::kbd_backlight'");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "brightnessctl", "--device=*::kbd_backlight", "set", "%d%%+".printf(step) });
+        return query_brightness("*::kbd_backlight");
     }
     public static State kbd_brightness_lower(int step) {
-        run_sync("brightnessctl --device='*::kbd_backlight' set %d%%-".printf(step));
-        return query_brightness("--device='*::kbd_backlight'");
+        LumenCommon.Proc.spawn_detached(
+            new string[]{ "brightnessctl", "--device=*::kbd_backlight", "set", "%d%%-".printf(step) });
+        return query_brightness("*::kbd_backlight");
     }
 
-    private static State query_brightness(string device_arg) {
-        var raw = run_sync("brightnessctl %s -m".printf(device_arg));
+    private static State query_brightness(string? device) {
+        string[] argv = (device == null)
+            ? new string[]{ "brightnessctl", "-m" }
+            : new string[]{ "brightnessctl", "--device=" + (!) device, "-m" };
+        string? raw = LumenCommon.Proc.run_capture(argv);
         // Format: name,class,current,pct,max  (pct includes %)
-        var parts = raw.strip().split(",");
+        var parts = (raw ?? "").strip().split(",");
         double v = 0.0;
         if (parts.length >= 4) {
             var pct_str = parts[3].replace("%", "").strip();
