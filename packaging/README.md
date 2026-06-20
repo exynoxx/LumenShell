@@ -25,13 +25,26 @@ sudo dnf builddep packaging/rpm/lumenshell.spec
 packaging/build-rpm.sh
 ```
 
-The C++ Wayfire plugins (desktop-peek, curtain-peek, startup-zoom,
-default-focus) are **off by default** — they need `wayfire`/`wlroots` dev
+The C++ Wayfire plugins (desktop-peek, curtain-peek, slide-peek, panel-push,
+startup-zoom) are **off by default** — they need `wayfire`/`wlroots` dev
 headers that aren't always packaged. Enable them with:
 
 ```sh
 packaging/build-rpm.sh --with wayfire_plugins
 ```
+
+`lumen-lockscreen` + `lumen-lockctl` are likewise **off by default** — they
+need `gtk4-session-lock-0` (not packaged on stock Fedora — build it from
+https://github.com/wmww/gtk4-session-lock) plus `pam-devel`. Once those are
+available, enable the lock screen with:
+
+```sh
+packaging/build-rpm.sh --with lockscreen
+```
+
+The `%meson` macro forces `--auto-features=enabled`, so the spec passes
+`-Dwith_lockscreen` explicitly; without `--with lockscreen` it is disabled
+rather than auto-detected, keeping the default build reproducible.
 
 ## DEB (Debian/Ubuntu)
 
@@ -52,7 +65,7 @@ release, bump it there and add a matching entry to both `rpm/lumenshell.spec`
 
 ## Not yet packaged
 
-`lumen-greeter`, `lumen-dock`, and the `lumen-lockscreen` daemon are
-planning-stage (no buildable source yet) and are intentionally excluded. The
-session autostart snippet does not start them. Wire them in here once they
-build.
+`lumen-greeter` and `lumen-dock` are planning-stage (no buildable source yet)
+and are intentionally excluded. `lumen-lockscreen`/`lumen-lockctl` build but are
+gated behind `--with lockscreen` (see above) because their `gtk4-session-lock-0`
+dependency is not packaged on stock Fedora.

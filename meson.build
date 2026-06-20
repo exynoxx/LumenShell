@@ -1,6 +1,6 @@
 project('lumenshell', ['c', 'vala'],
   version: '1.0',
-  default_options: ['optimization=2']
+  default_options: ['buildtype=release']
 )
 
 cc = meson.get_compiler('c')

@@ -9,8 +9,13 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 # The C++ Wayfire plugins need Wayfire >= 0.10 + wlroots dev headers, which
 # Debian/Ubuntu do not reliably package. Disable them; the Vala panel-peek
 # (Win+D from the panel) stays on as it has no Wayfire build dependency.
+# lumen-lockscreen needs gtk4-session-lock-0 (unpackaged); disable explicitly
+# so the build is reproducible rather than auto-detected.
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-Dwith_desktop_peek=false \
 		-Dwith_curtain_peek=false \
-		-Dwith_startup_zoom=false
+		-Dwith_slide_peek=false \
+		-Dwith_panel_push=false \
+		-Dwith_startup_zoom=false \
+		-Dwith_lockscreen=disabled

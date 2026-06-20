@@ -1,10 +1,23 @@
 %global srcname lumenshell
 
-# C++ Wayfire plugins (desktop-peek, curtain-peek, startup-zoom, default-focus)
-# need Wayfire >= 0.10 + wlroots dev headers, which are not always packaged.
-# They are OFF by default; build with `--with wayfire_plugins` to enable.
+# C++ Wayfire plugins (desktop-peek, curtain-peek, slide-peek, panel-push,
+# startup-zoom) need Wayfire >= 0.10 + wlroots dev headers, which are not always
+# packaged. They are OFF by default; build with `--with wayfire_plugins`:
 #   rpmbuild -ba packaging/rpm/lumenshell.spec --with wayfire_plugins
 %bcond_with wayfire_plugins
+
+# lumen-lockscreen + lumen-lockctl need gtk4-session-lock-0 (not packaged on
+# stock Fedora — build from https://github.com/wmww/gtk4-session-lock) and PAM.
+# OFF by default; build with `--with lockscreen` once gtk4-session-lock-0 is
+# available as a pkg-config dependency.
+%bcond_with lockscreen
+
+# Resolve the boolean meson value for the (default-off) plugin options once.
+%if %{with wayfire_plugins}
+%global plugins true
+%else
+%global plugins false
+%endif
 
 Name:           %{srcname}
 Version:        1.0
@@ -32,6 +45,7 @@ BuildRequires:  pkgconfig(json-glib-1.0)
 BuildRequires:  pkgconfig(gtk4)
 BuildRequires:  pkgconfig(gtk4-wayland)
 BuildRequires:  pkgconfig(gtk4-layer-shell-0)
+BuildRequires:  pkgconfig(libadwaita-1)
 BuildRequires:  pkgconfig(wayland-client)
 BuildRequires:  pkgconfig(wayland-egl)
 BuildRequires:  pkgconfig(egl)
@@ -43,6 +57,10 @@ BuildRequires:  freetype-devel
 BuildRequires:  pkgconfig(wayfire)
 BuildRequires:  pkgconfig(wlroots-0.19)
 %endif
+%if %{with lockscreen}
+BuildRequires:  pkgconfig(gtk4-session-lock-0)
+BuildRequires:  pam-devel
+%endif
 
 # Runtime compositor + layer-shell stack. The lumen-* binaries are useless
 # without a Wayfire session to host them.
@@ -53,17 +71,23 @@ Requires:       gtk4-layer-shell
 LumenShell is a ChromeOS-inspired desktop shell for Wayland. It runs on the
 Wayfire compositor as a collection of small gtk4-layer-shell apps written in
 Vala: a bottom panel, an app-drawer desktop, an on-screen display, a
-notification daemon, and a settings app. Installing this package adds a
-"LumenShell" entry to the display manager's session menu.
+notification daemon, a session daemon, and a settings app. Installing this
+package adds a "LumenShell" entry to the display manager's session menu.
 
 %prep
 %autosetup -n %{srcname}-%{version}
 
 %build
+# %%meson injects --auto-features=enabled, which would force the `auto`
+# with_lockscreen feature ON; pass every gated option explicitly so the build
+# is reproducible regardless of which optional dev headers happen to be present.
 %meson \
-    -Dwith_desktop_peek=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false} \
-    -Dwith_curtain_peek=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false} \
-    -Dwith_startup_zoom=%{?with_wayfire_plugins:true}%{!?with_wayfire_plugins:false}
+    -Dwith_desktop_peek=%{plugins} \
+    -Dwith_curtain_peek=%{plugins} \
+    -Dwith_slide_peek=%{plugins} \
+    -Dwith_panel_push=%{plugins} \
+    -Dwith_startup_zoom=%{plugins} \
+    -Dwith_lockscreen=%{?with_lockscreen:enabled}%{!?with_lockscreen:disabled}
 %meson_build
 
 %install
@@ -77,20 +101,32 @@ notification daemon, and a settings app. Installing this package adds a
 %{_bindir}/lumen-panel
 %{_bindir}/lumen-desktop
 %{_bindir}/lumen-notifications
+%{_bindir}/lumen-session
 %{_bindir}/lumen-settings
 %{_bindir}/start-lumenshell
 %{_datadir}/lumen-osd/
 %{_datadir}/lumen-panel/
 %{_datadir}/lumen-notifications/
 %{_datadir}/lumen-settings/
-%{_datadir}/lumenshell/
 %{_datadir}/applications/org.lumenshell.Settings.desktop
 %{_datadir}/wayland-sessions/lumenshell.desktop
+%{_datadir}/xdg-desktop-portal/lumenshell-portals.conf
+%{_userunitdir}/lumenshell-session.target
+%if %{with lockscreen}
+%{_bindir}/lumen-lockscreen
+%{_bindir}/lumen-lockctl
+%{_datadir}/lumen-lockscreen/
+%config(noreplace) %{_sysconfdir}/pam.d/lumen-lockscreen
+%endif
 %if %{with wayfire_plugins}
 %{_libdir}/wayfire/libwayfire-*.so
 %{_datadir}/wayfire/metadata/wayfire-*.xml
 %endif
 
 %changelog
-* Tue Jun 09 2026 LumenShell <noreply@lumenshell> - 1.0-1
+* Sat Jun 20 2026 LumenShell <noreply@lumenshell> - 1.0-1
+- Sync spec with current meson tree: add lumen-session, the systemd user
+  target and the xdg-desktop-portal conf; gate lumen-lockscreen behind
+  --with lockscreen; pass slide-peek/panel-push options; drop stale
+  %%{_datadir}/lumenshell dir.
 - Initial RPM packaging.
