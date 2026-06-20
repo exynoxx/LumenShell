@@ -39,8 +39,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         set_default_size(-1, 60);
 
         var panel_ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
-        mode = parse_mode(Ini.get_key_value(panel_ini, "behavior.mode"),
-                          Ini.get_key_value(panel_ini, "behavior.auto-hide"));
+        mode = parse_mode(Ini.get_value(panel_ini, "panel", "behavior.mode"),
+                          Ini.get_value(panel_ini, "panel", "behavior.auto-hide"));
         at_top = PanelConfig.at_top;
         slide_edge = at_top ? GtkLayerShell.Edge.TOP : GtkLayerShell.Edge.BOTTOM;
 

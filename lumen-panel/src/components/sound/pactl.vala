@@ -69,26 +69,26 @@ public class PactlClient : GLib.Object {
 
     public void set_volume(int pct) {
         pct = int.max(0, int.min(100, pct));
-        Utils.spawn_argv(new string[] {
+        LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-sink-volume", "@DEFAULT_SINK@", "%d%%".printf(pct)
         });
     }
 
     public void set_muted(bool muted) {
-        Utils.spawn_argv(new string[] {
+        LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-sink-mute", "@DEFAULT_SINK@", muted ? "1" : "0"
         });
     }
 
     public void toggle_mute() {
-        Utils.spawn_argv(new string[] {
+        LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"
         });
     }
 
     public void set_default_sink(string sink_id) {
         if (sink_id == "") return;
-        Utils.spawn_argv(new string[] { "pactl", "set-default-sink", sink_id });
+        LumenCommon.Proc.spawn_detached(new string[] { "pactl", "set-default-sink", sink_id });
     }
 
     private string run_cmd_sync(string cmd) {

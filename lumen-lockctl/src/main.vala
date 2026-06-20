@@ -13,20 +13,6 @@ Commands:
   status    Print "locked" or "unlocked"
 """;
 
-private static bool daemon_present(DBusConnection conn) {
-    try {
-        var r = conn.call_sync(
-            "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
-            "NameHasOwner", new Variant("(s)", "org.lumenshell.Lock"),
-            new VariantType("(b)"), DBusCallFlags.NONE, 500, null);
-        bool has = false;
-        r.get("(b)", out has);
-        return has;
-    } catch (Error e) {
-        return false;
-    }
-}
-
 private static LockProxy? connect_proxy() {
     DBusConnection conn;
     try {
@@ -36,7 +22,7 @@ private static LockProxy? connect_proxy() {
         return null;
     }
 
-    if (!daemon_present(conn)) {
+    if (!LumenCommon.DbusCli.name_has_owner(conn, "org.lumenshell.Lock")) {
         stderr.printf("lumen-lockctl: lumen-lockscreen daemon is not running\n");
         return null;
     }

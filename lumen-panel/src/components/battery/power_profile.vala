@@ -112,7 +112,7 @@ public class PowerProfileClient : GLib.Object {
         if (backend == PowerBackend.TLP) {
             // tlp ac/bat need root — pkexec raises a polkit auth dialog.
             string mode = profile == PowerProfile.PERFORMANCE ? "ac" : "bat";
-            Utils.spawn_argv(new string[] { "pkexec", "tlp", mode });
+            LumenCommon.Proc.spawn_detached(new string[] { "pkexec", "tlp", mode });
         }
     }
 
