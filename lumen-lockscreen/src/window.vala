@@ -9,12 +9,10 @@ public class LockWindow : Gtk.ApplicationWindow {
 
     public bool is_primary { get; private set; }
     public PasswordField? password = null;   // non-null only on the primary
-    public LockReveal reveal;                // wraps the content for the pre-lock reveal
 
     public LockWindow(Gtk.Application app, bool is_primary,
                       AccountsClient.UserInfo user, LogindBridge logind,
-                      Gdk.Texture? snapshot, LockEffect? effect = null,
-                      Gdk.Texture? front_snapshot = null) {
+                      Gdk.Texture? snapshot) {
         Object(application: app);
         this.is_primary = is_primary;
 
@@ -58,21 +56,6 @@ public class LockWindow : Gtk.ApplicationWindow {
             overlay.add_overlay(pm);
         }
 
-        // The chosen effect decides how this surface reveals: the in-process flip
-        // turns `front_snapshot` (the live screen) over to reveal this card;
-        // converge expands it out of the compositor's held seam. With no effect
-        // (self-test) fall back to a plain expand. Default reveal state is "fully
-        // shown", so a surface that is never play()ed just appears.
-        reveal = (effect != null) ? effect.create_reveal(overlay, front_snapshot)
-                                  : new ExpandReveal(overlay);
-        set_child(reveal);
-    }
-
-    // Animate this surface's content revealing out of the compositor's held
-    // frame. The manager calls this right after present() on the initial lock
-    // windows; the duration should match the compositor transition so the
-    // hand-off is seamless.
-    public void play_reveal(uint duration_ms) {
-        reveal.play(duration_ms);
+        set_child(overlay);
     }
 }

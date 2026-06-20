@@ -27,13 +27,6 @@ option(
 )
 
 option(
-  'with_converge_lock',
-  type: 'boolean',
-  value: true,
-  description: 'Build the wayfire-converge-lock Wayfire plugin (collapses both screen halves onto the centre seam over black and holds; the pre-lock transition the lockscreen expands out of; needs Wayfire 0.10 dev headers).',
-)
-
-option(
   'with_panel_push',
   type: 'boolean',
   value: true,
