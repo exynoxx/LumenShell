@@ -83,6 +83,11 @@ settings_sources = files(
   'src/pages/notifications_page.vala',
   'src/pages/lockscreen_page.vala',
   'src/pages/about_page.vala',
+  'src/pages/input_common.vala',
+  'src/pages/xkb_layouts.vala',
+  'src/pages/keyboard_page.vala',
+  'src/pages/mouse_page.vala',
+  'src/pages/touchpad_page.vala',
 )
 
 # Shared display-profile store (lumen-common) — the Display page saves the
