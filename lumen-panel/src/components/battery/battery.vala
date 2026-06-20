@@ -1,6 +1,6 @@
 using Gtk;
 
-public class BatteryTray : GLib.Object, IPagedTrayItem {
+public class BatteryTray : GLib.Object, ITrayApplet {
     BatteryService service;
     PowerProfileService power_profiles;
     TrayButton icon;
@@ -28,6 +28,6 @@ public class BatteryTray : GLib.Object, IPagedTrayItem {
         icon.set_icon_from_resource(name);
     }
 
-    public Gtk.Button icon_widget () { return icon; }
-    public Gtk.Widget page_widget () { return page; }
+    public Gtk.Widget  tray_widget () { return icon; }
+    public Gtk.Widget? detail_page () { return page; }
 }

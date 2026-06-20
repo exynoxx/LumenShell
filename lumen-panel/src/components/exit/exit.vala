@@ -1,6 +1,6 @@
 using Gtk;
 
-public class ExitTray : GLib.Object, IPagedTrayItem {
+public class ExitTray : GLib.Object, ITrayApplet {
     TrayButton icon;
     ExitPage page;
 
@@ -9,6 +9,6 @@ public class ExitTray : GLib.Object, IPagedTrayItem {
         page = new ExitPage(bridge);
     }
 
-    public Gtk.Button icon_widget () { return icon; }
-    public Gtk.Widget page_widget () { return page; }
+    public Gtk.Widget  tray_widget () { return icon; }
+    public Gtk.Widget? detail_page () { return page; }
 }

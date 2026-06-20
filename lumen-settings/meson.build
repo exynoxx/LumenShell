@@ -70,6 +70,7 @@ settings_sources = files(
   'src/widgets/file_row.vala',
   'src/widgets/binding_row.vala',
   'src/widgets/display_arranger.vala',
+  'src/widgets/reorder_list.vala',
   'src/stores/paths.vala',
   'src/stores/json_store.vala',
   'src/stores/ini_store.vala',
@@ -93,6 +94,10 @@ settings_sources = files(
 # Shared display-profile store (lumen-common) — the Display page saves the
 # applied layout here, keyed by the connected monitor set.
 settings_sources += display_profiles_source
+
+# Shared tray-applet catalog (lumen-common) — the Panel page's reorder list
+# builds its rows from this, the same list lumen-panel resolves config against.
+settings_sources += tray_catalog_source
 
 libxml_settings_dep = dependency('libxml-2.0', required: false)
 settings_wayfire_enabled = libxml_settings_dep.found()

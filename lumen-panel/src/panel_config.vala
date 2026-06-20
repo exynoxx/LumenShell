@@ -33,6 +33,15 @@ public class PanelConfig {
     public const string DEFAULT_CLOCK_FORMAT = "%a %d %b  %H:%M";
     public static string clock_format = DEFAULT_CLOCK_FORMAT;
 
+    // Tray applet layout, from the [tray] section of panel.ini (written by
+    // lumen-settings). tray_order is the full ordered list of applet ids;
+    // tray_disabled is the subset toggled off. An absent [tray] section leaves
+    // tray_order at the catalog default and tray_disabled empty — byte-for-byte
+    // identical to the old hardcoded tray. tray_enabled_order() resolves the two
+    // against the shared catalog into what make_tray() actually builds.
+    public static string[] tray_order = {};
+    public static string[] tray_disabled = {};
+
     public static void load () {
         var ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
         at_top = Ini.get_value(ini, "panel", "position") == "top";
@@ -43,6 +52,53 @@ public class PanelConfig {
         show_launcher    = Ini.get_value(ini, "panel", "app.launcher-button")       == "true";
         var fmt = Ini.get_value(ini, "panel", "clock.format");
         if (fmt != null && fmt.strip() != "") clock_format = fmt;
+
+        tray_order    = parse_id_list(Ini.get_value(ini, "tray", "order"));
+        tray_disabled = parse_id_list(Ini.get_value(ini, "tray", "disabled"));
+        // No [tray] order ⇒ fall back to the catalog's canonical order.
+        if (tray_order.length == 0) {
+            string[] defaults = {};
+            foreach (var info in LumenTray.CATALOG) defaults += info.id;
+            tray_order = defaults;
+        }
+    }
+
+    // Comma-split, strip, drop empties. null/empty ⇒ empty array.
+    static string[] parse_id_list (string? s) {
+        string[] result = {};
+        if (s == null) return result;
+        foreach (var tok in s.split(",")) {
+            var t = tok.strip();
+            if (t != "") result += t;
+        }
+        return result;
+    }
+
+    // The resolved, enabled, ordered ids make_tray() iterates: start from
+    // tray_order, append any catalog ids not already present (so a new built-in
+    // applet appears after an upgrade without rewriting the config), drop the
+    // disabled subset, and drop any id not in the catalog (stale/unknown).
+    public static string[] tray_enabled_order () {
+        var order = new Gee.ArrayList<string>();
+        foreach (var id in tray_order) order.add(id);
+        foreach (var info in LumenTray.CATALOG) {
+            if (!order.contains(info.id)) order.add(info.id);
+        }
+
+        string[] result = {};
+        foreach (var id in order) {
+            if (id in tray_disabled) continue;
+            if (!catalog_has(id)) continue;
+            result += id;
+        }
+        return result;
+    }
+
+    static bool catalog_has (string id) {
+        foreach (var info in LumenTray.CATALOG) {
+            if (info.id == id) return true;
+        }
+        return false;
     }
 
     static OpenIndicator parse_indicator (string? s) {

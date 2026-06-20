@@ -1,6 +1,6 @@
 using Gtk;
 
-public class BluetoothTray : GLib.Object, IPagedTrayItem {
+public class BluetoothTray : GLib.Object, ITrayApplet {
     BluetoothService service;
     TrayButton icon;
     BluetoothPage page;
@@ -22,6 +22,6 @@ public class BluetoothTray : GLib.Object, IPagedTrayItem {
         icon.set_icon_from_resource(name);
     }
 
-    public Gtk.Button icon_widget () { return icon; }
-    public Gtk.Widget page_widget () { return page; }
+    public Gtk.Widget  tray_widget () { return icon; }
+    public Gtk.Widget? detail_page () { return page; }
 }

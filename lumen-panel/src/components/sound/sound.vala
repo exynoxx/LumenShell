@@ -1,6 +1,6 @@
 using Gtk;
 
-public class SoundTray : GLib.Object, IPagedTrayItem {
+public class SoundTray : GLib.Object, ITrayApplet {
     SoundService service;
     TrayButton icon;
     SoundPage page;
@@ -18,6 +18,6 @@ public class SoundTray : GLib.Object, IPagedTrayItem {
         icon.set_icon_from_resource(service.muted ? "sound-mute" : "sound-max");
     }
 
-    public Gtk.Button icon_widget () { return icon; }
-    public Gtk.Widget page_widget () { return page; }
+    public Gtk.Widget  tray_widget () { return icon; }
+    public Gtk.Widget? detail_page () { return page; }
 }

@@ -17,6 +17,7 @@ public class App : GLib.Object {
 
     Gtk.Application app;
     TrayBar tray;                            // the one system tray (SNI singleton)
+    TrayRegistry registry;                   // id → applet factory
     LogindService logind_service;
     GLib.GenericArray<PanelWindow> windows = new GLib.GenericArray<PanelWindow>();
     bool hotplug_wired = false;
@@ -29,6 +30,18 @@ public class App : GLib.Object {
 
         // Session/power bridge: owns logind, locks before suspend.
         logind_service = new LogindService();
+
+        // Build the applet registry once. Each factory creates a fresh applet
+        // (its own widgets + service instances) so the same id can be realized
+        // on multiple panels. Exit's factory closes over the logind bridge.
+        registry = new TrayRegistry();
+        registry.register("systray",   () => new SysTray());
+        registry.register("wifi",      () => new WifiTray());
+        registry.register("bluetooth", () => new BluetoothTray());
+        registry.register("battery",   () => new BatteryTray());
+        registry.register("sound",     () => new SoundTray());
+        registry.register("clock",     () => new Clock());
+        registry.register("exit",      () => new ExitTray(logind_service.bridge));
 
         // Bind foreign-toplevel before building any AppBar so replay happens
         // synchronously when each AppBar subscribes inside its constructor.
@@ -49,19 +62,17 @@ public class App : GLib.Object {
         }
     }
 
-    // Build a tray area. Only the host tray carries the SNI system tray (the
-    // watcher is a singleton); secondary trays get every other page (WiFi,
-    // Bluetooth, Battery, Sound, Clock, Exit) — each tray item owns its own
-    // service instance, so duplicating the widgets across monitors is safe.
-    TrayBar make_tray (bool with_sni) {
+    // Build a tray area from the user's configured order. Only the host tray
+    // carries the SNI system tray (the watcher is a singleton); secondary trays
+    // skip "systray" but get every other configured applet — each tray item
+    // owns its own service instance, so duplicating across monitors is safe.
+    TrayBar make_tray (bool host) {
         var t = new TrayBar();
-        if (with_sni) t.set_app_tray(new SysTray());
-        t.add_paged(new WifiTray());
-        t.add_paged(new BluetoothTray());
-        t.add_paged(new BatteryTray());
-        t.add_paged(new SoundTray());
-        t.add_icon(new Clock());
-        t.add_paged(new ExitTray(logind_service.bridge));
+        foreach (var id in PanelConfig.tray_enabled_order()) {
+            if (id == "systray" && !host) continue;   // SNI watcher is a singleton → host only
+            var applet = registry.create(id);
+            if (applet != null) t.add(applet);
+        }
         return t;
     }
 

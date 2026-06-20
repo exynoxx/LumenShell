@@ -198,6 +198,8 @@ namespace LumenSettings {
 
             box.append(behavior_group);
 
+            box.append(build_tray_group());
+
             var multi_group = new BoxedList("Multi-monitor");
             var multi_initial = (store.get_value(SECTION, "behavior.multi-monitor") ?? "false") == "true";
             var multi_row = new SwitchRow("Show panel on every screen",
@@ -239,6 +241,73 @@ namespace LumenSettings {
         }
 
         public override string? restart_target() { return "lumen-panel"; }
+
+        // Build the "Tray applets" group: a drag-to-reorder list of every
+        // catalog applet, ordered by the stored [tray] order (catalog order for
+        // any id not listed), each switch reflecting [tray] disabled. Edits are
+        // written straight to panel.ini's [tray] section; the header Restart
+        // applies them (restart_target() is already lumen-panel).
+        Gtk.Widget build_tray_group() {
+            var stored_order = split_csv(store.get_value("tray", "order"));
+            var disabled_set = new Gee.HashSet<string>();
+            foreach (var id in split_csv(store.get_value("tray", "disabled"))) {
+                disabled_set.add(id);
+            }
+
+            // Resolve display order: stored ids first (catalog ids only), then any
+            // catalog id not yet listed appended in catalog order — same upgrade-
+            // safe rule the panel uses, so the UI matches what the panel renders.
+            var ordered = new Gee.ArrayList<string>();
+            foreach (var id in stored_order) {
+                if (catalog_has(id) && !ordered.contains(id)) ordered.add(id);
+            }
+            foreach (var info in LumenTray.CATALOG) {
+                if (!ordered.contains(info.id)) ordered.add(info.id);
+            }
+
+            string[] ids = {};
+            string[] labels = {};
+            bool[] enabled = {};
+            foreach (var id in ordered) {
+                ids += id;
+                labels += catalog_label(id);
+                enabled += !disabled_set.contains(id);
+            }
+
+            var group = new BoxedList("Tray applets");
+            var reorder = new ReorderList(ids, labels, enabled);
+            reorder.changed.connect((order, disabled) => {
+                store.set_value("tray", "order",    string.joinv(",", order));
+                store.set_value("tray", "disabled", string.joinv(",", disabled));
+                store.save();
+            });
+            group.add_row(reorder);
+            return group;
+        }
+
+        static string[] split_csv(string? s) {
+            string[] result = {};
+            if (s == null) return result;
+            foreach (var tok in s.split(",")) {
+                var t = tok.strip();
+                if (t != "") result += t;
+            }
+            return result;
+        }
+
+        static bool catalog_has(string id) {
+            foreach (var info in LumenTray.CATALOG) {
+                if (info.id == id) return true;
+            }
+            return false;
+        }
+
+        static string catalog_label(string id) {
+            foreach (var info in LumenTray.CATALOG) {
+                if (info.id == id) return info.label;
+            }
+            return id;
+        }
 
         // Resolve the current panel mode, migrating the legacy auto-hide bool.
         string current_mode() {

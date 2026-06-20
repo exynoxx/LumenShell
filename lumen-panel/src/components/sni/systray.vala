@@ -3,7 +3,7 @@ using Gee;
 
 // The whole widget hides itself when there are no items so the trailing
 // separator never dangles on its own.
-public class SysTray : Gtk.Box {
+public class SysTray : Gtk.Box, ITrayApplet {
 
     Gtk.Box icons;
     SniWatcher watcher;
@@ -48,4 +48,9 @@ public class SysTray : Gtk.Box {
     void update_visibility () {
         visible = by_key.size > 0;
     }
+
+    // Icon-only applet: the systray box IS its own tray widget (its trailing
+    // separator stays inside), no detail page.
+    public Gtk.Widget  tray_widget () { return this; }
+    public Gtk.Widget? detail_page () { return null; }
 }

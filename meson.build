@@ -151,6 +151,14 @@ dbus_cli_source = files(
   'lumen-common/dbus_cli.vala',
 )
 
+# Tray-applet catalog (id + label, default order). Single source of truth for
+# the set of known tray applets, compiled into BOTH lumen-panel (default order +
+# known-id set) and lumen-settings (reorder list rows). Separate file for the
+# same reason as display_profiles_source: a consumer pulls in only what it needs.
+tray_catalog_source = files(
+  'lumen-common/tray_applets.vala',
+)
+
 panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']
@@ -171,6 +179,7 @@ panel_sources = files(
   'lumen-panel/src/wl/toplevels.vala',
   'lumen-panel/src/widgets/tray_button.vala',
   'lumen-panel/src/widgets/tray.vala',
+  'lumen-panel/src/widgets/tray_registry.vala',
   'lumen-panel/src/widgets/signal_bars.vala',
   'lumen-panel/src/widgets/progress_bar.vala',
   'lumen-panel/src/widgets/text_field.vala',
@@ -209,7 +218,7 @@ panel_sources = files(
 )
 
 executable('lumen-panel',
-  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source,
+  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source + tray_catalog_source,
   vala_args: panel_vala_args,
   dependencies: panel_deps,
   link_args: ['-Wl,--no-as-needed'],

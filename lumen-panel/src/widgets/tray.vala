@@ -1,8 +1,12 @@
 using Gtk;
 
-public interface IPagedTrayItem : GLib.Object {
-    public abstract Gtk.Button icon_widget ();
-    public abstract Gtk.Widget page_widget ();
+// Unified tray-applet contract. A tray widget always goes in the icon row;
+// items that also have a detail page (WiFi, Bluetooth, …) return it from
+// detail_page() and get paged-reveal wiring. Icon-only items (Clock, SysTray)
+// return null.
+public interface ITrayApplet : GLib.Object {
+    public abstract Gtk.Widget  tray_widget ();   // goes in the icon row
+    public abstract Gtk.Widget? detail_page ();   // null = icon-only (clock, systray)
 }
 
 public class TrayBar : Gtk.Box {
@@ -13,11 +17,11 @@ public class TrayBar : Gtk.Box {
 
     GLib.HashTable<string, Gtk.Widget> icon_by_page =
         new GLib.HashTable<string, Gtk.Widget>(str_hash, str_equal);
-    // Keeps IPagedTrayItem instances alive. Vala connects signal handlers
+    // Keeps ITrayApplet instances alive. Vala connects signal handlers
     // with g_signal_connect_object (weak ref to the handler's instance),
     // so without an owning reference here the item is freed as soon as
-    // add_paged returns and its update_icon handler is auto-disconnected.
-    Gee.ArrayList<IPagedTrayItem> paged_items = new Gee.ArrayList<IPagedTrayItem>();
+    // add returns and its update_icon handler is auto-disconnected.
+    Gee.ArrayList<ITrayApplet> applets = new Gee.ArrayList<ITrayApplet>();
     string? active_page_id = null;
     int next_page_id = 0;
 
@@ -71,23 +75,20 @@ public class TrayBar : Gtk.Box {
         append(revealer);
     }
 
-    public void add_icon (Gtk.Widget icon_w) {
-        icon_row.append(icon_w);
-    }
-
-    public void set_app_tray (Gtk.Widget app_tray) {
-        icon_row.prepend(app_tray);
-    }
-
-    public void add_paged (IPagedTrayItem item) {
-        string id = "page-%d".printf(next_page_id++);
-
-        paged_items.add(item);
-        var icon = item.icon_widget();
-        icon_row.append(icon);
-        icon_by_page.insert(id, icon);
-        page_stack.add_named(item.page_widget(), id);
-        icon.clicked.connect(() => toggle(id));
+    // Append an applet's tray widget to the icon row. When the applet has a
+    // detail page AND its tray widget is a button (the only thing that can
+    // toggle a reveal), register the page and wire the click to toggle it.
+    public void add (ITrayApplet item) {
+        applets.add(item);
+        var w = item.tray_widget();
+        icon_row.append(w);
+        var page = item.detail_page();
+        if (page != null && w is Gtk.Button) {
+            string id = "page-%d".printf(next_page_id++);
+            icon_by_page.insert(id, w);
+            page_stack.add_named(page, id);
+            ((Gtk.Button) w).clicked.connect(() => toggle(id));
+        }
     }
 
     void toggle (string id) {

@@ -1,6 +1,6 @@
 using Gtk;
 
-public class Clock : Gtk.Box {
+public class Clock : Gtk.Box, ITrayApplet {
 
     Gtk.Label label;
 
@@ -24,4 +24,8 @@ public class Clock : Gtk.Box {
     static string format_now () {
         return new DateTime.now_local().format(PanelConfig.clock_format);
     }
+
+    // Icon-only applet: the clock IS its own tray widget, no detail page.
+    public Gtk.Widget  tray_widget () { return this; }
+    public Gtk.Widget? detail_page () { return null; }
 }
