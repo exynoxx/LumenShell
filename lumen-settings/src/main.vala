@@ -2,7 +2,7 @@ using Gtk;
 
 namespace LumenSettings {
 
-    public class SettingsApp : Gtk.Application {
+    public class SettingsApp : Adw.Application {
         SettingsWindow window;
         public PageRegistry registry;
 

@@ -22,12 +22,15 @@ settings_resources = settings_gnome.compile_resources(
   c_name: 'lumen_settings',
 )
 
+adwaita_dep = dependency('libadwaita-1')
+
 settings_deps = [
   glib_dep,
   gio_dep,
   gee_dep,
   json_dep,
   gtk4_dep,
+  adwaita_dep,
   m_dep,
   # Display page binds wlr-output-management-v1 in-process via wlhooks on GTK's
   # wl_display (mirrors the lumen-panel link set).
@@ -39,6 +42,7 @@ settings_deps = [
 settings_vala_args = [
   '--vapidir=' + vapi_dir,
   '--pkg=gtk4',
+  '--pkg=libadwaita-1',
   '--pkg=gee-0.8',
   '--pkg=json-glib-1.0',
   '--pkg=glib-2.0',

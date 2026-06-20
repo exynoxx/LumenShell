@@ -1,95 +1,39 @@
-using Gtk;
-
 namespace LumenSettings {
 
-    public class ActionRow : Gtk.ListBoxRow {
-        protected Gtk.Box content;
-        protected Gtk.Box text_col;
-        protected Gtk.Label title_label;
-        protected Gtk.Label subtitle_label;
-        protected Gtk.Box   suffix_slot;
-
-        string _title_text = "";
-        string _subtitle_text = "";
+    // Thin wrapper over Adw.ActionRow. Keeps the historical `row_title` /
+    // `row_subtitle` / `set_suffix()` API so the page code (and the
+    // Switch/Spin/Entry/Color/File/Binding rows that subclass this) is
+    // unchanged, while the actual rendering, spacing and theming come from
+    // libadwaita.
+    public class ActionRow : Adw.ActionRow {
+        Gtk.Widget? current_suffix = null;
 
         public string row_title {
-            owned get { return _title_text; }
-            set {
-                _title_text = value;
-                title_label.set_markup(format_title(value));
-            }
+            owned get { return title; }
+            set { title = value; }
         }
         public string row_subtitle {
-            owned get { return _subtitle_text; }
-            set {
-                _subtitle_text = value ?? "";
-                subtitle_label.set_markup(format_subtitle(_subtitle_text));
-                subtitle_label.visible = (_subtitle_text != "");
-            }
+            owned get { return subtitle; }
+            set { subtitle = value ?? ""; }
         }
 
         public ActionRow(string title, string subtitle = "") {
-            _title_text = title;
-            _subtitle_text = subtitle;
-
-            content = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-                hexpand = true,
-            };
-            text_col = new Gtk.Box(Gtk.Orientation.VERTICAL, 2) {
-                hexpand = true, valign = Gtk.Align.CENTER,
-            };
-            title_label = new Gtk.Label(null) {
-                xalign = 0,
-                use_markup = true,
-                wrap = false,
-                ellipsize = Pango.EllipsizeMode.END,
-            };
-            title_label.set_markup(format_title(title));
-            title_label.add_css_class("lumen-action-row-title");
-            subtitle_label = new Gtk.Label(null) {
-                xalign = 0,
-                use_markup = true,
-                wrap = true,
-                wrap_mode = Pango.WrapMode.WORD_CHAR,
-            };
-            subtitle_label.set_markup(format_subtitle(subtitle));
-            subtitle_label.add_css_class("lumen-action-row-subtitle");
-            subtitle_label.visible = (subtitle != "");
-            text_col.append(title_label);
-            text_col.append(subtitle_label);
-            content.append(text_col);
-
-            suffix_slot = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-                halign = Gtk.Align.END,
-                valign = Gtk.Align.CENTER,
-            };
-            suffix_slot.add_css_class("lumen-row-suffix");
-            content.append(suffix_slot);
-
-            set_child(content);
-            activatable = false;
+            // Plain labels, not markup: avoids an `&`/`<` in a title being
+            // misread as Pango markup.
+            use_markup = false;
+            this.title = title;
+            this.subtitle = subtitle ?? "";
         }
 
+        // Replace whatever sits in the suffix area with `w`. Mirrors the old
+        // single-slot behaviour the subclasses rely on.
         public void set_suffix(Gtk.Widget w) {
-            Gtk.Widget? child = suffix_slot.get_first_child();
-            while (child != null) {
-                Gtk.Widget? next = child.get_next_sibling();
-                suffix_slot.remove(child);
-                child = next;
+            if (current_suffix != null) {
+                remove(current_suffix);
             }
             w.valign = Gtk.Align.CENTER;
-            w.halign = Gtk.Align.END;
-            w.hexpand = false;
-            suffix_slot.append(w);
-        }
-
-        static string format_title(string s) {
-            return "<b>" + Markup.escape_text(s) + "</b>";
-        }
-        static string format_subtitle(string s) {
-            if (s == null || s == "") return "";
-            return "<span size='small' style='italic' alpha='80%'>"
-                + Markup.escape_text(s) + "</span>";
+            add_suffix(w);
+            current_suffix = w;
         }
     }
 }

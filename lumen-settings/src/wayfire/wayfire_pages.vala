@@ -140,7 +140,6 @@ namespace LumenSettings.Wayfire {
             foreach (var p in plugins) {
                 plugin_list.add_row(make_plugin_row(p));
             }
-            plugin_list.list.row_activated.connect(on_row_activated);
             box.append(plugin_list);
 
             // Sections present in wayfire.ini that have no metadata (e.g.
@@ -155,7 +154,6 @@ namespace LumenSettings.Wayfire {
                 foreach (var name in others) {
                     other_list.add_row(make_section_row(name));
                 }
-                other_list.list.row_activated.connect(on_row_activated);
                 box.append(other_list);
             }
 
@@ -172,6 +170,7 @@ namespace LumenSettings.Wayfire {
         Gtk.ListBoxRow make_plugin_row(PluginDef p) {
             var ar = new ActionRow(p.short_label, p.name);
             ar.activatable = true;
+            ar.activated.connect(() => on_row_activated(ar));
 
             var sw = new Gtk.Switch() {
                 valign = Gtk.Align.CENTER,
@@ -204,6 +203,7 @@ namespace LumenSettings.Wayfire {
         Gtk.ListBoxRow make_section_row(string name) {
             var ar = new ActionRow(name, "no metadata — raw editor");
             ar.activatable = true;
+            ar.activated.connect(() => on_row_activated(ar));
 
             var chevron = new Gtk.Image.from_icon_name("go-next-symbolic") {
                 valign = Gtk.Align.CENTER,

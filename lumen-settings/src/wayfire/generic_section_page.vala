@@ -70,7 +70,7 @@ namespace LumenSettings.Wayfire {
             del.clicked.connect(() => {
                 store.remove_key(section, key);
                 store.save();
-                list.list.remove(ar);
+                list.remove(ar);
             });
 
             var suffix = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);

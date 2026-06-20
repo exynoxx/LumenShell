@@ -1,7 +1,8 @@
-using Gtk;
-
 namespace LumenSettings {
 
+    // Adw.SpinRow is sealed, so we compose: an Adw.ActionRow (via our base)
+    // with a Gtk.SpinButton suffix. `spin` stays public for parity with the
+    // old API.
     public class SpinRow : ActionRow {
         public Gtk.SpinButton spin { get; private set; }
         public signal void value_changed(double v);

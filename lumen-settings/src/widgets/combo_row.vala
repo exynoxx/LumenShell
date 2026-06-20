@@ -1,23 +1,25 @@
-using Gtk;
-
 namespace LumenSettings {
 
-    public class ComboRow : ActionRow {
-        public Gtk.DropDown drop { get; private set; }
+    // A real Adw.ComboRow (not sealed). Adw renders a Gtk.StringList model
+    // natively, so we drop the hand-wired Gtk.DropDown suffix entirely.
+    public class ComboRow : Adw.ComboRow {
         string[] values;
         public signal void value_changed(string val);
 
         public ComboRow(string title, string[] labels, string[] values,
                         string? initial_value = null, string subtitle = "") {
-            base(title, subtitle);
+            use_markup = false;
+            this.title = title;
+            this.subtitle = subtitle ?? "";
             this.values = values;
+
             // Build by append rather than `new Gtk.StringList(labels)`: that
             // constructor expects a NULL-terminated array, but a dynamically
             // built `string[]` (e.g. Gee `to_array()`) is not terminated and
             // GTK walks off the end. Appending uses the array length safely.
             var sl = new Gtk.StringList(null);
             foreach (var l in labels) sl.append(l);
-            drop = new Gtk.DropDown(sl, null);
+            model = sl;
 
             uint pick = 0;
             if (initial_value != null) {
@@ -25,14 +27,11 @@ namespace LumenSettings {
                     if (values[i] == initial_value) { pick = i; break; }
                 }
             }
-            drop.set_selected(pick);
+            selected = pick;
 
-            drop.notify["selected"].connect(() => {
-                uint i = drop.get_selected();
-                if (i < this.values.length) value_changed(this.values[i]);
+            notify["selected"].connect(() => {
+                if (selected < this.values.length) value_changed(this.values[selected]);
             });
-
-            set_suffix(drop);
         }
     }
 }
