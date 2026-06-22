@@ -1,6 +1,6 @@
 // Shared catalog of known lumen-panel tray applets. Single source of truth for
 // both binaries: lumen-panel uses it for the default order + the known-id set
-// (so unknown/stale ids in panel.ini are dropped, and new built-ins are
+// (so unknown/stale ids in panel.json are dropped, and new built-ins are
 // appended on upgrade), and lumen-settings uses it to build the reorder list.
 // Compiled into both — see meson.build (tray_catalog_source).
 namespace LumenTray {

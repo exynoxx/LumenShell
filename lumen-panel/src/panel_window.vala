@@ -38,9 +38,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         add_css_class("lumen-panel");
         set_default_size(-1, 60);
 
-        var panel_ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
-        mode = parse_mode(Ini.get_value(panel_ini, "panel", "behavior.mode"),
-                          Ini.get_value(panel_ini, "panel", "behavior.auto-hide"));
+        mode = parse_mode(PanelConfig.behavior_mode, PanelConfig.behavior_auto_hide);
         at_top = PanelConfig.at_top;
         slide_edge = at_top ? GtkLayerShell.Edge.TOP : GtkLayerShell.Edge.BOTTOM;
 
@@ -168,7 +166,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
 
     // Resolve behavior.mode, falling back to the legacy behavior.auto-hide bool
     // when the key is absent (auto-hide = true → HIDDEN).
-    static Mode parse_mode (string? mode_str, string? legacy_auto_hide) {
+    static Mode parse_mode (string? mode_str, bool legacy_auto_hide) {
         if (mode_str != null) {
             switch (mode_str.strip()) {
                 case "push":   return Mode.PUSH;
@@ -176,7 +174,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
                 default:       return Mode.NORMAL;
             }
         }
-        return (legacy_auto_hide == "true") ? Mode.HIDDEN : Mode.NORMAL;
+        return legacy_auto_hide ? Mode.HIDDEN : Mode.NORMAL;
     }
 
     void set_reveal (bool reveal) {

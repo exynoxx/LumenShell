@@ -173,7 +173,6 @@ panel_sources = files(
   'lumen-panel/src/main.vala',
   'lumen-panel/src/panel_window.vala',
   'lumen-panel/src/theme.vala',
-  'lumen-panel/src/ini.vala',
   'lumen-panel/src/panel_config.vala',
   'lumen-panel/src/utils.vala',
   'lumen-panel/src/wl/toplevels.vala',

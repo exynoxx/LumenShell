@@ -4,11 +4,11 @@ namespace LumenSettings {
 
     /* Drag-to-reorder list of tray applets, each row a drag handle + label +
      * on/off switch. Built from an ordered (id, label, enabled) set — the Panel
-     * page feeds it LumenTray.CATALOG ordered per the stored [tray] order, with
-     * each switch reflecting [tray] disabled. Reordering uses GTK4's
+     * page feeds it LumenTray.CATALOG ordered per the stored tray.order, with
+     * each switch reflecting tray.disabled. Reordering uses GTK4's
      * DragSource/DropTarget on the rows (the idiomatic GTK4 approach); after any
      * reorder or toggle it emits `changed` with the full current order plus the
-     * disabled subset, which the page persists to panel.ini.
+     * disabled subset, which the page persists to panel.json.
      *
      * Wrapped in a Gtk.ListBox so it drops cleanly inside an Adwaita boxed group
      * (BoxedList): the ListBox draws the row separators, this Box just carries

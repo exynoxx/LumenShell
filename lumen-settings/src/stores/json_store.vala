@@ -48,6 +48,29 @@ namespace LumenSettings {
             values.insert(key, n);
         }
 
+        /* String-array accessors (e.g. the panel's tray order/disabled lists).
+         * Non-array / missing keys read as an empty array; only string elements
+         * are kept. */
+        public string[] get_string_array(string key) {
+            string[] result = {};
+            var n = values.lookup(key);
+            if (n == null || n.get_node_type() != Json.NodeType.ARRAY) return result;
+            foreach (var elem in n.get_array().get_elements()) {
+                if (elem.get_node_type() != Json.NodeType.VALUE) continue;
+                if (elem.get_value_type() != typeof(string)) continue;
+                result += elem.get_string();
+            }
+            return result;
+        }
+
+        public void set_string_array(string key, string[] vals) {
+            var arr = new Json.Array();
+            foreach (var v in vals) arr.add_string_element(v);
+            var n = new Json.Node(Json.NodeType.ARRAY);
+            n.set_array(arr);
+            values.insert(key, n);
+        }
+
         public void save() {
             Paths.ensure_dir();
             var obj = new Json.Object();

@@ -7,9 +7,8 @@ namespace LumenSettings {
         public string title     { owned get { return "Panel"; } }
         public string icon_name { owned get { return "preferences-system-symbolic"; } }
 
-        IniStore store;
+        JsonStore store;
         JsonStore theme;
-        const string SECTION = "panel";
 
 #if WITH_WAYFIRE_CONFIG
         IniStore wf_store;
@@ -24,7 +23,7 @@ namespace LumenSettings {
         int autohide_opacity;
 
         public Gtk.Widget build() {
-            store = new IniStore(Paths.panel_ini());
+            store = new JsonStore(Paths.panel_json());
             theme = new JsonStore(Paths.theme_json());
 #if WITH_WAYFIRE_CONFIG
             wf_store = new IniStore(Paths.wayfire_ini());
@@ -39,11 +38,11 @@ namespace LumenSettings {
 
             string[] pos_labels = { "Bottom", "Top" };
             string[] pos_values = { "bottom", "top" };
-            var pos_initial = store.get_value(SECTION, "position") ?? "bottom";
+            var pos_initial = store.get_string("position") ?? "bottom";
             var position_row = new ComboRow("Position", pos_labels, pos_values, pos_initial,
                 "which screen edge the panel sits on");
             position_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "position", v);
+                store.set_string("position", v);
                 store.save();
 #if WITH_WAYFIRE_CONFIG
                 // Keep the push plugin's edge aligned with the panel position.
@@ -56,10 +55,10 @@ namespace LumenSettings {
             });
             layout.add_row(position_row);
 
-            var height_initial = parse_double(store.get_value(SECTION, "panel.height"), 60);
+            var height_initial = (double) store.get_int("panel.height", 60);
             var height_row = new SpinRow("Panel height", 40, 120, 1, height_initial, 0, "panel thickness in px");
             height_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "panel.height", "%d".printf((int) v));
+                store.set_int("panel.height", (int) v);
                 store.save();
 #if WITH_WAYFIRE_CONFIG
                 // The push distance must match the panel height so the freed
@@ -117,28 +116,28 @@ namespace LumenSettings {
 
             var clock_group = new BoxedList("Clock");
 
-            var fmt_initial = store.get_value(SECTION, "clock.format") ?? "%a %d %b  %H:%M";
+            var fmt_initial = store.get_string("clock.format") ?? "%a %d %b  %H:%M";
             var fmt_row = new EntryRow("Format", fmt_initial, "strftime pattern, e.g. %H:%M or %Y-%m-%d %H:%M");
             fmt_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "clock.format", v);
+                store.set_string("clock.format", v);
                 store.save();
             });
             clock_group.add_row(fmt_row);
 
             string[] click_labels = { "Do nothing", "Open calendar", "Run command" };
             string[] click_values = { "none", "open-calendar", "run-command" };
-            var click_initial = store.get_value(SECTION, "clock.on-click") ?? "none";
+            var click_initial = store.get_string("clock.on-click") ?? "none";
             var click_row = new ComboRow("On click", click_labels, click_values, click_initial, "action to run when the clock is clicked");
             click_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "clock.on-click", v);
+                store.set_string("clock.on-click", v);
                 store.save();
             });
             clock_group.add_row(click_row);
 
-            var cmd_initial = store.get_value(SECTION, "clock.command") ?? "";
+            var cmd_initial = store.get_string("clock.command") ?? "";
             var cmd_row = new EntryRow("Command", cmd_initial, "used when on-click = run-command");
             cmd_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "clock.command", v);
+                store.set_string("clock.command", v);
                 store.save();
             });
             clock_group.add_row(cmd_row);
@@ -153,10 +152,9 @@ namespace LumenSettings {
             var mode_row = new ComboRow("Panel mode", mode_labels, mode_values, mode_initial,
                 "Always visible reserves space; Auto-hide reveals over windows; Push slides the whole screen aside to reveal the panel");
             mode_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "behavior.mode", v);
+                store.set_string("behavior.mode", v);
                 // Keep the legacy bool in sync for older panel builds.
-                store.set_value(SECTION, "behavior.auto-hide",
-                    (v == "hidden" || v == "push") ? "true" : "false");
+                store.set_bool("behavior.auto-hide", v == "hidden" || v == "push");
                 store.save();
 #if WITH_WAYFIRE_CONFIG
                 bool push = (v == "push");
@@ -166,12 +164,12 @@ namespace LumenSettings {
             });
             behavior_group.add_row(mode_row);
 
-            var launcher_initial = (store.get_value(SECTION, "app.launcher-button") ?? "false") == "true";
+            var launcher_initial = store.get_bool("app.launcher-button", false);
             var launcher_row = new SwitchRow("Show app launcher button",
                 "Pin an app button to the left edge that opens the app drawer (peek)",
                 launcher_initial);
             launcher_row.toggled.connect((v) => {
-                store.set_value(SECTION, "app.launcher-button", v ? "true" : "false");
+                store.set_bool("app.launcher-button", v);
                 store.save();
             });
             behavior_group.add_row(launcher_row);
@@ -187,11 +185,11 @@ namespace LumenSettings {
 
             string[] ind_labels = { "Bottom shade", "Dot", "Corner brackets", "Glass (hover look)", "None" };
             string[] ind_values = { "shade", "dot", "corners", "glass", "none" };
-            var ind_initial = store.get_value(SECTION, "app.open-indicator") ?? "shade";
+            var ind_initial = store.get_string("app.open-indicator") ?? "shade";
             var ind_row = new ComboRow("Open app indicator", ind_labels, ind_values, ind_initial,
                 "how a running app is marked apart from a pinned, closed one");
             ind_row.value_changed.connect((v) => {
-                store.set_value(SECTION, "app.open-indicator", v);
+                store.set_string("app.open-indicator", v);
                 store.save();
             });
             behavior_group.add_row(ind_row);
@@ -201,25 +199,25 @@ namespace LumenSettings {
             box.append(build_tray_group());
 
             var multi_group = new BoxedList("Multi-monitor");
-            var multi_initial = (store.get_value(SECTION, "behavior.multi-monitor") ?? "false") == "true";
+            var multi_initial = store.get_bool("behavior.multi-monitor", false);
             var multi_row = new SwitchRow("Show panel on every screen",
                 "Place a panel on each connected monitor", multi_initial);
             multi_group.add_row(multi_row);
 
-            var per_initial = (store.get_value(SECTION, "behavior.per-monitor-apps") ?? "false") == "true";
+            var per_initial = store.get_bool("behavior.per-monitor-apps", false);
             var per_row = new SwitchRow("Show only this screen's apps",
                 "Each monitor's panel lists only the windows on that monitor", per_initial);
             per_row.sw.set_sensitive(multi_initial);
             multi_group.add_row(per_row);
 
-            var tray_initial = (store.get_value(SECTION, "behavior.tray-all-monitors") ?? "false") == "true";
+            var tray_initial = store.get_bool("behavior.tray-all-monitors", false);
             var tray_row = new SwitchRow("Show tray on every screen",
                 "Each monitor's panel shows the tray area (system-tray icons stay on the primary)", tray_initial);
             tray_row.sw.set_sensitive(multi_initial);
             multi_group.add_row(tray_row);
 
             multi_row.toggled.connect((v) => {
-                store.set_value(SECTION, "behavior.multi-monitor", v ? "true" : "false");
+                store.set_bool("behavior.multi-monitor", v);
                 store.save();
                 per_row.sw.set_sensitive(v);
                 tray_row.sw.set_sensitive(v);
@@ -227,11 +225,11 @@ namespace LumenSettings {
                 if (!v && tray_row.sw.active) tray_row.sw.active = false;
             });
             per_row.toggled.connect((v) => {
-                store.set_value(SECTION, "behavior.per-monitor-apps", v ? "true" : "false");
+                store.set_bool("behavior.per-monitor-apps", v);
                 store.save();
             });
             tray_row.toggled.connect((v) => {
-                store.set_value(SECTION, "behavior.tray-all-monitors", v ? "true" : "false");
+                store.set_bool("behavior.tray-all-monitors", v);
                 store.save();
             });
 
@@ -243,14 +241,14 @@ namespace LumenSettings {
         public override string? restart_target() { return "lumen-panel"; }
 
         // Build the "Tray applets" group: a drag-to-reorder list of every
-        // catalog applet, ordered by the stored [tray] order (catalog order for
-        // any id not listed), each switch reflecting [tray] disabled. Edits are
-        // written straight to panel.ini's [tray] section; the header Restart
-        // applies them (restart_target() is already lumen-panel).
+        // catalog applet, ordered by the stored tray.order (catalog order for
+        // any id not listed), each switch reflecting tray.disabled. Edits are
+        // written straight to panel.json's tray.order/tray.disabled arrays; the
+        // header Restart applies them (restart_target() is already lumen-panel).
         Gtk.Widget build_tray_group() {
-            var stored_order = split_csv(store.get_value("tray", "order"));
+            var stored_order = store.get_string_array("tray.order");
             var disabled_set = new Gee.HashSet<string>();
-            foreach (var id in split_csv(store.get_value("tray", "disabled"))) {
+            foreach (var id in store.get_string_array("tray.disabled")) {
                 disabled_set.add(id);
             }
 
@@ -277,22 +275,12 @@ namespace LumenSettings {
             var group = new BoxedList("Tray applets");
             var reorder = new ReorderList(ids, labels, enabled);
             reorder.changed.connect((order, disabled) => {
-                store.set_value("tray", "order",    string.joinv(",", order));
-                store.set_value("tray", "disabled", string.joinv(",", disabled));
+                store.set_string_array("tray.order",    order);
+                store.set_string_array("tray.disabled", disabled);
                 store.save();
             });
             group.add_row(reorder);
             return group;
-        }
-
-        static string[] split_csv(string? s) {
-            string[] result = {};
-            if (s == null) return result;
-            foreach (var tok in s.split(",")) {
-                var t = tok.strip();
-                if (t != "") result += t;
-            }
-            return result;
         }
 
         static bool catalog_has(string id) {
@@ -311,18 +299,17 @@ namespace LumenSettings {
 
         // Resolve the current panel mode, migrating the legacy auto-hide bool.
         string current_mode() {
-            var m = store.get_value(SECTION, "behavior.mode");
+            var m = store.get_string("behavior.mode");
             if (m != null) return m;
-            return (store.get_value(SECTION, "behavior.auto-hide") ?? "false") == "true"
-                ? "hidden" : "normal";
+            return store.get_bool("behavior.auto-hide", false) ? "hidden" : "normal";
         }
 
 #if WITH_WAYFIRE_CONFIG
         // Mirror the push plugin's edge + distance to the panel position/height.
         void sync_push_options() {
             wf_store.reload();   // pick up any [core] plugins edits from the Wayfire page
-            var pos = store.get_value(SECTION, "position") ?? "bottom";
-            var h   = store.get_value(SECTION, "panel.height") ?? "60";
+            var pos = store.get_string("position") ?? "bottom";
+            var h   = "%d".printf((int) store.get_int("panel.height", 60));
             wf_store.set_value(PUSH_SECTION, "direction", pos);
             wf_store.set_value(PUSH_SECTION, "push_px", h);
             wf_store.save();
@@ -354,12 +341,6 @@ namespace LumenSettings {
             wf_store.save();
         }
 #endif
-
-        static double parse_double(string? s, double fallback) {
-            if (s == null) return fallback;
-            double d;
-            return double.try_parse(s, out d) ? d : fallback;
-        }
 
         ColorRow color_row(string key, string label, string fallback, string subtitle) {
             var initial = theme.get_string(key) ?? fallback;

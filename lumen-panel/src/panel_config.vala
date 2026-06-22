@@ -1,9 +1,10 @@
 using GLib;
 
-// Global panel placement, read once at startup from panel.ini. Widgets that
-// must mirror their layout when the panel sits at the top of the screen
-// (popover direction, tray growth, the backdrop strip's edge) consult
-// PanelConfig.at_top rather than threading the flag through every constructor.
+// Global panel placement, read once at startup from panel.json (flat dotted
+// keys, written by lumen-settings). Widgets that must mirror their layout when
+// the panel sits at the top of the screen (popover direction, tray growth, the
+// backdrop strip's edge) consult PanelConfig.at_top rather than threading the
+// flag through every constructor.
 public class PanelConfig {
     public static bool at_top = false;
 
@@ -33,9 +34,15 @@ public class PanelConfig {
     public const string DEFAULT_CLOCK_FORMAT = "%a %d %b  %H:%M";
     public static string clock_format = DEFAULT_CLOCK_FORMAT;
 
-    // Tray applet layout, from the [tray] section of panel.ini (written by
-    // lumen-settings). tray_order is the full ordered list of applet ids;
-    // tray_disabled is the subset toggled off. An absent [tray] section leaves
+    // Raw auto-hide behavior, resolved into a PanelWindow.Mode there (the enum
+    // lives with the window). behavior_mode is the explicit "normal|hidden|push"
+    // string; behavior_auto_hide is the legacy bool fallback when it's absent.
+    public static string? behavior_mode = null;
+    public static bool behavior_auto_hide = false;
+
+    // Tray applet layout, from the "tray.order"/"tray.disabled" JSON arrays
+    // (written by lumen-settings). tray_order is the full ordered list of applet
+    // ids; tray_disabled is the subset toggled off. Absent tray.order leaves
     // tray_order at the catalog default and tray_disabled empty — byte-for-byte
     // identical to the old hardcoded tray. tray_enabled_order() resolves the two
     // against the shared catalog into what make_tray() actually builds.
@@ -43,19 +50,24 @@ public class PanelConfig {
     public static string[] tray_disabled = {};
 
     public static void load () {
-        var ini = Environment.get_user_config_dir() + "/lumen-shell/panel.ini";
-        at_top = Ini.get_value(ini, "panel", "position") == "top";
-        open_indicator = parse_indicator(Ini.get_value(ini, "panel", "app.open-indicator"));
-        multi_monitor    = Ini.get_value(ini, "panel", "behavior.multi-monitor")    == "true";
-        per_monitor_apps = Ini.get_value(ini, "panel", "behavior.per-monitor-apps") == "true";
-        tray_all_monitors = Ini.get_value(ini, "panel", "behavior.tray-all-monitors") == "true";
-        show_launcher    = Ini.get_value(ini, "panel", "app.launcher-button")       == "true";
-        var fmt = Ini.get_value(ini, "panel", "clock.format");
+        var path = Environment.get_user_config_dir() + "/lumen-shell/panel.json";
+        var vals = parse(path);
+
+        at_top            = get_string(vals, "position") == "top";
+        open_indicator    = parse_indicator(get_string(vals, "app.open-indicator"));
+        multi_monitor     = get_bool(vals, "behavior.multi-monitor");
+        per_monitor_apps  = get_bool(vals, "behavior.per-monitor-apps");
+        tray_all_monitors = get_bool(vals, "behavior.tray-all-monitors");
+        show_launcher     = get_bool(vals, "app.launcher-button");
+        var fmt = get_string(vals, "clock.format");
         if (fmt != null && fmt.strip() != "") clock_format = fmt;
 
-        tray_order    = parse_id_list(Ini.get_value(ini, "tray", "order"));
-        tray_disabled = parse_id_list(Ini.get_value(ini, "tray", "disabled"));
-        // No [tray] order ⇒ fall back to the catalog's canonical order.
+        behavior_mode      = get_string(vals, "behavior.mode");
+        behavior_auto_hide = get_bool(vals, "behavior.auto-hide");
+
+        tray_order    = get_string_array(vals, "tray.order");
+        tray_disabled = get_string_array(vals, "tray.disabled");
+        // No tray.order ⇒ fall back to the catalog's canonical order.
         if (tray_order.length == 0) {
             string[] defaults = {};
             foreach (var info in LumenTray.CATALOG) defaults += info.id;
@@ -63,13 +75,51 @@ public class PanelConfig {
         }
     }
 
-    // Comma-split, strip, drop empties. null/empty ⇒ empty array.
-    static string[] parse_id_list (string? s) {
+    // Parse panel.json into a flat key→node table. Fail-soft: a missing or
+    // unparseable file yields an empty table, so every getter returns its
+    // default (a missing key reads as its zero-value, same as before).
+    static GLib.HashTable<string, Json.Node> parse (string path) {
+        var table = new GLib.HashTable<string, Json.Node>(str_hash, str_equal);
+        if (!FileUtils.test(path, FileTest.EXISTS)) return table;
+        var parser = new Json.Parser();
+        try {
+            parser.load_from_file(path);
+        } catch (Error e) {
+            stderr.printf("PanelConfig: load %s failed: %s\n", path, e.message);
+            return table;
+        }
+        var root = parser.get_root();
+        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return table;
+        root.get_object().foreach_member((obj, name, node) => {
+            table.insert(name, node.copy());
+        });
+        return table;
+    }
+
+    static string? get_string (GLib.HashTable<string, Json.Node> t, string key) {
+        var n = t.lookup(key);
+        if (n == null || n.get_node_type() != Json.NodeType.VALUE) return null;
+        if (n.get_value_type() != typeof(string)) return null;
+        return n.get_string();
+    }
+
+    static bool get_bool (GLib.HashTable<string, Json.Node> t, string key) {
+        var n = t.lookup(key);
+        if (n == null || n.get_node_type() != Json.NodeType.VALUE) return false;
+        if (n.get_value_type() != typeof(bool)) return false;
+        return n.get_boolean();
+    }
+
+    // String-array getter: strips, drops empties. Non-array/missing ⇒ empty.
+    static string[] get_string_array (GLib.HashTable<string, Json.Node> t, string key) {
         string[] result = {};
-        if (s == null) return result;
-        foreach (var tok in s.split(",")) {
-            var t = tok.strip();
-            if (t != "") result += t;
+        var n = t.lookup(key);
+        if (n == null || n.get_node_type() != Json.NodeType.ARRAY) return result;
+        foreach (var elem in n.get_array().get_elements()) {
+            if (elem.get_node_type() != Json.NodeType.VALUE) continue;
+            if (elem.get_value_type() != typeof(string)) continue;
+            var s = elem.get_string().strip();
+            if (s != "") result += s;
         }
         return result;
     }

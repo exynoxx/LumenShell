@@ -34,7 +34,17 @@ public class LogindService : GLib.Object {
 
     bool lock_on_suspend_enabled() {
         var p = Environment.get_user_config_dir() + "/lumen-shell/power.ini";
-        var v = Ini.get_value(p, "power", "lock-on-suspend");
+        string? v = null;
+        if (FileUtils.test(p, FileTest.EXISTS)) {
+            var kf = new KeyFile();
+            try {
+                kf.load_from_file(p, KeyFileFlags.NONE);
+                if (kf.has_group("power") && kf.has_key("power", "lock-on-suspend"))
+                    v = kf.get_string("power", "lock-on-suspend").strip();
+            } catch (Error e) {
+                v = null;   // unreadable ⇒ fall through to default
+            }
+        }
         return v == null || v == "true";   // default on
     }
 

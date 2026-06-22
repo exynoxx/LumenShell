@@ -8,7 +8,7 @@ namespace LumenSettings {
         }
 
         public static string theme_json()         { return config_dir() + "/theme.json"; }
-        public static string panel_ini()          { return config_dir() + "/panel.ini"; }
+        public static string panel_json()         { return config_dir() + "/panel.json"; }
         public static string desktop_ini()        { return config_dir() + "/desktop.ini"; }
         public static string osd_json()           { return config_dir() + "/osd.json"; }
         public static string notifications_json() { return config_dir() + "/notifications.json"; }

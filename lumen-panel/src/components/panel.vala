@@ -245,9 +245,19 @@ public class AppBar : Gtk.Box {
         remove(entry);
     }
 
+    // Pinned apps persist as a plain newline-separated list of app-ids (not an
+    // INI/KeyFile — one id per line; blanks and "--" ignored).
     void load_pins () {
-        var pins = Ini.read_lines(pins_file);
-        foreach (var app_id in pins) {
+        if (!FileUtils.test(pins_file, FileTest.EXISTS)) return;
+        string content;
+        try {
+            FileUtils.get_contents(pins_file, out content);
+        } catch (Error e) {
+            stderr.printf("Failed reading %s: %s\n", pins_file, e.message);
+            return;
+        }
+        foreach (var line in content.split("\n")) {
+            var app_id = line.strip();
             if (app_id == "" || app_id == "--") continue;
             if (entries_by_app_id.has_key(app_id)) continue;
             var entry = new AppEntry(app_id, Utils.load_app_metadata(app_id));
@@ -259,15 +269,20 @@ public class AppBar : Gtk.Box {
     }
 
     void save_pins () {
-        var lst = new ArrayList<string>();
+        var sb = new StringBuilder();
         Gtk.Widget? w = get_first_child();
         while (w != null) {
             if (w is AppEntry) {
                 var e = (AppEntry) w;
-                if (e.is_pinned) lst.add(e.app_id);
+                if (e.is_pinned) { sb.append(e.app_id); sb.append("\n"); }
             }
             w = w.get_next_sibling();
         }
-        Ini.write_lines(pins_file, lst);
+        try {
+            DirUtils.create_with_parents(Path.get_dirname(pins_file), 0755);
+            FileUtils.set_contents(pins_file, sb.str);
+        } catch (Error e) {
+            stderr.printf("Failed writing %s: %s\n", pins_file, e.message);
+        }
     }
 }
