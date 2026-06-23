@@ -308,6 +308,7 @@ desktop_vala_args = [
 desktop_sources = files(
   'lumen-common/wayfire_ipc.vala',
   'lumen-desktop/src/main.vala',
+  'lumen-desktop/src/desktop_config.vala',
   'lumen-desktop/src/window.vala',
   'lumen-desktop/src/appentry.vala',
   'lumen-desktop/src/searchdb.vala',

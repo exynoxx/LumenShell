@@ -18,6 +18,19 @@ public class DesktopApp : Gtk.Application {
             DesktopToplevels.instance.bind();
             bound = true;
 
+            // Load grid geometry from desktop.ini before any window is built;
+            // lumen-settings' Desktop page writes cols/rows/margin there.
+            LumenDesktop.DesktopConfig.load();
+            GRID_COLS = LumenDesktop.DesktopConfig.cols;
+            GRID_ROWS = LumenDesktop.DesktopConfig.rows;
+            PER_PAGE  = GRID_COLS * GRID_ROWS;
+            if (LumenDesktop.DesktopConfig.margin >= 0) {
+                // A single configured value applies to all edges; left unset,
+                // the asymmetric historical insets (200/130) are preserved.
+                PAGE_MARGIN_X = LumenDesktop.DesktopConfig.margin;
+                PAGE_MARGIN_Y = LumenDesktop.DesktopConfig.margin;
+            }
+
             build_windows();
 
             // Start hidden behind a closed curtain. A no-op on a fresh session,

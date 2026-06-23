@@ -14,6 +14,9 @@ namespace LumenSettings {
         IniStore wf_store;
         const string PUSH_PLUGIN  = "wayfire-panel-push";
         const string PUSH_SECTION = "wayfire-panel-push";
+        // lumen-panel always renders a fixed-height strip (App.ICON_ROW_HEIGHT);
+        // the push reveal must free exactly that many pixels.
+        const int PANEL_HEIGHT_PX = 60;
 #endif
 
         // Panel color is a shared RGB; normal mode ("at all times") and auto-hide
@@ -54,23 +57,6 @@ namespace LumenSettings {
 #endif
             });
             layout.add_row(position_row);
-
-            var height_initial = (double) store.get_int("panel.height", 60);
-            var height_row = new SpinRow("Panel height", 40, 120, 1, height_initial, 0, "panel thickness in px");
-            height_row.value_changed.connect((v) => {
-                store.set_int("panel.height", (int) v);
-                store.save();
-#if WITH_WAYFIRE_CONFIG
-                // The push distance must match the panel height so the freed
-                // strip exactly fits the revealed panel.
-                if (current_mode() == "push") {
-                    wf_store.reload();
-                    wf_store.set_value(PUSH_SECTION, "push_px", "%d".printf((int) v));
-                    wf_store.save();
-                }
-#endif
-            });
-            layout.add_row(height_row);
             box.append(layout);
 
             var colors = new BoxedList("Colors");
@@ -110,7 +96,6 @@ namespace LumenSettings {
             colors.add_row(color_row("tray.icon-hover",       "Tray icon hover",       "#2c3140ff", "tray icon background while the pointer is over it"));
             colors.add_row(color_row("app.hover",             "App hover",             "#2c3140ff", "taskbar app background while the pointer is over it"));
             colors.add_row(color_row("app.launching",         "App launching",         "#3d7affff", "taskbar app background while the app is starting up"));
-            colors.add_row(color_row("app.active-underline",  "Active app underline",  "#3d7affff", "underline color shown beneath the focused app"));
             colors.add_row(color_row("app.open-indicator-color", "Open app indicator", "#3d7affff", "color of the open-app dot, brackets, or shade"));
             box.append(colors);
 
@@ -123,24 +108,6 @@ namespace LumenSettings {
                 store.save();
             });
             clock_group.add_row(fmt_row);
-
-            string[] click_labels = { "Do nothing", "Open calendar", "Run command" };
-            string[] click_values = { "none", "open-calendar", "run-command" };
-            var click_initial = store.get_string("clock.on-click") ?? "none";
-            var click_row = new ComboRow("On click", click_labels, click_values, click_initial, "action to run when the clock is clicked");
-            click_row.value_changed.connect((v) => {
-                store.set_string("clock.on-click", v);
-                store.save();
-            });
-            clock_group.add_row(click_row);
-
-            var cmd_initial = store.get_string("clock.command") ?? "";
-            var cmd_row = new EntryRow("Command", cmd_initial, "used when on-click = run-command");
-            cmd_row.value_changed.connect((v) => {
-                store.set_string("clock.command", v);
-                store.save();
-            });
-            clock_group.add_row(cmd_row);
 
             box.append(clock_group);
 
@@ -309,7 +276,7 @@ namespace LumenSettings {
         void sync_push_options() {
             wf_store.reload();   // pick up any [core] plugins edits from the Wayfire page
             var pos = store.get_string("position") ?? "bottom";
-            var h   = "%d".printf((int) store.get_int("panel.height", 60));
+            var h   = "%d".printf(PANEL_HEIGHT_PX);
             wf_store.set_value(PUSH_SECTION, "direction", pos);
             wf_store.set_value(PUSH_SECTION, "push_px", h);
             wf_store.save();

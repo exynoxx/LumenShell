@@ -1,11 +1,15 @@
-public const int GRID_COLS = 6;
-public const int GRID_ROWS = 4;
-public const int PER_PAGE = GRID_COLS * GRID_ROWS;
+// Grid geometry. These are mutable globals, not constants: main() overwrites
+// them once at startup from ~/.config/lumen-shell/desktop.ini (see
+// DesktopConfig) before any window is built. The initializers below are the
+// fallback layout used when the file or a key is absent.
+public int GRID_COLS = 6;
+public int GRID_ROWS = 4;
+public int PER_PAGE = 24;   // GRID_COLS * GRID_ROWS; recomputed in main()
 
 // Edge insets shared between PagedGrid pages and SearchResults so the two
 // views land tiles on the same cells when toggling between them.
-public const int PAGE_MARGIN_X = 200;
-public const int PAGE_MARGIN_Y = 130;
+public int PAGE_MARGIN_X = 200;
+public int PAGE_MARGIN_Y = 130;
 
 public class PagedGrid : Gtk.Widget {
 

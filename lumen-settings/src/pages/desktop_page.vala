@@ -28,7 +28,7 @@ namespace LumenSettings {
             var group = new BoxedList("App grid");
             group.add_row(int_row("grid.cols",   "Columns", 1, 12, 6, "number of app icons per row"));
             group.add_row(int_row("grid.rows",   "Rows",    1, 8,  4, "number of app icon rows per page"));
-            group.add_row(int_row("grid.margin", "Page margin", 0, 200, 40, "px of empty space around the grid"));
+            group.add_row(int_row("grid.margin", "Page margin", 0, 400, 130, "px of empty space around the grid, on every edge"));
             box.append(group);
 
             // The app drawer is always placed on every connected monitor: the
