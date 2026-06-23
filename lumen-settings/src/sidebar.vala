@@ -12,7 +12,13 @@ namespace LumenSettings {
             Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
             registry = r;
             add_css_class("lumen-settings-sidebar");
-            set_size_request(170, -1);
+            set_size_request(300, -1);
+            // The inner ListBox sets hexpand=true (so rows fill the column).
+            // Without this, that flag propagates up and the root HBox treats the
+            // sidebar as an expanding child, splitting all slack with the content
+            // pane and bloating the column to ~1/3 of the window. Pin it off so
+            // the sidebar takes only its natural (content) width.
+            set_hexpand(false);
 
             var scroller = new Gtk.ScrolledWindow() {
                 hscrollbar_policy = Gtk.PolicyType.NEVER,
@@ -107,6 +113,8 @@ namespace LumenSettings {
 
             var label = new Gtk.Label(page.title) {
                 xalign = 0, hexpand = true,
+                ellipsize = Pango.EllipsizeMode.END,
+                tooltip_text = page.title,
             };
             label.add_css_class("lumen-sidebar-row-label");
 
