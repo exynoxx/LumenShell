@@ -16,7 +16,8 @@ public class App : GLib.Object {
     public const int64 REVEAL_ANIM_US = 200000; // 200ms
 
     Gtk.Application app;
-    TrayBar tray;                            // the one system tray (SNI singleton)
+    TrayBar tray;                            // the primary panel's tray area
+    SniWatcher sni_watcher;                  // SNI registry singleton, shared by every SysTray
     TrayRegistry registry;                   // id → applet factory
     LogindService logind_service;
     GLib.GenericArray<PanelWindow> windows = new GLib.GenericArray<PanelWindow>();
@@ -31,11 +32,19 @@ public class App : GLib.Object {
         // Session/power bridge: owns logind, locks before suspend.
         logind_service = new LogindService();
 
+        // The SNI watcher owns a single DBus name (org.kde.StatusNotifierWatcher)
+        // and must exist exactly once, but its item registry feeds every panel's
+        // SysTray widget. Create and start it once here; each SysTray factory
+        // closes over it and renders its own icons from the shared set.
+        sni_watcher = new SniWatcher();
+        sni_watcher.start();
+
         // Build the applet registry once. Each factory creates a fresh applet
         // (its own widgets + service instances) so the same id can be realized
-        // on multiple panels. Exit's factory closes over the logind bridge.
+        // on multiple panels. Exit's factory closes over the logind bridge;
+        // systray's closes over the shared SNI watcher.
         registry = new TrayRegistry();
-        registry.register("systray",   () => new SysTray());
+        registry.register("systray",   () => new SysTray(sni_watcher));
         registry.register("wifi",      () => new WifiTray());
         registry.register("bluetooth", () => new BluetoothTray());
         registry.register("battery",   () => new BatteryTray());
@@ -47,11 +56,7 @@ public class App : GLib.Object {
         // synchronously when each AppBar subscribes inside its constructor.
         ToplevelStore.instance.bind();
 
-        // The system tray (SNI watcher) is a singleton — it owns a single DBus
-        // name and must exist exactly once — so it is built here and lives on
-        // the primary panel. Secondary panels get their own tray (built per
-        // window in build_windows) WITHOUT the SNI item when the user opts in.
-        tray = make_tray(true);
+        tray = make_tray();
 
         build_windows();
 
@@ -62,14 +67,14 @@ public class App : GLib.Object {
         }
     }
 
-    // Build a tray area from the user's configured order. Only the host tray
-    // carries the SNI system tray (the watcher is a singleton); secondary trays
-    // skip "systray" but get every other configured applet — each tray item
-    // owns its own service instance, so duplicating across monitors is safe.
-    TrayBar make_tray (bool host) {
+    // Build a tray area from the user's configured order. Every panel gets the
+    // full set of configured applets — including the SNI system tray, whose
+    // widgets all share the one watcher. Each applet owns its own service
+    // instance (and SysTray its own SniItem widgets), so duplicating across
+    // monitors is safe.
+    TrayBar make_tray () {
         var t = new TrayBar();
         foreach (var id in PanelConfig.tray_enabled_order()) {
-            if (id == "systray" && !host) continue;   // SNI watcher is a singleton → host only
             var applet = registry.create(id);
             if (applet != null) t.add(applet);
         }
@@ -96,10 +101,11 @@ public class App : GLib.Object {
         for (uint i = 0; i < n; i++) {
             var mon = monitors.get_item(i) as Gdk.Monitor;
             bool host = (i == 0);
-            // Host keeps the singleton tray; secondaries get their own
-            // SNI-less tray only when the user enabled tray-on-all-monitors.
+            // The primary panel keeps the prebuilt tray; secondaries get their
+            // own full tray (system tray included) only when the user enabled
+            // tray-on-all-monitors.
             TrayBar? wtray = host ? tray
-                : (PanelConfig.tray_all_monitors ? make_tray(false) : null);
+                : (PanelConfig.tray_all_monitors ? make_tray() : null);
             windows.add(new PanelWindow(app, mon, host, wtray));
         }
     }

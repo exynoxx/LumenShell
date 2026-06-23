@@ -95,6 +95,18 @@ public class SniWatcher : GLib.Object {
     [DBus (visible = false)]
     public signal void item_removed (string key);
 
+    [DBus (visible = false)]
+    public delegate void ItemVisitor (string bus, string path, string key);
+
+    // Replay the currently-registered items to a freshly-attached observer.
+    // A SysTray widget built on a secondary monitor (or rebuilt after a
+    // hotplug) connects after items have already registered, so it can't rely
+    // on item_added alone — this hands it the existing set.
+    [DBus (visible = false)]
+    public void foreach_item (ItemVisitor visit) {
+        foreach (var rec in items.values) visit(rec.bus, rec.path, rec.bus + rec.path);
+    }
+
     void on_owner_vanished (string key) {
         var rec = items[key];
         if (rec == null) return;

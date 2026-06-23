@@ -154,8 +154,9 @@ public class PanelWindow : Gtk.ApplicationWindow {
         ((Gtk.Widget) this).add_controller(win_motion);
     }
 
-    // Detach the shared tray before this window is destroyed so the singleton
-    // SNI watcher inside it isn't torn down (App reattaches it to the new host).
+    // Detach the prebuilt primary tray before this window is destroyed so the
+    // reused TrayBar widget (held by App) survives the rebuild and can be
+    // reattached to the new host window.
     public TrayBar? release_tray () {
         if (tray == null) return null;
         var t = tray;
