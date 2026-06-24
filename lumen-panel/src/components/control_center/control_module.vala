@@ -112,17 +112,20 @@ public class CcToggleRow : Gtk.Box {
         subtitle_lbl = new Gtk.Label ("") { xalign = 0 };
         subtitle_lbl.add_css_class ("cc-row-subtitle");
         if (compact) {
+            // Let the live subtitle (network name) take the whole tile width and
+            // ellipsize only against the actual allocation — a fixed
+            // max-width-chars cap clipped ordinary SSIDs ("WiFimodem-4903-5").
             subtitle_lbl.ellipsize = Pango.EllipsizeMode.END;
-            subtitle_lbl.max_width_chars = 10;
+            text.hexpand = true;
         }
         text.append (title_lbl);
         text.append (subtitle_lbl);
 
         var navbox = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
         navbox.append (text);
-        var grow = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0) { hexpand = true };
-        navbox.append (grow);
         if (!compact) {
+            var grow = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0) { hexpand = true };
+            navbox.append (grow);
             var chev = new Gtk.Label ("›") { valign = Gtk.Align.CENTER };  // ›
             chev.add_css_class ("cc-chevron");
             navbox.append (chev);

@@ -73,8 +73,8 @@ public class BluetoothDetail : CcDetail {
             hscrollbar_policy = Gtk.PolicyType.NEVER,
             vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
             vexpand = true,
-            min_content_height = 200,
-            max_content_height = 340,
+            min_content_height = 240,
+            max_content_height = 380,
             propagate_natural_height = true,
         };
         scroll.add_css_class ("cc-scroll");

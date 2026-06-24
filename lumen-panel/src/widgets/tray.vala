@@ -97,6 +97,10 @@ public class TrayBar : Gtk.Box {
         }
         ensure_cc ();
         cc.show_home ();
+        // The compact status icons are the click-to-open affordance; once the
+        // Control Center is open they're redundant, so hide them and let the
+        // panel be the single expanded surface.
+        icon_row.visible = false;
         width_rev.reveal_child = true;
         height_rev.reveal_child = true;
         expanded_changed (true);
@@ -106,6 +110,7 @@ public class TrayBar : Gtk.Box {
         if (!width_rev.reveal_child) return;
         width_rev.reveal_child = false;
         height_rev.reveal_child = false;
+        icon_row.visible = true;
         expanded_changed (false);
         if (cc != null) cc.show_home ();
     }

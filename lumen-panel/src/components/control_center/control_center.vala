@@ -6,7 +6,10 @@ using Gtk;
 // icon row above it is untouched — only this expanded area is new.
 public class ControlCenter : Gtk.Box {
 
-    const int WIDTH = 600;
+    const int WIDTH  = 600;
+    // Minimum expanded height — combined with the stack's vhomogeneous sizing it
+    // gives the whole panel one constant, roomy height regardless of the page.
+    const int HEIGHT = 520;
 
     Gtk.Stack stack;
     Gtk.Box   home;
@@ -17,7 +20,7 @@ public class ControlCenter : Gtk.Box {
     public ControlCenter (Gee.List<IControlModule> modules) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         add_css_class ("control-center");
-        set_size_request (WIDTH, -1);
+        set_size_request (WIDTH, HEIGHT);
 
         foreach (var m in modules) {
             mods.insert (m.module_id (), m);
@@ -25,12 +28,14 @@ public class ControlCenter : Gtk.Box {
             m.open_detail.connect (() => open (id));
         }
 
+        // vhomogeneous: every page is sized to the tallest one, so the expanded
+        // panel keeps one constant height — sliding to the Wi-Fi/Bluetooth
+        // detail no longer grows or shrinks the surface.
         stack = new Gtk.Stack () {
             transition_type = Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
             transition_duration = 240,
             hhomogeneous = true,
-            vhomogeneous = false,
-            interpolate_size = true,
+            vhomogeneous = true,
         };
 
         // Added directly (not wrapped in a ScrolledWindow): the overview is

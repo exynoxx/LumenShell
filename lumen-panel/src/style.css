@@ -366,17 +366,21 @@ button.cc-back {
     background: transparent;
     border: none;
     box-shadow: none;
-    min-width: 30px;
-    min-height: 30px;
+    min-width: 34px;
+    min-height: 34px;
     padding: 0;
-    border-radius: 15px;
+    border-radius: 17px;
     transition: background-color 120ms ease-out;
 }
 button.cc-back:hover { background: rgba(255, 255, 255, 0.10); }
+/* Keep the glyph from forcing the button taller than wide (which broke the
+   circular hover) — fixed line-height + centering keeps it a clean circle. */
 .cc-back-chevron {
     color: #0A84FF;
-    font-size: 26px;
-    font-weight: 600;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 2px;
 }
 
 /* Small circular utility buttons (refresh / reveal eye). */
@@ -447,23 +451,28 @@ button.cc-power-btn:active { background: rgba(255, 255, 255, 0.05); }
     font-weight: 500;
 }
 
-/* Green pill toggle switch (Wi-Fi / Bluetooth power). */
+/* Enable/disable pill (Wi-Fi / Bluetooth power): a flatter, GTK-style switch —
+   wider and shorter than before — that reads red when off, green when on. */
 switch.lumen-switch {
-    background: rgba(120, 120, 128, 0.32);
-    border-radius: 16px;
+    background: #FF453A;
+    border-radius: 999px;
     border: none;
     box-shadow: none;
-    min-width: 46px;
-    min-height: 28px;
+    min-width: 52px;
+    min-height: 24px;
     padding: 2px;
 }
 switch.lumen-switch:checked {
     background: #34C759;
 }
+/* Knob kept smaller than the inner track height (24 − 2×2 padding = 20) so it
+   has clearance on every side and stays a true circle instead of a pinched
+   oval. */
 switch.lumen-switch > slider {
     background: white;
     border-radius: 50%;
-    min-width: 24px;
-    min-height: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    min-width: 18px;
+    min-height: 18px;
+    margin: 1px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }

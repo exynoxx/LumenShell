@@ -47,7 +47,7 @@ public class SoundModule : GLib.Object {
 
         // "Output  ›  Device" nav row — opens the device picker.
         var navbox = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8) { valign = Gtk.Align.CENTER };
-        var out_lbl = new Gtk.Label ("Output") { xalign = 0 };
+        var out_lbl = new Gtk.Label ("Output") { xalign = 0, margin_start = 8 };
         out_lbl.add_css_class ("cc-row-title");
         navbox.append (out_lbl);
         navbox.append (new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0) { hexpand = true });
