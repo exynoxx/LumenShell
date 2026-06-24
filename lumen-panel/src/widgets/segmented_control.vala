@@ -11,11 +11,11 @@ public class SegmentedControl : Gtk.Widget {
 
     public signal void segment_selected (int index);
 
-    static Gdk.RGBA track_col = Utils.rgba(0.10f, 0.11f, 0.16f, 1f);
-    static Gdk.RGBA sel_bg    = Utils.rgba(0.10f, 0.24f, 0.62f, 0.95f);
-    static Gdk.RGBA hov_bg    = Utils.rgba(0.17f, 0.18f, 0.24f, 0.85f);
-    static Gdk.RGBA sel_fg    = Utils.rgba(0.96f, 0.97f, 1.0f,  1f);
-    static Gdk.RGBA norm_fg   = Utils.rgba(0.60f, 0.62f, 0.70f, 1f);
+    static Gdk.RGBA track_col = Utils.rgba(1f, 1f, 1f, 0.08f);
+    static Gdk.RGBA sel_bg    = Utils.rgba(0.039f, 0.518f, 1.0f, 1f);   // #0A84FF
+    static Gdk.RGBA hov_bg    = Utils.rgba(1f, 1f, 1f, 0.07f);
+    static Gdk.RGBA sel_fg    = Utils.rgba(1f, 1f, 1f, 1f);
+    static Gdk.RGBA norm_fg   = Utils.rgba(0.921f, 0.921f, 0.960f, 0.60f);
 
     public SegmentedControl () {
         height_request = CTRL_H;

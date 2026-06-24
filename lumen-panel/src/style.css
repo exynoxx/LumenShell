@@ -57,10 +57,9 @@ window.lumen-panel.auto-hide .panel-strip {
     color: white;
 }
 
-button.tray-icon {
-    background: transparent;
-    border: none;
-    box-shadow: none;
+/* Passive status icons. The whole tray row is the click target (TrayBar adds a
+   gesture), so these are plain images, not buttons. */
+.tray-icon {
     min-width: 48px;
     min-height: 48px;
     padding: 0;
@@ -68,15 +67,11 @@ button.tray-icon {
     border-radius: 24px;
     -gtk-icon-size: 22px;
     color: white;
-    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-button.tray-icon:hover,
-button.tray-icon.active {
+/* Subtle whole-row affordance that the compact bar is clickable. */
+.tray-icons:hover {
     background: @tray_icon_hover;
-}
-button.tray-icon label {
-    color: white;
-    font-weight: 500;
+    border-radius: 14px;
 }
 
 /* SNI app-tray. Items reuse .tray-icon chrome but in a tighter slot than the
@@ -180,60 +175,27 @@ button.launcher-button:hover {
     background: @app_hover;
 }
 
-/* Page-level shared styling: title labels, page background, etc. */
-.page-title {
-    color: white;
-    font-size: 18px;
-    font-weight: 600;
-    padding: 0;
-}
-.connected-label {
-    color: rgba(148, 199, 158, 0.95);
-    font-size: 13px;
-    font-weight: 500;
-}
+/* Inline status caption under the password pill (Wi-Fi detail). */
 .wifi-status {
-    color: rgba(120, 124, 142, 0.9);
+    color: rgba(235, 235, 245, 0.6);
     font-size: 12px;
     font-weight: 500;
     padding-left: 2px;
 }
 .wifi-status.error {
-    color: rgba(235, 110, 110, 0.95);
-}
-.lumen-separator {
-    background: rgba(56, 61, 90, 0.5);
-}
-.wifi-list {
-    padding: 4px 0;
-}
-.wifi-scroll {
-    background: transparent;
-}
-.wifi-scroll undershoot, .wifi-scroll overshoot {
-    background: none;
-}
-.wifi-scroll scrollbar slider {
-    background: rgba(80, 86, 117, 0.7);
-    border-radius: 4px;
-    min-width: 6px;
-}
-.wifi-empty {
-    color: rgba(120, 124, 142, 0.9);
-    font-size: 13px;
-    font-weight: 500;
+    color: #FF453A;
 }
 
-/* Lumen text field — base bg + focus state. snapshot() adds the focus halo. */
+/* Lumen text field — pill bg + focus state. snapshot() adds the focus halo. */
 .lumen-text-field {
-    background: rgba(26, 28, 41, 1);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
 }
 .lumen-text-field:hover {
-    background: rgba(31, 33, 49, 1);
+    background: rgba(255, 255, 255, 0.13);
 }
 .lumen-text-field:focus-within {
-    background: rgba(36, 41, 61, 1);
+    background: rgba(255, 255, 255, 0.16);
 }
 .lumen-text-field.error {
     background: rgba(58, 30, 36, 1);
@@ -251,73 +213,34 @@ button.launcher-button:hover {
     color: white;
 }
 
-/* Lumen flat button — replaces GTK button chrome in the tray pages. */
+/* Lumen flat button — iOS-accent pill used inside the Control Center. */
 button.lumen-button {
-    background: rgba(36, 54, 102, 1);
+    background: #0A84FF;
     color: white;
     border: none;
     box-shadow: none;
-    padding: 6px 12px;
-    border-radius: 8px;
-    transition: background-color 100ms ease-out;
+    padding: 7px 16px;
+    border-radius: 9px;
+    font-weight: 600;
+    transition: background-color 120ms ease-out;
 }
 button.lumen-button:hover {
-    background: rgba(51, 77, 143, 1);
+    background: #2B95FF;
 }
 button.lumen-button:active {
-    background: rgba(28, 43, 82, 1);
+    background: #0066D6;
+}
+button.lumen-button:disabled {
+    opacity: 0.5;
 }
 button.lumen-button.danger {
-    background: rgba(194, 51, 51, 1);
+    background: #FF453A;
 }
 button.lumen-button.danger:hover {
-    background: rgba(224, 66, 66, 1);
+    background: #FF5E54;
 }
 button.lumen-button.danger:active {
-    background: rgba(168, 41, 41, 1);
-}
-/* WifiRow inline disconnect button — smaller text, snug padding. */
-button.lumen-button.row-disconnect {
-    font-size: 11px;
-    padding: 2px 8px;
-    min-height: 0;
-}
-/* Password reveal toggle — neutral grey, distinct from the blue Connect. */
-button.lumen-button.reveal-toggle {
-    background: rgba(46, 50, 72, 1);
-    font-size: 12px;
-    padding: 6px 10px;
-}
-button.lumen-button.reveal-toggle:hover {
-    background: rgba(58, 63, 90, 1);
-}
-button.lumen-button.reveal-toggle:checked {
-    background: rgba(36, 54, 102, 1);
-}
-
-/* ExitPage — round action buttons (logout / reboot / shutdown). */
-button.exit-action {
-    background: rgba(36, 41, 61, 1);
-    color: white;
-    border: none;
-    box-shadow: none;
-    min-width: 64px;
-    min-height: 64px;
-    padding: 0;
-    border-radius: 32px;
-    -gtk-icon-size: 28px;
-    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-button.exit-action:hover {
-    background: @tray_icon_hover;
-}
-button.exit-action:active {
-    background: rgba(28, 31, 47, 1);
-}
-.exit-action-label {
-    color: rgba(200, 204, 220, 0.92);
-    font-size: 12px;
-    font-weight: 500;
+    background: #D8362C;
 }
 
 popover.app-popup contents {
@@ -336,4 +259,203 @@ popover.app-popup button {
 }
 popover.app-popup button:hover {
     background: @app_hover;
+}
+
+/* ===================================================================
+   macOS Control Center — the expanded tray panel. The compact icon row
+   (.tray-bar/.tray-icons/button.tray-icon above) is intentionally untouched;
+   everything below styles only the revealed panel.
+   =================================================================== */
+
+.control-center {
+    background: transparent;
+    color: white;
+}
+
+/* Grouped inset card holding rows/tiles. */
+.cc-card {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 13px;
+}
+
+.cc-scroll,
+.cc-scroll viewport {
+    background: transparent;
+}
+.cc-scroll undershoot,
+.cc-scroll overshoot { background: none; }
+.cc-scroll scrollbar slider {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+    min-width: 6px;
+}
+
+/* Hairline between grouped toggle rows, inset past the round toggle. */
+.cc-row-sep {
+    background: rgba(255, 255, 255, 0.10);
+}
+
+/* Connectivity row = round toggle + flat nav area. */
+.cc-row {
+    padding: 6px;
+}
+button.cc-toggle {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0;
+    border-radius: 21px;
+    border: none;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.14);
+    color: white;
+    transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+button.cc-toggle:hover { background: rgba(255, 255, 255, 0.20); }
+button.cc-toggle.on { background: #0A84FF; }
+button.cc-toggle.on:hover { background: #2B95FF; }
+
+button.cc-nav {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 4px 10px 4px 4px;
+    border-radius: 10px;
+    transition: background-color 120ms ease-out;
+}
+button.cc-nav:hover { background: rgba(255, 255, 255, 0.06); }
+
+.cc-row-title {
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+}
+.cc-row-subtitle {
+    color: rgba(235, 235, 245, 0.6);
+    font-size: 12px;
+    font-weight: 400;
+}
+.cc-chevron {
+    color: rgba(235, 235, 245, 0.3);
+    font-size: 19px;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Section caption ("OTHER NETWORKS"). */
+.cc-caption {
+    color: rgba(235, 235, 245, 0.6);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+}
+
+.cc-empty {
+    color: rgba(235, 235, 245, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    margin: 28px 0;
+}
+
+/* Detail header. */
+.cc-detail-title {
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+}
+button.cc-back {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
+    border-radius: 15px;
+    transition: background-color 120ms ease-out;
+}
+button.cc-back:hover { background: rgba(255, 255, 255, 0.10); }
+.cc-back-chevron {
+    color: #0A84FF;
+    font-size: 26px;
+    font-weight: 600;
+}
+
+/* Small circular utility buttons (refresh / reveal eye). */
+button.cc-icon-btn {
+    background: rgba(255, 255, 255, 0.10);
+    color: white;
+    border: none;
+    box-shadow: none;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-radius: 17px;
+    transition: background-color 120ms ease-out;
+}
+button.cc-icon-btn:hover  { background: rgba(255, 255, 255, 0.18); }
+button.cc-icon-btn:checked { background: #0A84FF; }
+button.cc-icon-btn label { font-size: 15px; }
+
+/* Circular accent "go" arrow on the password pill. */
+button.cc-go {
+    background: #0A84FF;
+    color: white;
+    border: none;
+    box-shadow: none;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-radius: 17px;
+    transition: background-color 120ms ease-out;
+}
+button.cc-go:hover { background: #2B95FF; }
+button.cc-go:disabled { opacity: 0.5; }
+button.cc-go label { font-size: 17px; font-weight: 700; }
+
+.cc-battery-pct {
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+    font-feature-settings: "tnum" 1;
+}
+
+/* Power actions row of round buttons. */
+button.cc-power-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    border: none;
+    box-shadow: none;
+    min-width: 54px;
+    min-height: 54px;
+    padding: 0;
+    border-radius: 27px;
+    -gtk-icon-size: 22px;
+    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+button.cc-power-btn:hover  { background: rgba(255, 255, 255, 0.16); }
+button.cc-power-btn:active { background: rgba(255, 255, 255, 0.05); }
+.cc-power-label {
+    color: rgba(235, 235, 245, 0.6);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Green pill toggle switch (Wi-Fi / Bluetooth power). */
+switch.lumen-switch {
+    background: rgba(120, 120, 128, 0.32);
+    border-radius: 16px;
+    border: none;
+    box-shadow: none;
+    min-width: 46px;
+    min-height: 28px;
+    padding: 2px;
+}
+switch.lumen-switch:checked {
+    background: #34C759;
+}
+switch.lumen-switch > slider {
+    background: white;
+    border-radius: 50%;
+    min-width: 24px;
+    min-height: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }

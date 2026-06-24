@@ -57,7 +57,6 @@ public class SysTray : Gtk.Box, ITrayApplet {
     }
 
     // Icon-only applet: the systray box IS its own tray widget (its trailing
-    // separator stays inside), no detail page.
+    // separator stays inside), no control module.
     public Gtk.Widget  tray_widget () { return this; }
-    public Gtk.Widget? detail_page () { return null; }
 }

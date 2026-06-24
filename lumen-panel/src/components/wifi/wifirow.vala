@@ -1,86 +1,53 @@
 using Gtk;
 
+// One network cell inside a grouped .cc-card. macOS layout: a leading blue
+// checkmark when connected, the SSID, then a trailing lock (secured) and the
+// 3-arc Wi-Fi glyph. The card clips the rounded corners, so the row just paints
+// a full-width selection fill and a hairline separator inset to the text.
+// Everything is GSK (rounded clips, path stroke/fill) — GPU-rasterized.
 public class WifiRow : Gtk.Widget {
 
-    public const int ROW_H = 36;
-    const int PAD = 14;
-    const int DISC_W = 80;   // "Disconnect" button width
-    const int DISC_H = 22;
-    const int LOCK_W = 18;   // reserved width for the lock glyph
-    const int GAP    = 8;
+    public const int ROW_H = 44;
+    const int PAD      = 16;
+    const int NAME_X   = PAD + 26;   // text starts past the checkmark column
+    const int ARC_W    = 24;
+    const int LOCK_W   = 13;
+    const int GAP      = 10;
 
-    public string ssid     { get; private set; }
-    public int    signal_pct { get; private set; }
-    public bool   is_secured { get; private set; }
+    public string ssid         { get; private set; }
+    public int    signal_pct   { get; private set; }
+    public bool   is_secured   { get; private set; }
     public bool   is_connected { get; set; }
-    public bool   selected { get; set; }
+    public bool   selected     { get; set; }
+    public bool   show_separator { get; set; default = true; }
 
     public signal void activated ();
-    public signal void disconnect_clicked ();
 
-    SignalBars bars;
-    Gtk.Button? disc_btn = null;
     bool hovered = false;
 
-    static Gdk.RGBA sel_bg   = Utils.rgba(0.10f, 0.24f, 0.62f, 0.88f);
-    static Gdk.RGBA hov_bg   = Utils.rgba(0.17f, 0.18f, 0.24f, 0.85f);
-    static Gdk.RGBA conn_fg  = Utils.rgba(0.18f, 0.88f, 0.42f, 1f);
-    static Gdk.RGBA norm_fg  = Utils.rgba(0.90f, 0.91f, 0.94f, 1f);
-    static Gdk.RGBA lock_fg  = Utils.rgba(0.52f, 0.52f, 0.58f, 1f);
+    static Gdk.RGBA sel_fill = Utils.rgba (0.039f, 0.518f, 1.0f, 0.18f);
+    static Gdk.RGBA hov_fill = Utils.rgba (1f, 1f, 1f, 0.06f);
+    static Gdk.RGBA name_fg  = Utils.rgba (1f, 1f, 1f, 1f);
+    static Gdk.RGBA lock_fg  = Utils.rgba (0.921f, 0.921f, 0.960f, 0.45f);
+    static Gdk.RGBA sep_fg   = Utils.rgba (1f, 1f, 1f, 0.10f);
 
     public WifiRow (WifiNet net, bool is_connected) {
         this.ssid = net.ssid;
         this.signal_pct = net.signal;
-        this.is_secured = net.is_secured();
+        this.is_secured = net.is_secured ();
         this.is_connected = is_connected;
 
         height_request = ROW_H;
         hexpand = true;
 
-        bars = new SignalBars(net.signal);
-        bars.set_parent(this);
+        var click = new Gtk.GestureClick () { button = Gdk.BUTTON_PRIMARY };
+        click.released.connect (() => activated ());
+        add_controller (click);
 
-        if (is_connected) {
-            disc_btn = new Gtk.Button.with_label("Disconnect") {
-                width_request = DISC_W,
-                height_request = DISC_H,
-            };
-            disc_btn.add_css_class("lumen-button");
-            disc_btn.add_css_class("danger");
-            disc_btn.add_css_class("row-disconnect");
-            disc_btn.clicked.connect(() => disconnect_clicked());
-            disc_btn.set_parent(this);
-        }
-
-        var click = new Gtk.GestureClick() { button = Gdk.BUTTON_PRIMARY };
-        click.released.connect(() => activated());
-        add_controller(click);
-
-        var motion = new Gtk.EventControllerMotion();
-        motion.enter.connect(() => { hovered = true;  queue_draw(); });
-        motion.leave.connect(() => { hovered = false; queue_draw(); });
-        add_controller(motion);
-    }
-
-    public override void dispose () {
-        if (bars != null)     { bars.unparent();     bars = null; }
-        if (disc_btn != null) { disc_btn.unparent(); disc_btn = null; }
-        base.dispose();
-    }
-
-    public override void size_allocate (int width, int height, int baseline) {
-        var t1 = new Gsk.Transform().translate({ PAD, (height - 20) / 2 });
-        bars.allocate(25, 20, baseline, t1);
-
-        if (disc_btn != null) {
-            // Disconnect button sits left of the lock glyph (which is pinned to
-            // the far right when the network is secured).
-            int right = width - PAD - (is_secured ? LOCK_W + GAP : 0);
-            int bx = right - DISC_W;
-            int by = (height - DISC_H) / 2;
-            var t2 = new Gsk.Transform().translate({ bx, by });
-            disc_btn.allocate(DISC_W, DISC_H, baseline, t2);
-        }
+        var motion = new Gtk.EventControllerMotion ();
+        motion.enter.connect (() => { hovered = true;  queue_draw (); });
+        motion.leave.connect (() => { hovered = false; queue_draw (); });
+        add_controller (motion);
     }
 
     public override Gtk.SizeRequestMode get_request_mode () {
@@ -91,65 +58,94 @@ public class WifiRow : Gtk.Widget {
                                   out int min, out int nat,
                                   out int min_baseline, out int nat_baseline) {
         min_baseline = -1; nat_baseline = -1;
-        if (orientation == Gtk.Orientation.HORIZONTAL) {
-            min = 200; nat = 360;
-        } else {
-            min = nat = ROW_H;
-        }
+        if (orientation == Gtk.Orientation.HORIZONTAL) { min = 220; nat = 480; }
+        else                                           { min = nat = ROW_H; }
     }
 
     public override void snapshot (Gtk.Snapshot s) {
-        int w = get_width();
-        int h = get_height();
+        int w = get_width ();
+        int h = get_height ();
 
         if (selected || hovered) {
-            var rect = Graphene.Rect();
-            rect.init(6, 3, w - 12, h - 6);
-            var rr = Gsk.RoundedRect();
-            rr.init_from_rect(rect, 9);
-            s.push_rounded_clip(rr);
-            s.append_color(selected ? sel_bg : hov_bg, rect);
-            s.pop();
+            var rect = Graphene.Rect ();
+            rect.init (0, 0, w, h);
+            s.append_color (selected ? sel_fill : hov_fill, rect);
         }
 
-        base.snapshot(s);
+        // Leading checkmark for the connected network.
+        if (is_connected) {
+            var check = create_pango_layout ("✓");
+            var ca = new Pango.AttrList ();
+            ca.insert (Pango.AttrSize.new_absolute (15 * Pango.SCALE));
+            ca.insert (Pango.attr_weight_new (Pango.Weight.BOLD));
+            check.set_attributes (ca);
+            int cw, ch;
+            check.get_pixel_size (out cw, out ch);
+            var cp = Graphene.Point ();
+            cp.init (PAD - 2, (h - ch) / 2);
+            s.save (); s.translate (cp);
+            s.append_layout (check, CcStyle.accent);
+            s.restore ();
+        }
 
-        var layout = create_pango_layout(ssid);
-        var attrs = new Pango.AttrList();
-        attrs.insert(Pango.AttrSize.new_absolute(15 * Pango.SCALE));
-        attrs.insert(Pango.attr_weight_new(Pango.Weight.MEDIUM));
-        layout.set_attributes(attrs);
+        // SSID.
+        var layout = create_pango_layout (ssid);
+        var attrs = new Pango.AttrList ();
+        attrs.insert (Pango.AttrSize.new_absolute (15 * Pango.SCALE));
+        attrs.insert (Pango.attr_weight_new (Pango.Weight.MEDIUM));
+        layout.set_attributes (attrs);
 
-        int right_reserve = PAD + 14;
-        if (is_secured) right_reserve += LOCK_W;
-        if (disc_btn != null) right_reserve += DISC_W + GAP;
-        layout.set_width((w - (PAD + 32) - right_reserve) * Pango.SCALE);
-        layout.set_ellipsize(Pango.EllipsizeMode.END);
-
+        int right_reserve = PAD + ARC_W + GAP + (is_secured ? LOCK_W + GAP : 0);
+        layout.set_width ((w - NAME_X - right_reserve) * Pango.SCALE);
+        layout.set_ellipsize (Pango.EllipsizeMode.END);
         int tw, th;
-        layout.get_pixel_size(out tw, out th);
+        layout.get_pixel_size (out tw, out th);
+        var pt = Graphene.Point ();
+        pt.init (NAME_X, (h - th) / 2);
+        s.save (); s.translate (pt);
+        s.append_layout (layout, name_fg);
+        s.restore ();
 
-        var pt = Graphene.Point();
-        pt.init(PAD + 32, (h - th) / 2);
-        s.save(); s.translate(pt);
-        s.append_layout(layout, is_connected ? conn_fg : norm_fg);
-        s.restore();
+        // Trailing glyphs.
+        float arc_cx = w - PAD - ARC_W / 2.0f;
+        WifiArc.draw (s, arc_cx, h / 2.0f + 6, signal_pct, name_fg);
 
         if (is_secured) {
-            // Lock glyph pinned to the far right; the disconnect button (if any)
-            // is laid out to its left in size_allocate().
-            int lx = w - PAD - 14;
-            var lock_layout = create_pango_layout("🔒");
-            var la = new Pango.AttrList();
-            la.insert(Pango.AttrSize.new_absolute(11 * Pango.SCALE));
-            lock_layout.set_attributes(la);
-            int lw, lh;
-            lock_layout.get_pixel_size(out lw, out lh);
-            var lp = Graphene.Point();
-            lp.init(lx, (h - lh) / 2);
-            s.save(); s.translate(lp);
-            s.append_layout(lock_layout, lock_fg);
-            s.restore();
+            float lock_x = w - PAD - ARC_W - GAP - LOCK_W;
+            draw_lock (s, lock_x, h / 2.0f - LOCK_W / 2.0f, LOCK_W, lock_fg);
         }
+
+        // Hairline separator inset to the text column.
+        if (show_separator) {
+            var sep = Graphene.Rect ();
+            sep.init (NAME_X, h - 1, w - PAD - NAME_X, 1);
+            s.append_color (sep_fg, sep);
+        }
+    }
+
+    // Minimal padlock: rounded body + a stroked shackle, all GSK.
+    static void draw_lock (Gtk.Snapshot s, float x, float y, float sz, Gdk.RGBA c) {
+        float bh = sz * 0.60f;
+        float by = y + sz - bh;
+
+        var body = Graphene.Rect ();
+        body.init (x, by, sz, bh);
+        var rr = Gsk.RoundedRect ();
+        rr.init_from_rect (body, sz * 0.18f);
+        s.push_rounded_clip (rr);
+        s.append_color (c, body);
+        s.pop ();
+
+        float sr = sz * 0.30f;
+        float scx = x + sz / 2.0f;
+        float top = by - sr * 0.55f;
+        var b = new Gsk.PathBuilder ();
+        b.move_to (scx - sr, by);
+        b.line_to (scx - sr, top);
+        b.svg_arc_to (sr, sr, 0f, false, true, scx + sr, top);
+        b.line_to (scx + sr, by);
+        var stroke = new Gsk.Stroke (1.3f);
+        stroke.set_line_cap (Gsk.LineCap.ROUND);
+        s.append_stroke (b.to_path (), stroke, c);
     }
 }

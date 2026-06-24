@@ -101,7 +101,7 @@ public class LumenTextField : Gtk.Widget {
             var rect = Graphene.Rect();
             rect.init(-1, -1, w + 2, h + 2);
             var rr = Gsk.RoundedRect();
-            rr.init_from_rect(rect, 10f);
+            rr.init_from_rect(rect, 14f);
             float[] widths = { 2, 2, 2, 2 };
             Gdk.RGBA[] colors = { glow, glow, glow, glow };
             s.append_border(rr, widths, colors);

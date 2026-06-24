@@ -1,26 +1,26 @@
 using Gtk;
 
-public class TrayButton : Gtk.Button {
+// A status icon in the compact tray row. No longer a button: the whole tray
+// bar is one click target (see TrayBar), so individual icons are passive and
+// don't claim clicks. A Box wrapper (GtkImage is final and can't be subclassed)
+// centers the icon and carries the .tray-icon chrome.
+public class TrayButton : Gtk.Box {
 
     Gtk.Image image;
 
-    public signal void primary_pressed ();
-
     public TrayButton (string icon_resource_name) {
-        add_css_class("tray-icon");
-        image = new Gtk.Image() {
+        GLib.Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
+        add_css_class ("tray-icon");
+        image = new Gtk.Image () {
             pixel_size = 22,
+            halign = Gtk.Align.CENTER, valign = Gtk.Align.CENTER,
+            hexpand = true, vexpand = true,
         };
-        set_icon_from_resource(icon_resource_name);
-        set_child(image);
-        clicked.connect(() => primary_pressed());
+        append (image);
+        set_icon_from_resource (icon_resource_name);
     }
 
     public void set_icon_from_resource (string name) {
-        image.set_from_resource("/dev/lumen/panel/icons/" + name + ".svg");
-    }
-
-    public void set_active_visual (bool active) {
-        if (active) add_css_class("active"); else remove_css_class("active");
+        image.set_from_resource ("/dev/lumen/panel/icons/" + name + ".svg");
     }
 }

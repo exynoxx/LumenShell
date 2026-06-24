@@ -1,125 +1,96 @@
 using Gtk;
 
-// Unified tray-applet contract. A tray widget always goes in the icon row;
-// items that also have a detail page (WiFi, Bluetooth, …) return it from
-// detail_page() and get paged-reveal wiring. Icon-only items (Clock, SysTray)
-// return null.
+// A tray applet always contributes an icon to the compact row. Applets with a
+// control surface ALSO implement IControlModule (see control_module.vala) so
+// they feed the single Control Center panel; icon-only items (Clock, SysTray)
+// implement just this.
 public interface ITrayApplet : GLib.Object {
-    public abstract Gtk.Widget  tray_widget ();   // goes in the icon row
-    public abstract Gtk.Widget? detail_page ();   // null = icon-only (clock, systray)
+    public abstract Gtk.Widget tray_widget ();   // goes in the icon row
 }
 
+// The tray: an unchanged compact icon row, plus a revealer that opens the ONE
+// macOS-style ControlCenter. The whole icon row is a single click target —
+// clicking anywhere on it toggles the panel open at the overview. Interactive
+// app-tray (SNI) buttons keep their own clicks; only passive status icons and
+// empty space fall through to the toggle gesture.
 public class TrayBar : Gtk.Box {
 
     Gtk.Box icon_row;
     public Gtk.Revealer revealer { get; private set; }
-    Gtk.Stack page_stack;
+    ControlCenter? cc = null;
 
-    GLib.HashTable<string, Gtk.Widget> icon_by_page =
-        new GLib.HashTable<string, Gtk.Widget>(str_hash, str_equal);
-    // Keeps ITrayApplet instances alive. Vala connects signal handlers
-    // with g_signal_connect_object (weak ref to the handler's instance),
-    // so without an owning reference here the item is freed as soon as
-    // add returns and its update_icon handler is auto-disconnected.
-    Gee.ArrayList<ITrayApplet> applets = new Gee.ArrayList<ITrayApplet>();
-    string? active_page_id = null;
-    int next_page_id = 0;
+    // Keeps applet instances alive (Vala connects handlers with a weak ref to
+    // the handler's instance).
+    Gee.ArrayList<ITrayApplet> applets = new Gee.ArrayList<ITrayApplet> ();
+    Gee.ArrayList<IControlModule> modules = new Gee.ArrayList<IControlModule> ();
 
     public signal void expanded_changed (bool expanded);
 
     public TrayBar () {
-        GLib.Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
-        add_css_class("tray-bar");
+        GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+        add_css_class ("tray-bar");
         halign = Gtk.Align.END;
-        // Bottom panel: bar anchored bottom-right, grows upward as a page
-        // reveals. Top panel: anchored top-right, grows downward — same child
-        // order (icon row first, revealer below), the revealer's SLIDE_DOWN
-        // now opens away from the screen edge. The .at-top class flips the
-        // floating margin from the bottom edge to the top.
         valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
-        if (PanelConfig.at_top) add_css_class("at-top");
-        // Clip children to the .tray-bar's rounded background so the page-
-        // slide and reveal animations can't render past the corners.
+        if (PanelConfig.at_top) add_css_class ("at-top");
         overflow = Gtk.Overflow.HIDDEN;
 
-        // Order matters: icon row first so it sits at the TOP of the box;
-        // the revealer is the LAST child so its content occupies the BOTTOM.
-        // The whole box is bottom-anchored in the layer-shell window, so as
-        // the revealer expands the icon row gets pushed upward.
-        icon_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+        icon_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6) {
             halign = Gtk.Align.END,
             valign = Gtk.Align.CENTER,
         };
-        icon_row.add_css_class("tray-icons");
-        append(icon_row);
+        icon_row.add_css_class ("tray-icons");
+        append (icon_row);
 
-        page_stack = new Gtk.Stack() {
-            // SLIDE_LEFT_RIGHT chooses direction from the relative order of
-            // children: jumping to a later-added child slides left (new
-            // content enters from the right) and vice versa.
-            transition_type = Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
-            transition_duration = 240,
-            hhomogeneous = true,
-            vhomogeneous = true,
-            hexpand = true,
-            vexpand = true,
-        };
+        // Click anywhere on the row to toggle. Status icons are passive (don't
+        // claim the event), so the click bubbles here; SNI app buttons claim
+        // their own clicks and so don't toggle.
+        var click = new Gtk.GestureClick () { button = Gdk.BUTTON_PRIMARY };
+        click.released.connect (() => toggle ());
+        icon_row.add_controller (click);
 
-        revealer = new Gtk.Revealer() {
+        revealer = new Gtk.Revealer () {
             transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN,
             transition_duration = 280,
             reveal_child = false,
-            child = page_stack,
         };
-        revealer.add_css_class("tray-pages");
-        append(revealer);
+        revealer.add_css_class ("tray-pages");
+        append (revealer);
     }
 
-    // Append an applet's tray widget to the icon row. When the applet has a
-    // detail page AND its tray widget is a button (the only thing that can
-    // toggle a reveal), register the page and wire the click to toggle it.
+    // Append an applet's icon and, when it's a control module, collect it for
+    // the Control Center overview.
     public void add (ITrayApplet item) {
-        applets.add(item);
-        var w = item.tray_widget();
-        icon_row.append(w);
-        var page = item.detail_page();
-        if (page != null && w is Gtk.Button) {
-            string id = "page-%d".printf(next_page_id++);
-            icon_by_page.insert(id, w);
-            page_stack.add_named(page, id);
-            ((Gtk.Button) w).clicked.connect(() => toggle(id));
+        applets.add (item);
+        icon_row.append (item.tray_widget ());
+
+        var mod = item as IControlModule;
+        if (mod != null) modules.add (mod);
+    }
+
+    void ensure_cc () {
+        if (cc == null) {
+            cc = new ControlCenter (modules);
+            revealer.child = cc;
         }
     }
 
-    void toggle (string id) {
-        if (active_page_id == id) {
-            collapse();
+    void toggle () {
+        if (revealer.reveal_child) {
+            collapse ();
             return;
         }
-        if (active_page_id != null) {
-            var prev = icon_by_page.lookup(active_page_id);
-            if (prev != null) prev.remove_css_class("active");
-        }
-        var next = icon_by_page.lookup(id);
-        if (next != null) next.add_css_class("active");
-
-        page_stack.visible_child_name = id;
-        bool was_open = (active_page_id != null);
-        active_page_id = id;
-        if (!was_open) {
-            revealer.reveal_child = true;
-            expanded_changed(true);
-        }
+        ensure_cc ();
+        cc.show_home ();
+        revealer.reveal_child = true;
+        expanded_changed (true);
     }
 
     public void collapse () {
-        if (active_page_id == null) return;
-        var prev = icon_by_page.lookup(active_page_id);
-        if (prev != null) prev.remove_css_class("active");
-        active_page_id = null;
+        if (!revealer.reveal_child) return;
         revealer.reveal_child = false;
-        expanded_changed(false);
+        expanded_changed (false);
+        if (cc != null) cc.show_home ();
     }
 
-    public bool is_expanded () { return active_page_id != null; }
+    public bool is_expanded () { return revealer.reveal_child; }
 }
