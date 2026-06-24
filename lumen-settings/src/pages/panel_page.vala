@@ -17,6 +17,16 @@ namespace LumenSettings {
         // lumen-panel always renders a fixed-height strip (App.ICON_ROW_HEIGHT);
         // the push reveal must free exactly that many pixels.
         const int PANEL_HEIGHT_PX = 60;
+
+        // The tray-toggle hotkey is a Wayfire [command] binding: pressing the key
+        // runs a one-shot dbus-send that calls the panel's ToggleTray method (see
+        // lumen-panel/src/panel_service.vala). binding_/command_ share this suffix
+        // so we can find and rewrite our own entry without touching the user's
+        // other command bindings.
+        const string TRAY_CMD_NAME = "lumen_tray";
+        const string TRAY_DBUS_CMD =
+            "dbus-send --session --dest=org.lumenshell.Panel "
+            + "/org/lumenshell/Panel org.lumenshell.Panel1.ToggleTray";
 #endif
 
         // Panel color is a shared RGB; normal mode ("at all times") and auto-hide
@@ -140,6 +150,17 @@ namespace LumenSettings {
                 store.save();
             });
             behavior_group.add_row(launcher_row);
+
+#if WITH_WAYFIRE_CONFIG
+            // Global shortcut to open/close the tray (Control Center). Stored as a
+            // Wayfire [command] keybinding; Wayfire picks up the wayfire.ini edit
+            // live, so no panel restart is needed. Right-click the button clears it.
+            var tray_key_initial = wf_store.get_value("command", "binding_" + TRAY_CMD_NAME) ?? "";
+            var tray_key_row = new BindingRow("Toggle tray shortcut", tray_key_initial,
+                "global key that opens or closes the tray; right-click to clear");
+            tray_key_row.value_changed.connect((binding) => set_tray_binding(binding));
+            behavior_group.add_row(tray_key_row);
+#endif
 
             var autohide_opacity_row = new SpinRow("Auto-hide opacity", 0, 100, 1, autohide_opacity, 0,
                 "panel opacity while auto-hidden, in percent (uses the panel color)");
@@ -279,6 +300,21 @@ namespace LumenSettings {
             var h   = "%d".printf(PANEL_HEIGHT_PX);
             wf_store.set_value(PUSH_SECTION, "direction", pos);
             wf_store.set_value(PUSH_SECTION, "push_px", h);
+            wf_store.save();
+        }
+
+        // Write (or clear) the tray-toggle hotkey in wayfire.ini's [command]
+        // section. An empty binding removes both keys so a cleared shortcut
+        // doesn't leave a dangling command behind.
+        void set_tray_binding(string binding) {
+            wf_store.reload();   // don't clobber other [command]/[core] edits
+            if (binding.strip() == "") {
+                wf_store.remove_key("command", "binding_" + TRAY_CMD_NAME);
+                wf_store.remove_key("command", "command_" + TRAY_CMD_NAME);
+            } else {
+                wf_store.set_value("command", "binding_" + TRAY_CMD_NAME, binding);
+                wf_store.set_value("command", "command_" + TRAY_CMD_NAME, TRAY_DBUS_CMD);
+            }
             wf_store.save();
         }
 
