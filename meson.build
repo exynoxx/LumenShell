@@ -174,6 +174,7 @@ panel_sources = files(
   'lumen-panel/src/panel_window.vala',
   'lumen-panel/src/theme.vala',
   'lumen-panel/src/panel_config.vala',
+  'lumen-panel/src/radio_state.vala',
   'lumen-panel/src/utils.vala',
   'lumen-panel/src/wl/toplevels.vala',
   'lumen-panel/src/widgets/tray_button.vala',

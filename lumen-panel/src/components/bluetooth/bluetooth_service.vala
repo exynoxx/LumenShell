@@ -19,7 +19,12 @@ public class BluetoothService : GLib.Object {
     private bool        scan_in_flight = false;
 
     public BluetoothService() {
-        poll_state();
+        // Re-apply the remembered power state before the first poll, so a panel
+        // restart (or boot, where BlueZ AutoEnable would otherwise power the
+        // adapter on) restores the user's last choice. Null ⇒ never toggled.
+        var saved = RadioState.get_bluetooth();
+        if (saved != null) apply_power(saved);
+        else               poll_state();
         GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
             poll_state();
             return Source.CONTINUE;
@@ -27,8 +32,13 @@ public class BluetoothService : GLib.Object {
     }
 
     public void set_power(bool on) {
-        // Optimistic: reflect the intent immediately so the toggle doesn't
-        // bounce back while the (blocking) rfkill+bluetoothctl sequence runs.
+        RadioState.set_bluetooth(on);
+        apply_power(on);
+    }
+
+    // Push the adapter to `on` on a worker thread (rfkill+bluetoothctl block),
+    // reflecting the intent optimistically first so the toggle doesn't bounce back.
+    private void apply_power(bool on) {
         powered = on;
         state_changed();
         new GLib.Thread<void>("bt-power", () => {

@@ -23,7 +23,12 @@ public class WifiService : GLib.Object {
     private bool        scan_in_flight = false;
 
     public WifiService() {
-        poll_connection();
+        // Re-apply the remembered radio state before the first poll, so a panel
+        // restart restores the user's last choice rather than mirroring whatever
+        // NetworkManager currently reports. Null ⇒ never toggled ⇒ just poll.
+        var saved = RadioState.get_wifi();
+        if (saved != null) apply_radio(saved);
+        else               poll_connection();
         GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
             poll_connection();
             return Source.CONTINUE;
@@ -31,8 +36,13 @@ public class WifiService : GLib.Object {
     }
 
     public void set_radio(bool on) {
-        // Optimistic: reflect the intent immediately so the toggle doesn't
-        // bounce back while the (blocking) rfkill+nmcli sequence runs.
+        RadioState.set_wifi(on);
+        apply_radio(on);
+    }
+
+    // Push the radio to `on` on a worker thread (rfkill+nmcli block), reflecting
+    // the intent optimistically first so the toggle doesn't bounce back mid-call.
+    private void apply_radio(bool on) {
         enabled = on;
         if (!on) { nets = {}; connected_ssid = ""; }
         state_changed();
