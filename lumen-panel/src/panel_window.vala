@@ -75,8 +75,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
 
 #if PANEL_PEEK
         // Persistent launcher button at the very left edge, ahead of the
-        // taskbar. Has its own click handler (toggles the app-drawer reveal)
-        // and, being a Gtk.Button, is skipped by the empty-panel peek gesture.
+        // taskbar. Has its own click handler that toggles the app-drawer reveal.
         if (PanelConfig.show_launcher) root.append(new LauncherButton());
 #endif
 
@@ -84,20 +83,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
         root.append(app_bar);
 
         if (tray != null) root.append(tray);
-
-#if PANEL_PEEK
-        var peek_click = new Gtk.GestureClick();
-        peek_click.set_button(Gdk.BUTTON_PRIMARY);
-        peek_click.pressed.connect((n_press, x, y) => {
-            var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
-            for (var w = picked; w != null && w != root; w = w.get_parent()) {
-                if (w is Gtk.Button || w is Gtk.Editable || (tray != null && w == tray))
-                    return;
-            }
-            PeekIpc.toggle();
-        });
-        root.add_controller(peek_click);
-#endif
 
         var backdrop = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
             hexpand = true, vexpand = true,
