@@ -35,7 +35,7 @@ window.lumen-panel.auto-hide .panel-strip {
    spill past the rounded corners. */
 .tray-bar {
     background: @tray_background;
-    border-radius: 10px;
+    border-radius: 18px;
     margin-right: 20px;
     margin-bottom: 6px;
     color: white;

@@ -16,16 +16,13 @@ public interface ITrayApplet : GLib.Object {
 public class TrayBar : Gtk.Box {
 
     Gtk.Box icon_row;
-    // Two nested revealers so the panel grows in BOTH dimensions at once: the
-    // outer one animates width (right edge pinned → it blooms leftward), the
-    // inner one animates height (icon row pinned to the bottom-anchored box →
-    // the icons slide up). The Control Center is always allocated its full
-    // 600×H, so the revealers only clip a growing rectangle out of a corner —
-    // no content reflow mid-animation. Collapsing retracts both back to the
-    // compact icon-row size.
-    Gtk.Revealer width_rev;
-    Gtk.Revealer height_rev;
-    public Gtk.Revealer revealer { get { return width_rev; } }
+    // One clip-reveal widget grows the panel in BOTH dimensions off a single
+    // eased animation: the Control Center is always allocated its full 600×H
+    // anchored to the corner, and only the size reported upward animates, so the
+    // surface blooms out of the corner with no content reflow. (Replaces the two
+    // nested Gtk.Revealers, whose independent SLIDE clocks desynced and reflowed
+    // the content mid-animation.)
+    TrayReveal reveal;
     ControlCenter? cc = null;
 
     // Keeps applet instances alive (Vala connects handlers with a weak ref to
@@ -48,7 +45,6 @@ public class TrayBar : Gtk.Box {
             valign = Gtk.Align.CENTER,
         };
         icon_row.add_css_class ("tray-icons");
-        append (icon_row);
 
         // Click anywhere on the row to toggle. Status icons are passive (don't
         // claim the event), so the click bubbles here; SNI app buttons claim
@@ -57,20 +53,33 @@ public class TrayBar : Gtk.Box {
         click.released.connect (() => toggle ());
         icon_row.add_controller (click);
 
-        height_rev = new Gtk.Revealer () {
-            transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN,
-            transition_duration = 300,
-            reveal_child = false,
-        };
-        width_rev = new Gtk.Revealer () {
-            transition_type = Gtk.RevealerTransitionType.SLIDE_LEFT,
-            transition_duration = 300,
-            reveal_child = false,
-            halign = Gtk.Align.END,
-            child = height_rev,
-        };
-        width_rev.add_css_class ("tray-pages");
-        append (width_rev);
+        reveal = new TrayReveal (PanelConfig.at_top);
+        reveal.add_css_class ("tray-pages");
+
+        // The icon row and the expanded Control Center are mutually-exclusive
+        // content, but stacking them in a box made the surface jump: it dipped to
+        // zero between them and snapped back to the icon-row height (the buggy
+        // contraction). Overlaying them instead keeps the icon row as a permanent
+        // floor, so the surface only ever animates between the compact icon-row
+        // height and the full Control Center height — never to zero. The icon row
+        // crossfades against the reveal fraction so the swap is seamless.
+        var stack = new Gtk.Overlay ();
+        stack.set_child (reveal);                     // main child: drives expanded size
+        stack.add_overlay (icon_row);                 // floor: keeps the compact height
+        stack.set_measure_overlay (icon_row, true);
+        append (stack);
+
+        reveal.fraction_changed.connect ((f) => {
+            // Fade the icons out as the panel opens; fade them back in over the
+            // last stretch of the collapse, in step with the shrinking surface.
+            icon_row.opacity = (1.0 - f * 2.5).clamp (0.0, 1.0);
+        });
+        reveal.animation_done.connect (() => {
+            // Re-enable icon-row clicks only once fully collapsed. While expanded
+            // the row sits (invisible) under the Control Center, so its clicks
+            // must fall through to the CC controls beneath it.
+            icon_row.can_target = !reveal.revealed;
+        });
     }
 
     // Append an applet's icon and, when it's a control module, collect it for
@@ -86,34 +95,36 @@ public class TrayBar : Gtk.Box {
     void ensure_cc () {
         if (cc == null) {
             cc = new ControlCenter (modules);
-            height_rev.child = cc;
+            reveal.child = cc;
         }
     }
 
-    void toggle () {
-        if (width_rev.reveal_child) {
+    // Toggle the Control Center open/closed. Driven by a primary click on the
+    // icon row AND by the panel's DBus ToggleTray method (a Wayfire keybinding),
+    // so it is public. Either way the expand/collapse fires expanded_changed,
+    // which the host PanelWindow uses to grow/shrink the input region.
+    public void toggle () {
+        if (reveal.revealed) {
             collapse ();
             return;
         }
         ensure_cc ();
         cc.show_home ();
-        // The compact status icons are the click-to-open affordance; once the
-        // Control Center is open they're redundant, so hide them and let the
-        // panel be the single expanded surface.
-        icon_row.visible = false;
-        width_rev.reveal_child = true;
-        height_rev.reveal_child = true;
+        // The compact icons are the click-to-open affordance; once the Control
+        // Center opens they're redundant. Stop them intercepting clicks meant for
+        // the CC immediately; the crossfade hides them visually.
+        icon_row.can_target = false;
+        reveal.set_reveal (true);
         expanded_changed (true);
     }
 
     public void collapse () {
-        if (!width_rev.reveal_child) return;
-        width_rev.reveal_child = false;
-        height_rev.reveal_child = false;
-        icon_row.visible = true;
+        if (!reveal.revealed) return;
+        reveal.set_reveal (false);
         expanded_changed (false);
         if (cc != null) cc.show_home ();
     }
 
-    public bool is_expanded () { return width_rev.reveal_child; }
+    public bool is_expanded ()  { return reveal.revealed; }
+    public bool is_animating () { return reveal.animating; }
 }

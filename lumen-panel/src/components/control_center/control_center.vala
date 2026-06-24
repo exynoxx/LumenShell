@@ -6,10 +6,10 @@ using Gtk;
 // icon row above it is untouched — only this expanded area is new.
 public class ControlCenter : Gtk.Box {
 
-    const int WIDTH  = 600;
+    const int WIDTH  = 560;
     // Minimum expanded height — combined with the stack's vhomogeneous sizing it
     // gives the whole panel one constant, roomy height regardless of the page.
-    const int HEIGHT = 520;
+    const int HEIGHT = 560;
 
     Gtk.Stack stack;
     Gtk.Box   home;

@@ -120,11 +120,12 @@ public class PanelWindow : Gtk.ApplicationWindow {
 
         this.map.connect(update_input_region);
         if (tray != null) {
-            tray.revealer.notify["reveal-child"].connect(() => {
+            // The tray grows/shrinks the surface every frame while it animates;
+            // track that so the input region follows the expanding bbox.
+            tray.expanded_changed.connect(() => {
                 update_input_region();
                 start_resize_tracking();
             });
-            tray.revealer.notify["child-revealed"].connect(update_input_region);
         }
 
         var win_motion = new Gtk.EventControllerMotion();
@@ -210,7 +211,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         if (resize_tick_id != 0) return;
         resize_tick_id = ((Gtk.Widget) this).add_tick_callback((widget, clock) => {
             update_input_region();
-            if (tray.revealer.reveal_child == tray.revealer.child_revealed) {
+            if (!tray.is_animating()) {
                 resize_tick_id = 0;
                 return GLib.Source.REMOVE;
             }
@@ -264,7 +265,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         };
         region.union_rectangle(strip);
 
-        if (tray != null && (tray.revealer.reveal_child || tray.revealer.child_revealed)) {
+        if (tray != null && (tray.is_expanded() || tray.is_animating())) {
             double tx, ty;
             if (tray.translate_coordinates(this, 0, 0, out tx, out ty)) {
                 int tw = tray.get_width();

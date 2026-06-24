@@ -17,6 +17,7 @@ public class App : GLib.Object {
 
     Gtk.Application app;
     TrayBar tray;                            // the primary panel's tray area
+    PanelService panel_service;              // session-bus ToggleTray (global hotkey)
     SniWatcher sni_watcher;                  // SNI registry singleton, shared by every SysTray
     TrayRegistry registry;                   // id → applet factory
     LogindService logind_service;
@@ -57,6 +58,12 @@ public class App : GLib.Object {
         ToplevelStore.instance.bind();
 
         tray = make_tray();
+
+        // Own the session-bus control surface so a Wayfire [command] keybinding
+        // can toggle the tray from anywhere (the panel surface only gets key
+        // events once clicked). Acts on the one primary tray.
+        panel_service = new PanelService(tray);
+        panel_service.start();
 
         build_windows();
 
