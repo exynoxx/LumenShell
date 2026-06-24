@@ -9,10 +9,6 @@
 #if PANEL_PEEK
 public class PeekIpc : GLib.Object {
 
-    public static bool toggle () {
-        return LumenCommon.WayfireIpc.send_method("wayfire-desktop-peek/toggle");
-    }
-
     // Toggle the app-drawer reveal (lumen-desktop). Only one of curtain-peek /
     // slide-peek is ever loaded, so the toggle for the inactive one is a
     // harmless no-op (its IPC method isn't registered) — same pattern as
