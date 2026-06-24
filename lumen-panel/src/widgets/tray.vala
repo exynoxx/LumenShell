@@ -16,7 +16,16 @@ public interface ITrayApplet : GLib.Object {
 public class TrayBar : Gtk.Box {
 
     Gtk.Box icon_row;
-    public Gtk.Revealer revealer { get; private set; }
+    // Two nested revealers so the panel grows in BOTH dimensions at once: the
+    // outer one animates width (right edge pinned → it blooms leftward), the
+    // inner one animates height (icon row pinned to the bottom-anchored box →
+    // the icons slide up). The Control Center is always allocated its full
+    // 600×H, so the revealers only clip a growing rectangle out of a corner —
+    // no content reflow mid-animation. Collapsing retracts both back to the
+    // compact icon-row size.
+    Gtk.Revealer width_rev;
+    Gtk.Revealer height_rev;
+    public Gtk.Revealer revealer { get { return width_rev; } }
     ControlCenter? cc = null;
 
     // Keeps applet instances alive (Vala connects handlers with a weak ref to
@@ -48,13 +57,20 @@ public class TrayBar : Gtk.Box {
         click.released.connect (() => toggle ());
         icon_row.add_controller (click);
 
-        revealer = new Gtk.Revealer () {
+        height_rev = new Gtk.Revealer () {
             transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN,
-            transition_duration = 280,
+            transition_duration = 300,
             reveal_child = false,
         };
-        revealer.add_css_class ("tray-pages");
-        append (revealer);
+        width_rev = new Gtk.Revealer () {
+            transition_type = Gtk.RevealerTransitionType.SLIDE_LEFT,
+            transition_duration = 300,
+            reveal_child = false,
+            halign = Gtk.Align.END,
+            child = height_rev,
+        };
+        width_rev.add_css_class ("tray-pages");
+        append (width_rev);
     }
 
     // Append an applet's icon and, when it's a control module, collect it for
@@ -70,27 +86,29 @@ public class TrayBar : Gtk.Box {
     void ensure_cc () {
         if (cc == null) {
             cc = new ControlCenter (modules);
-            revealer.child = cc;
+            height_rev.child = cc;
         }
     }
 
     void toggle () {
-        if (revealer.reveal_child) {
+        if (width_rev.reveal_child) {
             collapse ();
             return;
         }
         ensure_cc ();
         cc.show_home ();
-        revealer.reveal_child = true;
+        width_rev.reveal_child = true;
+        height_rev.reveal_child = true;
         expanded_changed (true);
     }
 
     public void collapse () {
-        if (!revealer.reveal_child) return;
-        revealer.reveal_child = false;
+        if (!width_rev.reveal_child) return;
+        width_rev.reveal_child = false;
+        height_rev.reveal_child = false;
         expanded_changed (false);
         if (cc != null) cc.show_home ();
     }
 
-    public bool is_expanded () { return revealer.reveal_child; }
+    public bool is_expanded () { return width_rev.reveal_child; }
 }

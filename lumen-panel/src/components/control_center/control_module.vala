@@ -9,6 +9,11 @@ public interface IControlModule : GLib.Object {
     public abstract string      module_id ();   // "wifi", "bluetooth", …
     public abstract Gtk.Widget  home_tile ();   // shown in the overview
     public abstract Gtk.Widget? detail_view (); // inline detail, or null
+
+    // Emitted when the module's home tile is activated and wants the Control
+    // Center to slide to its detail view. ControlCenter wires every module's
+    // signal to open(module_id) — the module just fires it.
+    public signal void open_detail ();
 }
 
 // Shared Apple-dark tokens for the code-drawn widgets (CSS @define-color can't
@@ -82,7 +87,10 @@ public class CcToggleRow : Gtk.Box {
     string off_icon;
     bool _on = false;
 
-    public CcToggleRow (string title, string on_icon, string off_icon, bool has_chevron) {
+    // compact: half-width tile that sits beside a sibling (Wi-Fi next to
+    // Bluetooth) — drops the chevron and ellipsizes the live subtitle so a long
+    // network name can't blow out the tile width.
+    public CcToggleRow (string title, string on_icon, string off_icon, bool compact = false) {
         GLib.Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 12);
         add_css_class ("cc-row");
         this.on_icon = on_icon;
@@ -103,6 +111,10 @@ public class CcToggleRow : Gtk.Box {
         title_lbl.add_css_class ("cc-row-title");
         subtitle_lbl = new Gtk.Label ("") { xalign = 0 };
         subtitle_lbl.add_css_class ("cc-row-subtitle");
+        if (compact) {
+            subtitle_lbl.ellipsize = Pango.EllipsizeMode.END;
+            subtitle_lbl.max_width_chars = 10;
+        }
         text.append (title_lbl);
         text.append (subtitle_lbl);
 
@@ -110,7 +122,7 @@ public class CcToggleRow : Gtk.Box {
         navbox.append (text);
         var grow = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0) { hexpand = true };
         navbox.append (grow);
-        if (has_chevron) {
+        if (!compact) {
             var chev = new Gtk.Label ("›") { valign = Gtk.Align.CENTER };  // ›
             chev.add_css_class ("cc-chevron");
             navbox.append (chev);

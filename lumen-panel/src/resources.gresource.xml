@@ -8,6 +8,7 @@
     <file alias="bluetooth.svg">res/bluetooth.svg</file>
     <file alias="bluetooth-connected.svg">res/bluetooth-connected.svg</file>
     <file alias="bluetooth-off.svg">res/bluetooth-off.svg</file>
+    <file alias="brightness.svg">res/brightness.svg</file>
     <file alias="charging.svg">res/charging.svg</file>
     <file alias="close.svg">res/close.svg</file>
     <file alias="ethernet.svg">res/ethernet.svg</file>

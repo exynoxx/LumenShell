@@ -11,6 +11,7 @@ public class WifiTray : GLib.Object, ITrayApplet, IControlModule {
         icon = new TrayButton ("nowifi");
         module_tile = new WifiModule (service);
         detail = new WifiDetail (service);
+        module_tile.tile ().activated.connect (() => open_detail ());
 
         service.state_changed.connect (update_icon);
         service.refresh_scan (false);

@@ -12,6 +12,7 @@ public class BatteryModule : GLib.Object {
     Gtk.Image icon_img;
     Gtk.Label status_lbl;
     Gtk.Label pct_lbl;
+    LumenProgressBar bar;
     SegmentedControl seg;
 
     public BatteryModule (BatteryService service, PowerProfileService pps) {
@@ -43,6 +44,13 @@ public class BatteryModule : GLib.Object {
 
         root.append (top);
 
+        // The pre-redesign green charge bar, restored. Track tinted to sit on
+        // the translucent card; fill goes green/amber/red by level in refresh().
+        bar = new LumenProgressBar () {
+            track_color = Utils.rgba (1f, 1f, 1f, 0.14f),
+        };
+        root.append (bar);
+
         if (pps.backend != PowerBackend.NONE) {
             seg = new SegmentedControl ();
             seg.segment_selected.connect ((i) => {
@@ -71,6 +79,14 @@ public class BatteryModule : GLib.Object {
         icon_img.set_from_resource (CcStyle.icon (icon));
 
         pct_lbl.label = "%d%%".printf (service.percent);
+
+        int pct = service.percent;
+        bar.set_progress (pct);
+        bar.fill_color = pct >= 60
+            ? Utils.rgba (0.13f, 0.76f, 0.34f, 1f)
+            : pct >= 25
+                ? Utils.rgba (0.90f, 0.62f, 0.06f, 1f)
+                : Utils.rgba (0.86f, 0.20f, 0.20f, 1f);
 
         if      (raw == "charging")        status_lbl.label = "Charging";
         else if (raw == "discharging")     status_lbl.label = "On battery";

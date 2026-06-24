@@ -10,7 +10,7 @@ public class WifiModule : GLib.Object {
 
     public WifiModule (WifiService service) {
         this.service = service;
-        row = new CcToggleRow ("Wi-Fi", "wifi", "nowifi", true);
+        row = new CcToggleRow ("Wi-Fi", "wifi", "nowifi", true);   // compact: sits beside Bluetooth
         row.toggled.connect ((want) => service.set_radio (want));
         service.state_changed.connect (update);
         update ();

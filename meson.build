@@ -207,6 +207,8 @@ panel_sources = files(
   'lumen-panel/src/components/sound/sound_service.vala',
   'lumen-panel/src/components/sound/sound.vala',
   'lumen-panel/src/components/sound/sound_module.vala',
+  'lumen-panel/src/components/sound/sound_detail.vala',
+  'lumen-panel/src/components/brightness/brightness_service.vala',
   'lumen-panel/src/components/wifi/nmcli.vala',
   'lumen-panel/src/components/wifi/wifi_service.vala',
   'lumen-panel/src/components/wifi/wifi.vala',

@@ -11,6 +11,7 @@ public class BluetoothTray : GLib.Object, ITrayApplet, IControlModule {
         icon = new TrayButton ("bluetooth-off");
         module_tile = new BluetoothModule (service);
         detail = new BluetoothDetail (service);
+        module_tile.tile ().activated.connect (() => open_detail ());
 
         service.state_changed.connect (update_icon);
         service.refresh_scan (false);
