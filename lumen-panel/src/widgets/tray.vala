@@ -90,7 +90,11 @@ public class TrayBar : Gtk.Box {
         }
     }
 
-    void toggle () {
+    // Toggle the tray open/closed. Driven by a primary click on the icon row AND
+    // by the panel's DBus ToggleTray method (a Wayfire keybinding), so it is
+    // public. Either path fires expanded_changed, which the host PanelWindow uses
+    // to grow/shrink the input region.
+    public void toggle () {
         if (width_rev.reveal_child) {
             collapse ();
             return;
