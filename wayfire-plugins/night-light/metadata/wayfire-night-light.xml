@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-night-light">
+    <_short>Night Light</_short>
+    <_long>Applies a warm colour tint to the whole screen, toggled from the panel over IPC.</_long>
+    <category>Effects</category>
+    <option name="temperature" type="int">
+      <_short>Colour temperature (Kelvin)</_short>
+      <_long>Lower is warmer. 6500K is neutral (no tint).</_long>
+      <default>3500</default>
+      <min>2500</min>
+      <max>6500</max>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Fade duration</_short>
+      <default>300ms linear</default>
+    </option>
+  </plugin>
+</wayfire>

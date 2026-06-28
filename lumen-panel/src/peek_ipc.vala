@@ -29,5 +29,11 @@ public class PeekIpc : GLib.Object {
     public static bool push_stop () {
         return LumenCommon.WayfireIpc.send_method("wayfire-panel-push/stop");
     }
+
+    // Toggle the Wayfire night-light plugin (warm colour-temperature overlay).
+    // Harmless no-op if wayfire-night-light isn't loaded (verb unregistered).
+    public static bool night_light_toggle () {
+        return LumenCommon.WayfireIpc.send_method("wayfire-night-light/toggle");
+    }
 }
 #endif

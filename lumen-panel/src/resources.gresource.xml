@@ -19,6 +19,7 @@
     <file alias="logout.svg">res/logout.svg</file>
     <file alias="low.svg">res/low.svg</file>
     <file alias="mid.svg">res/mid.svg</file>
+    <file alias="moon.svg">res/moon.svg</file>
     <file alias="nobattery.svg">res/nobattery.svg</file>
     <file alias="nowifi.svg">res/nowifi.svg</file>
     <file alias="reboot.svg">res/reboot.svg</file>

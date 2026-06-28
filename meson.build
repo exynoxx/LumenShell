@@ -604,7 +604,8 @@ if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
    or get_option('with_slide_peek') \
    or get_option('with_panel_push') \
-   or get_option('with_startup_zoom')
+   or get_option('with_startup_zoom') \
+   or get_option('with_night_light')
   add_languages('cpp', native: false)
 endif
 
@@ -626,6 +627,10 @@ endif
 
 if get_option('with_startup_zoom')
   subdir('wayfire-plugins/startup-zoom')
+endif
+
+if get_option('with_night_light')
+  subdir('wayfire-plugins/night-light')
 endif
 
 # --- dev environment (replaces the old hand-written env.sh) -----------------

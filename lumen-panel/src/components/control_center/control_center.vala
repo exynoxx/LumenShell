@@ -14,6 +14,7 @@ public class ControlCenter : Gtk.Box {
     Gtk.Stack stack;
     Gtk.Box   home;
     BrightnessService brightness = new BrightnessService ();
+    bool night_light_on = false;
     GLib.HashTable<string, IControlModule> mods =
         new GLib.HashTable<string, IControlModule> (str_hash, str_equal);
 
@@ -104,6 +105,25 @@ public class ControlCenter : Gtk.Box {
             suppress = false;
         });
         row.append (slider);
+
+        // Night-light toggle (warm screen tint) — a round moon button pinned to
+        // the right of the brightness slider. Drives the wayfire-night-light
+        // plugin over IPC; state is session-local and optimistic (the plugin has
+        // no state-query verb). Visual lit state reuses the .cc-toggle / .on look.
+        var moon_btn = new Gtk.Button () { valign = Gtk.Align.CENTER };
+        moon_btn.add_css_class ("cc-toggle");
+        var moon_img = new Gtk.Image () { pixel_size = 20 };
+        moon_img.set_from_resource (CcStyle.icon ("moon"));
+        moon_btn.set_child (moon_img);
+        moon_btn.clicked.connect (() => {
+            night_light_on = !night_light_on;
+            if (night_light_on) moon_btn.add_css_class ("on");
+            else                moon_btn.remove_css_class ("on");
+#if PANEL_PEEK
+            PeekIpc.night_light_toggle ();
+#endif
+        });
+        row.append (moon_btn);
         return row;
     }
 

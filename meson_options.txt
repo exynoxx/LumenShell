@@ -41,6 +41,13 @@ option(
 )
 
 option(
+  'with_night_light',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-night-light Wayfire plugin (warm colour-temperature tint toggled from the panel; needs Wayfire 0.10 dev headers).',
+)
+
+option(
   'with_lockscreen',
   type: 'feature',
   value: 'auto',
