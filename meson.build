@@ -396,6 +396,55 @@ executable('lumen-session',
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
 
+# --- lumen-polkit-agent (PolicyKit authentication agent) ---
+# Gated behind `with_polkit_agent` (auto). Uses libpolkit-agent-1 +
+# libpolkit-gobject-1: the agent registers a PolkitAgent.Listener for the login
+# session and pops a password dialog whenever polkitd requests authentication
+# (privileged actions, and lumen-desktop's Ctrl+click "run as administrator",
+# which goes through `pkexec`). The Vala bindings (polkit-agent-1.vapi /
+# polkit-gobject-1.vapi) ship with Vala; only the -devel .pc files are a build
+# prereq. Auto-skipped when either dep is missing so the rest of the tree builds.
+polkit_agent_dep   = dependency('polkit-agent-1',   required: get_option('with_polkit_agent'))
+polkit_gobject_dep = dependency('polkit-gobject-1', required: get_option('with_polkit_agent'))
+
+if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and polkit_gobject_dep.found()
+  executable('lumen-polkit-agent',
+    files(
+      'lumen-polkit-agent/src/main.vala',
+      'lumen-polkit-agent/src/listener.vala',
+      'lumen-polkit-agent/src/auth_flow.vala',
+      'lumen-polkit-agent/src/dialog.vala',
+      'lumen-polkit-agent/src/dbg.vala',
+    ),
+    vala_args: [
+      '--vapidir=' + vapi_dir,
+      '--pkg=gtk4',
+      '--pkg=polkit-agent-1',
+      '--pkg=polkit-gobject-1',
+      '--pkg=posix',
+    ],
+    # polkit guards its headers behind these "I know the API is unstable"
+    # defines; libpolkit-agent-1 / libpolkit-gobject-1 have in practice been
+    # stable for years (every polkit agent defines these).
+    c_args: [
+      '-DPOLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
+      '-DPOLKIT_GOBJECT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
+    ],
+    dependencies: [
+      gtk4_dep,
+      glib_dep,
+      gio_dep,
+      polkit_agent_dep,
+      polkit_gobject_dep,
+      m_dep,
+    ],
+    install: true,
+  )
+  message('lumen-polkit-agent: enabled')
+else
+  message('lumen-polkit-agent: disabled (need polkit-agent-1 + polkit-gobject-1)')
+endif
+
 # --- lumen-lockscreen + lumen-lockctl (ext-session-lock-v1 lock screen) ---
 # Gated behind `with_lockscreen` (auto). The lock SURFACE is created by
 # gtk4-session-lock (sister lib to gtk4-layer-shell — see vapi/gtk4-session-lock-0.vapi);

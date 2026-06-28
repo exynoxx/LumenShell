@@ -67,6 +67,10 @@ def install_ubuntu():
         'libpam0g-dev',
         'gnome-keyring',
         'accountsservice',
+        # lumen-polkit-agent: PolicyKit authentication agent (build-time .pc +
+        # headers). Runtime libs are pulled in by the base system.
+        'libpolkit-agent-1-dev',
+        'libpolkit-gobject-1-dev',
     ]
 
     cmd = ['apt-get', 'install', '-y'] + packages
@@ -105,6 +109,10 @@ def install_fedora():
         'pam-devel',
         'gnome-keyring',
         'accountsservice',
+        # lumen-polkit-agent: PolicyKit authentication agent build-time deps
+        # (polkit-agent-1.pc / polkit-gobject-1.pc + headers). The Vala bindings
+        # ship with vala; the runtime libs come with the base polkit package.
+        'polkit-devel',
     ]
 
     cmd = ['dnf', 'install', '-y'] + packages
@@ -139,6 +147,9 @@ def install_arch():
         'pam',
         'gnome-keyring',
         'accountsservice',
+        # lumen-polkit-agent: PolicyKit authentication agent. Arch's `polkit`
+        # ships both the runtime libs and the development .pc/headers.
+        'polkit',
     ]
 
     cmd = ['pacman', '-S', '--needed', '--noconfirm'] + packages

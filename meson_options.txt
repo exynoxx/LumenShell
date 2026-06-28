@@ -46,3 +46,10 @@ option(
   value: 'auto',
   description: 'Build lumen-lockscreen + lumen-lockctl (ext-session-lock-v1 lock screen; needs gtk4-session-lock and pam at build time). Auto: built only when both are present.',
 )
+
+option(
+  'with_polkit_agent',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build lumen-polkit-agent (PolicyKit authentication agent — prompts for a password when a program requests privilege; needs polkit-agent-1 + polkit-gobject-1). Auto: built only when both are present.',
+)

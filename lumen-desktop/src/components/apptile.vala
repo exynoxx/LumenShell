@@ -35,8 +35,24 @@ public class AppTile : Gtk.Button {
         set_child(box);
 
         clicked.connect(() => {
-            if (entry != null) entry.launch();
+            if (entry == null) return;
+            // Ctrl held at click → launch as administrator (pkexec). We query
+            // the live keyboard modifier state rather than a press-time gesture
+            // because Gtk.Button consumes the click internally; the seat's
+            // keyboard still reports Ctrl as held through the release.
+            if (ctrl_held()) entry.launch_as_root();
+            else             entry.launch();
         });
+    }
+
+    private static bool ctrl_held() {
+        var dpy = Gdk.Display.get_default();
+        if (dpy == null) return false;
+        var seat = dpy.get_default_seat();
+        if (seat == null) return false;
+        var kb = seat.get_keyboard();
+        if (kb == null) return false;
+        return (kb.get_modifier_state() & Gdk.ModifierType.CONTROL_MASK) != 0;
     }
 
     public void bind(AppEntry e) {
