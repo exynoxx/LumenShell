@@ -7,7 +7,8 @@ using Gtk;
 // Everything is GSK (rounded clips, path stroke/fill) — GPU-rasterized.
 public class WifiRow : Gtk.Widget {
 
-    public const int ROW_H = 44;
+    public const int ROW_H     = 44;
+    public const int ROW_H_SUB = 54;   // taller when a status subtitle is shown
     const int PAD      = 16;
     const int NAME_X   = PAD + 26;   // text starts past the checkmark column
     const int ARC_W    = 24;
@@ -20,6 +21,8 @@ public class WifiRow : Gtk.Widget {
     public bool   is_connected { get; set; }
     public bool   selected     { get; set; }
     public bool   show_separator { get; set; default = true; }
+    // A short status line under the SSID ("Connected"). Empty ⇒ single-line row.
+    public string subtitle     { get; private set; default = ""; }
 
     public signal void activated ();
 
@@ -36,8 +39,9 @@ public class WifiRow : Gtk.Widget {
         this.signal_pct = net.signal;
         this.is_secured = net.is_secured ();
         this.is_connected = is_connected;
+        if (is_connected) this.subtitle = "Connected";
 
-        height_request = ROW_H;
+        height_request = subtitle != "" ? ROW_H_SUB : ROW_H;
         hexpand = true;
 
         var click = new Gtk.GestureClick () { button = Gdk.BUTTON_PRIMARY };
@@ -59,7 +63,7 @@ public class WifiRow : Gtk.Widget {
                                   out int min_baseline, out int nat_baseline) {
         min_baseline = -1; nat_baseline = -1;
         if (orientation == Gtk.Orientation.HORIZONTAL) { min = 220; nat = 480; }
-        else                                           { min = nat = ROW_H; }
+        else { min = nat = subtitle != "" ? ROW_H_SUB : ROW_H; }
     }
 
     public override void snapshot (Gtk.Snapshot s) {
@@ -88,7 +92,7 @@ public class WifiRow : Gtk.Widget {
             s.restore ();
         }
 
-        // SSID.
+        // SSID (and optional status subtitle stacked beneath it).
         var layout = create_pango_layout (ssid);
         var attrs = new Pango.AttrList ();
         attrs.insert (Pango.AttrSize.new_absolute (15 * Pango.SCALE));
@@ -96,15 +100,43 @@ public class WifiRow : Gtk.Widget {
         layout.set_attributes (attrs);
 
         int right_reserve = PAD + ARC_W + GAP + (is_secured ? LOCK_W + GAP : 0);
-        layout.set_width ((w - NAME_X - right_reserve) * Pango.SCALE);
+        int text_w = (w - NAME_X - right_reserve) * Pango.SCALE;
+        layout.set_width (text_w);
         layout.set_ellipsize (Pango.EllipsizeMode.END);
         int tw, th;
         layout.get_pixel_size (out tw, out th);
+
+        Pango.Layout? sub_layout = null;
+        int sh = 0;
+        if (subtitle != "") {
+            sub_layout = create_pango_layout (subtitle);
+            var sattrs = new Pango.AttrList ();
+            sattrs.insert (Pango.AttrSize.new_absolute (12 * Pango.SCALE));
+            sattrs.insert (Pango.attr_weight_new (Pango.Weight.MEDIUM));
+            sub_layout.set_attributes (sattrs);
+            sub_layout.set_width (text_w);
+            sub_layout.set_ellipsize (Pango.EllipsizeMode.END);
+            int sw;
+            sub_layout.get_pixel_size (out sw, out sh);
+        }
+
+        const int LINE_GAP = 1;
+        int block_h = th + (sub_layout != null ? LINE_GAP + sh : 0);
+        int block_y = (h - block_h) / 2;
+
         var pt = Graphene.Point ();
-        pt.init (NAME_X, (h - th) / 2);
+        pt.init (NAME_X, block_y);
         s.save (); s.translate (pt);
         s.append_layout (layout, name_fg);
         s.restore ();
+
+        if (sub_layout != null) {
+            var sp = Graphene.Point ();
+            sp.init (NAME_X, block_y + th + LINE_GAP);
+            s.save (); s.translate (sp);
+            s.append_layout (sub_layout, CcStyle.accent);
+            s.restore ();
+        }
 
         // Trailing glyphs.
         float arc_cx = w - PAD - ARC_W / 2.0f;

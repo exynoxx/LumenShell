@@ -15,8 +15,10 @@ public class WifiDetail : CcDetail {
     bool        syncing_power = false;
 
     Gtk.Box            conn_card;
+    Gtk.ScrolledWindow lists_scroll;
+    Gtk.Label          saved_caption;
+    Gtk.Box            saved_card;
     Gtk.Label          others_caption;
-    Gtk.ScrolledWindow others_scroll;
     Gtk.Box            others_card;
     Gtk.Label          empty_label;
 
@@ -84,16 +86,32 @@ public class WifiDetail : CcDetail {
         conn_card.add_css_class ("cc-card");
         content.append (conn_card);
 
+        // Saved (known) networks and unsaved networks each get their own captioned
+        // card, sharing one scroll region beneath the pinned connected card.
+        var lists_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 8) { hexpand = true };
+
+        saved_caption = new Gtk.Label ("SAVED NETWORKS") {
+            xalign = 0, margin_start = 4, visible = false,
+        };
+        saved_caption.add_css_class ("cc-caption");
+        lists_box.append (saved_caption);
+
+        saved_card = new Gtk.Box (Gtk.Orientation.VERTICAL, 0) { hexpand = true, visible = false };
+        saved_card.add_css_class ("cc-card");
+        lists_box.append (saved_card);
+
         others_caption = new Gtk.Label ("OTHER NETWORKS") {
-            xalign = 0, margin_start = 4, margin_top = 4, visible = false,
+            xalign = 0, margin_start = 4, visible = false,
         };
         others_caption.add_css_class ("cc-caption");
-        content.append (others_caption);
+        lists_box.append (others_caption);
 
-        others_card = new Gtk.Box (Gtk.Orientation.VERTICAL, 0) { hexpand = true };
+        others_card = new Gtk.Box (Gtk.Orientation.VERTICAL, 0) { hexpand = true, visible = false };
         others_card.add_css_class ("cc-card");
-        others_scroll = new Gtk.ScrolledWindow () {
-            child = others_card,
+        lists_box.append (others_card);
+
+        lists_scroll = new Gtk.ScrolledWindow () {
+            child = lists_box,
             hscrollbar_policy = Gtk.PolicyType.NEVER,
             vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
             vexpand = true,
@@ -101,8 +119,8 @@ public class WifiDetail : CcDetail {
             max_content_height = 380,
             propagate_natural_height = true,
         };
-        others_scroll.add_css_class ("cc-scroll");
-        content.append (others_scroll);
+        lists_scroll.add_css_class ("cc-scroll");
+        content.append (lists_scroll);
 
         empty_label = new Gtk.Label ("") {
             halign = Gtk.Align.CENTER, valign = Gtk.Align.CENTER,
@@ -302,41 +320,52 @@ public class WifiDetail : CcDetail {
     void rebuild_rows () {
         Gtk.Widget? w;
         while ((w = conn_card.get_first_child ()) != null)   conn_card.remove (w);
+        while ((w = saved_card.get_first_child ()) != null)  saved_card.remove (w);
         while ((w = others_card.get_first_child ()) != null) others_card.remove (w);
         rows.clear ();
 
-        // Connected network pinned first; nmcli order preserved for the rest.
+        // Partition into three buckets: the active connection (pinned), known
+        // (saved) networks, and everything else. Saved and other networks are
+        // each sorted by signal strength, strongest first.
+        var connected = new Gee.ArrayList<WifiNet> ();
+        var saved     = new Gee.ArrayList<WifiNet> ();
+        var others    = new Gee.ArrayList<WifiNet> ();
+        foreach (var net in service.nets) {
+            if (net.ssid == service.connected_ssid) connected.add (net);
+            else if (net.is_saved)                  saved.add (net);
+            else                                    others.add (net);
+        }
+        CompareDataFunc<WifiNet> by_signal = (a, b) => b.signal - a.signal;
+        saved.sort (by_signal);
+        others.sort (by_signal);
+
+        // Flatten in display order so index_of()/selection stays consistent.
         var ordered = new Gee.ArrayList<WifiNet> ();
-        foreach (var net in service.nets)
-            if (net.ssid == service.connected_ssid) ordered.add (net);
-        foreach (var net in service.nets)
-            if (net.ssid != service.connected_ssid) ordered.add (net);
+        ordered.add_all (connected);
+        ordered.add_all (saved);
+        ordered.add_all (others);
         sorted_nets = ordered.to_array ();
 
-        int other_count = 0;
-        foreach (var net in sorted_nets)
-            if (net.ssid != service.connected_ssid) other_count++;
+        foreach (var net in connected)
+            append_row (net, true, conn_card, false);
 
-        int others_seen = 0;
-        foreach (var net in sorted_nets) {
-            bool connected = net.ssid == service.connected_ssid;
-            var row = new WifiRow (net, connected);
-            string captured_ssid = net.ssid;
-            row.activated.connect (() => {
-                if (selected_ssid == captured_ssid) close_password_panel ();
-                else                                select_ssid (captured_ssid, true);
-            });
-            rows.add (row);
+        for (int i = 0; i < saved.size; i++)
+            append_row (saved[i], false, saved_card, i < saved.size - 1);
 
-            if (connected) {
-                row.show_separator = false;
-                conn_card.append (row);
-            } else {
-                others_seen++;
-                row.show_separator = others_seen < other_count;
-                others_card.append (row);
-            }
-        }
+        for (int i = 0; i < others.size; i++)
+            append_row (others[i], false, others_card, i < others.size - 1);
+    }
+
+    void append_row (WifiNet net, bool connected, Gtk.Box card, bool separator) {
+        var row = new WifiRow (net, connected);
+        row.show_separator = separator;
+        string captured_ssid = net.ssid;
+        row.activated.connect (() => {
+            if (selected_ssid == captured_ssid) close_password_panel ();
+            else                                select_ssid (captured_ssid, true);
+        });
+        rows.add (row);
+        card.append (row);
     }
 
     void update_header () {
@@ -351,18 +380,29 @@ public class WifiDetail : CcDetail {
         spinner.spinning      = service.scanning;
 
         bool has_conn   = service.connected_ssid != "" && service.connected_ssid != "--";
-        bool has_others = false;
-        foreach (var net in sorted_nets)
-            if (net.ssid != service.connected_ssid) { has_others = true; break; }
+        int  saved_n    = 0;
+        int  others_n   = 0;
+        foreach (var net in sorted_nets) {
+            if (net.ssid == service.connected_ssid) continue;
+            if (net.is_saved) saved_n++;
+            else              others_n++;
+        }
 
-        conn_card.visible      = has_conn;
-        others_caption.visible = has_conn && has_others;
-        others_scroll.visible  = has_others;
+        conn_card.visible = has_conn;
+
+        // Caption a section only when there's another card it needs to be told
+        // apart from (a connected card above, or the sibling saved/other card).
+        saved_card.visible     = saved_n > 0;
+        saved_caption.visible  = saved_n > 0 && (has_conn || others_n > 0);
+        others_card.visible    = others_n > 0;
+        others_caption.visible = others_n > 0 && (has_conn || saved_n > 0);
+        lists_scroll.visible   = saved_n > 0 || others_n > 0;
 
         if (!service.enabled) {
             empty_label.label = "Wi-Fi is off";
             empty_label.visible = true;
-            others_scroll.visible = false;
+            lists_scroll.visible = false;
+            saved_caption.visible = false;
             others_caption.visible = false;
         } else if (rows.size == 0) {
             empty_label.label = service.scanning ? "Scanning…" : "No networks found";
