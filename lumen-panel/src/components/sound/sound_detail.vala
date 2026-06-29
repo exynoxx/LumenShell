@@ -56,7 +56,11 @@ public class SoundDetail : CcDetail {
                 list_card.append (sep);
             }
 
-            var rowbox = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8) { valign = Gtk.Align.CENTER };
+            // margin_start aligns the device name with the row separator (14px):
+            // the .cc-nav button adds 4px, so 10 here lands the text at the inset.
+            var rowbox = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8) {
+                valign = Gtk.Align.CENTER, margin_start = 10,
+            };
             var name = new Gtk.Label (sink.name) {
                 xalign = 0, hexpand = true, valign = Gtk.Align.CENTER,
                 ellipsize = Pango.EllipsizeMode.END,

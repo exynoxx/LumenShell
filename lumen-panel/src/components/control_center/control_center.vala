@@ -78,7 +78,15 @@ public class ControlCenter : Gtk.Box {
         if (battery != null) home.append (wrap_card (battery.home_tile ()));
 
         var power = mods.lookup ("exit");
-        if (power != null) home.append (power.home_tile ());
+        if (power != null) {
+            // Dock the power row to the bottom edge: the home page is stretched to
+            // the tallest stack page (vhomogeneous), so without this the buttons
+            // float right under the battery card with dead space beneath them.
+            var power_tile = power.home_tile ();
+            power_tile.vexpand = true;
+            power_tile.valign  = Gtk.Align.END;
+            home.append (power_tile);
+        }
     }
 
     // Display brightness: a sun glyph + the macOS slider. No detail view —
