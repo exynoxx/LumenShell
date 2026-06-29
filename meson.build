@@ -419,6 +419,7 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
     vala_args: [
       '--vapidir=' + vapi_dir,
       '--pkg=gtk4',
+      '--pkg=gtk4-layer-shell-0',
       '--pkg=polkit-agent-1',
       '--pkg=polkit-gobject-1',
       '--pkg=posix',
@@ -431,6 +432,10 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       '-DPOLKIT_GOBJECT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
     ],
     dependencies: [
+      # gtk4-layer-shell MUST precede gtk4 in the link line, or
+      # gtk_layer_init_for_window() silently no-ops at runtime (same rule as
+      # lumen-panel). See https://github.com/wmww/gtk4-layer-shell/blob/main/linking.md
+      gtk4_layer_shell_dep,
       gtk4_dep,
       glib_dep,
       gio_dep,
@@ -438,6 +443,9 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       polkit_gobject_dep,
       m_dep,
     ],
+    # Belt-and-suspenders with the link order above; the linker must not drop
+    # the layer-shell lib as "unused" before its constructor runs.
+    link_args: ['-Wl,--no-as-needed'],
     install: true,
   )
   message('lumen-polkit-agent: enabled')

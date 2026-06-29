@@ -1,20 +1,29 @@
 using Gtk;
 
-// Minimal, theme-friendly styling — we deliberately do NOT override the window
-// background so the dialog inherits the system GTK theme (light/dark) and looks
-// native, the way polkit-gnome/polkit-kde dialogs do.
+// Black "pause-screen" bar styling. The bar is a full-width OVERLAY layer-shell
+// surface, so it owns its own background (no system theme to inherit, unlike the
+// old floating dialog) — paint it black and force the text white.
 public const string AGENT_CSS = """
-    .polkit-title   { font-weight: bold; font-size: 13pt; }
-    .polkit-message { opacity: 0.85; }
-    .polkit-prompt  { opacity: 0.85; }
-    .polkit-status  { opacity: 0.75; }
-    .polkit-error   { color: #e05252; opacity: 1.0; }
+    .polkit-bar     { background-color: rgba(0,0,0,0.92); }
+    .polkit-title   { font-weight: bold; font-size: 14pt; color: #ffffff; }
+    .polkit-message { color: #ffffff; opacity: 0.80; }
+    .polkit-prompt  { color: #ffffff; opacity: 0.85; }
+    .polkit-status  { color: #ffffff; opacity: 0.85; }
+    .polkit-error   { color: #ff6b6b; opacity: 1.0; }
 """;
 
-// AuthDialog — the password prompt. A plain (non-layer-shell) top-level so the
-// compositor floats and focuses it like any normal dialog. The dialog is dumb:
-// it emits submit/cancel/identity_changed and exposes show_prompt/show_error/…
-// setters; AuthFlow owns all the state and the PolkitAgent.Session.
+// AuthDialog — the password prompt, rendered as a horizontal black bar spanning
+// the full screen width and centered vertically (a game-style pause overlay).
+//
+// It is a gtk4-layer-shell OVERLAY surface with EXCLUSIVE keyboard, NOT a plain
+// toplevel: a bare Wayfire session wouldn't reliably focus a floating xdg dialog
+// (the old "dialog renders but buttons do nothing" bug), whereas an EXCLUSIVE
+// layer surface grabs the keyboard unconditionally for as long as the prompt is
+// up — exactly what an authentication gate wants.
+//
+// The dialog is dumb: it emits submit/cancel/identity_changed and exposes
+// show_prompt/show_error/… setters; AuthFlow owns all the state and the
+// PolkitAgent.Session.
 public class AuthDialog : Gtk.Window {
 
     public signal void submit(string password);
@@ -29,8 +38,8 @@ public class AuthDialog : Gtk.Window {
     private bool        closing = false;
 
     // Programmatic close (the flow finished): tear the window down WITHOUT
-    // re-emitting cancel. Distinct from a user-initiated close (X button / Esc),
-    // which must cancel the pending authentication.
+    // re-emitting cancel. Distinct from a user-initiated close (Esc), which must
+    // cancel the pending authentication.
     public void dismiss() {
         closing = true;
         close();
@@ -42,92 +51,105 @@ public class AuthDialog : Gtk.Window {
         Object();
 
         set_title("Authentication Required");
-        set_modal(true);
-        set_resizable(false);
-        set_default_size(430, -1);
-        add_css_class("polkit-dialog");
+
+        // --- layer-shell: full-width OVERLAY bar, vertically centered ---------
+        // Init MUST happen before the window is first realized/mapped.
+        GtkLayerShell.init_for_window(this);
+        GtkLayerShell.set_namespace(this, "lumen-polkit");
+        GtkLayerShell.set_layer(this, GtkLayerShell.Layer.OVERLAY);
+        // EXCLUSIVE: the bar grabs the keyboard for the whole prompt — this is
+        // the load-bearing fix over the old floating dialog.
+        GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.EXCLUSIVE);
+        // Anchor LEFT+RIGHT only → spans the full width; leaving TOP/BOTTOM
+        // unanchored lets the compositor center the bar vertically.
+        GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,  true);
+        GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.RIGHT, true);
+
+        add_css_class("polkit-bar");
 
         var arr = new Polkit.Identity[0];
         foreach (var id in identities) arr += id;
         ids = arr;
 
-        var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 16) {
-            margin_top = 22, margin_bottom = 20,
-            margin_start = 22, margin_end = 22,
+        // Single horizontal row, centered in the full-width bar. Generous
+        // vertical margins give it the height of a pause-screen banner.
+        var bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 22) {
+            halign = Gtk.Align.CENTER, valign = Gtk.Align.CENTER,
+            margin_top = 30, margin_bottom = 30,
+            margin_start = 28, margin_end = 28,
         };
 
-        // Header: icon + title + the polkit-supplied message.
-        var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 14);
+        // Icon + title/message/status stacked at the left of the row.
         var img = new Gtk.Image.from_icon_name(
             icon_name != "" ? icon_name : "dialog-password");
-        img.pixel_size = 48;
-        img.valign = Gtk.Align.START;
-        header.append(img);
+        img.pixel_size = 44;
+        img.valign = Gtk.Align.CENTER;
+        bar.append(img);
 
-        var titles = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) { hexpand = true };
+        var titles = new Gtk.Box(Gtk.Orientation.VERTICAL, 3) {
+            valign = Gtk.Align.CENTER,
+        };
         var title = new Gtk.Label("Authentication Required") {
             halign = Gtk.Align.START, xalign = 0,
         };
         title.add_css_class("polkit-title");
         var msg = new Gtk.Label(message) {
-            halign = Gtk.Align.START, xalign = 0, wrap = true, max_width_chars = 44,
+            halign = Gtk.Align.START, xalign = 0, wrap = true, max_width_chars = 50,
         };
         msg.add_css_class("polkit-message");
+        status_label = new Gtk.Label("") {
+            halign = Gtk.Align.START, xalign = 0, visible = false,
+            wrap = true, max_width_chars = 50,
+        };
+        status_label.add_css_class("polkit-status");
         titles.append(title);
         titles.append(msg);
-        header.append(titles);
-        outer.append(header);
+        titles.append(status_label);
+        bar.append(titles);
 
         // When polkit offers more than one identity (e.g. root + several admin
         // users), let the user pick which one to authenticate as.
         if (arr.length > 1) {
             var names = new string[0];
             foreach (var id in arr) names += identity_label(id);
-            var dropdown = new Gtk.DropDown.from_strings(names);
+            var dropdown = new Gtk.DropDown.from_strings(names) {
+                valign = Gtk.Align.CENTER,
+            };
             for (uint i = 0; i < arr.length; i++)
                 if (chosen != null && arr[i].equal(chosen)) dropdown.selected = i;
             dropdown.notify["selected"].connect(() => {
                 var sel = dropdown.selected;
                 if (sel < arr.length) identity_changed(arr[sel]);
             });
-            var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10);
-            row.append(new Gtk.Label("Authenticate as:") {
-                halign = Gtk.Align.START,
-            });
-            row.append(dropdown);
-            outer.append(row);
+            var asl = new Gtk.Label("as:") { valign = Gtk.Align.CENTER };
+            asl.add_css_class("polkit-prompt");
+            bar.append(asl);
+            bar.append(dropdown);
         }
 
-        prompt_label = new Gtk.Label("Password:") {
-            halign = Gtk.Align.START, xalign = 0,
-        };
+        prompt_label = new Gtk.Label("Password:") { valign = Gtk.Align.CENTER };
         prompt_label.add_css_class("polkit-prompt");
-        outer.append(prompt_label);
+        bar.append(prompt_label);
 
-        entry = new Gtk.PasswordEntry() { show_peek_icon = true, hexpand = true };
+        entry = new Gtk.PasswordEntry() {
+            show_peek_icon = true, valign = Gtk.Align.CENTER, width_request = 240,
+        };
         entry.activate.connect(() => { lpa_dbg("dialog: entry.activate (Enter)"); submit(entry.get_text()); });
-        outer.append(entry);
+        bar.append(entry);
 
-        status_label = new Gtk.Label("") {
-            halign = Gtk.Align.START, xalign = 0, visible = false,
-            wrap = true, max_width_chars = 44,
+        var cancel_btn = new Gtk.Button.with_label("Cancel") {
+            valign = Gtk.Align.CENTER,
         };
-        status_label.add_css_class("polkit-status");
-        outer.append(status_label);
-
-        var buttons = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
-            halign = Gtk.Align.END,
-        };
-        var cancel_btn = new Gtk.Button.with_label("Cancel");
         cancel_btn.clicked.connect(() => { lpa_dbg("dialog: Cancel button clicked"); cancel(); });
-        auth_button = new Gtk.Button.with_label("Authenticate");
+        auth_button = new Gtk.Button.with_label("Authenticate") {
+            valign = Gtk.Align.CENTER,
+        };
         auth_button.add_css_class("suggested-action");
         auth_button.clicked.connect(() => { lpa_dbg("dialog: Authenticate button clicked"); submit(entry.get_text()); });
-        buttons.append(cancel_btn);
-        buttons.append(auth_button);
-        outer.append(buttons);
+        bar.append(cancel_btn);
+        bar.append(auth_button);
 
-        set_child(outer);
+        set_child(bar);
 
         // Esc and the window-manager close button both count as Cancel.
         var key = new Gtk.EventControllerKey();
@@ -147,20 +169,7 @@ public class AuthDialog : Gtk.Window {
             return false;
         });
 
-        // RAW pointer probe — does ANY click reach this surface at all?
-        var probe = new Gtk.GestureClick();
-        probe.set_button(0);  // any button
-        probe.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
-        probe.pressed.connect((n, x, y) => lpa_dbg("dialog: RAW pointer pressed at %.0f,%.0f (n=%d)", x, y, n));
-        ((Gtk.Widget) this).add_controller(probe);
-
-        var focus = new Gtk.EventControllerFocus();
-        focus.enter.connect(() => lpa_dbg("dialog: focus ENTER"));
-        focus.leave.connect(() => lpa_dbg("dialog: focus LEAVE"));
-        ((Gtk.Widget) this).add_controller(focus);
-
-        map.connect(() => { lpa_dbg("dialog: map (is_active=%s)", this.is_active.to_string()); entry.grab_focus(); });
-        notify["is-active"].connect(() => lpa_dbg("dialog: is-active now %s", this.is_active.to_string()));
+        map.connect(() => { entry.grab_focus(); });
     }
 
     private static string identity_label(Polkit.Identity id) {
