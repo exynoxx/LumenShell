@@ -27,6 +27,7 @@ public class WifiDetail : CcDetail {
     Gtk.ToggleButton reveal_btn;
     Gtk.Button       go_btn;
     Gtk.Button       connect_btn;
+    Gtk.Button       forget_btn;
     Gtk.Label        status_label;
 
     Gee.ArrayList<WifiRow> rows = new Gee.ArrayList<WifiRow> ();
@@ -176,6 +177,15 @@ public class WifiDetail : CcDetail {
         });
         row.append (connect_btn);
 
+        // Shown for saved networks alongside Connect/Disconnect: drops the
+        // NetworkManager profile so the network reverts to "other".
+        forget_btn = new Gtk.Button.with_label ("Forget") {
+            valign = Gtk.Align.CENTER, visible = false,
+        };
+        forget_btn.add_css_class ("lumen-button");
+        forget_btn.clicked.connect (do_forget);
+        row.append (forget_btn);
+
         pass_card.append (row);
 
         status_label = new Gtk.Label ("") {
@@ -221,6 +231,13 @@ public class WifiDetail : CcDetail {
         close_password_panel ();
     }
 
+    void do_forget () {
+        int idx = index_of (selected_ssid);
+        if (idx < 0) return;
+        service.forget (sorted_nets[idx].ssid);
+        close_password_panel ();
+    }
+
     void close_password_panel () {
         selected_ssid = "";
         error_ssid = ""; error_msg = "";
@@ -263,6 +280,8 @@ public class WifiDetail : CcDetail {
         reveal_btn.visible     = needs_password;
         go_btn.visible         = needs_password && !connecting;
         connect_btn.visible    = !needs_password;
+        forget_btn.visible     = net.is_saved && !connecting;
+        forget_btn.sensitive   = !connecting;
 
         if (connected) {
             connect_btn.label = "Disconnect";

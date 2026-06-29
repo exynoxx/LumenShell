@@ -202,6 +202,11 @@ public class NmcliClient : GLib.Object {
         LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "device", "disconnect", dev });
     }
 
+    /** Delete the saved profile for an SSID (`nmcli connection delete id <ssid>`). */
+    public void forget(string ssid) {
+        LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "connection", "delete", "id", ssid });
+    }
+
     public WifiNet[] fetch_nets() {
         string? out_str = LumenCommon.Proc.run_capture(new string[]{
             "nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"

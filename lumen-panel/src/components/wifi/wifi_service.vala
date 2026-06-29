@@ -82,6 +82,12 @@ public class WifiService : GLib.Object {
         schedule_rescan(1000);
     }
 
+    /** Delete the saved NetworkManager profile for an SSID, then rescan. */
+    public void forget(string ssid) {
+        nmcli.forget(ssid);
+        schedule_rescan(800);
+    }
+
     /** Full network scan + connection refresh. rescan=true asks nmcli to re-probe. */
     public void refresh_scan(bool rescan = false) {
         if (scan_in_flight) return;

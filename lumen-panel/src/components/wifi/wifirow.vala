@@ -31,6 +31,10 @@ public class WifiRow : Gtk.Widget {
     static Gdk.RGBA sel_fill = Utils.rgba (0.039f, 0.518f, 1.0f, 0.18f);
     static Gdk.RGBA hov_fill = Utils.rgba (1f, 1f, 1f, 0.06f);
     static Gdk.RGBA name_fg  = Utils.rgba (1f, 1f, 1f, 1f);
+    // #34C759 — mirrors CcStyle.green, but kept local: CcStyle is never
+    // instantiated so its static colour fields stay zero (transparent) at
+    // runtime. WifiRow IS instantiated, so its own statics initialize.
+    static Gdk.RGBA conn_fg  = Utils.rgba (0.204f, 0.780f, 0.349f, 1f);
     static Gdk.RGBA lock_fg  = Utils.rgba (0.921f, 0.921f, 0.960f, 0.45f);
     static Gdk.RGBA sep_fg   = Utils.rgba (1f, 1f, 1f, 0.10f);
 
@@ -39,7 +43,6 @@ public class WifiRow : Gtk.Widget {
         this.signal_pct = net.signal;
         this.is_secured = net.is_secured ();
         this.is_connected = is_connected;
-        if (is_connected) this.subtitle = "Connected";
 
         height_request = subtitle != "" ? ROW_H_SUB : ROW_H;
         hexpand = true;
@@ -88,7 +91,7 @@ public class WifiRow : Gtk.Widget {
             var cp = Graphene.Point ();
             cp.init (PAD - 2, (h - ch) / 2);
             s.save (); s.translate (cp);
-            s.append_layout (check, CcStyle.accent);
+            s.append_layout (check, conn_fg);
             s.restore ();
         }
 
@@ -127,7 +130,7 @@ public class WifiRow : Gtk.Widget {
         var pt = Graphene.Point ();
         pt.init (NAME_X, block_y);
         s.save (); s.translate (pt);
-        s.append_layout (layout, name_fg);
+        s.append_layout (layout, is_connected ? conn_fg : name_fg);
         s.restore ();
 
         if (sub_layout != null) {
