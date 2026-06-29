@@ -40,9 +40,15 @@ public class TrayBar : Gtk.Box {
         if (PanelConfig.at_top) add_css_class ("at-top");
         overflow = Gtk.Overflow.HIDDEN;
 
+        // Pin the icon row to the panel edge (bottom, or top for a top panel),
+        // NOT vertically centred: the overlay stays full-height while the Control
+        // Center contracts, and a centred row would float mid-box and only snap to
+        // the edge once the surface shrinks. Anchored to the edge it sits in its
+        // resting place throughout, so on collapse the icons simply fade back to
+        // 100% in place without moving.
         icon_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6) {
             halign = Gtk.Align.END,
-            valign = Gtk.Align.CENTER,
+            valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END,
         };
         icon_row.add_css_class ("tray-icons");
 
