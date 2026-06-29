@@ -62,9 +62,9 @@ private const string DESKTOP_CSS = """
     }
 
     .desktop-hint {
-        color: alpha(white, 0.65);
-        font-size: 10pt;
-        text-shadow: 0 1px 2px alpha(black, 0.6);
+        color: alpha(white, 0.22);
+        font-size: 13pt;
+        text-shadow: 0 1px 2px alpha(black, 0.4);
     }
 
     .page-dots {
@@ -242,20 +242,16 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         dots.page_clicked.connect((p) => grid.goto_page(p));
         root.append(dots);
 
-        // Float a discreet hint along the bottom edge, just left of center,
-        // advertising the Ctrl+click "run as administrator" gesture. An Overlay
-        // keeps it out of the grid's layout so it never shifts the tiles.
-        // halign CENTER anchors it to the midline; the margin_end then nudges
-        // the centered label left of that midline (extra trailing space pushes
-        // it leftward) so it reads as "left of center" rather than dead-center.
+        // Float a discreet hint advertising the Ctrl+click "run as administrator"
+        // gesture, centered along the bottom just above the page indicators. An
+        // Overlay keeps it out of the grid's layout so it never shifts the tiles.
         var overlay = new Gtk.Overlay();
         overlay.set_child(root);
 
         var hint = new Gtk.Label("Ctrl + click an app to run it as administrator") {
             halign = Gtk.Align.CENTER,
             valign = Gtk.Align.END,
-            margin_end = 320,
-            margin_bottom = 14,
+            margin_bottom = 90,
         };
         hint.add_css_class("desktop-hint");
         overlay.add_overlay(hint);
