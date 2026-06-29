@@ -586,8 +586,16 @@ install_data(
 #     manager (GDM/SDDM/greetd/…) lists; its Exec= runs start-lumenshell.
 #   * start-lumenshell — the session launcher (sets XDG_*; execs wayfire).
 # The Wayfire [autostart] block lives directly in the user's ~/.config/wayfire.ini.
-install_data(
-  'lumen-lockscreen/data/wayland-sessions/lumenshell.desktop',
+# Generate the session entry so its Exec= points at the bindir we actually
+# install into (configure_file substitutes @BINDIR@). A hardcoded /usr/bin
+# only matched a --prefix=/usr install and silently broke the greeter session
+# for the default --prefix=/usr/local (or a $HOME/.local user install).
+session_conf = configuration_data()
+session_conf.set('BINDIR', get_option('prefix') / get_option('bindir'))
+configure_file(
+  input: 'lumen-lockscreen/data/wayland-sessions/lumenshell.desktop.in',
+  output: 'lumenshell.desktop',
+  configuration: session_conf,
   install_dir: get_option('datadir') / 'wayland-sessions',
 )
 install_data(

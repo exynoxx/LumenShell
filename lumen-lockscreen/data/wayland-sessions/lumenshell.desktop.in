@@ -1,19 +1,21 @@
-# LumenShell — Wayland session entry
+# LumenShell — Wayland session entry  (TEMPLATE — processed by meson)
 #
-# Install this file as:
-#   /usr/share/wayland-sessions/lumenshell.desktop
+# This is a meson configure_file template: @BINDIR@ in the Exec= line below is
+# substituted at configure time with the install-time bindir (e.g. /usr/bin or
+# /usr/local/bin), so Exec= always matches where `meson install` actually drops
+# start-lumenshell. Do NOT hand-edit the generated copy installed under
+# <datadir>/wayland-sessions/lumenshell.desktop — edit this .in instead.
 #
-# Once it lives under /usr/share/wayland-sessions/, any standard Wayland-aware
+# `meson install` writes the generated file to:
+#   <datadir>/wayland-sessions/lumenshell.desktop
+#   (datadir defaults to <prefix>/share, e.g. /usr/share or /usr/local/share)
+#
+# Any standard Wayland-aware
 # login manager (GDM, SDDM, LightDM with the appropriate greeter, tuigreet,
 # greetd, ly, …) will list "LumenShell" as a session choice on the greeter.
 # Selecting it makes the greeter execute the `Exec=` line below as the user's
 # session leader, which in turn launches Wayfire and the Lumen layer-shell
 # apps.
-#
-# Quick manual install (until meson does this for you):
-#   sudo install -Dm644 lumenshell.desktop \
-#       /usr/share/wayland-sessions/lumenshell.desktop
-#   sudo install -Dm755 ../bin/start-lumenshell /usr/bin/start-lumenshell
 #
 # Requirements:
 #   * `start-lumenshell` must exist in $PATH (sibling file under data/bin/).
@@ -40,7 +42,7 @@
 [Desktop Entry]
 Name=LumenShell
 Comment=ChromeOS-inspired Wayland desktop shell
-Exec=/usr/bin/start-lumenshell
+Exec=@BINDIR@/start-lumenshell
 Type=Application
 DesktopNames=LumenShell
 Keywords=wayland;lumen;shell;chromeos;
