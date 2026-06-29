@@ -65,6 +65,12 @@ public class TrayReveal : Gtk.Widget {
         anim_to   = reveal ? 1.0 : 0.0;
         anim_start_us = 0;
         if (tick_id == 0) tick_id = add_tick_callback (on_tick);
+        // Grow the surface to its full expanded size in ONE step (expand) — the
+        // reveal itself is then a pure clip animation in snapshot(), with no
+        // per-frame layer-shell surface resize. On collapse this is a size no-op
+        // (surface_full stays true while tick_id != 0); the shrink happens once
+        // the animation settles, in on_tick's terminal branch below.
+        queue_resize ();
     }
 
     bool on_tick (Gtk.Widget w, Gdk.FrameClock clock) {
@@ -73,6 +79,9 @@ public class TrayReveal : Gtk.Widget {
         if (t >= 1.0) {
             set_fraction (anim_to);
             tick_id = 0;
+            // tick_id is now 0, so on a collapse surface_full flips to false:
+            // resize once to shrink the surface back to the icon-row floor.
+            queue_resize ();
             animation_done ();
             return GLib.Source.REMOVE;
         }
@@ -86,7 +95,11 @@ public class TrayReveal : Gtk.Widget {
     void set_fraction (double f) {
         _fraction = f.clamp (0.0, 1.0);
         fraction_changed (_fraction);
-        queue_resize ();
+        // Only the visible clip changes per frame, not the surface size — a
+        // queue_draw (GPU compositing) instead of queue_resize (full relayout +
+        // Wayland surface reconfigure). This is what makes the reveal smooth
+        // without depending on CPU clock.
+        queue_draw ();
     }
 
     public override void measure (Gtk.Orientation orientation, int for_size,
@@ -100,14 +113,19 @@ public class TrayReveal : Gtk.Widget {
 
         int cmin, cnat, ib, nb;
         _child.measure (orientation, -1, out cmin, out cnat, out ib, out nb);
-        // Report the revealed fraction as BOTH minimum and natural. It must be the
-        // minimum, not just natural: the panel is a layer-shell surface and GTK
-        // only grows the toplevel/surface to satisfy the content's MINIMUM size —
-        // a natural-only request leaves the surface at its old (collapsed) height,
-        // clipping the Control Center to a sliver. (Width happened to work anyway
-        // because the surface is anchored left+right, so that dimension is already
-        // full and needs no resize.)
-        minimum = (int) Math.round (cnat * _fraction);
+        // Size the surface to the FULL expanded extent for the whole open cycle
+        // (while expanded OR animating in either direction), so the layer-shell
+        // surface resizes only twice per cycle — once to grow on expand, once to
+        // shrink when collapse settles — instead of every animation frame. The
+        // visible reveal is a clip animated in snapshot() (driven by queue_draw),
+        // not by the size reported here.
+        //
+        // It must be the MINIMUM, not just the natural: the panel is a layer-shell
+        // surface and GTK only grows the surface to satisfy the content's MINIMUM
+        // size — a natural-only request leaves the surface collapsed and clips the
+        // Control Center to a sliver.
+        bool surface_full = _target || tick_id != 0;
+        minimum = surface_full ? cnat : 0;
         natural = minimum;
     }
 
@@ -119,13 +137,47 @@ public class TrayReveal : Gtk.Widget {
         _child.measure (Gtk.Orientation.VERTICAL,   -1, out ch_min, out ch_nat, out ib, out nb);
 
         // Always allocate the child its full natural size, anchored to the right
-        // edge (top for a top panel, bottom otherwise). overflow HIDDEN clips the
-        // part that overhangs the (smaller, animating) allocation. The child is
-        // never re-laid-out, so it can't judder.
+        // edge (top for a top panel, bottom otherwise). The child is never
+        // re-laid-out, so it can't judder. snapshot() clips it to the animating
+        // reveal fraction; overflow HIDDEN is the backstop for the full bounds.
         int x = width - cw_nat;
         int y = anchor_top ? 0 : height - ch_nat;
         var t = new Gsk.Transform ().translate ({ (float) x, (float) y });
         _child.allocate (cw_nat, ch_nat, baseline, t);
+    }
+
+    // The child is allocated (and the surface sized) to the full expanded extent
+    // throughout the open cycle; the visible reveal is animated per frame via
+    // queue_draw — pure GSK compositing, no surface resize.
+    //
+    // The reveal is a scale-from-corner bloom: the Control Center starts as a
+    // small rectangle pinned to the tray-icon corner (right edge always; top for
+    // a top panel, bottom otherwise) and scales up to full size as `fraction`
+    // runs 0→1, with a slightly faster opacity fade so it solidifies before it
+    // reaches full extent. The whole child scales as one unit, so there is no
+    // reflow — it just grows out of the corner. (Replaces the earlier vertical
+    // clip wipe, which read as the panel sliding up rather than blooming open.)
+    public override void snapshot (Gtk.Snapshot s) {
+        if (_child == null) return;
+        int w = get_width ();
+        int h = get_height ();
+        if (w <= 0 || h <= 0) return;
+        double scale = _fraction;
+        if (scale <= 0.0) return;
+
+        // The fixed corner the bloom grows out of, in widget-local coords.
+        float pivot_x = (float) w;                        // right edge
+        float pivot_y = anchor_top ? 0.0f : (float) h;    // top- vs bottom-right
+        double alpha = (_fraction * 1.6).clamp (0.0, 1.0);
+
+        s.save ();
+        s.translate ({ pivot_x, pivot_y });
+        s.scale ((float) scale, (float) scale);
+        s.translate ({ -pivot_x, -pivot_y });
+        s.push_opacity (alpha);
+        snapshot_child (_child, s);
+        s.pop ();
+        s.restore ();
     }
 
     public override void dispose () {

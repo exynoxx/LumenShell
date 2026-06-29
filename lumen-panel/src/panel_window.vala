@@ -29,6 +29,10 @@ public class PanelWindow : Gtk.ApplicationWindow {
     uint slide_tick_id = 0;
     uint collapse_timeout_id = 0;
     uint resize_tick_id = 0;
+    // Last input region pushed to the surface, so the per-frame resize tracking
+    // can skip redundant set_input_region() Wayland roundtrips once the (now
+    // one-shot) surface grow has settled.
+    Cairo.Region? last_region = null;
 
     public PanelWindow (Gtk.Application app, Gdk.Monitor? monitor,
                         bool is_tray_host, TrayBar? tray) {
@@ -247,13 +251,13 @@ public class PanelWindow : Gtk.ApplicationWindow {
 
         if (hides && slide_tick_id != 0) {
             region.union_rectangle(Cairo.RectangleInt() { x = 0, y = 0, width = sw, height = sh });
-            gdk_surface.set_input_region(region);
+            apply_input_region(gdk_surface, region);
             return;
         }
         if (hides && !reveal_target) {
             int hy = at_top ? sh - App.SLIVER_PX : 0;
             region.union_rectangle(Cairo.RectangleInt() { x = 0, y = hy, width = sw, height = App.SLIVER_PX });
-            gdk_surface.set_input_region(region);
+            apply_input_region(gdk_surface, region);
             return;
         }
 
@@ -279,6 +283,16 @@ public class PanelWindow : Gtk.ApplicationWindow {
             }
         }
 
+        apply_input_region(gdk_surface, region);
+    }
+
+    // Push the input region only when it actually changed. The tray expand now
+    // grows the surface in one step and holds it, so without this guard the
+    // per-frame resize tracking would fire ~16 identical set_input_region()
+    // Wayland roundtrips across a single 260 ms reveal.
+    void apply_input_region (Gdk.Surface gdk_surface, Cairo.Region region) {
+        if (last_region != null && last_region.equal(region)) return;
+        last_region = region.copy();
         gdk_surface.set_input_region(region);
     }
 }
