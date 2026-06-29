@@ -242,16 +242,19 @@ public class DesktopWindow : Gtk.ApplicationWindow {
         dots.page_clicked.connect((p) => grid.goto_page(p));
         root.append(dots);
 
-        // Float a discreet hint in the bottom-left corner advertising the
-        // Ctrl+click "run as administrator" gesture. An Overlay keeps it out of
-        // the grid's layout so it never shifts the tiles.
+        // Float a discreet hint along the bottom edge, just left of center,
+        // advertising the Ctrl+click "run as administrator" gesture. An Overlay
+        // keeps it out of the grid's layout so it never shifts the tiles.
+        // halign CENTER anchors it to the midline; the margin_end then nudges
+        // the centered label left of that midline (extra trailing space pushes
+        // it leftward) so it reads as "left of center" rather than dead-center.
         var overlay = new Gtk.Overlay();
         overlay.set_child(root);
 
         var hint = new Gtk.Label("Ctrl + click an app to run it as administrator") {
-            halign = Gtk.Align.START,
+            halign = Gtk.Align.CENTER,
             valign = Gtk.Align.END,
-            margin_start = 16,
+            margin_end = 320,
             margin_bottom = 14,
         };
         hint.add_css_class("desktop-hint");
