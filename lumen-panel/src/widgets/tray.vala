@@ -79,6 +79,9 @@ public class TrayBar : Gtk.Box {
             // Fade the icons out as the panel opens; fade them back in over the
             // last stretch of the collapse, in step with the shrinking surface.
             icon_row.opacity = (1.0 - f * 2.5).clamp (0.0, 1.0);
+            // Repaint the rounded box: snapshot() interpolates its bounds by the
+            // reveal fraction, so it must redraw every animation frame.
+            queue_draw ();
         });
         reveal.animation_done.connect (() => {
             // Re-enable icon-row clicks only once fully collapsed. While expanded
@@ -133,4 +136,54 @@ public class TrayBar : Gtk.Box {
 
     public bool is_expanded ()  { return reveal.revealed; }
     public bool is_animating () { return reveal.animating; }
+
+    // The visible rounded box. Painting it ourselves (rather than via the
+    // .tray-bar CSS background) lets its bounds track the reveal fraction: the
+    // widget is full-size for the whole open cycle, so a CSS background would
+    // snap, but here the box grows out of / shrinks back into the compact
+    // icon-row footprint anchored to the panel edge — so on collapse the box
+    // itself appears to resize back to the standard compact panel.
+    const float BOX_RADIUS = 18.0f;
+
+    // The box bounds are derived from icon_row's allocation, which isn't final
+    // on the first paint (it reads too narrow until something — e.g. a hover —
+    // forces a repaint). Redraw whenever the layout changes so the resting box
+    // always matches the current icon-row width.
+    public override void size_allocate (int width, int height, int baseline) {
+        base.size_allocate (width, height, baseline);
+        queue_draw ();
+    }
+
+    public override void snapshot (Gtk.Snapshot s) {
+        int full_w = get_width ();
+        int full_h = get_height ();
+        if (full_w > 0 && full_h > 0) {
+            // The compact footprint is icon_row's NATURAL size (padding/border
+            // included) — not get_width(), which returns the content box and so
+            // drops the .tray-icons horizontal padding, leaving the box too
+            // narrow and clipping the first icon. measure() is also allocation-
+            // independent, so it's correct on the first paint.
+            int cw, ch, m, ib, nb;
+            icon_row.measure (Gtk.Orientation.HORIZONTAL, -1, out m, out cw, out ib, out nb);
+            icon_row.measure (Gtk.Orientation.VERTICAL,   -1, out m, out ch, out ib, out nb);
+            if (cw <= 0) cw = full_w;
+            if (ch <= 0) ch = full_h;
+
+            double f = reveal.fraction;
+            float bw = (float) (cw + (full_w - cw) * f);
+            float bh = (float) (ch + (full_h - ch) * f);
+            // Anchored to the panel edge: right always, bottom (or top for a
+            // top panel) — the same corner the content blooms out of.
+            float x = full_w - bw;
+            float y = PanelConfig.at_top ? 0.0f : full_h - bh;
+
+            var rect = Graphene.Rect ().init (x, y, bw, bh);
+            var rr = Gsk.RoundedRect ();
+            rr.init_from_rect (rect, BOX_RADIUS);
+            s.push_rounded_clip (rr);
+            s.append_color (Theme.color ("tray.background", "rgba(17,20,31,0.97)"), rect);
+            s.pop ();
+        }
+        base.snapshot (s);
+    }
 }

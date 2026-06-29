@@ -33,8 +33,12 @@ window.lumen-panel.auto-hide .panel-strip {
    from the original DrawKit version; overflow:hidden (set in code) clips
    children to the rounded silhouette so the page-slide animation can't
    spill past the rounded corners. */
+/* The rounded box itself is painted in TrayBar.snapshot() (not here) so its
+   bounds can animate between the compact icon-row footprint and the full
+   Control Center extent — the CSS background would always fill the full-size
+   widget and snap. Margins still give the "floating off the panel edge" look. */
 .tray-bar {
-    background: @tray_background;
+    background: transparent;
     border-radius: 18px;
     margin-right: 20px;
     margin-bottom: 6px;
