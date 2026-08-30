@@ -5,7 +5,7 @@ public class AppEntry : Gtk.Button {
 
     public const int SLOT_WIDTH  = 70;
     public const int SLOT_HEIGHT = 60;
-    public const int UNDERLINE_H = 5;
+    public const int UNDERLINE_H = 4;
     public const int ICON_SIZE   = 32;
 
     public string app_id { get; construct; }
@@ -408,7 +408,7 @@ public class AppEntry : Gtk.Button {
 
     // UNDERLINE active-indicator: the original accent bar under the icon.
     void draw_active_underline (Gtk.Snapshot s) {
-        Utils.fill_rounded(s, 9, get_height() - UNDERLINE_H, get_width() - 18,
+        Utils.fill_rounded(s, 0, get_height() - UNDERLINE_H, get_width(),
                            UNDERLINE_H, 0, underline_color());
     }
 
