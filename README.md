@@ -7,35 +7,51 @@ LumenShell is a ChromeOS-inspired desktop shell for Wayland. It uses Wayfire as 
 <table align="center">
   <tr>
     <td colspan="2" align="center">
-      <img src="docs/shots/shot-1779036345.png" width="700"><br>
+      <img src="docs/shots/drawer.png" width="760"><br>
+      <sub>app drawer - revealed</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/shots/control-center.png" width="360"><br>
+      <sub>control center — expanded tray</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/shots/osd-brightness.png" width="300"><br>
+      <sub>osd — brightness</sub>
+      <br><br>
+      <img src="docs/shots/osd-volume.png" width="80"><br>
+      <sub>osd — in vertical position</sub>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/shots/shot-1779035985.png" width="340"><br>
-      <sub>status strip</sub>
+      <img src="docs/shots/panel-apps.png" width="340"><br>
+      <sub>panel</sub>
     </td>
     <td align="center">
-      <img src="docs/shots/shot-1779036456.png" width="340"><br>
-      <sub>osd</sub>
+      <img src="docs/shots/panel-apps-active.png" width="340"><br>
+      <sub>panel — in different style</sub>
     </td>
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <img src="docs/shots/f3.gif" width="700"><br>
+      <img src="docs/shots/panel-tray.png" width="420"><br>
+      <sub>panel — tray area</sub>
     </td>
   </tr>
+ 
 </table>
 
 # What's in the repo
 
-The Vala binaries are independent processes; they coordinate only through DBus, Wayfire IPC, and shared config files under `~/.config/lumen-shell/` — there is no shared in-process state.
+The Vala binaries are independent processes; they coordinate through DBus, Wayfire IPC, and shared config files under `~/.config/lumen-shell/` — there is no shared in-process state.
 
 ## Shell apps (GTK4 / Vala)
 
-- **`lumen-panel`** — bottom (or top) bar. Left half lists running/pinned app windows; right half is a floating rounded tray area (system tray, WiFi, Bluetooth, Battery, Sound, Clock, Exit) that expands into paged content. A click on the empty middle triggers the Win+D desktop peek.
-- **`lumen-drawer`** — always-open, bottom-layer app drawer (search bar + paginated tile grid) that replaces the traditional desktop. Normal windows render on top; it is revealed by a Wayfire peek plugin.
-- **`lumen-desktop`** — the desktop widget layer: a bottom-layer surface above the wallpaper and below every window, hosting persistent widgets. Ships a Miller-column file browser; configured per widget instance in `~/.config/lumen-shell/desktop.json`.
+- **`lumen-panel`** — bottom (or top) bar. Left half lists running/pinned app windows; right half is a floating tray area (system tray, WiFi, Bluetooth, Battery, Sound, Clock, Exit) that expands into control center like view
+- **`lumen-drawer`** — always-open, bottom-layer app drawer (search bar + paginated tile grid). Hidden by default. it is revealed by a Wayfire peek plugin.
+- **`lumen-desktop (still draft)`** — the desktop widget layer: a bottom-layer surface above the wallpaper and below every window, hosting persistent widgets. Ships a Miller-column file browser; configured per widget instance in `~/.config/lumen-shell/desktop.json`.
 - **`lumen-osd`** — DBus-driven on-screen display pill (volume, brightness, mic, caps-lock, display, custom). Also self-watches sysfs for hardware key changes.
 - **`lumen-notifications`** — `org.freedesktop.Notifications` server. Top-right banner stack with click-to-dismiss and "Clear all".
 - **`lumen-lockscreen`** — invisible-until-locked daemon. Locks the session via `ext-session-lock-v1`, authenticates with PAM, respects logind lock/sleep, and auto-locks on idle. macOS-style blurred-desktop card. *(Built only when `gtk4-session-lock` + `pam` are present.)*
