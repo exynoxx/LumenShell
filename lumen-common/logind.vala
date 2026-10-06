@@ -33,6 +33,7 @@ public class LogindBridge : GLib.Object {
     string      session_id   = "";
     string      session_path = "";
     int         inhibit_fd   = -1;
+    int         idle_fd      = -1;
 
     public LogindBridge() {
         try {
@@ -113,6 +114,30 @@ public class LogindBridge : GLib.Object {
         } catch (Error e) {
             warning("logind: take inhibitor: %s", e.message);
             inhibit_fd = -1;
+        }
+    }
+
+    // ---- idle block inhibitor (panel Caffeine) ------------------------------
+    // Blocks logind's IdleAction (e.g. auto-suspend). Manual suspend and the
+    // lid switch are deliberately left alone.
+    public void set_idle_inhibited(bool on) {
+        if (!on) {
+            if (idle_fd >= 0) { Posix.close(idle_fd); idle_fd = -1; }
+            return;
+        }
+        if (manager == null || idle_fd >= 0) return;
+        try {
+            UnixFDList out_fds;
+            var ret = manager.call_with_unix_fd_list_sync(
+                "Inhibit",
+                new Variant("(ssss)", "idle", "LumenShell", "Caffeine", "block"),
+                DBusCallFlags.NONE, 2000, null, out out_fds, null);
+            int handle = 0;
+            ret.get("(h)", out handle);
+            idle_fd = out_fds.get(handle);
+        } catch (Error e) {
+            warning("logind: take idle inhibitor: %s", e.message);
+            idle_fd = -1;
         }
     }
 

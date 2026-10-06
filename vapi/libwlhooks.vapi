@@ -128,4 +128,13 @@ namespace WLHooks {
 
     [CCode (cname = "wlhooks_idle_notify_destroy")]
     public void idle_notify_destroy ();
+
+    // ---- zwp-idle-inhibit-v1 (lumen-panel Caffeine) ------------------------
+    // Returns 0 if the inhibit manager was bound, -1 if unsupported.
+    [CCode (cname = "wlhooks_idle_inhibit_init")]
+    public int idle_inhibit_init (Wl.Display display);
+
+    // Create (on) / destroy (off) the single idle inhibitor on `surface`.
+    [CCode (cname = "wlhooks_idle_inhibit_set")]
+    public int idle_inhibit_set (Wl.Surface surface, bool on);
 }

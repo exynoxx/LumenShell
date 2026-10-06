@@ -97,7 +97,7 @@ public class App : GLib.Object {
     // full set of configured applets; each applet owns only its own widgets and
     // reads the shared services, so duplicating across monitors is safe.
     TrayBar make_tray () {
-        var t = new TrayBar();
+        var t = new TrayBar(logind_service.bridge);
         foreach (var id in PanelConfig.tray_enabled_order()) {
             var applet = registry.create(id);
             if (applet != null) t.add(applet);

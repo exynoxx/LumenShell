@@ -4,6 +4,7 @@
 #include "protocols/toplevel.h"
 #include "protocols/output.h"
 #include "protocols/idle_notify.h"
+#include "protocols/idle_inhibit.h"
 
 struct wl_display *wl_display = NULL;
 
@@ -70,4 +71,13 @@ void wlhooks_idle_notify_unregister(void) {
 
 bool wlhooks_idle_notify_available(void) {
     return idle_notify_available();
+}
+
+// ---- zwp-idle-inhibit-v1 (lumen-panel Caffeine) ----------------------------
+int wlhooks_idle_inhibit_init(struct wl_display *external) {
+    return idle_inhibit_init(external);
+}
+
+int wlhooks_idle_inhibit_set(struct wl_surface *surface, bool on) {
+    return idle_inhibit_set(surface, on);
 }

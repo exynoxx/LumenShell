@@ -15,11 +15,14 @@ public class ControlCenter : Gtk.Box {
     Gtk.Box   home;
     BrightnessService brightness = new BrightnessService ();
     bool night_light_on = false;
+    bool caffeine_on = false;
+    LogindBridge logind;
     GLib.HashTable<string, IControlModule> mods =
         new GLib.HashTable<string, IControlModule> (str_hash, str_equal);
 
-    public ControlCenter (Gee.List<IControlModule> modules) {
+    public ControlCenter (Gee.List<IControlModule> modules, LogindBridge logind) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+        this.logind = logind;
         add_css_class ("control-center");
         set_size_request (WIDTH, HEIGHT);
 
@@ -114,6 +117,25 @@ public class ControlCenter : Gtk.Box {
         });
         row.append (slider);
 
+        // Caffeine — keeps the session awake. Two halves, because the lock and
+        // the sleep come from different places: a zwp_idle_inhibitor on the
+        // panel surface silences ext-idle-notify (lumen-lockscreen auto-lock,
+        // Wayfire idle/DPMS), and a logind "idle" block inhibitor stops
+        // IdleAction auto-suspend. Manual lock/suspend/lid still work.
+        // Runtime-only; dies with the panel, which is the safe failure mode.
+        var cup_btn = new Gtk.Button () { valign = Gtk.Align.CENTER };
+        cup_btn.add_css_class ("cc-toggle");
+        var cup_img = new Gtk.Image () { pixel_size = 20 };
+        cup_img.set_from_resource (CcStyle.icon ("coffee"));
+        cup_btn.set_child (cup_img);
+        cup_btn.clicked.connect (() => {
+            caffeine_on = !caffeine_on;
+            if (caffeine_on) cup_btn.add_css_class ("on");
+            else             cup_btn.remove_css_class ("on");
+            set_caffeine (caffeine_on);
+        });
+        row.append (cup_btn);
+
         // Night-light toggle (warm screen tint) — a round moon button pinned to
         // the right of the brightness slider. Drives the wayfire-night-light
         // plugin over IPC; state is session-local and optimistic (the plugin has
@@ -133,6 +155,18 @@ public class ControlCenter : Gtk.Box {
         });
         row.append (moon_btn);
         return row;
+    }
+
+    void set_caffeine (bool on) {
+        logind.set_idle_inhibited (on);
+        var surface = (get_root () as Gtk.Window)?.get_surface () as Gdk.Wayland.Surface;
+        if (surface == null) return;
+        var display = surface.get_display () as Gdk.Wayland.Display;
+        if (WLHooks.idle_inhibit_init (display.get_wl_display ()) != 0) {
+            warning ("caffeine: compositor lacks idle-inhibit; lock may still trigger");
+            return;
+        }
+        WLHooks.idle_inhibit_set (surface.get_wl_surface (), on);
     }
 
     void attach_details (Gee.List<IControlModule> modules) {

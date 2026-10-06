@@ -18,10 +18,12 @@ sources = [
   'protocols/output.c',
   'protocols/output_management.c',
   'protocols/idle_notify.c',
+  'protocols/idle_inhibit.c',
   'generated/wlr-foreign-toplevel-management-unstable-v1-protocol.c',
   'generated/ext-foreign-toplevel-list-v1-protocol.c',
   'generated/wlr-output-management-unstable-v1-protocol.c',
-  'generated/ext-idle-notify-v1-protocol.c'
+  'generated/ext-idle-notify-v1-protocol.c',
+  'generated/idle-inhibit-unstable-v1-protocol.c'
 ]
 
 wayland_unstable = static_library(

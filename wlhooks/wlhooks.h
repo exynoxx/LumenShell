@@ -32,4 +32,9 @@ int  wlhooks_idle_notify_register(uint32_t timeout_ms,
 void wlhooks_idle_notify_unregister(void);
 bool wlhooks_idle_notify_available(void);
 
+// zwp-idle-inhibit-v1 (lumen-panel Caffeine). Own registry on the caller's
+// wl_display; see protocols/idle_inhibit.h.
+int  wlhooks_idle_inhibit_init(struct wl_display *external);
+int  wlhooks_idle_inhibit_set(struct wl_surface *surface, bool on);
+
 #endif // WLHOOKS_H
