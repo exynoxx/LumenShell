@@ -19,6 +19,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
     uint slide_tick_id = 0;
     uint collapse_timeout_id = 0;
     uint resize_tick_id = 0;
+    ulong expanded_handler = 0;     // on the shared tray; dropped in release_tray()
     Cairo.Region? last_region = null;
 
     public PanelWindow (Gtk.Application app, Gdk.Monitor? monitor,
@@ -106,7 +107,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         this.map.connect(update_input_region);
         if (tray != null) {
             // Track the animation so the input region follows the growing tray bbox.
-            tray.expanded_changed.connect(() => {
+            expanded_handler = tray.expanded_changed.connect(() => {
                 update_input_region();
                 start_resize_tracking();
             });
@@ -129,6 +130,10 @@ public class PanelWindow : Gtk.ApplicationWindow {
     // Detach the shared TrayBar (held by App) so it survives a window rebuild.
     public void release_tray () {
         if (tray == null) return;
+        // The handler's closure holds `this`; left connected, the shared tray would
+        // keep every rebuilt-away window (and its AppBar) alive.
+        if (expanded_handler != 0) SignalHandler.disconnect(tray, expanded_handler);
+        expanded_handler = 0;
         root.remove(tray);
         tray = null;
     }
@@ -247,13 +252,13 @@ public class PanelWindow : Gtk.ApplicationWindow {
         region.union_rectangle(strip);
 
         if (tray != null && (tray.is_expanded() || tray.is_animating())) {
-            double tx, ty;
-            if (tray.translate_coordinates(this, 0, 0, out tx, out ty)) {
+            Graphene.Point tp;
+            if (tray.compute_point(this, Graphene.Point() { x = 0, y = 0 }, out tp)) {
                 int tw = tray.get_width();
                 int th = tray.get_height();
                 if (tw > 0 && th > 0) {
                     var trect = Cairo.RectangleInt() {
-                        x = (int) tx, y = (int) ty, width = tw, height = th,
+                        x = (int) tp.x, y = (int) tp.y, width = tw, height = th,
                     };
                     region.union_rectangle(trect);
                 }

@@ -23,6 +23,7 @@ public class App : GLib.Object {
     SoundService        sound_service;
     BatteryService      battery_service;
     PowerProfileService power_profile_service;
+    BrightnessService   brightness_service;     // one 1 s sysfs poll, not one per tray
 
     GLib.GenericArray<PanelWindow> windows = new GLib.GenericArray<PanelWindow>();
     bool hotplug_wired = false;
@@ -48,6 +49,7 @@ public class App : GLib.Object {
         sound_service         = new SoundService();
         battery_service       = new BatteryService();
         power_profile_service = new PowerProfileService();
+        brightness_service    = new BrightnessService();
 
         // Each factory builds a fresh applet so one id can be realized on several panels.
         registry = new TrayRegistry();
@@ -80,7 +82,7 @@ public class App : GLib.Object {
     }
 
     TrayBar make_tray () {
-        var t = new TrayBar(logind);
+        var t = new TrayBar(logind, brightness_service);
         foreach (var id in PanelConfig.tray_enabled_order()) {
             var applet = registry.create(id);
             if (applet != null) t.add(applet);

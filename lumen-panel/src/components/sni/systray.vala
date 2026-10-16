@@ -41,6 +41,7 @@ public class SysTray : Gtk.Box, ITrayApplet {
         if (!by_key.has_key(key)) return;
         var item = by_key[key];
         icons.remove(item);
+        item.release();
         by_key.unset(key);
         update_visibility();
     }

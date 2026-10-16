@@ -10,6 +10,8 @@ public class SniItem : Gtk.Button {
 
     Gtk.Image image;
     DBusProxy? proxy = null;
+    ulong signal_handler = 0;
+    bool released = false;
     string? menu_path = null;
     string  status = "Active";
 
@@ -40,8 +42,9 @@ public class SniItem : Gtk.Button {
             warning("lumen-panel systray: proxy %s%s failed: %s", bus, path, e.message);
             return;
         }
+        if (released) { proxy = null; return; }
 
-        proxy.g_signal.connect((sender, signal_name, parms) => {
+        signal_handler = proxy.g_signal.connect((sender, signal_name, parms) => {
             switch (signal_name) {
                 case "NewIcon":
                 case "NewOverlayIcon":
@@ -56,6 +59,15 @@ public class SniItem : Gtk.Button {
 
         wire_input();
         yield refresh();
+    }
+
+    // The g_signal closure holds `this`, so the item and its proxy keep each other
+    // alive until the handler is dropped. Call when the item leaves the tray.
+    public void release () {
+        released = true;
+        if (proxy != null && signal_handler != 0) SignalHandler.disconnect(proxy, signal_handler);
+        signal_handler = 0;
+        proxy = null;
     }
 
     void wire_input () {
@@ -111,7 +123,7 @@ public class SniItem : Gtk.Button {
     void call_ignore (string method, Variant args) {
         if (proxy == null) return;
         proxy.call.begin(method, args, DBusCallFlags.NONE, -1, null, (o, res) => {
-            try { proxy.call.end(res); }
+            try { ((DBusProxy) o).call.end(res); }
             catch (Error e) { /* item went away or refused; ignore */ }
         });
     }

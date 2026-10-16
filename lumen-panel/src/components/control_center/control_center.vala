@@ -7,16 +7,18 @@ public class ControlCenter : Gtk.Box {
 
     Gtk.Stack stack;
     Gtk.Box   home;
-    BrightnessService brightness = new BrightnessService ();
+    BrightnessService brightness;    // shared, owned by App
     bool night_light_on = false;
     bool caffeine_on = false;
     LogindBridge logind;
     GLib.HashTable<string, IControlModule> mods =
         new GLib.HashTable<string, IControlModule> (str_hash, str_equal);
 
-    public ControlCenter (Gee.List<IControlModule> modules, LogindBridge logind) {
+    public ControlCenter (Gee.List<IControlModule> modules, LogindBridge logind,
+                          BrightnessService brightness) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.logind = logind;
+        this.brightness = brightness;
         add_css_class ("control-center");
         set_size_request (WIDTH, HEIGHT);
 
@@ -95,10 +97,22 @@ public class ControlCenter : Gtk.Box {
             if (suppress) return;
             brightness.set_level (pct);
         });
-        brightness.changed.connect (() => {
+        // Connected only while mapped: the service is shared and outlives this CC,
+        // so a permanent handler would pin a rebuilt-away tray in memory.
+        ulong changed_id = 0;
+        slider.map.connect (() => {
             suppress = true;
             slider.set_value (brightness.percent);
             suppress = false;
+            changed_id = brightness.changed.connect (() => {
+                suppress = true;
+                slider.set_value (brightness.percent);
+                suppress = false;
+            });
+        });
+        slider.unmap.connect (() => {
+            if (changed_id != 0) SignalHandler.disconnect (brightness, changed_id);
+            changed_id = 0;
         });
         row.append (slider);
 

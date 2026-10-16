@@ -72,15 +72,15 @@ public class PowerProfileClient : GLib.Object {
             string name = profile_to_ppd_name(profile);
             var p = ensure_ppd();
             if (p == null || name == "") return;
-            // polkit allows this for the active session without a prompt; errors are
-            // swallowed (the next poll shows the real state).
-            try {
-                p.call_sync(
-                    "org.freedesktop.DBus.Properties.Set",
-                    new Variant("(ssv)", p.get_interface_name(),
-                                "ActiveProfile", new Variant.string(name)),
-                    DBusCallFlags.NONE, 2000, null);
-            } catch (Error e) {}
+            // polkit allows this for the active session without a prompt; async and
+            // errors swallowed (the next poll shows the real state).
+            p.call.begin(
+                "org.freedesktop.DBus.Properties.Set",
+                new Variant("(ssv)", p.get_interface_name(),
+                            "ActiveProfile", new Variant.string(name)),
+                DBusCallFlags.NONE, 2000, null, (obj, res) => {
+                    try { p.call.end(res); } catch (Error e) {}
+                });
             return;
         }
 

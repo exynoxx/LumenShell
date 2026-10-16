@@ -18,10 +18,12 @@ public class TrayBar : Gtk.Box {
     public signal void expanded_changed ();
 
     LogindBridge logind;
+    BrightnessService brightness;
 
-    public TrayBar (LogindBridge logind) {
+    public TrayBar (LogindBridge logind, BrightnessService brightness) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.logind = logind;
+        this.brightness = brightness;
         add_css_class ("tray-bar");
         halign = Gtk.Align.END;
         valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
@@ -84,7 +86,7 @@ public class TrayBar : Gtk.Box {
 
     void ensure_cc () {
         if (cc == null) {
-            cc = new ControlCenter (modules, logind);
+            cc = new ControlCenter (modules, logind, brightness);
             reveal.child = cc;
         }
     }
