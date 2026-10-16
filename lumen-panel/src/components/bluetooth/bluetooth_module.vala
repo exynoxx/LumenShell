@@ -1,7 +1,5 @@
 using Gtk;
 
-// Overview tile for Bluetooth: round toggle (powers the adapter) + live
-// subtitle + chevron into the device list.
 public class BluetoothModule : GLib.Object {
 
     BluetoothService service;

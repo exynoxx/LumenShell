@@ -7,8 +7,7 @@ public class AppBar : Gtk.Box {
     HashMap<uint,   AppEntry> entries_by_window = new HashMap<uint,   AppEntry>();
     string pins_file;
 
-    // Drag-to-reorder state. Slots are uniform width, so reordering is a pure
-    // index calculation: pitch = SLOT_WIDTH + box spacing.
+    // Slots are uniform width, so reordering is pure index arithmetic.
     const double SLOT_PITCH = AppEntry.SLOT_WIDTH + 2;
     ArrayList<AppEntry> drag_order = new ArrayList<AppEntry>();
     AppEntry? dragged = null;
@@ -17,10 +16,8 @@ public class AppBar : Gtk.Box {
     uint tick_id = 0;
     int64 last_frame_us = 0;
 
-    // Per-monitor filtering. only_output is the connector this panel's monitor
-    // is on (null = show every window: single-monitor, or multi-monitor with
-    // per-monitor-apps off). is_tray_host is the primary panel, which also
-    // catches windows whose output couldn't be resolved so they're never lost.
+    // only_output null = show every window. The tray host also catches windows
+    // whose output is unresolved, so they're never lost.
     string? only_output;
     bool    is_tray_host;
 
@@ -48,7 +45,6 @@ public class AppBar : Gtk.Box {
         foreach (unowned var t in store.all()) on_added(t);
     }
 
-    // Whether a window belongs on this panel's taskbar.
     bool accepts (Toplevel t) {
         if (only_output == null) return true;
         if (t.output == only_output) return true;
@@ -91,8 +87,7 @@ public class AppBar : Gtk.Box {
     void on_focused (uint id) {
         if (entries_by_window.has_key(id))
             entries_by_window[id].mark_focused(id);
-        // Every entry's underline depends on global focus state, so repaint
-        // them all — the previously-active entry needs to clear its underline.
+        // The previously-active entry must repaint to clear its indicator.
         Gtk.Widget? w = get_first_child();
         while (w != null) {
             if (w is AppEntry) w.queue_draw();
@@ -113,8 +108,6 @@ public class AppBar : Gtk.Box {
     void wire_entry (AppEntry entry) {
         entry.pin_toggled.connect(() => {
             save_pins();
-            // Unpinning an entry that no longer has windows means it has no
-            // reason to remain in the bar — drop it immediately.
             if (!entry.is_pinned && !entry.has_open_windows())
                 remove_entry(entry);
         });
@@ -124,9 +117,7 @@ public class AppBar : Gtk.Box {
         entry.drag_dropped.connect((ox) => on_drag_dropped());
     }
 
-    // Snapshot the current AppEntry order (left-to-right) at drag start so the
-    // reorder math works against a stable base while the box itself is left
-    // untouched until drop.
+    // Stable base for the reorder math; the box itself is untouched until drop.
     void on_drag_started (AppEntry entry) {
         drag_order.clear();
         Gtk.Widget? w = get_first_child();
@@ -174,7 +165,6 @@ public class AppBar : Gtk.Box {
         target_order.remove(dragged);
         target_order.insert(drag_target_index, dragged);
 
-        // Apply to the box so real child order matches.
         AppEntry? prev = null;
         foreach (var e in target_order) {
             reorder_child_after(e, prev);
@@ -204,13 +194,11 @@ public class AppBar : Gtk.Box {
         tick_id = add_tick_callback(animate);
     }
 
-    // Ease every entry's drag_offset_x toward drag_target_x. Runs while a drag
-    // is active or any entry is still settling after a drop.
     bool animate (Gtk.Widget w, Gdk.FrameClock clock) {
         int64 now = clock.get_frame_time();
         double dt = last_frame_us == 0 ? 0 : (now - last_frame_us) / 1000000.0;
         last_frame_us = now;
-        // Exponential smoothing: ~half the gap closes every ~40ms.
+        // Exponential smoothing, 40 ms time constant.
         double k = dt <= 0 ? 0.35 : 1.0 - Math.exp(-dt / 0.04);
 
         bool busy = dragged != null;
@@ -218,8 +206,6 @@ public class AppBar : Gtk.Box {
         while (c != null) {
             if (c is AppEntry) {
                 var e = (AppEntry) c;
-                // The lifted entry tracks the pointer directly — skip easing it
-                // until it's been dropped.
                 if (e != dragged) {
                     double diff = e.drag_target_x - e.drag_offset_x;
                     if (Math.fabs(diff) > 0.5) {
@@ -244,8 +230,6 @@ public class AppBar : Gtk.Box {
         remove(entry);
     }
 
-    // Pinned apps persist as a plain newline-separated list of app-ids (not an
-    // INI/KeyFile — one id per line; blanks and "--" ignored).
     void load_pins () {
         if (!FileUtils.test(pins_file, FileTest.EXISTS)) return;
         string content;

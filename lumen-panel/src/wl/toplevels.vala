@@ -7,8 +7,7 @@ public class Toplevel : GLib.Object {
     public string app_id      { get; set; }
     public string title       { get; set; }
     public bool   activated   { get; set; }
-    // Connector name of the output this window is on ("" if unknown). Used for
-    // per-monitor taskbar filtering.
+    // Output connector name ("" if unknown), for per-monitor taskbar filtering.
     public string output      { get; set; default = ""; }
 
     public Toplevel (uint id, string app_id, string title) {

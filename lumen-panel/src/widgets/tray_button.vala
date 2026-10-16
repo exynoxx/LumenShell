@@ -1,9 +1,7 @@
 using Gtk;
 
-// A status icon in the compact tray row. No longer a button: the whole tray
-// bar is one click target (see TrayBar), so individual icons are passive and
-// don't claim clicks. A Box wrapper (GtkImage is final and can't be subclassed)
-// centers the icon and carries the .tray-icon chrome.
+// Passive status icon: the whole TrayBar is one click target. A Box wrapper
+// because GtkImage is final.
 public class TrayButton : Gtk.Box {
 
     Gtk.Image image;

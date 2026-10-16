@@ -1,14 +1,10 @@
 using Gtk;
 
-// The single expanded panel (macOS Control Center). A wide rounded surface with
-// an overview of round toggles + info tiles, and an internal stack that slides
-// to a module's inline detail (Wi-Fi / Bluetooth network lists). The compact
-// icon row above it is untouched — only this expanded area is new.
 public class ControlCenter : Gtk.Box {
 
     const int WIDTH  = 560;
-    // Minimum expanded height — combined with the stack's vhomogeneous sizing it
-    // gives the whole panel one constant, roomy height regardless of the page.
+    // Minimum height; with the stack's vhomogeneous sizing the panel keeps one
+    // constant height, so sliding to a detail never resizes the surface.
     const int HEIGHT = 560;
 
     Gtk.Stack stack;
@@ -32,9 +28,6 @@ public class ControlCenter : Gtk.Box {
             m.open_detail.connect (() => open (id));
         }
 
-        // vhomogeneous: every page is sized to the tallest one, so the expanded
-        // panel keeps one constant height — sliding to the Wi-Fi/Bluetooth
-        // detail no longer grows or shrinks the surface.
         stack = new Gtk.Stack () {
             transition_type = Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
             transition_duration = 240,
@@ -42,9 +35,8 @@ public class ControlCenter : Gtk.Box {
             vhomogeneous = true,
         };
 
-        // Added directly (not wrapped in a ScrolledWindow): the overview is
-        // short, and a ScrolledWindow's natural height doesn't propagate up to
-        // the revealer, which collapsed the panel to a few px.
+        // Not in a ScrolledWindow: its natural height doesn't propagate up and the
+        // panel collapses to a few px.
         home = new Gtk.Box (Gtk.Orientation.VERTICAL, 12) {
             margin_start = 18, margin_end = 18, margin_top = 16, margin_bottom = 18,
         };
@@ -58,7 +50,6 @@ public class ControlCenter : Gtk.Box {
     }
 
     void build_home () {
-        // Connectivity: Wi-Fi + Bluetooth as compact tiles side by side.
         var wifi = mods.lookup ("wifi");
         var bt   = mods.lookup ("bluetooth");
         if (wifi != null && bt != null) {
@@ -82,9 +73,7 @@ public class ControlCenter : Gtk.Box {
 
         var power = mods.lookup ("exit");
         if (power != null) {
-            // Dock the power row to the bottom edge: the home page is stretched to
-            // the tallest stack page (vhomogeneous), so without this the buttons
-            // float right under the battery card with dead space beneath them.
+            // Dock to the bottom: home is stretched to the tallest page (vhomogeneous).
             var power_tile = power.home_tile ();
             power_tile.vexpand = true;
             power_tile.valign  = Gtk.Align.END;
@@ -92,9 +81,7 @@ public class ControlCenter : Gtk.Box {
         }
     }
 
-    // Display brightness: a sun glyph + the macOS slider. No detail view —
-    // built inline (brightness has no compact-row tray icon, so it isn't a
-    // module). brightnessctl carries the write; sysfs polling tracks hotkeys.
+    // Inline, not a module: brightness has no tray icon.
     Gtk.Widget build_brightness_tile () {
         var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 10) {
             margin_start = 12, margin_end = 14, margin_top = 8, margin_bottom = 8,
@@ -117,12 +104,8 @@ public class ControlCenter : Gtk.Box {
         });
         row.append (slider);
 
-        // Caffeine — keeps the session awake. Two halves, because the lock and
-        // the sleep come from different places: a zwp_idle_inhibitor on the
-        // panel surface silences ext-idle-notify (lumen-lockscreen auto-lock,
-        // Wayfire idle/DPMS), and a logind "idle" block inhibitor stops
-        // IdleAction auto-suspend. Manual lock/suspend/lid still work.
-        // Runtime-only; dies with the panel, which is the safe failure mode.
+        // Caffeine: a zwp_idle_inhibitor silences ext-idle-notify (auto-lock, DPMS) and a
+        // logind idle inhibitor blocks IdleAction suspend. Runtime-only.
         var cup_btn = new Gtk.Button () { valign = Gtk.Align.CENTER };
         cup_btn.add_css_class ("cc-toggle");
         var cup_img = new Gtk.Image () { pixel_size = 20 };
@@ -136,10 +119,7 @@ public class ControlCenter : Gtk.Box {
         });
         row.append (cup_btn);
 
-        // Night-light toggle (warm screen tint) — a round moon button pinned to
-        // the right of the brightness slider. Drives the wayfire-night-light
-        // plugin over IPC; state is session-local and optimistic (the plugin has
-        // no state-query verb). Visual lit state reuses the .cc-toggle / .on look.
+        // Optimistic local state: wayfire-night-light has no state-query verb.
         var moon_btn = new Gtk.Button () { valign = Gtk.Align.CENTER };
         moon_btn.add_css_class ("cc-toggle");
         var moon_img = new Gtk.Image () { pixel_size = 20 };
@@ -186,8 +166,6 @@ public class ControlCenter : Gtk.Box {
         return card;
     }
 
-    // Open a module: slide to its detail if it has one, else stay on the
-    // overview (where its tile lives inline).
     public void open (string id) {
         var m = mods.lookup (id);
         if (m != null && m.detail_view () != null)

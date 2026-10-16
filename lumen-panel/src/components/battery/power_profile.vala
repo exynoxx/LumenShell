@@ -1,38 +1,18 @@
 using GLib;
 
-/**
- * Power profile selectable from the battery page. UNKNOWN means the active
- * backend couldn't report a current value (e.g. tlp-stat needs root) — the UI
- * just highlights nothing in that case.
- */
+// UNKNOWN: the backend couldn't report a value (e.g. tlp-stat needs root).
 public enum PowerProfile { UNKNOWN, PERFORMANCE, BALANCED, POWER_SAVER }
 
-/** Which system power manager the panel talks to. NONE hides the selector. */
 public enum PowerBackend { NONE, PPD, TLP }
 
-/**
- * power-profiles-daemon is preferred (driven over its system-bus D-Bus
- * interface, no password via polkit, the cross-desktop standard used by Plasma
- * and GNOME alike, and by Fedora's tuned-ppd). TLP is the fallback; its mode
- * commands need root, so writes go through pkexec.
- *
- * The PPD properties are read straight off the cached GVariant rather than via
- * a typed [DBus] interface: ActiveProfile is a plain string, but Profiles is
- * aa{sv} whose values are *boxed* variants — Variant.lookup_value unwraps the
- * box for us, which a typed `HashTable<string,Variant>[]` binding does not.
- *
- * Pure verbs, no stored state — PowerProfileService owns the state.
- */
+// power-profiles-daemon is preferred (polkit, no prompt); TLP is the fallback and
+// its mode commands need root, so writes go through pkexec.
 public class PowerProfileClient : GLib.Object {
 
     private DBusProxy? ppd = null;
     private bool       ppd_tried = false;
 
-    /**
-     * Resolve the backend once. PPD wins when its daemon answers on the system
-     * bus; PPD and TLP are mutually exclusive in practice, so a live PPD means
-     * TLP isn't the active manager.
-     */
+    // PPD and TLP are mutually exclusive in practice, so a live PPD wins.
     public PowerBackend detect_backend() {
         if (ensure_ppd() != null)
             return PowerBackend.PPD;
@@ -44,7 +24,6 @@ public class PowerProfileClient : GLib.Object {
         return PowerBackend.NONE;
     }
 
-    /** Profiles the backend supports, ordered Performance → Balanced → Power Saver. */
     public PowerProfile[] available(PowerBackend backend) {
         if (backend == PowerBackend.TLP)
             return { PowerProfile.PERFORMANCE, PowerProfile.POWER_SAVER };
@@ -67,7 +46,6 @@ public class PowerProfileClient : GLib.Object {
         return {};
     }
 
-    /** Currently active profile, or UNKNOWN if it can't be determined. */
     public PowerProfile current(PowerBackend backend) {
         if (backend == PowerBackend.PPD) {
             var name = ppd_active_profile();
@@ -91,16 +69,13 @@ public class PowerProfileClient : GLib.Object {
         return PowerProfile.UNKNOWN;
     }
 
-    /** Apply a profile. No-op for UNKNOWN / NONE. */
     public void set(PowerBackend backend, PowerProfile profile) {
         if (backend == PowerBackend.PPD) {
             string name = profile_to_ppd_name(profile);
             var p = ensure_ppd();
             if (p == null || name == "") return;
-            // org.freedesktop.DBus.Properties.Set(iface, "ActiveProfile", <s>).
-            // polkit allows this for the active session without a prompt. Errors
-            // are swallowed (the next poll reflects the real state) like the
-            // other fire-and-forget verbs.
+            // polkit allows this for the active session without a prompt; errors are
+            // swallowed (the next poll shows the real state).
             try {
                 p.call_sync(
                     "org.freedesktop.DBus.Properties.Set",
@@ -117,8 +92,6 @@ public class PowerProfileClient : GLib.Object {
             LumenCommon.Proc.spawn_detached(new string[] { "pkexec", "tlp", mode });
         }
     }
-
-    // --- PPD helpers ---
 
     // Cache one proxy for the lifetime of the client. GDBusProxy keeps the
     // ActiveProfile cache fresh via PropertiesChanged, so later reads stay live.
@@ -166,7 +139,7 @@ public class PowerProfileClient : GLib.Object {
 
         for (size_t i = 0; i < raw.n_children(); i++) {
             var dict = raw.get_child_value(i); // a{sv}
-            // lookup_value unwraps the boxed 'v' value automatically.
+            // lookup_value unwraps the boxed 'v'; a typed [DBus] binding would not.
             var val = dict.lookup_value("Profile", VariantType.STRING);
             if (val == null) continue;
             var prof = ppd_name_to_profile(val.get_string());

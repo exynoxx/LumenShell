@@ -1,10 +1,7 @@
 using GLib;
 
-// Screen-backlight brightness. Reads the live percentage straight from sysfs
-// (cheap, no subprocess) and polls so hardware/hotkey changes track the slider;
-// writes via brightnessctl, which carries the udev/setuid permissions to touch
-// the backlight (the same tool lumen-osdctl uses). available is false when no
-// /sys/class/backlight device exists (desktops, VMs) — the tile then hides.
+// Reads sysfs directly (cheap, no subprocess); writes via brightnessctl, which
+// carries the udev permissions to touch the backlight.
 public class BrightnessService : GLib.Object {
 
     public signal void changed ();

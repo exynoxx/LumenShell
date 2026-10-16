@@ -1,10 +1,7 @@
 using Gtk;
 
-// One network cell inside a grouped .cc-card. macOS layout: a leading blue
-// checkmark when connected, the SSID, then a trailing lock (secured) and the
-// 3-arc Wi-Fi glyph. The card clips the rounded corners, so the row just paints
-// a full-width selection fill and a hairline separator inset to the text.
-// Everything is GSK (rounded clips, path stroke/fill) — GPU-rasterized.
+// The enclosing card clips the rounded corners, so the row paints a full-width
+// selection fill.
 public class WifiRow : Gtk.Widget, CcRow {
 
     public const int ROW_H = 44;
@@ -108,12 +105,10 @@ public class WifiRow : Gtk.Widget, CcRow {
             draw_lock (s, lock_x, h / 2.0f - LOCK_W / 2.0f, LOCK_W, lock_fg);
         }
 
-        // Hairline separator inset to the text column.
         if (_show_separator)
             Utils.fill_rounded (s, NAME_X, h - 1, w - PAD - NAME_X, 1, 0, CcStyle.separator);
     }
 
-    // Minimal padlock: rounded body + a stroked shackle, all GSK.
     static void draw_lock (Gtk.Snapshot s, float x, float y, float sz, Gdk.RGBA c) {
         float bh = sz * 0.60f;
         float by = y + sz - bh;

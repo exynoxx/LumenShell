@@ -1,9 +1,5 @@
 using Gtk;
 
-// A persistent ChromeOS-style launcher button pinned to the left edge of the
-// panel. Clicking it toggles the app-drawer reveal (whichever of curtain-peek /
-// slide-peek is loaded). Compiled only in a PANEL_PEEK build, since without the
-// peek IPC the button has nothing to do.
 #if PANEL_PEEK
 public class LauncherButton : Gtk.Button {
 
@@ -12,9 +8,7 @@ public class LauncherButton : Gtk.Button {
     public LauncherButton () {
         add_css_class("launcher-button");
         set_size_request(AppEntry.SLOT_WIDTH, AppEntry.SLOT_HEIGHT);
-        // Anchor to the panel edge like the AppBar does, so the button stays
-        // put against the bottom (or top) strip instead of re-centering — and
-        // drifting — when the tray expands and grows the row's height.
+        // Edge-anchored like AppBar so it doesn't drift when the tray grows the row.
         valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
         tooltip_text = "Apps";
 

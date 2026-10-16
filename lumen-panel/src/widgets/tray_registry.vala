@@ -1,9 +1,5 @@
 using Gtk;
 
-// String-keyed factory for tray applets. main.vala registers one factory per
-// catalog id; make_tray() looks each id up by config order and instantiates a
-// fresh applet (each panel gets its own widgets + service instances). Mirrors
-// lumen-settings' PageRegistry. Adding a built-in applet is one register() line.
 public delegate ITrayApplet TrayAppletFactory ();
 
 public class TrayRegistry : GLib.Object {

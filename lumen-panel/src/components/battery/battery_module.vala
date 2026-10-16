@@ -1,8 +1,5 @@
 using Gtk;
 
-// Overview tile for Battery: an icon, the percentage, a status subtitle, and
-// the power-profile segmented control (only when a backend exists). No detail
-// view — the full stats page is gone in the Control Center model.
 public class BatteryModule : GLib.Object {
 
     BatteryService service;
@@ -44,8 +41,6 @@ public class BatteryModule : GLib.Object {
 
         root.append (top);
 
-        // The pre-redesign green charge bar, restored. Track tinted to sit on
-        // the translucent card; fill goes green/amber/red by level in refresh().
         bar = new LumenProgressBar () {
             track_color = Utils.rgba (1f, 1f, 1f, 0.14f),
         };

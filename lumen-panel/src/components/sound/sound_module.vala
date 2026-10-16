@@ -1,8 +1,5 @@
 using Gtk;
 
-// Overview tile for Sound: a mute toggle (the speaker glyph) + a thick macOS
-// slider, plus an "Output" nav row showing the active device that slides the
-// Control Center to the device picker (SoundDetail).
 public class SoundModule : GLib.Object {
 
     public signal void open_requested ();
@@ -45,7 +42,6 @@ public class SoundModule : GLib.Object {
         sep.add_css_class ("cc-row-sep");
         root.append (sep);
 
-        // "Output  ›  Device" nav row — opens the device picker.
         var navbox = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8) { valign = Gtk.Align.CENTER };
         var out_lbl = new Gtk.Label ("Output") { xalign = 0, margin_start = 8 };
         out_lbl.add_css_class ("cc-row-title");

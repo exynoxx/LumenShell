@@ -1,28 +1,16 @@
 using Gtk;
 
-// macOS-Control-Center model. The compact icon row is unchanged; expanding the
-// tray reveals ONE ControlCenter panel of round toggles + info tiles. A tray
-// applet that has a control surface implements IControlModule in addition to
-// ITrayApplet: it contributes a home tile to the overview and, optionally, an
-// inline detail view (the WiFi/Bluetooth network lists) the panel slides to.
 public interface IControlModule : GLib.Object {
     public abstract string      module_id ();   // "wifi", "bluetooth", …
     public abstract Gtk.Widget  home_tile ();   // shown in the overview
     public abstract Gtk.Widget? detail_view (); // inline detail, or null
 
-    // Emitted when the module's home tile is activated and wants the Control
-    // Center to slide to its detail view. ControlCenter wires every module's
-    // signal to open(module_id) — the module just fires it.
     public signal void open_detail ();
 }
 
-// Shared Apple-dark tokens for the code-drawn widgets (CSS @define-color can't
-// reach Gsk/Cairo draw paths). Mirrors the .cc-* values in style.css.
-//
-// These MUST stay `const`: a `static` field initialized from a function call is
-// emitted into class_init, and nothing ever instantiates CcStyle — the type is
-// never registered, class_init never runs, and every colour reads back as
-// transparent. A struct constant is initialized at file scope instead.
+// Colours for code-drawn widgets (mirrors .cc-* in style.css). MUST stay `const`:
+// nothing instantiates CcStyle, so class_init never runs and a static initialized
+// from a function call would read back transparent.
 public class CcStyle {
     public const Gdk.RGBA accent       = { 0.039f, 0.518f, 1.0f,   1f };    // #0A84FF
     public const Gdk.RGBA green        = { 0.204f, 0.780f, 0.349f, 1f };    // #34C759
@@ -36,17 +24,12 @@ public class CcStyle {
     }
 }
 
-// A selectable cell inside a CcListDetail list. `key` is whatever identity
-// survives a background rescan (SSID, MAC) so the selection can be restored
-// after the rows are rebuilt from scratch.
+// `key` survives a rescan (SSID, MAC) so selection is restored after a rebuild.
 public interface CcRow : Gtk.Widget {
     public abstract string key      { get; }
     public abstract bool   selected { get; set; }
 }
 
-// A detail view the ControlCenter slides to. Carries a back affordance so the
-// panel can return to the overview; the concrete WiFi/Bluetooth details extend
-// this and call make_header() for the consistent "‹  Title  [trailing]" chrome.
 public abstract class CcDetail : Gtk.Box {
     public signal void back_requested ();
 
@@ -62,7 +45,7 @@ public abstract class CcDetail : Gtk.Box {
 
         var back = new Gtk.Button () { valign = Gtk.Align.CENTER };
         back.add_css_class ("cc-back");
-        var chev = new Gtk.Label ("‹");           // ‹
+        var chev = new Gtk.Label ("‹");
         chev.add_css_class ("cc-back-chevron");
         back.set_child (chev);
         back.clicked.connect (() => back_requested ());
@@ -82,11 +65,8 @@ public abstract class CcDetail : Gtk.Box {
     }
 }
 
-// A CcDetail whose body is a scrollable list of CcRows behind a radio switch:
-// the Wi-Fi and Bluetooth screens. Owns the shared chrome — header switch,
-// ⟲/spinner swap, scroll region, empty-state label — and the selection, which
-// is tracked by row key so it survives the row rebuild a background scan
-// triggers. Subclasses supply only the row construction.
+// Selection is tracked by row key so it survives the rebuild a background scan
+// triggers. Subclasses supply only the rows.
 public abstract class CcListDetail : CcDetail {
 
     protected Gtk.Switch  power_switch;
@@ -193,10 +173,8 @@ public abstract class CcListDetail : CcDetail {
     }
 }
 
-// macOS connectivity row: a round toggle (the circular icon) plus a flat
-// activation area (title + live subtitle + chevron). The toggle and the nav
-// area are distinct buttons so tapping the circle flips the radio while tapping
-// the label opens the detail — exactly like Control Center.
+// Toggle and nav area are separate buttons: the circle flips the radio, the
+// label opens the detail.
 public class CcToggleRow : Gtk.Box {
 
     public signal void toggled (bool want_on);
@@ -209,9 +187,7 @@ public class CcToggleRow : Gtk.Box {
     string off_icon;
     bool _on = false;
 
-    // compact: half-width tile that sits beside a sibling (Wi-Fi next to
-    // Bluetooth) — drops the chevron and ellipsizes the live subtitle so a long
-    // network name can't blow out the tile width.
+    // compact: half-width tile — no chevron, ellipsized subtitle.
     public CcToggleRow (string title, string on_icon, string off_icon, bool compact = false) {
         GLib.Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 12);
         add_css_class ("cc-row");
@@ -234,9 +210,7 @@ public class CcToggleRow : Gtk.Box {
         subtitle_lbl = new Gtk.Label ("") { xalign = 0 };
         subtitle_lbl.add_css_class ("cc-row-subtitle");
         if (compact) {
-            // Let the live subtitle (network name) take the whole tile width and
-            // ellipsize only against the actual allocation — a fixed
-            // max-width-chars cap clipped ordinary SSIDs ("WiFimodem-4903-5").
+            // Ellipsize against the real allocation; a max-width-chars cap clips ordinary SSIDs.
             subtitle_lbl.ellipsize = Pango.EllipsizeMode.END;
             text.hexpand = true;
         }
@@ -248,7 +222,7 @@ public class CcToggleRow : Gtk.Box {
         if (!compact) {
             var grow = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0) { hexpand = true };
             navbox.append (grow);
-            var chev = new Gtk.Label ("›") { valign = Gtk.Align.CENTER };  // ›
+            var chev = new Gtk.Label ("›") { valign = Gtk.Align.CENTER };
             chev.add_css_class ("cc-chevron");
             navbox.append (chev);
         }

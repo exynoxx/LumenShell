@@ -1,8 +1,5 @@
 using Gtk;
 
-// macOS Control Center slider: a thick rounded track, a bright fill, and a
-// circular knob that overflows the track. Pure GSK (rounded clips + a filled
-// circle path) — GPU-rasterized. Drag or click anywhere to set the value.
 public class CcSlider : Gtk.Widget {
 
     const int H  = 26;   // widget height
@@ -64,10 +61,8 @@ public class CcSlider : Gtk.Widget {
         // knob center travels between the inset ends
         float kx = TH / 2.0f + (float) (_value / 100.0 * (w - TH));
 
-        // fill up to the knob
         if (kx > 0) Utils.fill_rounded (s, 0, ty, kx, TH, radius, fill_col);
 
-        // knob
         var kb = new Gsk.PathBuilder ();
         var c = Graphene.Point ();
         c.init (kx, H / 2.0f);

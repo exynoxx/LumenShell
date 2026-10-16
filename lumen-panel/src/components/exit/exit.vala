@@ -5,9 +5,6 @@ interface LockProxy : GLib.Object {
     public abstract void Lock () throws DBusError, IOError;
 }
 
-// Power actions, folded into the Control Center overview as a row of round
-// buttons (no separate page). Keeps its tray icon in the compact bar; clicking
-// it opens the overview where these live.
 public class ExitTray : GLib.Object, ITrayApplet, IControlModule {
 
     LogindBridge bridge;

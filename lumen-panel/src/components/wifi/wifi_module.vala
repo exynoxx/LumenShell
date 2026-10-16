@@ -1,8 +1,5 @@
 using Gtk;
 
-// Overview tile for Wi-Fi: a round toggle (flips the radio) plus the live
-// subtitle and a chevron into the detail list. Shares the one WifiService with
-// the tray icon and the detail view.
 public class WifiModule : GLib.Object {
 
     WifiService service;

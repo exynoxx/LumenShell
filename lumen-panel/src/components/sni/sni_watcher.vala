@@ -1,23 +1,9 @@
 using GLib;
 using Gee;
 
-// StatusNotifierWatcher + Host implementation.
-//
-// The modern Linux tray (Discord, Telegram, Steam, …) is the StatusNotifier
-// protocol: D-Bus based, display-server agnostic. Three roles exist:
-//   - Watcher: the well-known registry at org.kde.StatusNotifierWatcher that
-//     apps call to announce their tray item. We own this name, unless
-//     another watcher (e.g. KDE's kded6) already does — then we act as a host
-//     for that watcher instead (attach_foreign).
-//   - Host:    the thing that actually draws icons (our panel). Apps refuse to
-//     register (or stay hidden) unless a host is registered, so we own a
-//     org.kde.StatusNotifierHost-<pid> name and flag IsStatusNotifierHostRegistered.
-//   - Item:    one per app; rendered by SniItem.
-//
-// If nothing owns the Watcher name, SNI apps run trayless — which is exactly
-// why Discord's icon was invisible before this existed. Apps using
-// libappindicator watch for the Watcher name to appear and (re)register, so we
-// don't need to enumerate pre-existing items: owning the name triggers them.
+// Owns org.kde.StatusNotifierWatcher, or acts as a host for whoever already does
+// (e.g. kded6). Apps hide their item until a host is registered; libappindicator
+// re-registers when the Watcher name appears, so no enumeration is needed.
 [DBus (name = "org.kde.StatusNotifierWatcher")]
 public class SniWatcher : GLib.Object {
 
@@ -87,8 +73,7 @@ public class SniWatcher : GLib.Object {
         status_notifier_host_registered();
     }
 
-    // Hidden from the wire interface so they don't appear as bogus D-Bus
-    // signals.
+    // Hidden from the wire interface so they don't appear as bogus D-Bus signals.
     [DBus (visible = false)]
     public signal void item_added (string bus, string path, string key);
     [DBus (visible = false)]
@@ -97,10 +82,8 @@ public class SniWatcher : GLib.Object {
     [DBus (visible = false)]
     public delegate void ItemVisitor (string bus, string path, string key);
 
-    // Replay the currently-registered items to a freshly-attached observer.
-    // A SysTray widget built on a secondary monitor (or rebuilt after a
-    // hotplug) connects after items have already registered, so it can't rely
-    // on item_added alone — this hands it the existing set.
+    // Late-built SysTrays (secondary monitor, hotplug rebuild) miss item_added;
+    // this replays the existing set.
     [DBus (visible = false)]
     public void foreach_item (ItemVisitor visit) {
         foreach (var rec in items.values) visit(rec.bus, rec.path, rec.bus + rec.path);
@@ -144,8 +127,6 @@ public class SniWatcher : GLib.Object {
             });
     }
 
-    // Host mode against someone else's watcher: register as a host, take its
-    // current item list, and follow its Registered/Unregistered signals.
     async void attach_foreign (DBusConnection conn) {
         const string NAME  = "org.kde.StatusNotifierWatcher";
         const string PATH  = "/StatusNotifierWatcher";

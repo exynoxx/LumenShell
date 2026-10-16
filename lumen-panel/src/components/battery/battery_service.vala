@@ -1,11 +1,7 @@
 using GLib;
 
-// Battery state from UPower's composite DisplayDevice on the system bus.
-//
-// UPower already does the sysfs layout discovery — BAT0 vs BAT1 vs a HID
-// device, charge_* vs energy_* units — which the previous hand-rolled reader
-// hardcoded, so every laptop whose driver exports energy_now/energy_full
-// reported 0% forever.
+// Battery state from UPower's composite DisplayDevice on the system bus; UPower
+// handles BAT0/BAT1/HID discovery and charge_* vs energy_* units.
 public class BatteryService : GLib.Object {
 
     const string BUS       = "org.freedesktop.UPower";
@@ -13,14 +9,11 @@ public class BatteryService : GLib.Object {
     const string DEV_PATH  = "/org/freedesktop/UPower/devices/DisplayDevice";
     const string DEV_IFACE = "org.freedesktop.UPower.Device";
 
-    // PropertiesChanged carries the state to us the moment it changes; this is
-    // only the safety net for a UPower build that stays quiet, and it costs two
-    // small D-Bus calls where the sysfs reader did a directory walk every 10 s.
+    // Safety net for a UPower build that never emits PropertiesChanged.
     const uint RESYNC_SEC = 30;
 
     public signal void state_changed ();
 
-    // Lowercased UPower state, in the sysfs vocabulary the UI already speaks:
     // "charging" / "discharging" / "full" / "" (unknown, incl. no battery).
     public string raw_status = "";
     public int    percent    = 0;

@@ -17,25 +17,20 @@ public class AppEntry : Gtk.Button {
     Gee.ArrayList<uint> window_ids = new Gee.ArrayList<uint>();
     int cycle_idx = 0;
 
-    // Drag-to-reorder state. drag_offset_x is the current rendered horizontal
-    // translate; drag_target_x is where AppBar wants this entry to slide to.
-    // Both are driven by AppBar except for the lifted (dragging) entry, whose
-    // offset follows the pointer directly.
+    // Rendered translate and AppBar's slide target; the dragged entry's offset
+    // follows the pointer instead.
     public double drag_offset_x = 0;
     public double drag_target_x = 0;
     public bool   dragging      = false;
 
     Gtk.Image image;
-    // Resolved once in load_icon(); used to draw the dimmed back copies of the
-    // stacked-icon effect for multi-window apps. The front layer stays the
-    // Gtk.Image above.
+    // Kept for drawing the stacked back copies of multi-window apps.
     Gdk.Paintable? icon_paintable = null;
     AppPopupMenu? popup = null;
 
     public signal void pin_toggled ();
 
-    // Drag-to-reorder: AppBar owns sibling order, so the gesture only reports
-    // begin / move / drop and lets AppBar compute the reordering.
+    // AppBar owns sibling order; the gesture only reports begin / move / drop.
     public signal void drag_started ();
     public signal void drag_moved   (double offset_x);
     public signal void drag_dropped (double offset_x);
@@ -104,13 +99,8 @@ public class AppEntry : Gtk.Button {
         queue_draw();
     }
 
-    // Tell the compositor where this entry sits on the panel, so a minimize
-    // animation (Wayfire's squeezimize "genie") flies each of our windows into
-    // this button instead of collapsing the window into itself. Without a
-    // target rectangle the compositor squeezes toward the window's own origin,
-    // which is the "rolls up under itself" symptom. The rectangle is given in
-    // the panel surface's coordinate space — GTK root coordinates match it 1:1
-    // (layer-shell surface origin == window origin, same logical px).
+    // Minimize target for the compositor's genie animation (without it the window
+    // squeezes into its own origin). GTK root coords == layer-surface coords.
     void push_minimize_targets () {
         if (window_ids.size == 0) return;
         var root = get_root() as Gtk.Window;
@@ -131,8 +121,6 @@ public class AppEntry : Gtk.Button {
             WLHooks.toplevel_set_rectangle_by_id(id, wl, x, y, w, h);
     }
 
-    // Re-push targets whenever our slot moves or resizes (panel layout, tray
-    // expansion, drag-reorder drops all re-allocate us).
     public override void size_allocate (int width, int height, int baseline) {
         base.size_allocate(width, height, baseline);
         push_minimize_targets();
@@ -152,7 +140,6 @@ public class AppEntry : Gtk.Button {
         queue_draw();
     }
 
-    // Active iff one of our windows is the focused toplevel in ToplevelStore.
     public bool is_active () {
         foreach (var id in window_ids) {
             var t = ToplevelStore.instance.find(id);
@@ -196,10 +183,8 @@ public class AppEntry : Gtk.Button {
         popup.popup();
     }
 
-    // The .desktop Icon key resolves to a GIcon (themed name, absolute path or
-    // embedded data alike); lookup_by_gicon turns it into the paintable the
-    // stacked-icon effect needs. has_gicon gates the bundled fallback — the
-    // lookup itself never fails, it silently yields "image-missing".
+    // has_gicon gates the fallback: lookup_by_gicon never fails, it silently
+    // yields "image-missing".
     void load_icon () {
         GLib.Icon? gicon = (info != null) ? info.get_icon() : null;
         var theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
@@ -213,9 +198,8 @@ public class AppEntry : Gtk.Button {
         icon_paintable = Gdk.Texture.from_resource("/dev/lumen/panel/icons/app.svg");
     }
 
-    // Theme colors are resolved on first use, not in a static field
-    // initializer: Theme.install() runs before the first AppEntry is built, but
-    // nothing orders a field initializer against it.
+    // Resolved on first use, not in a static initializer: nothing orders a field
+    // initializer after Theme.install().
     static Gdk.RGBA lazy_color (ref bool loaded, ref Gdk.RGBA slot,
                                 string key, string fallback) {
         if (!loaded) {
@@ -225,8 +209,7 @@ public class AppEntry : Gtk.Button {
         return slot;
     }
 
-    // UNDERLINE / SUNSHINE accent, shared with @app_active_underline in the CSS
-    // (which @-references can't reach from snapshot code).
+    // Same accent as @app_active_underline in the CSS (unreachable from snapshot code).
     static bool underline_loaded = false;
     static Gdk.RGBA underline_val;
     static Gdk.RGBA underline_color () {
@@ -234,17 +217,9 @@ public class AppEntry : Gtk.Button {
                           "app.active-underline", "rgba(0,44,230,1)");
     }
 
-    // RING active-indicator: a black ring around the icon instead of the
-    // underline bar. Its circle matches the ROUND glass footprint (diameter =
-    // the slot's short side).
     const int ACTIVE_RING_THICK = 2;   // px stroke width of the ring
     static Gdk.RGBA RING_COLOR = Utils.rgba(0.0f, 0.0f, 0.0f, 1.0f);
 
-    // Open-but-not-focused apps get one of several indicator styles (chosen via
-    // PanelConfig.open_indicator) so a running app is distinguishable from a
-    // pinned-but-closed one. The dot, corner brackets and shade are all tinted
-    // with the configurable `app.open-indicator-color`; the shade fades from
-    // transparent to that color at OPEN_SHADE_ALPHA.
     const int   OPEN_SHADE_H     = 12;   // px height of the bottom shading band
     const float OPEN_SHADE_ALPHA = 0.5f; // bottom-of-shade tint strength
     const int   OPEN_DOT_D       = 6;    // px diameter of the centered dot
@@ -258,26 +233,17 @@ public class AppEntry : Gtk.Button {
         return lazy_color(ref open_color_loaded, ref open_color_val,
                           "app.open-indicator-color", "rgba(61,122,255,1)");
     }
-    // Glass: a frosted translucent fill drawn behind the icon, mimicking the
-    // CSS :hover background stuck on. Faint white sheen, brighter at the top.
     static Gdk.RGBA OPEN_GLASS_TOP = Utils.rgba(1.0f, 1.0f, 1.0f, 0.22f);
     static Gdk.RGBA OPEN_GLASS_BOT = Utils.rgba(1.0f, 1.0f, 1.0f, 0.08f);
     const int OPEN_GLASS_INSET  = 4;   // px gap from the slot edge
     const int OPEN_GLASS_RADIUS = 8;   // px corner rounding (matches .dragging)
 
-    // Stacked-icon effect: an app with more than one window draws 2 copies of
-    // its icon behind the real one, offset up-and-left, so a multi-window app
-    // reads as a stack of papers at a glance.
+    // Multi-window apps draw 2 back copies offset up-left; STACK_RECENTER shifts
+    // the group back down-right so it reads as centred.
     const int STACK_OFFSET = 4;     // px diagonal step per back layer
-    // The back copies all sit up-and-left of the front, so the group's bounding
-    // box leans into the top-left corner. Shift the whole icon group back down-
-    // and-right by half the stack's total span so it reads as centered.
     const float STACK_RECENTER = STACK_OFFSET;  // == (STACK_OFFSET * 2) / 2
 
     public override void snapshot (Gtk.Snapshot s) {
-        // Drag-to-reorder: shift everything we draw by the current offset (and
-        // lift the dragged entry slightly) so the icon, stacked back-copies and
-        // underline all move together.
         bool shifted = drag_offset_x != 0 || dragging;
         if (shifted) {
             s.save();
@@ -286,17 +252,12 @@ public class AppEntry : Gtk.Button {
             s.translate(t);
         }
 
-        // Background indicators (glass sheens) paint behind everything so the
-        // icon stays crisp on top; the edge-drawn styles run after base. Which
-        // routine (if any) is used was resolved once at construction.
         if (is_active()) {
             if (active_bg != null) active_bg(s);
         } else if (has_open_windows()) {
             if (open_bg != null) open_bg(s);
         }
 
-        // Recenter the whole icon group (front + back copies) for multi-window
-        // apps so the up-and-left stack doesn't lean into the corner.
         bool stacked = window_ids.size > 1 && icon_paintable != null;
         if (stacked) {
             s.save();
@@ -322,7 +283,6 @@ public class AppEntry : Gtk.Button {
         base.snapshot(s);
 
         if (stacked) s.restore();  // stack recenter
-        // Foreground indicators (over the icon) — style resolved at ctor.
         if (is_active()) {
             if (active_fg != null) active_fg(s);
         } else if (has_open_windows()) {
@@ -332,12 +292,8 @@ public class AppEntry : Gtk.Button {
         if (shifted) s.restore();
     }
 
-    // The active/open indicator STYLE is fixed for the life of the process
-    // (PanelConfig reads it once at startup), so bind each style to its draw
-    // routine here rather than switching on the enum every snapshot(). `_bg`
-    // routines paint behind the icon (pre-base); `_fg` routines paint over it.
-    // A null field means "nothing to draw in that slot" (e.g. NONE, or GLASS
-    // which only has a background).
+    // Indicator styles are fixed at startup, so bind the draw routines once.
+    // _bg paints behind the icon, _fg over it; null = nothing in that slot.
     delegate void IndicatorDraw (Gtk.Snapshot s);
     IndicatorDraw? active_bg = null;
     IndicatorDraw? active_fg = null;
@@ -371,8 +327,6 @@ public class AppEntry : Gtk.Button {
         }
     }
 
-    // The centred circle every disc-shaped indicator (RING, active GLASS/CIRCLE,
-    // open ROUND) shares: diameter = the slot's short side.
     Graphene.Rect circle_rect () {
         float w = get_width(), h = get_height();
         float d = float.min(w, h);
@@ -401,13 +355,11 @@ public class AppEntry : Gtk.Button {
         if (clipped) s.pop();
     }
 
-    // UNDERLINE active-indicator: the original accent bar under the icon.
     void draw_active_underline (Gtk.Snapshot s) {
         Utils.fill_rounded(s, 0, get_height() - UNDERLINE_H, get_width(),
                            UNDERLINE_H, 0, underline_color());
     }
 
-    // RING active-indicator: a circle border around the icon.
     void draw_active_ring (Gtk.Snapshot s) {
         var area = circle_rect();
         var rr = Gsk.RoundedRect();
@@ -418,9 +370,7 @@ public class AppEntry : Gtk.Button {
         s.append_border(rr, widths, colors);
     }
 
-    // SUNSHINE active-indicator: triangular rays radiating around the icon (no
-    // connecting ring). Inner/outer radii are keyed off the icon (not the slot)
-    // so the tips stay inside the slot's short side.
+    // Ray radii are keyed off the icon, not the slot, so the tips stay inside it.
     const int SUNSHINE_RAYS = 12;
     void draw_active_sunshine (Gtk.Snapshot s) {
         float cx = get_width() / 2f, cy = get_height() / 2f;
@@ -442,23 +392,16 @@ public class AppEntry : Gtk.Button {
         s.append_fill(pb.to_path(), Gsk.FillRule.WINDING, underline_color());
     }
 
-    // GLASS active-indicator: a navy frosted disc behind the icon.
     static Gdk.RGBA ACTIVE_GLASS_TOP = Utils.rgba(0.08f, 0.16f, 0.35f, 0.60f);
     static Gdk.RGBA ACTIVE_GLASS_BOT = Utils.rgba(0.08f, 0.16f, 0.35f, 0.30f);
-    // CIRCLE active-indicator: a flat white disc behind the icon so the focused
-    // app lights up brighter than any open-but-unfocused one. Uniform, so it is
-    // passed as both gradient stops.
     static Gdk.RGBA ACTIVE_CIRCLE_FILL = Utils.rgba(1.0f, 1.0f, 1.0f, 0.65f);
 
-    // DOT open-indicator: a centered dot near the bottom edge.
     void draw_open_dot (Gtk.Snapshot s) {
         Utils.fill_rounded(s, (get_width() - OPEN_DOT_D) / 2f,
                            get_height() - OPEN_DOT_D - OPEN_DOT_GAP,
                            OPEN_DOT_D, OPEN_DOT_D, OPEN_DOT_D / 2f, open_color());
     }
 
-    // CORNERS open-indicator: an L bracket in each corner — one arm along each
-    // edge meeting there.
     void draw_open_corners (Gtk.Snapshot s) {
         float w = get_width(), h = get_height();
         float L = OPEN_CORNER_LEN, t = OPEN_CORNER_THICK;
@@ -473,7 +416,6 @@ public class AppEntry : Gtk.Button {
         Utils.fill_rounded(s, w - t, h - L, t, L, 0, c);
     }
 
-    // SHADE open-indicator: a bottom band fading up from the indicator color.
     void draw_open_shade (Gtk.Snapshot s) {
         float h = get_height();
         var bounds = Graphene.Rect();
@@ -483,9 +425,6 @@ public class AppEntry : Gtk.Button {
         sheen(s, bounds, 0, top, bot);
     }
 
-    // GLASS/ROUND open-indicator: a frosted fill behind the icon, a persistent
-    // hover-like sheen. `round` clips it to the centred circle instead of the
-    // inset rounded-rect footprint.
     void draw_glass (Gtk.Snapshot s, bool round) {
         if (round) {
             sheen(s, circle_rect(), -1, OPEN_GLASS_TOP, OPEN_GLASS_BOT);

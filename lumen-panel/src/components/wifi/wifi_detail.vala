@@ -1,10 +1,5 @@
 using Gtk;
 
-// Inline Wi-Fi detail the Control Center slides to. macOS-faithful: the shared
-// CcListDetail chrome (back header, green radio switch, scan spinner, scrolled
-// list, empty state), the connected network pinned in its own card with a blue
-// check, an "OTHER NETWORKS" group below, and an inline pill password card with
-// a circular go-arrow.
 public class WifiDetail : CcListDetail {
 
     WifiService service;
@@ -49,8 +44,6 @@ public class WifiDetail : CcListDetail {
         conn_card.add_css_class ("cc-card");
         content.append (conn_card);
 
-        // Saved (known) networks and unsaved networks each get their own captioned
-        // card, sharing one scroll region beneath the pinned connected card.
         var lists_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 8) { hexpand = true };
 
         saved_caption = new Gtk.Label ("SAVED NETWORKS") {
@@ -206,7 +199,6 @@ public class WifiDetail : CcListDetail {
             password_field.grab_text_focus ();
     }
 
-    // Recompute the password card from the selected network + live service state.
     // Idempotent — safe to call after every rebuild.
     void update_password_panel () {
         int idx = index_of (selected_key);
@@ -286,9 +278,6 @@ public class WifiDetail : CcListDetail {
         while ((w = others_card.get_first_child ()) != null) others_card.remove (w);
         rows.clear ();
 
-        // Partition into three buckets: the active connection (pinned), known
-        // (saved) networks, and everything else. Saved and other networks are
-        // each sorted by signal strength, strongest first.
         var connected = new Gee.ArrayList<WifiNet> ();
         var saved     = new Gee.ArrayList<WifiNet> ();
         var others    = new Gee.ArrayList<WifiNet> ();

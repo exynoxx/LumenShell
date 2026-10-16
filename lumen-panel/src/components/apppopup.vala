@@ -1,7 +1,5 @@
 using Gtk;
 
-// Edge-clamping is handled by GTK; on Wayfire with a bottom-anchored layer
-// surface the popover extends upward correctly.
 public class AppPopupMenu : Gtk.Popover {
 
     weak AppEntry entry;
@@ -15,8 +13,6 @@ public class AppPopupMenu : Gtk.Popover {
         add_css_class("app-popup");
         set_parent(entry);
         set_has_arrow(false);
-        // Open away from the anchored edge so the menu stays on-screen: upward
-        // for a bottom panel, downward for a top panel.
         set_position(PanelConfig.at_top ? Gtk.PositionType.BOTTOM : Gtk.PositionType.TOP);
 
         var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);

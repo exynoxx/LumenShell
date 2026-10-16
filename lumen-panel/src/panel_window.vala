@@ -1,20 +1,12 @@
 using Gtk;
 
-// One panel surface. In single-monitor mode there is exactly one (monitor =
-// null); in multi-monitor mode App builds one per Gdk.Monitor, each pinned to
-// its output via gtk_layer_set_monitor. Only the tray-host (primary) window
-// carries the system tray — the SNI watcher owns a single DBus name and must
-// exist exactly once, so secondary panels show the AppBar alone.
 public class PanelWindow : Gtk.ApplicationWindow {
 
-    // NORMAL: always visible, reserves an exclusive zone.
-    // HIDDEN: auto-hide overlay — slides off the edge, reveals over windows.
-    // PUSH:   like HIDDEN, but a Wayfire plugin slides the whole scene
-    //         (wallpaper + windows) away from the edge so the panel reveals
-    //         into the freed strip instead of overlapping anything.
+    // HIDDEN: auto-hide overlay. PUSH: like HIDDEN, but a Wayfire plugin slides the
+    // scene away so the panel reveals into the freed strip.
     public enum Mode { NORMAL, HIDDEN, PUSH }
 
-    TrayBar? tray;                  // null on non-host windows
+    TrayBar? tray;                  // null when this panel shows no tray
     Gtk.Box  root;
 
     Mode mode = Mode.NORMAL;
@@ -29,9 +21,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
     uint slide_tick_id = 0;
     uint collapse_timeout_id = 0;
     uint resize_tick_id = 0;
-    // Last input region pushed to the surface, so the per-frame resize tracking
-    // can skip redundant set_input_region() Wayland roundtrips once the (now
-    // one-shot) surface grow has settled.
     Cairo.Region? last_region = null;
 
     public PanelWindow (Gtk.Application app, Gdk.Monitor? monitor,
@@ -56,9 +45,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
         if (hides) {
-            // Both HIDDEN and PUSH start off-edge with only the sliver showing
-            // and reserve no space; in PUSH the scene-push plugin frees the
-            // strip the panel reveals into.
+            // Start off-edge with only the sliver showing; in PUSH the plugin frees the strip.
             GtkLayerShell.set_exclusive_zone(this, 0);
             current_margin = App.HIDDEN_MARGIN;
             GtkLayerShell.set_margin(this, slide_edge, App.HIDDEN_MARGIN);
@@ -72,14 +59,10 @@ public class PanelWindow : Gtk.ApplicationWindow {
             valign = at_top ? Gtk.Align.START : Gtk.Align.END,
         };
 
-        // Per-monitor app filtering: only filter when per-monitor-apps is on AND
-        // this window is pinned to a specific output.
         string? only_output = (PanelConfig.per_monitor_apps && monitor != null)
             ? monitor.get_connector() : null;
 
 #if PANEL_PEEK
-        // Persistent launcher button at the very left edge, ahead of the
-        // taskbar. Has its own click handler that toggles the app-drawer reveal.
         if (PanelConfig.show_launcher) root.append(new LauncherButton());
 #endif
 
@@ -124,14 +107,15 @@ public class PanelWindow : Gtk.ApplicationWindow {
 
         this.map.connect(update_input_region);
         if (tray != null) {
-            // The tray grows/shrinks the surface every frame while it animates;
-            // track that so the input region follows the expanding bbox.
+            // Track the animation so the input region follows the growing tray bbox.
             tray.expanded_changed.connect(() => {
                 update_input_region();
                 start_resize_tracking();
             });
         }
 
+        // contains-pointer on the WINDOW, not the tray: Motion.leave on TrayBar
+        // misfires during the reveal animation.
         var win_motion = new Gtk.EventControllerMotion();
         win_motion.notify["contains-pointer"].connect(() => {
             if (win_motion.contains_pointer) {
@@ -144,9 +128,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         ((Gtk.Widget) this).add_controller(win_motion);
     }
 
-    // Detach the prebuilt primary tray before this window is destroyed so the
-    // reused TrayBar widget (held by App) survives the rebuild and can be
-    // reattached to the new host window.
+    // Detach the shared TrayBar (held by App) so it survives a window rebuild.
     public TrayBar? release_tray () {
         if (tray == null) return null;
         var t = tray;
@@ -176,9 +158,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         }
         reveal_target = reveal;
 #if PANEL_PEEK
-        // PUSH mode: tell the compositor to slide the whole scene away from the
-        // edge (reveal) / back (collapse), synchronised with the panel's own
-        // margin slide below. No-op if the plugin isn't loaded.
+        // The compositor slides the scene in sync with our margin slide; no-op
+        // without the plugin.
         if (mode == Mode.PUSH) {
             if (reveal) PeekIpc.push_start();
             else        PeekIpc.push_stop();
@@ -286,10 +267,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         apply_input_region(gdk_surface, region);
     }
 
-    // Push the input region only when it actually changed. The tray expand now
-    // grows the surface in one step and holds it, so without this guard the
-    // per-frame resize tracking would fire ~16 identical set_input_region()
-    // Wayland roundtrips across a single 260 ms reveal.
+    // Only push on change: per-frame resize tracking would otherwise send identical
+    // set_input_region() roundtrips every frame.
     void apply_input_region (Gdk.Surface gdk_surface, Cairo.Region region) {
         if (last_region != null && last_region.equal(region)) return;
         last_region = region.copy();

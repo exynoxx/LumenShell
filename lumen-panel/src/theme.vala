@@ -42,9 +42,7 @@ public class Theme : GLib.Object {
         });
     }
 
-    // Resolve a raw color value (for code paths that draw with Gdk.RGBA instead
-    // of CSS, where @-references don't apply). Falls back to `fallback` if the
-    // key is absent or unparseable. Palette is seeded by install() at startup.
+    // For code paths that draw with Gdk.RGBA, where CSS @-references don't apply.
     public static Gdk.RGBA color (string json_key, string fallback) {
         var rgba = Gdk.RGBA();
         string? v = (palette != null) ? palette.lookup(key_to_var(json_key)) : null;

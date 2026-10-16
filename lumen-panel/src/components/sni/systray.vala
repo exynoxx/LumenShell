@@ -9,11 +9,8 @@ public class SysTray : Gtk.Box, ITrayApplet {
     SniWatcher watcher;
     HashMap<string, SniItem> by_key = new HashMap<string, SniItem>();
 
-    // The watcher (the singleton D-Bus name owner + item registry) is shared:
-    // one instance, owned by App, drives every SysTray widget. Each monitor's
-    // SysTray builds its own SniItem widgets from the same item set — a GTK
-    // widget can live in only one window, so the icons can't be shared, but the
-    // underlying registration is.
+    // The watcher is shared; each SysTray builds its own SniItems because a GTK
+    // widget can live in only one window.
     public SysTray (SniWatcher watcher) {
         GLib.Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
         add_css_class("systray");
@@ -31,8 +28,7 @@ public class SysTray : Gtk.Box, ITrayApplet {
         this.watcher = watcher;
         watcher.item_added.connect(on_item_added);
         watcher.item_removed.connect(on_item_removed);
-        // Replay items that registered before this widget attached (secondary
-        // monitors / post-hotplug rebuilds).
+        // Replay items registered before this widget attached.
         watcher.foreach_item(on_item_added);
     }
 
@@ -56,7 +52,5 @@ public class SysTray : Gtk.Box, ITrayApplet {
         visible = by_key.size > 0;
     }
 
-    // Icon-only applet: the systray box IS its own tray widget (its trailing
-    // separator stays inside), no control module.
     public Gtk.Widget  tray_widget () { return this; }
 }

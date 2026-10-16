@@ -1,27 +1,15 @@
-// Wayfire IPC verb wrappers for the panel.
-//
-// Only compiled into the panel when the `with_panel_peek` meson option is on
-// (it gates the PANEL_PEEK define). A standalone panel build omits this file
-// entirely and never talks to Wayfire.
-//
-// The socket framing lives in lumen-common/wayfire_ipc.vala (shared with
-// lumen-drawer); this file is just the panel's verbs.
+// Compiled only with PANEL_PEEK. A verb whose plugin isn't loaded is unregistered,
+// so calling it is a harmless no-op.
 #if PANEL_PEEK
 public class PeekIpc : GLib.Object {
 
-    // Toggle the app-drawer reveal (lumen-drawer). Only one of curtain-peek /
-    // slide-peek is ever loaded, so the toggle for the inactive one is a
-    // harmless no-op (its IPC method isn't registered) — same pattern as
-    // lumen-drawer's CurtainIpc.close(). Used by the optional launcher button.
+    // Only one of curtain-peek / slide-peek is loaded; the other toggle no-ops.
     public static bool app_drawer () {
         bool a = LumenCommon.WayfireIpc.send_method("wayfire-curtain-peek/toggle");
         bool b = LumenCommon.WayfireIpc.send_method("wayfire-slide-peek/toggle");
         return a || b;
     }
 
-    // Push-reveal mode: slide the whole scene (wallpaper + windows) away from
-    // the panel's edge so the panel can reveal into the freed strip. Harmless
-    // no-op if wayfire-panel-push isn't loaded (verb unregistered).
     public static bool push_start () {
         return LumenCommon.WayfireIpc.send_method("wayfire-panel-push/start");
     }
@@ -30,8 +18,6 @@ public class PeekIpc : GLib.Object {
         return LumenCommon.WayfireIpc.send_method("wayfire-panel-push/stop");
     }
 
-    // Toggle the Wayfire night-light plugin (warm colour-temperature overlay).
-    // Harmless no-op if wayfire-night-light isn't loaded (verb unregistered).
     public static bool night_light_toggle () {
         return LumenCommon.WayfireIpc.send_method("wayfire-night-light/toggle");
     }

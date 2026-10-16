@@ -1,4 +1,4 @@
-/* Defaults; runtime Theme.load() overrides @define-color values from JSON. */
+/* Fallback palette; Theme.install() also emits @define-color values from theme.json. */
 @define-color panel_background          rgba(0, 0, 0, 0);
 @define-color tray_background           rgba(17, 20, 31, 0.97);
 @define-color tray_icon_hover           rgba(41, 46, 66, 1);
@@ -12,30 +12,19 @@ window.lumen-panel decoration {
     box-shadow: none;
 }
 
-/* The panel backdrop is a fixed-height strip pinned to the bottom edge (built
-   in main.vala) rather than the window background, so it never grows upward
-   with the tray when a page expands. panel_background carries the color and
-   opacity shown at all times. */
+/* A fixed-height strip rather than the window background, so the backdrop
+   never grows with the expanded tray. */
 .panel-strip {
     background: @panel_background;
 }
 
-/* Auto-hide mode: same panel color, its own opacity (settings keeps the RGB
-   in sync and varies only the alpha). */
+/* Auto-hide: lumen-settings keeps the RGB in sync with the panel, only alpha differs. */
 window.lumen-panel.auto-hide .panel-strip {
     background: @panel_autohide_background;
 }
 
-/* The tray is a single floating rounded rectangle that contains both the
-   icon row (top) and any expanded page (bottom). Both children inherit the
-   bg. margin-right/bottom give it the "floating off the panel edge" look
-   from the original DrawKit version; overflow:hidden (set in code) clips
-   children to the rounded silhouette so the page-slide animation can't
-   spill past the rounded corners. */
-/* The rounded box itself is painted in TrayBar.snapshot() (not here) so its
-   bounds can animate between the compact icon-row footprint and the full
-   Control Center extent — the CSS background would always fill the full-size
-   widget and snap. Margins still give the "floating off the panel edge" look. */
+/* The rounded box is painted in TrayBar.snapshot() so its bounds can animate;
+   a CSS background would fill the full-size widget and snap. */
 .tray-bar {
     background: transparent;
     border-radius: 18px;
@@ -60,8 +49,7 @@ window.lumen-panel.auto-hide .panel-strip {
     color: white;
 }
 
-/* Passive status icons. The whole tray row is the click target (TrayBar adds a
-   gesture), so these are plain images, not buttons. */
+/* Passive status icons: the whole tray row is the click target. */
 .tray-icon {
     min-width: 48px;
     min-height: 48px;
@@ -271,11 +259,7 @@ popover.app-popup button:hover {
     background: @app_hover;
 }
 
-/* ===================================================================
-   macOS Control Center — the expanded tray panel. The compact icon row
-   (.tray-bar/.tray-icons/button.tray-icon above) is intentionally untouched;
-   everything below styles only the revealed panel.
-   =================================================================== */
+/* ===== Control Center (the expanded tray) ===== */
 
 .control-center {
     background: transparent;
@@ -383,8 +367,8 @@ button.cc-back {
     transition: background-color 120ms ease-out;
 }
 button.cc-back:hover { background: rgba(255, 255, 255, 0.10); }
-/* Keep the glyph from forcing the button taller than wide (which broke the
-   circular hover) — fixed line-height + centering keeps it a clean circle. */
+/* Fixed line-height stops the glyph making the button taller than wide, which
+   breaks the circular hover. */
 .cc-back-chevron {
     color: #0A84FF;
     font-size: 21px;
@@ -461,8 +445,7 @@ button.cc-power-btn:active { background: rgba(255, 255, 255, 0.05); }
     font-weight: 500;
 }
 
-/* Enable/disable pill (Wi-Fi / Bluetooth power): a flatter, GTK-style switch —
-   wider and shorter than before — that reads red when off, green when on. */
+/* Wi-Fi / Bluetooth power switch: red when off, green when on. */
 switch.lumen-switch {
     background: #FF453A;
     border-radius: 999px;
@@ -475,9 +458,7 @@ switch.lumen-switch {
 switch.lumen-switch:checked {
     background: #34C759;
 }
-/* Knob kept smaller than the inner track height (24 − 2×2 padding = 20) so it
-   has clearance on every side and stays a true circle instead of a pinched
-   oval. */
+/* Knob smaller than the inner track (24 − 2×2 padding = 20) so it stays a true circle. */
 switch.lumen-switch > slider {
     background: white;
     border-radius: 50%;

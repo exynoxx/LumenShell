@@ -25,6 +25,5 @@ public class Clock : Gtk.Box, ITrayApplet {
         return new DateTime.now_local().format(PanelConfig.clock_format);
     }
 
-    // Icon-only applet: the clock IS its own tray widget, no control module.
     public Gtk.Widget  tray_widget () { return this; }
 }

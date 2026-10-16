@@ -1,9 +1,5 @@
 using Gtk;
 
-// Inline Sound detail the Control Center slides to: the list of output devices
-// (PulseAudio/PipeWire sinks) as selectable rows, the active one marked with a
-// blue check. Tapping a row makes it the default sink. Rebuilt on every service
-// poll so hotplugged devices appear/disappear live.
 public class SoundDetail : CcDetail {
 
     SoundService service;

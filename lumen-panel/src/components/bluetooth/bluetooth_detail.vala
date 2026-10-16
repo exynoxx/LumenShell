@@ -1,9 +1,5 @@
 using Gtk;
 
-// Inline Bluetooth detail: the shared CcListDetail chrome (back header, power
-// switch, scan spinner, scrolled list, empty state) over one grouped device
-// card (connected → paired → discovered), plus a bottom action card
-// (Connect / Disconnect / Pair) for the selected device.
 public class BluetoothDetail : CcListDetail {
 
     BluetoothService service;

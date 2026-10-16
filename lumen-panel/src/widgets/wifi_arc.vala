@@ -1,16 +1,9 @@
 using Gtk;
 
-// The canonical Apple Wi-Fi glyph: a center dot with three nested arcs fanning
-// upward. Signal strength dims the outer arcs rather than dropping bars, the
-// way iOS/macOS render it. Drawn purely with GSK paths (append_stroke /
-// append_fill) so the ngl/Vulkan renderer rasterizes it on the GPU — no Cairo
-// software fallback.
+// Apple Wi-Fi glyph: a weak signal dims the outer arcs to 25% rather than
+// dropping them.
 public class WifiArc {
 
-    // Render the glyph with its dot centered at (cx, cy). Active arcs are
-    // full-strength; the rest fade to 25% so a weak signal reads as a dim outer
-    // ring. The 90° fans are exact circular arcs (svg_arc_to), the dot a filled
-    // circle.
     public static void draw (Gtk.Snapshot s, float cx, float cy,
                              int signal_pct, Gdk.RGBA fg) {
         int active = signal_pct >= 67 ? 3 : signal_pct >= 34 ? 2 : signal_pct >= 1 ? 1 : 0;

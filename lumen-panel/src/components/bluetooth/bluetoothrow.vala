@@ -1,8 +1,6 @@
 using Gtk;
 
-// One device cell inside a grouped .cc-card. Leading device-type glyph, name,
-// trailing blue check when connected. RSSI is unreliable for paired devices, so
-// there's no signal glyph. Selection fill + inset separator, all GSK.
+// RSSI is unreliable for paired devices, so there's no signal glyph.
 public class BluetoothRow : Gtk.Widget, CcRow {
 
     public const int ROW_H = 44;

@@ -1,9 +1,5 @@
 using GLib;
 
-/**
- * Re-queries the active profile every 10 s (same cadence as BatteryService).
- * backend == NONE means the page hides the selector.
- */
 public class PowerProfileService : GLib.Object {
 
     private const uint POLL_SEC = 10;
@@ -29,11 +25,8 @@ public class PowerProfileService : GLib.Object {
         }
     }
 
-    /**
-     * Apply a profile. Optimistic: reflect the choice immediately so the
-     * selector doesn't bounce back while the (async) command runs, then
-     * reconcile once with a delayed re-query.
-     */
+    // Optimistic: show the choice immediately so the selector doesn't bounce back,
+    // then reconcile with a delayed re-query.
     public void select(PowerProfile p) {
         if (backend == PowerBackend.NONE || p == PowerProfile.UNKNOWN) return;
         if (p != current) {

@@ -40,9 +40,6 @@ public class Utils {
         s.pop();
     }
 
-    // Build a laid-out line of text at an absolute point size. Callers that need
-    // to centre or right-align measure it with get_pixel_size() and hand the
-    // result to draw_layout().
     public static Pango.Layout text_layout (Gtk.Widget w, string text, double size_pt,
                                             Pango.Weight weight = Pango.Weight.NORMAL) {
         var layout = w.create_pango_layout(text);
@@ -62,8 +59,6 @@ public class Utils {
         s.append_layout(layout, color);
         s.restore();
     }
-
-
     // Case-insensitive prefix match over the registered applications, for
     // app_ids whose case doesn't match the .desktop filename.
     static DesktopAppInfo? find_by_prefix (string app_id) {

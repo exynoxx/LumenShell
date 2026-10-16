@@ -1,59 +1,33 @@
 using GLib;
 
-// Global panel placement, read once at startup from panel.json (flat dotted
-// keys, written by lumen-settings). Widgets that must mirror their layout when
-// the panel sits at the top of the screen (popover direction, tray growth, the
-// backdrop strip's edge) consult PanelConfig.at_top rather than threading the
-// flag through every constructor.
+// Read once at startup from panel.json (flat dotted keys, written by lumen-settings).
 public class PanelConfig {
     public static bool at_top = false;
 
-    // How a taskbar entry signals it has open windows but isn't focused, so a
-    // running app is distinguishable from a pinned-but-closed one. Read once at
-    // startup; AppEntry.snapshot() branches on it. SHADE is the default.
     public enum OpenIndicator { SHADE, DOT, CORNERS, GLASS, ROUND, NONE }
     public static OpenIndicator open_indicator = OpenIndicator.SHADE;
 
-    // How the focused (active) taskbar entry is marked. UNDERLINE is the
-    // original accent bar under the icon; RING draws an accent ring around it;
-    // SUNSHINE radiates triangular rays around it; GLASS is a navy frosted disc
-    // behind it; CIRCLE is the ROUND open-glass white sheen, but fainter. Read
-    // once at startup; AppEntry resolves it to a draw routine at construction.
     public enum ActiveIndicator { UNDERLINE, RING, SUNSHINE, GLASS, CIRCLE }
     public static ActiveIndicator active_indicator = ActiveIndicator.UNDERLINE;
 
-    // Multi-monitor: when true a panel is placed on every connected output.
-    // per_monitor_apps (a sub-option) makes each panel's taskbar show only the
-    // windows on its own monitor.
+    // per_monitor_apps: each panel's taskbar shows only its own monitor's windows.
     public static bool multi_monitor = false;
     public static bool per_monitor_apps = false;
-    // When true (and multi_monitor is on) every secondary panel also shows the
-    // tray area — minus the system-tray (SNI) icons, which stay on the host.
+    // With multi_monitor, secondary panels get their own full tray too.
     public static bool tray_all_monitors = false;
 
-    // When true a persistent launcher button (app glyph) sits at the left edge
-    // of the panel; clicking it toggles the app-drawer reveal (curtain/slide
-    // peek). Only effective in a PANEL_PEEK build.
+    // Only effective in a PANEL_PEEK build.
     public static bool show_launcher = false;
 
-    // strftime pattern the clock renders with. The default writes the weekday
-    // with letters (e.g. "Sat 13 Jun  14:30"). Kept in sync with the
-    // lumen-settings panel page default.
+    // Kept in sync with the lumen-settings panel page default.
     public const string DEFAULT_CLOCK_FORMAT = "%a %d %b  %H:%M";
     public static string clock_format = DEFAULT_CLOCK_FORMAT;
 
-    // Raw auto-hide behavior, resolved into a PanelWindow.Mode there (the enum
-    // lives with the window). behavior_mode is the explicit "normal|hidden|push"
-    // string; behavior_auto_hide is the legacy bool fallback when it's absent.
+    // Resolved into PanelWindow.Mode there; behavior_auto_hide is the legacy
+    // fallback when behavior.mode is absent.
     public static string? behavior_mode = null;
     public static bool behavior_auto_hide = false;
 
-    // Tray applet layout, from the "tray.order"/"tray.disabled" JSON arrays
-    // (written by lumen-settings). tray_order is the full ordered list of applet
-    // ids; tray_disabled is the subset toggled off. Absent tray.order leaves
-    // tray_order at the catalog default and tray_disabled empty — byte-for-byte
-    // identical to the old hardcoded tray. tray_enabled_order() resolves the two
-    // against the shared catalog into what make_tray() actually builds.
     public static string[] tray_order = {};
     public static string[] tray_disabled = {};
 
@@ -78,7 +52,6 @@ public class PanelConfig {
 
         tray_order    = get_string_array(vals, "tray.order");
         tray_disabled = get_string_array(vals, "tray.disabled");
-        // No tray.order ⇒ fall back to the catalog's canonical order.
         if (tray_order.length == 0) {
             string[] defaults = {};
             foreach (var info in LumenTray.CATALOG) defaults += info.id;
@@ -86,9 +59,7 @@ public class PanelConfig {
         }
     }
 
-    // panel.json is a flat dotted-key object. Fail-soft: a missing or
-    // unparseable file yields an empty object, so every member read falls back
-    // to its default.
+    // Fail-soft: a missing or unparseable file yields an empty object.
     static Json.Object parse (string path) {
         if (!FileUtils.test(path, FileTest.EXISTS)) return new Json.Object();
         var parser = new Json.Parser();
@@ -118,10 +89,8 @@ public class PanelConfig {
         return result;
     }
 
-    // The resolved, enabled, ordered ids make_tray() iterates: start from
-    // tray_order, append any catalog ids not already present (so a new built-in
-    // applet appears after an upgrade without rewriting the config), drop the
-    // disabled subset, and drop any id not in the catalog (stale/unknown).
+    // tray_order plus any catalog ids it lacks (so new applets appear after an
+    // upgrade), minus disabled and unknown ids.
     public static string[] tray_enabled_order () {
         var order = new Gee.ArrayList<string>();
         foreach (var id in tray_order) order.add(id);
