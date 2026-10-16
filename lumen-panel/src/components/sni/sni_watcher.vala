@@ -6,7 +6,9 @@ using Gee;
 // The modern Linux tray (Discord, Telegram, Steam, …) is the StatusNotifier
 // protocol: D-Bus based, display-server agnostic. Three roles exist:
 //   - Watcher: the well-known registry at org.kde.StatusNotifierWatcher that
-//     apps call to announce their tray item. WE own this name.
+//     apps call to announce their tray item. We own this name, unless
+//     another watcher (e.g. KDE's kded6) already does — then we act as a host
+//     for that watcher instead (attach_foreign).
 //   - Host:    the thing that actually draws icons (our panel). Apps refuse to
 //     register (or stay hidden) unless a host is registered, so we own a
 //     org.kde.StatusNotifierHost-<pid> name and flag IsStatusNotifierHostRegistered.
@@ -52,18 +54,16 @@ public class SniWatcher : GLib.Object {
 
     public void register_status_notifier_item (string service, GLib.BusName sender)
             throws DBusError, IOError {
-        string bus, path;
         // Per the de-facto protocol: a leading '/' means the app passed its
         // object path and the bus name is the message sender; otherwise the
         // string is the bus name and the path defaults to /StatusNotifierItem.
-        if (service.has_prefix("/")) {
-            bus  = (string) sender;
-            path = service;
-        } else {
-            bus  = service;
-            path = "/StatusNotifierItem";
-        }
+        if (service.has_prefix("/"))
+            track((string) sender, service, service);
+        else
+            track(service, "/StatusNotifierItem", service);
+    }
 
+    void track (string bus, string path, string service) {
         string key = bus + path;
         if (items.has_key(key)) return;
 
@@ -130,16 +130,70 @@ public class SniWatcher : GLib.Object {
             },
             () => {
                 // Announce a host so libappindicator clients register.
-                host_owner_id = Bus.own_name(
+                if (host_owner_id == 0) host_owner_id = Bus.own_name(
                     BusType.SESSION,
                     "org.kde.StatusNotifierHost-%d".printf((int) Posix.getpid()),
                     BusNameOwnerFlags.NONE, null, null, null);
                 status_notifier_host_registered();
             },
-            () => {
-                // Another watcher (a full DE) already owns the name. Leave the
-                // tray empty rather than fighting over it.
-                warning("lumen-panel systray: org.kde.StatusNotifierWatcher already owned; tray disabled");
+            (conn) => {
+                // Another watcher (e.g. KDE's kded6) owns the name. Don't fight
+                // it: act as a host for it instead. We stay queued, so if it
+                // exits the name_acquired path above takes over.
+                if (conn != null) attach_foreign.begin(conn);
             });
+    }
+
+    // Host mode against someone else's watcher: register as a host, take its
+    // current item list, and follow its Registered/Unregistered signals.
+    async void attach_foreign (DBusConnection conn) {
+        const string NAME  = "org.kde.StatusNotifierWatcher";
+        const string PATH  = "/StatusNotifierWatcher";
+        const string IFACE = "org.kde.StatusNotifierWatcher";
+
+        if (foreign_subs.length == 0) {
+            foreign_subs += conn.signal_subscribe(NAME, IFACE, "StatusNotifierItemRegistered",
+                PATH, null, DBusSignalFlags.NONE, (c, s, p, i, sig, args) => {
+                    track_foreign(args.get_child_value(0).get_string());
+                });
+            foreign_subs += conn.signal_subscribe(NAME, IFACE, "StatusNotifierItemUnregistered",
+                PATH, null, DBusSignalFlags.NONE, (c, s, p, i, sig, args) => {
+                    string bus, path;
+                    split_foreign(args.get_child_value(0).get_string(), out bus, out path);
+                    on_owner_vanished(bus + path);
+                });
+        }
+
+        try {
+            string host = "org.kde.StatusNotifierHost-%d".printf((int) Posix.getpid());
+            if (host_owner_id == 0)
+                host_owner_id = Bus.own_name(BusType.SESSION, host,
+                                             BusNameOwnerFlags.NONE, null, null, null);
+            yield conn.call(NAME, PATH, IFACE, "RegisterStatusNotifierHost",
+                            new Variant("(s)", host), null, DBusCallFlags.NONE, -1, null);
+
+            var reply = yield conn.call(NAME, PATH, "org.freedesktop.DBus.Properties", "Get",
+                new Variant("(ss)", IFACE, "RegisteredStatusNotifierItems"),
+                new VariantType("(v)"), DBusCallFlags.NONE, -1, null);
+            foreach (var s in reply.get_child_value(0).get_variant().get_strv())
+                track_foreign(s);
+        } catch (Error e) {
+            warning("lumen-panel systray: attaching to existing watcher failed: %s", e.message);
+        }
+    }
+
+    uint[] foreign_subs = {};
+
+    // Foreign watchers hand out "busname/object/path", or a bare bus name.
+    static void split_foreign (string s, out string bus, out string path) {
+        int slash = s.index_of_char('/');
+        bus  = slash < 0 ? s : s.substring(0, slash);
+        path = slash < 0 ? "/StatusNotifierItem" : s.substring(slash);
+    }
+
+    void track_foreign (string s) {
+        string bus, path;
+        split_foreign(s, out bus, out path);
+        track(bus, path, s);
     }
 }

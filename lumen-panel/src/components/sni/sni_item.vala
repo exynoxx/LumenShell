@@ -64,13 +64,15 @@ public class SniItem : Gtk.Button {
     }
 
     void wire_input () {
-        var click = new Gtk.GestureClick() { button = 0 };  // any button
+        // Left click activates. Gtk.Button's own gesture claims primary
+        // presses, so it must go through `clicked`, not the gesture below.
+        // Apps without Activate (e.g. ItemIsMenu ones) ignore the call.
+        clicked.connect(activate_item);
+
+        var click = new Gtk.GestureClick() { button = 0 };  // middle/right
         click.released.connect((n_press, x, y) => {
             uint b = click.get_current_button();
-            // Left click activates. Apps without Activate (e.g. ItemIsMenu
-            // ones) just ignore the call, so nothing happens.
-            if (b == Gdk.BUTTON_PRIMARY)        { if (n_press == 1) activate_item(); }
-            else if (b == Gdk.BUTTON_MIDDLE)    secondary_activate();
+            if (b == Gdk.BUTTON_MIDDLE)         secondary_activate();
             else if (b == Gdk.BUTTON_SECONDARY) context(x, y);
         });
         add_controller(click);

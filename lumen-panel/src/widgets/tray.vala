@@ -62,6 +62,19 @@ public class TrayBar : Gtk.Box {
         click.released.connect (() => toggle ());
         icon_row.add_controller (click);
 
+        // Row highlight, except over the app-tray (SNI) icons, which are their
+        // own click targets and draw their own round hover.
+        var motion = new Gtk.EventControllerMotion ();
+        motion.motion.connect ((x, y) => {
+            bool over_sni = false;
+            for (var w = icon_row.pick (x, y, Gtk.PickFlags.DEFAULT); w != null && w != icon_row; w = w.get_parent ())
+                if (w.has_css_class ("systray")) { over_sni = true; break; }
+            if (over_sni) icon_row.remove_css_class ("row-hover");
+            else icon_row.add_css_class ("row-hover");
+        });
+        motion.leave.connect (() => icon_row.remove_css_class ("row-hover"));
+        icon_row.add_controller (motion);
+
         reveal = new TrayReveal (PanelConfig.at_top);
         reveal.add_css_class ("tray-pages");
 

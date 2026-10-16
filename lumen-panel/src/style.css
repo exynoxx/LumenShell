@@ -71,8 +71,9 @@ window.lumen-panel.auto-hide .panel-strip {
     -gtk-icon-size: 22px;
     color: white;
 }
-/* Subtle whole-row affordance that the compact bar is clickable. */
-.tray-icons:hover {
+/* Subtle whole-row affordance that the compact bar is clickable. A class, not
+   :hover — TrayBar drops it over SNI icons so their own hover disc shows. */
+.tray-icons.row-hover {
     background: @tray_icon_hover;
     border-radius: 14px;
 }
