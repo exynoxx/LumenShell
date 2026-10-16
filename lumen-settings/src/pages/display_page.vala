@@ -29,19 +29,25 @@ namespace LumenSettings {
         bool reload_pending = false;
 
         public Gtk.Widget build() {
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
             wlr.init();
             if (!wlr.available()) {
-                var bl = new BoxedList("Display");
-                bl.add_row(new ActionRow("Output management unavailable",
-                    "The compositor does not expose wlr-output-management-v1, so displays can't be configured here."));
-                box.append(bl);
-                return box;
+                var bl = new Adw.PreferencesGroup() { title = "Display" };
+                bl.add(new Adw.ActionRow() {
+                    title = "Output management unavailable",
+                    subtitle = "The compositor does not expose wlr-output-management-v1, so displays can't be configured here.",
+                });
+                page.add(bl);
+                return page;
             }
+
+            // The per-output group is rebuilt in place, so everything rides in
+            // one box to keep its position fixed.
+            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18);
+            var holder = new Adw.PreferencesGroup();
+            holder.add(box);
+            page.add(holder);
 
             DiagLog.log("page: build() — enumerating displays");
             baseline = wlr.enumerate();
@@ -96,7 +102,7 @@ namespace LumenSettings {
 
             rebuild_controls();
             start_output_watch();
-            return box;
+            return page;
         }
 
         public override string? restart_target() { return null; }
@@ -153,15 +159,20 @@ namespace LumenSettings {
             if (sel < 0 || sel >= working.size) { building = false; return; }
             var o = working.get(sel);
 
-            var bl = new BoxedList(o.description != "" ? o.description : o.name);
+            var bl = new Adw.PreferencesGroup() {
+                title = Markup.escape_text(o.description != "" ? o.description : o.name),
+            };
 
             // Enabled
-            var en = new SwitchRow("Enabled", "Turn this display on or off", o.enabled);
-            en.toggled.connect((v) => {
+            var en = new Adw.SwitchRow() {
+                title = "Enabled", subtitle = "Turn this display on or off", active = o.enabled,
+            };
+            en.notify["active"].connect(() => {
                 if (building) return;
+                var v = en.active;
                 if (!v && enabled_count() <= 1) {
                     // Don't allow disabling the last display.
-                    en.sw.active = true;
+                    en.active = true;
                     return;
                 }
                 o.enabled = v;
@@ -169,7 +180,7 @@ namespace LumenSettings {
                 mark_dirty();
                 rebuild_controls();
             });
-            bl.add_row(en);
+            bl.add(en);
 
             if (o.enabled && o.current_mode != null) {
                 // Resolution
@@ -188,7 +199,7 @@ namespace LumenSettings {
                     mark_dirty();
                     rebuild_controls();
                 });
-                bl.add_row(res_row);
+                bl.add(res_row);
 
                 // Refresh
                 var rmodes = o.modes_for(o.current_mode.res_key());
@@ -207,7 +218,7 @@ namespace LumenSettings {
                     }
                     mark_dirty();
                 });
-                bl.add_row(ref_row);
+                bl.add(ref_row);
 
                 // Orientation
                 string[] olabels = {
@@ -229,7 +240,7 @@ namespace LumenSettings {
                     arranger.refresh();
                     mark_dirty();
                 });
-                bl.add_row(or_row);
+                bl.add(or_row);
 
             }
 

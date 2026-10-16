@@ -12,7 +12,7 @@ namespace LumenSettings.Wayfire {
         string section;
         IniStore store;
         string _id;
-        BoxedList? list;
+        Adw.PreferencesGroup? list;
 
         public string id        { owned get { return _id; } }
         public string title     { owned get { return section; } }
@@ -25,31 +25,27 @@ namespace LumenSettings.Wayfire {
         }
 
         public Gtk.Widget build() {
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
+            var page = new Adw.PreferencesPage() {
+                description = Markup.escape_text(
+                    "Raw settings for the [%s] section. No plugin metadata is "
+                    .printf(section)
+                    + "installed for this section, so values are edited as text."),
             };
 
-            var lbl = new Gtk.Label(
-                "Raw settings for the [%s] section. No plugin metadata is "
-                .printf(section)
-                + "installed for this section, so values are edited as text.") {
-                xalign = 0, wrap = true,
-            };
-            box.append(lbl);
-
-            list = new BoxedList("Settings");
+            list = new Adw.PreferencesGroup() { title = "Settings" };
             foreach (var key in store.keys_in(section)) {
-                list.add_row(make_kv_row(key));
+                list.add(make_kv_row(key));
             }
-            box.append(list);
+            page.add(list);
 
-            box.append(build_add_row());
-            return box;
+            var add_group = new Adw.PreferencesGroup();
+            add_group.add(build_add_row());
+            page.add(add_group);
+            return page;
         }
 
         Gtk.Widget make_kv_row(string key) {
-            var ar = new ActionRow(key, "");
+            var ar = new Adw.ActionRow() { title = key, use_markup = false };
 
             var entry = new Gtk.Entry() {
                 text = store.get_value(section, key) ?? "",
@@ -73,10 +69,10 @@ namespace LumenSettings.Wayfire {
                 list.remove(ar);
             });
 
-            var suffix = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+            var suffix = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) { valign = Gtk.Align.CENTER };
             suffix.append(entry);
             suffix.append(del);
-            ar.set_suffix(suffix);
+            ar.add_suffix(suffix);
             return ar;
         }
 
@@ -102,14 +98,12 @@ namespace LumenSettings.Wayfire {
                 if (store.get_value(section, key) != null) return;
                 store.set_value(section, key, val_entry.text);
                 store.save();
-                list.add_row(make_kv_row(key));
+                list.add(make_kv_row(key));
                 key_entry.text = "";
                 val_entry.text = "";
             });
 
-            var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-                margin_top = 6,
-            };
+            var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
             row.append(key_entry);
             row.append(val_entry);
             row.append(add);

@@ -11,7 +11,7 @@ namespace LumenSettings {
      * disabled subset, which the page persists to panel.json.
      *
      * Wrapped in a Gtk.ListBox so it drops cleanly inside an Adwaita boxed group
-     * (BoxedList): the ListBox draws the row separators, this Box just carries
+     * (Adw.PreferencesGroup): the ListBox draws the row separators, this Box just carries
      * the list. */
     public class ReorderList : Gtk.Box {
 

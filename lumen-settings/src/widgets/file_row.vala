@@ -2,17 +2,18 @@ using Gtk;
 
 namespace LumenSettings {
 
-    public class FileRow : ActionRow {
+    public class FileRow : Adw.ActionRow {
         Gtk.Button button;
         string current_path;
         public signal void value_changed(string path);
 
         public FileRow(string title, string initial_path, string subtitle = "") {
-            base(title, subtitle);
+            Object(title: title, subtitle: subtitle, use_markup: false);
             current_path = initial_path;
             button = new Gtk.Button.with_label(display_label(current_path));
             button.clicked.connect(open_picker);
-            set_suffix(button);
+            button.valign = Gtk.Align.CENTER;
+            add_suffix(button);
         }
 
         static string display_label(string p) {

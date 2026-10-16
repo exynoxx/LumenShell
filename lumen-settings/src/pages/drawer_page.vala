@@ -21,16 +21,13 @@ namespace LumenSettings {
         public Gtk.Widget build() {
             rows = new IniRows(Paths.drawer_ini(), "drawer");
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
-            var group = new BoxedList("App grid");
-            group.add_row(rows.int_row("grid.cols",   "Columns", 1, 12, 1, 6, "number of app icons per row"));
-            group.add_row(rows.int_row("grid.rows",   "Rows",    1, 8,  1, 4, "number of app icon rows per page"));
-            group.add_row(rows.int_row("grid.margin", "Page margin", 0, 400, 1, 130, "px of empty space around the grid, on every edge"));
-            box.append(group);
+            var group = new Adw.PreferencesGroup() { title = "App grid" };
+            group.add(rows.int_row("grid.cols",   "Columns", 1, 12, 1, 6, "number of app icons per row"));
+            group.add(rows.int_row("grid.rows",   "Rows",    1, 8,  1, 4, "number of app icon rows per page"));
+            group.add(rows.int_row("grid.margin", "Page margin", 0, 400, 1, 130, "px of empty space around the grid, on every edge"));
+            page.add(group);
 
             // The app drawer is always placed on every connected monitor: the
             // curtain/slide peek is per-output, so a grid must exist on each
@@ -45,7 +42,7 @@ namespace LumenSettings {
             wf_store   = new IniStore(Paths.wayfire_ini());
             slide_rows = new IniRows(Paths.wayfire_ini(), SLIDE_SECTION);
 
-            var reveal = new BoxedList("App drawer reveal");
+            var reveal = new Adw.PreferencesGroup() { title = "App drawer reveal" };
 
             string[] style_labels = { "Curtain (doors)", "Slide-down" };
             string[] style_values = { "curtain", "slide" };
@@ -58,18 +55,18 @@ namespace LumenSettings {
                 Wayfire.PluginList.set_enabled(wf_store, SLIDE_PLUGIN,   slide);
                 Wayfire.PluginList.set_enabled(wf_store, CURTAIN_PLUGIN, !slide);
             });
-            reveal.add_row(style_row);
+            reveal.add(style_row);
 
             string[] dir_labels = { "Down from top", "Up from bottom" };
             string[] dir_values = { "top", "bottom" };
-            reveal.add_row(slide_rows.combo_row("direction", "Slide direction",
+            reveal.add(slide_rows.combo_row("direction", "Slide direction",
                 dir_labels, dir_values, "top",
                 "edge the drawer slides in from (slide-down reveal only)"));
 
-            box.append(reveal);
+            page.add(reveal);
 #endif
 
-            return box;
+            return page;
         }
 
         public override string? restart_target() { return "lumen-drawer"; }

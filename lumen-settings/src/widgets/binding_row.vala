@@ -3,7 +3,7 @@ using Gdk;
 
 namespace LumenSettings {
 
-    public class BindingRow : ActionRow {
+    public class BindingRow : Adw.ActionRow {
         public signal void value_changed(string binding);
 
         Gtk.Button button;
@@ -12,12 +12,13 @@ namespace LumenSettings {
         Gtk.EventControllerKey key_ctl;
 
         public BindingRow(string title, string initial, string subtitle = "") {
-            base(title, subtitle);
+            Object(title: title, subtitle: subtitle, use_markup: false);
             current = initial;
 
             button = new Gtk.Button.with_label(display_for(current));
             button.clicked.connect(start_grab);
-            set_suffix(button);
+            button.valign = Gtk.Align.CENTER;
+            add_suffix(button);
 
             key_ctl = new Gtk.EventControllerKey();
             key_ctl.key_pressed.connect(on_key_pressed);

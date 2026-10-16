@@ -9,8 +9,6 @@ namespace LumenSettings {
 
         public Gtk.Widget build() {
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 24, margin_bottom = 24,
-                margin_start = 24, margin_end = 24,
                 halign = Gtk.Align.CENTER,
             };
 
@@ -31,7 +29,11 @@ namespace LumenSettings {
             build.add_css_class("lumen-about-value");
             box.append(build);
 
-            return box;
+            var group = new Adw.PreferencesGroup();
+            group.add(box);
+            var page = new Adw.PreferencesPage();
+            page.add(group);
+            return page;
         }
     }
 }

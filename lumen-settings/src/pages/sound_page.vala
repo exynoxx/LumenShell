@@ -5,7 +5,7 @@ namespace LumenSettings {
     // Per-application audio row widgets, kept in an index-keyed map so the
     // 1.5s poll can diff (add/remove/update) rather than rebuild the list.
     private class AppRowWidgets : GLib.Object {
-        public ActionRow  row;
+        public Adw.ActionRow row;
         public Gtk.Button mute_btn;
         public Gtk.Scale  scale;
         public Gtk.Label  label;
@@ -34,13 +34,13 @@ namespace LumenSettings {
         Gtk.Button  out_mute_btn;
         Gtk.Scale   out_scale;
         Gtk.Label   out_label;
-        SwitchRow   allow_over_row;
+        Adw.SwitchRow allow_over_row;
         bool        out_dragging = false;
         bool        allow_over = false;
         string      sinks_sig = "";
 
         // Input widgets
-        BoxedList   input_group;
+        Adw.PreferencesGroup input_group;
         ComboRow    input_combo;
         Gtk.Button  in_mute_btn;
         Gtk.Scale   in_scale;
@@ -51,12 +51,12 @@ namespace LumenSettings {
         string      sources_sig = "";
 
         // Applications
-        BoxedList   apps_group;
-        ActionRow   apps_empty_row;
+        Adw.PreferencesGroup apps_group;
+        Adw.ActionRow apps_empty_row;
         GLib.HashTable<string, AppRowWidgets> app_rows;
 
         // Alerts
-        ActionRow   alert_row;
+        Adw.ActionRow alert_row;
         Gtk.Scale   alert_scale;
         string      alert_index = "";
         bool        alert_dragging = false;
@@ -65,26 +65,23 @@ namespace LumenSettings {
             service   = new SoundService();
             app_rows  = new GLib.HashTable<string, AppRowWidgets>(str_hash, str_equal);
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
-            box.append(build_output_group());
-            box.append(build_input_group());
-            box.append(build_apps_group());
-            box.append(build_alerts_group());
+            page.add(build_output_group());
+            page.add(build_input_group());
+            page.add(build_apps_group());
+            page.add(build_alerts_group());
 
             service.state_changed.connect(sync_ui);
             sync_ui();
 
-            return box;
+            return page;
         }
 
         // ---------------- Output ----------------
 
-        Gtk.Widget build_output_group() {
-            var group = new BoxedList("Output");
+        Adw.PreferencesGroup build_output_group() {
+            var group = new Adw.PreferencesGroup() { title = "Output" };
 
             output_combo = new ComboRow("Output Device", {}, {}, null,
                                         "device audio plays through");
@@ -92,7 +89,7 @@ namespace LumenSettings {
                 if (syncing) return;
                 service.change_default_sink(v);
             });
-            group.add_row(output_combo);
+            group.add(output_combo);
 
             out_scale = make_scale(0, 100);
             track_drag(out_scale, (v) => { out_dragging = v; });
@@ -116,26 +113,29 @@ namespace LumenSettings {
 
             out_label = pct_label();
 
-            var vrow = new ActionRow("Output Volume");
-            vrow.set_suffix(slider_box(out_mute_btn, out_scale, out_label));
-            group.add_row(vrow);
+            var vrow = new Adw.ActionRow() { title = "Output Volume" };
+            vrow.add_suffix(slider_box(out_mute_btn, out_scale, out_label));
+            group.add(vrow);
 
-            allow_over_row = new SwitchRow("Allow volume above 100%", "over-amplify the output up to 150%", false);
-            allow_over_row.toggled.connect((on) => {
+            allow_over_row = new Adw.SwitchRow() {
+                title = "Allow volume above 100%", subtitle = "over-amplify the output up to 150%",
+            };
+            allow_over_row.notify["active"].connect(() => {
+                var on = allow_over_row.active;
                 allow_over = on;
                 out_scale.set_range(0, on ? 150 : 100);
                 if (!on && (int) out_scale.get_value() > 100)
                     service.change_volume(100);
             });
-            group.add_row(allow_over_row);
+            group.add(allow_over_row);
 
             return group;
         }
 
         // ---------------- Input ----------------
 
-        Gtk.Widget build_input_group() {
-            input_group = new BoxedList("Input");
+        Adw.PreferencesGroup build_input_group() {
+            input_group = new Adw.PreferencesGroup() { title = "Input" };
 
             input_combo = new ComboRow("Input Device", {}, {}, null,
                                        "microphone or capture device");
@@ -143,7 +143,7 @@ namespace LumenSettings {
                 if (syncing) return;
                 service.change_default_source(v);
             });
-            input_group.add_row(input_combo);
+            input_group.add(input_combo);
 
             in_scale = make_scale(0, 100);
             track_drag(in_scale, (v) => { in_dragging = v; });
@@ -162,9 +162,9 @@ namespace LumenSettings {
 
             in_label = pct_label();
 
-            var vrow = new ActionRow("Input Volume");
-            vrow.set_suffix(slider_box(in_mute_btn, in_scale, in_label));
-            input_group.add_row(vrow);
+            var vrow = new Adw.ActionRow() { title = "Input Volume" };
+            vrow.add_suffix(slider_box(in_mute_btn, in_scale, in_label));
+            input_group.add(vrow);
 
             // Level meter only when parec is present. Opening the meter starts a
             // real mic capture stream, which forces Bluetooth headsets from A2DP
@@ -189,14 +189,16 @@ namespace LumenSettings {
                         service.stop_input_monitor();
                 });
 
-                var lbox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+                var lbox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) { valign = Gtk.Align.CENTER };
                 lbox.append(level_toggle);
                 lbox.append(level_bar);
 
-                var lrow = new ActionRow("Input Level",
-                    "Opening the meter may switch Bluetooth headsets to call quality");
-                lrow.set_suffix(lbox);
-                input_group.add_row(lrow);
+                var lrow = new Adw.ActionRow() {
+                    title = "Input Level",
+                    subtitle = "Opening the meter may switch Bluetooth headsets to call quality",
+                };
+                lrow.add_suffix(lbox);
+                input_group.add(lrow);
 
                 service.input_peak_changed.connect((peak) => {
                     if (level_bar != null) level_bar.value = peak;
@@ -216,11 +218,11 @@ namespace LumenSettings {
 
         // ---------------- Applications ----------------
 
-        Gtk.Widget build_apps_group() {
-            apps_group = new BoxedList("Applications");
-            apps_empty_row = new ActionRow("No applications playing audio");
+        Adw.PreferencesGroup build_apps_group() {
+            apps_group = new Adw.PreferencesGroup() { title = "Applications" };
+            apps_empty_row = new Adw.ActionRow() { title = "No applications playing audio" };
             apps_empty_row.sensitive = false;
-            apps_group.add_row(apps_empty_row);
+            apps_group.add(apps_empty_row);
             return apps_group;
         }
 
@@ -229,8 +231,8 @@ namespace LumenSettings {
         // PulseAudio exposes system sounds only as a transient sink-input, so we
         // can steer it only while it is actively playing. We target the
         // "System Sounds" stream when present and disable the row otherwise.
-        Gtk.Widget build_alerts_group() {
-            var group = new BoxedList("Alerts");
+        Adw.PreferencesGroup build_alerts_group() {
+            var group = new Adw.PreferencesGroup() { title = "Alerts" };
             alert_scale = make_scale(0, 100);
             track_drag(alert_scale, (v) => { alert_dragging = v; });
             alert_scale.value_changed.connect(() => {
@@ -238,11 +240,13 @@ namespace LumenSettings {
                 if (alert_index == "") return;
                 service.change_sink_input_volume(alert_index, (int) alert_scale.get_value());
             });
-            alert_row = new ActionRow("Alert volume", "volume of system alert sounds");
-            var abox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+            alert_row = new Adw.ActionRow() {
+                title = "Alert volume", subtitle = "volume of system alert sounds",
+            };
+            var abox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) { valign = Gtk.Align.CENTER };
             abox.append(alert_scale);
-            alert_row.set_suffix(abox);
-            group.add_row(alert_row);
+            alert_row.add_suffix(abox);
+            group.add(alert_row);
             return group;
         }
 
@@ -311,7 +315,7 @@ namespace LumenSettings {
                 if (aw == null) {
                     aw = make_app_row(s);
                     app_rows.insert(s.index, aw);
-                    apps_group.add_row(aw.row);
+                    apps_group.add(aw.row);
                 } else {
                     aw.row.title = s.app_name;
                 }
@@ -337,7 +341,7 @@ namespace LumenSettings {
 
         AppRowWidgets make_app_row(StreamInfo s) {
             var aw = new AppRowWidgets();
-            aw.row      = new ActionRow(s.app_name);
+            aw.row      = new Adw.ActionRow() { title = s.app_name, use_markup = false };
             aw.scale    = make_scale(0, 100);
             aw.mute_btn = flat_icon_button("audio-volume-high-symbolic");
             aw.label    = pct_label();
@@ -355,7 +359,7 @@ namespace LumenSettings {
                 service.toggle_sink_input_mute(index);
             });
 
-            aw.row.set_suffix(slider_box(aw.mute_btn, aw.scale, aw.label));
+            aw.row.add_suffix(slider_box(aw.mute_btn, aw.scale, aw.label));
             return aw;
         }
 
@@ -393,7 +397,7 @@ namespace LumenSettings {
         }
 
         Gtk.Box slider_box(Gtk.Button mute_btn, Gtk.Scale scale, Gtk.Label label) {
-            var b = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+            var b = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) { valign = Gtk.Align.CENTER };
             b.append(mute_btn);
             b.append(scale);
             b.append(label);

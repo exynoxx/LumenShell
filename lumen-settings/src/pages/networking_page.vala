@@ -22,41 +22,41 @@ namespace LumenSettings {
         Gtk.Box root_box;
 
         // Wi-Fi
-        SwitchRow   wifi_switch;
+        Adw.SwitchRow   wifi_switch;
         Gtk.Spinner wifi_spinner;
         Gtk.Box     wifi_list_holder;
 
         // Wi-Fi details
-        BoxedList wifi_details_group;
-        ActionRow wifi_ip_row;
-        ActionRow wifi_gw_row;
-        ActionRow wifi_dns_row;
-        ActionRow wifi_mac_row;
-        ActionRow wifi_sec_row;
-        ActionRow wifi_band_row;
-        ActionRow wifi_pw_row;
+        Adw.PreferencesGroup wifi_details_group;
+        Adw.ActionRow wifi_ip_row;
+        Adw.ActionRow wifi_gw_row;
+        Adw.ActionRow wifi_dns_row;
+        Adw.ActionRow wifi_mac_row;
+        Adw.ActionRow wifi_sec_row;
+        Adw.ActionRow wifi_band_row;
+        Adw.ActionRow wifi_pw_row;
         Gtk.ToggleButton wifi_pw_reveal;
         string    wifi_password = "";
 
         // Ethernet
-        ActionRow eth_status_row;
-        SwitchRow eth_switch;
-        BoxedList eth_details_group;
-        ActionRow eth_ip_row;
-        ActionRow eth_gw_row;
-        ActionRow eth_dns_row;
-        ActionRow eth_mac_row;
+        Adw.ActionRow eth_status_row;
+        Adw.SwitchRow eth_switch;
+        Adw.PreferencesGroup eth_details_group;
+        Adw.ActionRow eth_ip_row;
+        Adw.ActionRow eth_gw_row;
+        Adw.ActionRow eth_dns_row;
+        Adw.ActionRow eth_mac_row;
 
         // Bluetooth
-        SwitchRow   bt_switch;
+        Adw.SwitchRow   bt_switch;
         Gtk.Spinner bt_spinner;
         Gtk.Box     bt_list_holder;
-        BoxedList   bt_details_group;
-        ActionRow   bt_name_row;
-        ActionRow   bt_type_row;
-        ActionRow   bt_battery_row;
-        ActionRow   bt_addr_row;
-        ActionRow   bt_paired_row;
+        Adw.PreferencesGroup   bt_details_group;
+        Adw.ActionRow   bt_name_row;
+        Adw.ActionRow   bt_type_row;
+        Adw.ActionRow   bt_battery_row;
+        Adw.ActionRow   bt_addr_row;
+        Adw.ActionRow   bt_paired_row;
 
         // Connection tracking so details are (re)fetched only on a real change.
         string last_wifi_conn = "";
@@ -68,10 +68,9 @@ namespace LumenSettings {
         string pending_pw_ssid = "";
 
         public Gtk.Widget build() {
-            root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            // The network/device lists are rebuilt in place between fixed
+            // groups, so everything rides in one box to keep the order.
+            root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18);
 
             build_wifi();
             build_wifi_details();
@@ -92,20 +91,25 @@ namespace LumenSettings {
 
             wifi.refresh_scan(true);
             bt.refresh_scan(true);
-            return root_box;
+
+            var holder = new Adw.PreferencesGroup();
+            holder.add(root_box);
+            var page = new Adw.PreferencesPage();
+            page.add(holder);
+            return page;
         }
 
         // ---- Wi-Fi ---------------------------------------------------------
 
         void build_wifi() {
-            var group = new BoxedList("Wi-Fi");
+            var group = new Adw.PreferencesGroup() { title = "Wi-Fi" };
 
-            wifi_switch = new SwitchRow("Wi-Fi", "", wifi.enabled);
-            wifi_switch.toggled.connect((v) => {
+            wifi_switch = new Adw.SwitchRow() { title = "Wi-Fi", active = wifi.enabled };
+            wifi_switch.notify["active"].connect(() => {
                 if (building) return;
-                wifi.set_radio(v);
+                wifi.set_radio(wifi_switch.active);
             });
-            group.add_row(wifi_switch);
+            group.add(wifi_switch);
 
             var hb = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
             wifi_spinner = new Gtk.Spinner();
@@ -126,21 +130,21 @@ namespace LumenSettings {
         void rebuild_wifi() {
             building = true;
 
-            wifi_switch.sw.active = wifi.enabled;
+            wifi_switch.active = wifi.enabled;
             wifi_spinner.visible  = wifi.scanning;
             if (wifi.scanning) wifi_spinner.start(); else wifi_spinner.stop();
 
             clear_box(wifi_list_holder);
             if (wifi.enabled) {
-                var bl = new BoxedList(null);
+                var bl = new Adw.PreferencesGroup();
                 foreach (var net in sorted_nets())
-                    bl.add_row(make_wifi_row(net));
+                    bl.add(make_wifi_row(net));
 
-                var hidden = new ActionRow("Connect to Hidden Network…");
+                var hidden = new Adw.ActionRow() { title = "Connect to Hidden Network…", use_markup = false };
                 hidden.add_prefix(new Gtk.Image.from_icon_name("list-add-symbolic"));
                 hidden.activatable = true;
                 hidden.activated.connect(() => prompt_hidden());
-                bl.add_row(hidden);
+                bl.add(hidden);
 
                 wifi_list_holder.append(bl);
                 wifi_list_holder.visible = true;
@@ -165,14 +169,14 @@ namespace LumenSettings {
             return all;
         }
 
-        ActionRow make_wifi_row(WifiNet net) {
+        Adw.ActionRow make_wifi_row(WifiNet net) {
             string sub;
             if      (net.ssid == wifi.connected_ssid) sub = "Connected";
             else if (net.is_saved)                    sub = "Saved";
             else if (net.is_secured())                sub = net.security;
             else                                      sub = "Open";
 
-            var row = new ActionRow(net.ssid, sub);
+            var row = new Adw.ActionRow() { title = net.ssid, subtitle = sub, use_markup = false };
             row.add_prefix(new Gtk.Image.from_icon_name(signal_icon(net)));
             if (net.is_secured())
                 row.add_prefix(new Gtk.Image.from_icon_name("network-wireless-encrypted-symbolic"));
@@ -181,9 +185,9 @@ namespace LumenSettings {
             if (net.ssid == wifi.connecting_ssid) {
                 var sp = new Gtk.Spinner();
                 sp.start();
-                row.set_suffix(sp);
+                row.add_suffix(sp);
             } else if (net.ssid == wifi.connected_ssid) {
-                row.set_suffix(new Gtk.Image.from_icon_name("emblem-ok-symbolic"));
+                row.add_suffix(new Gtk.Image.from_icon_name("emblem-ok-symbolic"));
             }
 
             row.activated.connect(() => on_wifi_row_activated(net));
@@ -236,8 +240,8 @@ namespace LumenSettings {
             var body = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
             var pw = new Adw.PasswordEntryRow();
             pw.title = "Password";
-            var lb = new BoxedList(null);
-            lb.add_row(pw);
+            var lb = new Adw.PreferencesGroup();
+            lb.add(pw);
             body.append(lb);
             if (error) {
                 var err = new Gtk.Label("Incorrect password. Please try again.") {
@@ -268,20 +272,20 @@ namespace LumenSettings {
             var dlg = new Adw.AlertDialog("Connect to Hidden Network", null);
 
             var body = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
-            var lb = new BoxedList(null);
+            var lb = new Adw.PreferencesGroup();
 
             var ssid = new Adw.EntryRow();
             ssid.title = "Network name (SSID)";
-            lb.add_row(ssid);
+            lb.add(ssid);
 
             var sec = new ComboRow("Security",
                 new string[] { "None", "WPA/WPA2 Personal" },
                 new string[] { "open", "wpa" }, "wpa");
-            lb.add_row(sec);
+            lb.add(sec);
 
             var pw = new Adw.PasswordEntryRow();
             pw.title = "Password";
-            lb.add_row(pw);
+            lb.add(pw);
             body.append(lb);
             dlg.set_extra_child(body);
 
@@ -308,19 +312,19 @@ namespace LumenSettings {
         // ---- Wi-Fi details -------------------------------------------------
 
         void build_wifi_details() {
-            wifi_details_group = new BoxedList("Wi-Fi details");
-            wifi_ip_row   = new ActionRow("IPv4 address");
-            wifi_gw_row   = new ActionRow("Gateway");
-            wifi_dns_row  = new ActionRow("DNS");
-            wifi_mac_row  = new ActionRow("Hardware address");
-            wifi_sec_row  = new ActionRow("Security");
-            wifi_band_row = new ActionRow("Band");
+            wifi_details_group = new Adw.PreferencesGroup() { title = "Wi-Fi details" };
+            wifi_ip_row   = new Adw.ActionRow() { title = "IPv4 address", use_markup = false };
+            wifi_gw_row   = new Adw.ActionRow() { title = "Gateway", use_markup = false };
+            wifi_dns_row  = new Adw.ActionRow() { title = "DNS", use_markup = false };
+            wifi_mac_row  = new Adw.ActionRow() { title = "Hardware address", use_markup = false };
+            wifi_sec_row  = new Adw.ActionRow() { title = "Security", use_markup = false };
+            wifi_band_row = new Adw.ActionRow() { title = "Band", use_markup = false };
 
             // Password row: the passphrase is masked by default and revealed
             // with the eye toggle; a copy button puts it on the clipboard. The
             // whole row is hidden for open networks (or when NM won't yield the
             // secret), so it only appears when there's an actual password.
-            wifi_pw_row = new ActionRow("Password", "");
+            wifi_pw_row = new Adw.ActionRow() { title = "Password", use_markup = false };
             wifi_pw_reveal = new Gtk.ToggleButton() {
                 icon_name = "view-reveal-symbolic",
                 tooltip_text = "Show password",
@@ -340,15 +344,15 @@ namespace LumenSettings {
             var wifi_pw_suffix = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 4);
             wifi_pw_suffix.append(wifi_pw_reveal);
             wifi_pw_suffix.append(wifi_pw_copy);
-            wifi_pw_row.set_suffix(wifi_pw_suffix);
+            wifi_pw_row.add_suffix(wifi_pw_suffix);
 
-            wifi_details_group.add_row(wifi_ip_row);
-            wifi_details_group.add_row(wifi_gw_row);
-            wifi_details_group.add_row(wifi_dns_row);
-            wifi_details_group.add_row(wifi_mac_row);
-            wifi_details_group.add_row(wifi_sec_row);
-            wifi_details_group.add_row(wifi_band_row);
-            wifi_details_group.add_row(wifi_pw_row);
+            wifi_details_group.add(wifi_ip_row);
+            wifi_details_group.add(wifi_gw_row);
+            wifi_details_group.add(wifi_dns_row);
+            wifi_details_group.add(wifi_mac_row);
+            wifi_details_group.add(wifi_sec_row);
+            wifi_details_group.add(wifi_band_row);
+            wifi_details_group.add(wifi_pw_row);
             wifi_details_group.visible = false;
             root_box.append(wifi_details_group);
         }
@@ -366,29 +370,29 @@ namespace LumenSettings {
         // ---- Ethernet ------------------------------------------------------
 
         void build_ethernet() {
-            var group = new BoxedList("Ethernet");
+            var group = new Adw.PreferencesGroup() { title = "Ethernet" };
 
-            eth_status_row = new ActionRow("Wired connection", "");
+            eth_status_row = new Adw.ActionRow() { title = "Wired connection", use_markup = false };
             eth_status_row.add_prefix(new Gtk.Image.from_icon_name("network-wired-symbolic"));
-            group.add_row(eth_status_row);
+            group.add(eth_status_row);
 
-            eth_switch = new SwitchRow("Enable wired connection", "", false);
-            eth_switch.toggled.connect((v) => {
+            eth_switch = new Adw.SwitchRow() { title = "Enable wired connection" };
+            eth_switch.notify["active"].connect(() => {
                 if (building) return;
-                wifi.set_ethernet(v);
+                wifi.set_ethernet(eth_switch.active);
             });
-            group.add_row(eth_switch);
+            group.add(eth_switch);
             root_box.append(group);
 
-            eth_details_group = new BoxedList("Ethernet details");
-            eth_ip_row  = new ActionRow("IPv4 address");
-            eth_gw_row  = new ActionRow("Gateway");
-            eth_dns_row = new ActionRow("DNS");
-            eth_mac_row = new ActionRow("Hardware address");
-            eth_details_group.add_row(eth_ip_row);
-            eth_details_group.add_row(eth_gw_row);
-            eth_details_group.add_row(eth_dns_row);
-            eth_details_group.add_row(eth_mac_row);
+            eth_details_group = new Adw.PreferencesGroup() { title = "Ethernet details" };
+            eth_ip_row  = new Adw.ActionRow() { title = "IPv4 address", use_markup = false };
+            eth_gw_row  = new Adw.ActionRow() { title = "Gateway", use_markup = false };
+            eth_dns_row = new Adw.ActionRow() { title = "DNS", use_markup = false };
+            eth_mac_row = new Adw.ActionRow() { title = "Hardware address", use_markup = false };
+            eth_details_group.add(eth_ip_row);
+            eth_details_group.add(eth_gw_row);
+            eth_details_group.add(eth_dns_row);
+            eth_details_group.add(eth_mac_row);
             eth_details_group.visible = false;
             root_box.append(eth_details_group);
         }
@@ -400,7 +404,7 @@ namespace LumenSettings {
             else if (wifi.ethernet_connected)    status = "Connected";
             else                                 status = "Cable unplugged";
             eth_status_row.subtitle = status;
-            eth_switch.sw.active    = wifi.ethernet_connected;
+            eth_switch.active    = wifi.ethernet_connected;
             eth_switch.sensitive    = wifi.ethernet_device != "";
             building = false;
         }
@@ -441,14 +445,14 @@ namespace LumenSettings {
         // ---- Bluetooth -----------------------------------------------------
 
         void build_bluetooth() {
-            var group = new BoxedList("Bluetooth");
+            var group = new Adw.PreferencesGroup() { title = "Bluetooth" };
 
-            bt_switch = new SwitchRow("Bluetooth", "", bt.powered);
-            bt_switch.toggled.connect((v) => {
+            bt_switch = new Adw.SwitchRow() { title = "Bluetooth", active = bt.powered };
+            bt_switch.notify["active"].connect(() => {
                 if (building) return;
-                bt.set_power(v);
+                bt.set_power(bt_switch.active);
             });
-            group.add_row(bt_switch);
+            group.add(bt_switch);
 
             var hb = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
             bt_spinner = new Gtk.Spinner();
@@ -465,17 +469,17 @@ namespace LumenSettings {
             bt_list_holder = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
             root_box.append(bt_list_holder);
 
-            bt_details_group = new BoxedList("Device details");
-            bt_name_row    = new ActionRow("Name");
-            bt_type_row    = new ActionRow("Type");
-            bt_battery_row = new ActionRow("Battery");
-            bt_addr_row    = new ActionRow("Address");
-            bt_paired_row  = new ActionRow("Paired");
-            bt_details_group.add_row(bt_name_row);
-            bt_details_group.add_row(bt_type_row);
-            bt_details_group.add_row(bt_battery_row);
-            bt_details_group.add_row(bt_addr_row);
-            bt_details_group.add_row(bt_paired_row);
+            bt_details_group = new Adw.PreferencesGroup() { title = "Device details" };
+            bt_name_row    = new Adw.ActionRow() { title = "Name", use_markup = false };
+            bt_type_row    = new Adw.ActionRow() { title = "Type", use_markup = false };
+            bt_battery_row = new Adw.ActionRow() { title = "Battery", use_markup = false };
+            bt_addr_row    = new Adw.ActionRow() { title = "Address", use_markup = false };
+            bt_paired_row  = new Adw.ActionRow() { title = "Paired", use_markup = false };
+            bt_details_group.add(bt_name_row);
+            bt_details_group.add(bt_type_row);
+            bt_details_group.add(bt_battery_row);
+            bt_details_group.add(bt_addr_row);
+            bt_details_group.add(bt_paired_row);
             bt_details_group.visible = false;
             root_box.append(bt_details_group);
         }
@@ -483,15 +487,15 @@ namespace LumenSettings {
         void rebuild_bt() {
             building = true;
 
-            bt_switch.sw.active = bt.powered;
+            bt_switch.active = bt.powered;
             bt_spinner.visible  = bt.scanning;
             if (bt.scanning) bt_spinner.start(); else bt_spinner.stop();
 
             clear_box(bt_list_holder);
             if (bt.powered) {
-                var bl = new BoxedList(null);
+                var bl = new Adw.PreferencesGroup();
                 foreach (var d in sorted_devices())
-                    bl.add_row(make_bt_row(d));
+                    bl.add(make_bt_row(d));
                 bt_list_holder.append(bl);
                 bt_list_holder.visible = true;
             } else {
@@ -518,17 +522,17 @@ namespace LumenSettings {
             return all;
         }
 
-        ActionRow make_bt_row(BtDevice d) {
+        Adw.ActionRow make_bt_row(BtDevice d) {
             string sub;
             if      (d.connected) sub = "Connected";
             else if (d.paired)    sub = "Paired";
             else                  sub = "Available";
 
-            var row = new ActionRow(d.name, sub);
+            var row = new Adw.ActionRow() { title = d.name, subtitle = sub, use_markup = false };
             row.add_prefix(new Gtk.Image.from_icon_name(bt_type_icon(d.dev_icon)));
             row.activatable = true;
             if (d.connected)
-                row.set_suffix(new Gtk.Image.from_icon_name("emblem-ok-symbolic"));
+                row.add_suffix(new Gtk.Image.from_icon_name("emblem-ok-symbolic"));
             row.activated.connect(() => on_bt_row_activated(d));
             return row;
         }

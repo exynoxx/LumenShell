@@ -13,38 +13,37 @@ namespace LumenSettings {
         public Gtk.Widget build() {
             rows = new JsonRows(new JsonStore(Paths.notifications_json()));
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
             // Keys match the lumen-notifications theme schema (see Theme.load
             // in lumen-notifications) so edits here take effect directly.
-            var placement = new BoxedList("Placement");
-            placement.add_row(rows.int_row("banner.margin.top",   "Margin top",   0, 200, 1, 16, "px from the top edge of the screen"));
-            placement.add_row(rows.int_row("banner.margin.right", "Margin right", 0, 200, 1, 16, "px from the right edge of the screen"));
-            placement.add_row(rows.int_row("banner.gap",          "Gap",          0, 40,  1, 10, "px of vertical space between banners"));
-            box.append(placement);
+            var placement = new Adw.PreferencesGroup() { title = "Placement" };
+            placement.add(rows.int_row("banner.margin.top",   "Margin top",   0, 200, 1, 16, "px from the top edge of the screen"));
+            placement.add(rows.int_row("banner.margin.right", "Margin right", 0, 200, 1, 16, "px from the right edge of the screen"));
+            placement.add(rows.int_row("banner.gap",          "Gap",          0, 40,  1, 10, "px of vertical space between banners"));
+            page.add(placement);
 
-            var behavior = new BoxedList("Behavior");
-            behavior.add_row(rows.int_row("clear-all.threshold",
+            var behavior = new Adw.PreferencesGroup() { title = "Behavior" };
+            behavior.add(rows.int_row("clear-all.threshold",
                                           "Clear-all threshold", 1, 50, 1, 3,
                                           "show the Clear All button once the stack reaches this size"));
-            box.append(behavior);
+            page.add(behavior);
 
-            var test = new BoxedList("Test");
-            var test_row = new ActionRow("Send a test notification",
-                                         "posts a sample banner through the notification daemon");
+            var test = new Adw.PreferencesGroup() { title = "Test" };
+            var test_row = new Adw.ActionRow() {
+                title = "Send a test notification",
+                subtitle = "posts a sample banner through the notification daemon",
+            };
             var test_btn = new Gtk.Button.with_label("Send") {
                 valign = Gtk.Align.CENTER,
             };
             test_btn.add_css_class("suggested-action");
             test_btn.clicked.connect(send_test_notification);
-            test_row.set_suffix(test_btn);
-            test.add_row(test_row);
-            box.append(test);
+            test_row.add_suffix(test_btn);
+            test.add(test_row);
+            page.add(test);
 
-            return box;
+            return page;
         }
 
         public override string? restart_target() { return "lumen-notifications"; }

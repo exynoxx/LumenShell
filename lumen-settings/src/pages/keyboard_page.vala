@@ -15,25 +15,22 @@ namespace LumenSettings {
             input = new InputSection();
             xkb = new XkbLayouts();
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
             // --- Layout ---------------------------------------------------
-            var layout_grp = new BoxedList("Layout");
+            var layout_grp = new Adw.PreferencesGroup() { title = "Layout" };
 
             var cur_layout  = input.get_str("xkb_layout")  ?? "us";
             var cur_variant = input.get_str("xkb_variant") ?? "";
 
             var layout_row = new ComboRow("Layout", xkb.layout_names, xkb.layout_codes,
                 cur_layout, "keyboard layout");
-            layout_grp.add_row(layout_row);
+            layout_grp.add(layout_row);
 
             var vl = xkb.variants_for(cur_layout);
             variant_row = new ComboRow("Variant", vl.names, vl.codes,
                 cur_variant, "layout variant");
-            layout_grp.add_row(variant_row);
+            layout_grp.add(variant_row);
 
             layout_row.value_changed.connect((code) => {
                 input.put("xkb_layout", code);
@@ -49,30 +46,33 @@ namespace LumenSettings {
             });
 
             var opt_initial = input.get_str("xkb_options") ?? "";
-            var opt_row = new EntryRow("Options", opt_initial,
-                "advanced xkb options, e.g. ctrl:nocaps");
-            opt_row.value_changed.connect((v) => input.put("xkb_options", v));
-            layout_grp.add_row(opt_row);
+            var opt_row = new Adw.EntryRow() {
+                title = "Options",
+                text = opt_initial,
+                tooltip_text = "advanced xkb options, e.g. ctrl:nocaps",
+            };
+            opt_row.changed.connect(() => input.put("xkb_options", opt_row.text));
+            layout_grp.add(opt_row);
 
-            box.append(layout_grp);
+            page.add(layout_grp);
 
             // --- Key repeat -----------------------------------------------
-            var repeat = new BoxedList("Key repeat");
-            repeat.add_row(input.int_row("kb_repeat_delay", "Repeat delay",
+            var repeat = new Adw.PreferencesGroup() { title = "Key repeat" };
+            repeat.add(input.int_row("kb_repeat_delay", "Repeat delay",
                 50, 2000, 10, 400, "ms a key is held before it repeats"));
-            repeat.add_row(input.int_row("kb_repeat_rate", "Repeat rate",
+            repeat.add(input.int_row("kb_repeat_rate", "Repeat rate",
                 1, 100, 1, 40, "key repeats per second"));
-            box.append(repeat);
+            page.add(repeat);
 
             // --- Lock keys ------------------------------------------------
-            var locks = new BoxedList("Lock keys");
-            locks.add_row(input.bool_row("kb_numlock_default_state",
+            var locks = new Adw.PreferencesGroup() { title = "Lock keys" };
+            locks.add(input.bool_row("kb_numlock_default_state",
                 "Num Lock on at startup", false));
-            locks.add_row(input.bool_row("kb_capslock_default_state",
+            locks.add(input.bool_row("kb_capslock_default_state",
                 "Caps Lock on at startup", false));
-            box.append(locks);
+            page.add(locks);
 
-            return box;
+            return page;
         }
     }
 }

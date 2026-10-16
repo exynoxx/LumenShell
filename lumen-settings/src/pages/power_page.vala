@@ -15,37 +15,40 @@ namespace LumenSettings {
             store = new IniStore(Paths.power_ini());
             wf    = new IniStore(Paths.wayfire_ini());
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
-            var session = new BoxedList("Suspend & lock");
+            var session = new Adw.PreferencesGroup() { title = "Suspend &amp; lock" };
 
             var lock_init = (store.get_value("power", "lock-on-suspend") ?? "true") == "true";
-            var lock_row = new SwitchRow("Lock when suspending",
-                "Lock the screen before the system sleeps", lock_init);
-            lock_row.toggled.connect((v) => {
-                store.set_value("power", "lock-on-suspend", v ? "true" : "false");
+            var lock_row = new Adw.SwitchRow() {
+                title = "Lock when suspending",
+                subtitle = "Lock the screen before the system sleeps",
+                active = lock_init,
+            };
+            lock_row.notify["active"].connect(() => {
+                store.set_value("power", "lock-on-suspend", lock_row.active ? "true" : "false");
                 store.save();
             });
-            session.add_row(lock_row);
+            session.add(lock_row);
 
-            box.append(session);
+            page.add(session);
 
-            var idle = new BoxedList("Idle");
+            var idle = new Adw.PreferencesGroup() { title = "Idle" };
             var dpms_init = (double) int.parse(wf.get_value("idle", "dpms_timeout") ?? "300");
-            var dpms_row = new SpinRow("Blank screen after", 0, 7200, 30, dpms_init, 0,
-                "seconds of inactivity before the screen turns off (0 = never). "
-                + "Applies on next login.");
-            dpms_row.value_changed.connect((v) => {
-                wf.set_value("idle", "dpms_timeout", ((int) v).to_string());
+            var dpms_row = new Adw.SpinRow.with_range(0, 7200, 30) {
+                title = "Blank screen after",
+                subtitle = "seconds of inactivity before the screen turns off (0 = never). "
+                    + "Applies on next login.",
+                value = dpms_init,
+            };
+            dpms_row.notify["value"].connect(() => {
+                wf.set_value("idle", "dpms_timeout", ((int) dpms_row.value).to_string());
                 wf.save();
             });
-            idle.add_row(dpms_row);
-            box.append(idle);
+            idle.add(dpms_row);
+            page.add(idle);
 
-            return box;
+            return page;
         }
 
         // power.ini is read fresh by lumen-panel on each sleep event; Wayfire

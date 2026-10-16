@@ -21,10 +21,12 @@ namespace LumenSettings {
         protected abstract bool    read_bool(string key, bool dflt);
         protected abstract void    write_bool(string key, bool value);
 
-        public SwitchRow bool_row(string key, string label, bool dflt,
-                                  string subtitle = "") {
-            var row = new SwitchRow(label, subtitle, read_bool(key, dflt));
-            row.toggled.connect((on) => write_bool(key, on));
+        public Adw.SwitchRow bool_row(string key, string label, bool dflt,
+                                      string subtitle = "") {
+            var row = new Adw.SwitchRow() {
+                title = label, subtitle = subtitle, active = read_bool(key, dflt),
+            };
+            row.notify["active"].connect(() => write_bool(key, row.active));
             return row;
         }
 
@@ -32,12 +34,12 @@ namespace LumenSettings {
         // representation differs from what the user types (idle-timeout-ms is
         // stored in ms and shown in seconds). `dflt` is in stored units;
         // min/max/step are in displayed units.
-        public SpinRow int_row(string key, string label, double min, double max,
-                               double step, int64 dflt, string subtitle = "",
-                               int64 scale = 1) {
-            double initial = (double) read_int(key, dflt) / (double) scale;
-            var row = new SpinRow(label, min, max, step, initial, 0, subtitle);
-            row.value_changed.connect((v) => write_int(key, (int64) (v * scale)));
+        public Adw.SpinRow int_row(string key, string label, double min, double max,
+                                   double step, int64 dflt, string subtitle = "",
+                                   int64 scale = 1) {
+            var row = spin_row(label, min, max, step,
+                               (double) read_int(key, dflt) / (double) scale, 0, subtitle);
+            row.notify["value"].connect(() => write_int(key, (int64) (row.value * scale)));
             return row;
         }
 
@@ -55,6 +57,15 @@ namespace LumenSettings {
             var row = new ColorRow(label, read_string(key) ?? dflt, subtitle);
             row.value_changed.connect((hex) => write_string(key, hex));
             return row;
+        }
+
+        public static Adw.SpinRow spin_row(string label, double min, double max,
+                                           double step, double initial, uint digits,
+                                           string subtitle = "") {
+            return new Adw.SpinRow(new Gtk.Adjustment(initial, min, max, step, step * 10, 0),
+                                   step, digits) {
+                title = label, subtitle = subtitle, numeric = true,
+            };
         }
     }
 
@@ -114,12 +125,12 @@ namespace LumenSettings {
             store.save();
         }
 
-        public SpinRow double_row(string key, string label, double min, double max,
-                                  double step, double dflt, int precision,
-                                  string subtitle = "") {
-            double initial = parse_double(get_str(key), dflt);
-            var row = new SpinRow(label, min, max, step, initial, precision, subtitle);
-            row.value_changed.connect((v) => put(key, fmt_double(v, precision)));
+        public Adw.SpinRow double_row(string key, string label, double min, double max,
+                                      double step, double dflt, int precision,
+                                      string subtitle = "") {
+            var row = spin_row(label, min, max, step, parse_double(get_str(key), dflt),
+                               (uint) precision, subtitle);
+            row.notify["value"].connect(() => put(key, fmt_double(row.value, precision)));
             return row;
         }
 

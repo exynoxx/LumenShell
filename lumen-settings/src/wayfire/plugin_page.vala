@@ -19,43 +19,32 @@ namespace LumenSettings.Wayfire {
         }
 
         public Gtk.Widget build() {
-            // This body is shown inside the Wayfire detail view, which wraps it
-            // in a ScrolledWindow beneath a pinned header, so return a plain box
-            // — a second ScrolledWindow here would produce nested scrollbars.
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
+            var page = new Adw.PreferencesPage() {
+                description = Markup.escape_text(plugin.long_label),
             };
 
-            if (plugin.long_label != "") {
-                var lbl = new Gtk.Label(plugin.long_label) {
-                    xalign = 0, wrap = true,
-                };
-                box.append(lbl);
-            }
-
-            var grouped = new Gee.HashMap<string, BoxedList>();
+            var grouped = new Gee.HashMap<string, Adw.PreferencesGroup>();
             var order = new Gee.ArrayList<string>();
 
             foreach (var opt in plugin.options) {
                 var key = opt.group_label;
-                BoxedList list;
+                Adw.PreferencesGroup list;
                 if (grouped.has_key(key)) {
                     list = grouped.get(key);
                 } else {
-                    list = new BoxedList(key != "" ? key : null);
+                    list = new Adw.PreferencesGroup() { title = Markup.escape_text(key) };
                     grouped.set(key, list);
                     order.add(key);
                 }
                 var row = build_row(opt);
-                if (row != null) list.add_row(row);
+                if (row != null) list.add(row);
             }
 
             foreach (var k in order) {
-                box.append(grouped.get(k));
+                page.add(grouped.get(k));
             }
 
-            return box;
+            return page;
         }
 
         Gtk.Widget? build_row(OptionDef opt) {
@@ -76,42 +65,45 @@ namespace LumenSettings.Wayfire {
             }
         }
 
-        SwitchRow build_bool(OptionDef opt) {
+        Adw.SwitchRow build_bool(OptionDef opt) {
             var raw = store.get_value(plugin.name, opt.name) ?? opt.default_value;
-            bool initial = parse_bool(raw);
-            var row = new SwitchRow(opt.short_label, opt.long_label, initial);
-            row.toggled.connect((v) => {
-                store.set_value(plugin.name, opt.name, v ? "true" : "false");
+            var row = new Adw.SwitchRow() {
+                title = opt.short_label, subtitle = opt.long_label,
+                active = parse_bool(raw), use_markup = false,
+            };
+            row.notify["active"].connect(() => {
+                store.set_value(plugin.name, opt.name, row.active ? "true" : "false");
                 store.save();
             });
             return row;
         }
 
-        SpinRow build_int(OptionDef opt) {
+        Adw.SpinRow build_int(OptionDef opt) {
             double min = parse_double(opt.min_value, -1000);
             double max = parse_double(opt.max_value, 1000);
             double initial = parse_double(store.get_value(plugin.name, opt.name)
                                           ?? opt.default_value, 0);
-            var row = new SpinRow(opt.short_label, min, max, 1, initial, 0,
-                                  opt.long_label);
-            row.value_changed.connect((v) => {
-                store.set_value(plugin.name, opt.name, "%d".printf((int) v));
+            var row = SettingsRows.spin_row(opt.short_label, min, max, 1, initial, 0,
+                                            opt.long_label);
+            row.use_markup = false;
+            row.notify["value"].connect(() => {
+                store.set_value(plugin.name, opt.name, "%d".printf((int) row.value));
                 store.save();
             });
             return row;
         }
 
-        SpinRow build_double(OptionDef opt) {
+        Adw.SpinRow build_double(OptionDef opt) {
             double min = parse_double(opt.min_value, -1000);
             double max = parse_double(opt.max_value, 1000);
             double prec = parse_double(opt.precision, 0.01);
             double initial = parse_double(store.get_value(plugin.name, opt.name)
                                           ?? opt.default_value, 0);
-            uint digits = digits_for(prec);
-            var row = new SpinRow(opt.short_label, min, max, prec, initial,
-                                  (double) digits, opt.long_label);
-            row.value_changed.connect((v) => {
-                store.set_value(plugin.name, opt.name, "%g".printf(v));
+            var row = SettingsRows.spin_row(opt.short_label, min, max, prec, initial,
+                                            digits_for(prec), opt.long_label);
+            row.use_markup = false;
+            row.notify["value"].connect(() => {
+                store.set_value(plugin.name, opt.name, "%g".printf(row.value));
                 store.save();
             });
             return row;
@@ -134,12 +126,7 @@ namespace LumenSettings.Wayfire {
                 });
                 return combo;
             }
-            var entry = new EntryRow(opt.short_label, initial, opt.long_label);
-            entry.value_changed.connect((v) => {
-                store.set_value(plugin.name, opt.name, v);
-                store.save();
-            });
-            return entry;
+            return build_text(opt);
         }
 
         ColorRow build_color(OptionDef opt) {
@@ -162,22 +149,25 @@ namespace LumenSettings.Wayfire {
             return row;
         }
 
-        EntryRow build_text(OptionDef opt) {
+        Adw.EntryRow build_text(OptionDef opt) {
             var initial = store.get_value(plugin.name, opt.name) ?? opt.default_value;
-            var row = new EntryRow(opt.short_label, initial, opt.long_label);
-            row.value_changed.connect((v) => {
-                store.set_value(plugin.name, opt.name, v);
+            var row = new Adw.EntryRow() {
+                title = opt.short_label, text = initial,
+                tooltip_text = opt.long_label, use_markup = false,
+            };
+            row.changed.connect(() => {
+                store.set_value(plugin.name, opt.name, row.text);
                 store.save();
             });
             return row;
         }
 
         Gtk.Widget build_dynamic_list(OptionDef opt) {
-            var list = new BoxedList(opt.short_label);
+            var list = new Adw.PreferencesGroup() { title = Markup.escape_text(opt.short_label) };
 
             var tails = collect_dynamic_tails(opt);
             foreach (var tail in tails) {
-                list.add_row(make_dynamic_row(opt, tail));
+                list.add(make_dynamic_row(opt, tail));
             }
 
             var add_button = new Gtk.Button.from_icon_name("list-add-symbolic") {
@@ -191,7 +181,7 @@ namespace LumenSettings.Wayfire {
                     store.set_value(plugin.name, e.prefix + next, "");
                 }
                 store.save();
-                list.add_row(make_dynamic_row(opt, next));
+                list.add(make_dynamic_row(opt, next));
             });
 
             var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);
@@ -201,15 +191,15 @@ namespace LumenSettings.Wayfire {
         }
 
         Gtk.Widget make_dynamic_row(OptionDef opt, string tail) {
-            var ar = new ActionRow(tail, "");
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);
+            var ar = new Adw.ActionRow() { title = tail, use_markup = false };
+            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) { valign = Gtk.Align.CENTER };
             foreach (var e in opt.entries) {
                 var key = e.prefix + tail;
                 var current = store.get_value(plugin.name, key) ?? "";
                 var sub = build_sub_entry(e, current, key);
                 box.append(sub);
             }
-            ar.set_suffix(box);
+            ar.add_suffix(box);
             return ar;
         }
 
@@ -226,16 +216,20 @@ namespace LumenSettings.Wayfire {
                     });
                     return br;
                 case OptionType.BOOL:
-                    var sw = new SwitchRow(e.short_label, "", parse_bool(current));
-                    sw.toggled.connect((v) => {
-                        store.set_value(plugin.name, ini_key, v ? "true" : "false");
+                    var sw = new Adw.SwitchRow() {
+                        title = e.short_label, active = parse_bool(current), use_markup = false,
+                    };
+                    sw.notify["active"].connect(() => {
+                        store.set_value(plugin.name, ini_key, sw.active ? "true" : "false");
                         store.save();
                     });
                     return sw;
                 default:
-                    var er = new EntryRow(e.short_label, current, "");
-                    er.value_changed.connect((v) => {
-                        store.set_value(plugin.name, ini_key, v);
+                    var er = new Adw.EntryRow() {
+                        title = e.short_label, text = current, use_markup = false,
+                    };
+                    er.changed.connect(() => {
+                        store.set_value(plugin.name, ini_key, er.text);
                         store.save();
                     });
                     return er;

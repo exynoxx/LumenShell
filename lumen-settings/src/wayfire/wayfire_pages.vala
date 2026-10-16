@@ -73,8 +73,8 @@ namespace LumenSettings.Wayfire {
 
         Gtk.SearchBar search_bar;
         Gtk.SearchEntry search_entry;
-        BoxedList plugin_list;
-        BoxedList? other_list;
+        Adw.PreferencesGroup plugin_list;
+        Adw.PreferencesGroup? other_list;
         Gee.ArrayList<Gtk.ListBoxRow> plugin_rows;
         Gee.ArrayList<Gtk.ListBoxRow> other_rows;
         Gee.HashMap<Gtk.ListBoxRow, string> search_text;
@@ -176,16 +176,13 @@ namespace LumenSettings.Wayfire {
             search_bar.connect_entry(search_entry);
             outer.append(search_bar);
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage() { vexpand = true };
 
-            plugin_list = new BoxedList("Plugins");
+            plugin_list = new Adw.PreferencesGroup() { title = "Plugins" };
             foreach (var p in plugins) {
-                plugin_list.add_row(make_plugin_row(p));
+                plugin_list.add(make_plugin_row(p));
             }
-            box.append(plugin_list);
+            page.add(plugin_list);
 
             // Sections present in wayfire.ini that have no metadata (e.g.
             // third-party plugins, per-output sections). Editable via the raw
@@ -195,25 +192,21 @@ namespace LumenSettings.Wayfire {
                 if (!by_name.has_key(section)) others.add(section);
             }
             if (others.size > 0) {
-                other_list = new BoxedList("Other sections");
+                other_list = new Adw.PreferencesGroup() { title = "Other sections" };
                 foreach (var name in others) {
-                    other_list.add_row(make_section_row(name));
+                    other_list.add(make_section_row(name));
                 }
-                box.append(other_list);
+                page.add(other_list);
             }
 
-            var scroller = new Gtk.ScrolledWindow() {
-                hscrollbar_policy = Gtk.PolicyType.NEVER,
-                vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-                hexpand = true, vexpand = true,
-                child = box,
-            };
-            outer.append(scroller);
+            outer.append(page);
             return outer;
         }
 
         Gtk.ListBoxRow make_plugin_row(PluginDef p) {
-            var ar = new ActionRow(p.short_label, p.name);
+            var ar = new Adw.ActionRow() {
+                title = p.short_label, subtitle = p.name, use_markup = false,
+            };
             ar.activatable = true;
             ar.activated.connect(() => on_row_activated(ar));
 
@@ -234,10 +227,8 @@ namespace LumenSettings.Wayfire {
             };
             chevron.add_css_class("dim-label");
 
-            var suffix = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10);
-            suffix.append(sw);
-            suffix.append(chevron);
-            ar.set_suffix(suffix);
+            ar.add_suffix(sw);
+            ar.add_suffix(chevron);
 
             row_map.set(ar, p.name);
             search_text.set(ar, (p.short_label + " " + p.name).down());
@@ -246,7 +237,9 @@ namespace LumenSettings.Wayfire {
         }
 
         Gtk.ListBoxRow make_section_row(string name) {
-            var ar = new ActionRow(name, "no metadata — raw editor");
+            var ar = new Adw.ActionRow() {
+                title = name, subtitle = "no metadata — raw editor", use_markup = false,
+            };
             ar.activatable = true;
             ar.activated.connect(() => on_row_activated(ar));
 
@@ -254,7 +247,7 @@ namespace LumenSettings.Wayfire {
                 valign = Gtk.Align.CENTER,
             };
             chevron.add_css_class("dim-label");
-            ar.set_suffix(chevron);
+            ar.add_suffix(chevron);
 
             row_map.set(ar, name);
             search_text.set(ar, name.down());
@@ -268,7 +261,7 @@ namespace LumenSettings.Wayfire {
             if (other_list != null) filter_group(other_list, other_rows, q);
         }
 
-        void filter_group(BoxedList group, Gee.ArrayList<Gtk.ListBoxRow> rows, string q) {
+        void filter_group(Adw.PreferencesGroup group, Gee.ArrayList<Gtk.ListBoxRow> rows, string q) {
             int visible = 0;
             foreach (var row in rows) {
                 bool match = q == "" || (search_text.get(row) ?? "").contains(q);
@@ -319,14 +312,8 @@ namespace LumenSettings.Wayfire {
             header.append(lbl);
 
             box.append(header);
-
-            var scroller = new Gtk.ScrolledWindow() {
-                hscrollbar_policy = Gtk.PolicyType.NEVER,
-                vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-                hexpand = true, vexpand = true,
-                child = body,
-            };
-            box.append(scroller);
+            body.vexpand = true;
+            box.append(body);
             return box;
         }
 

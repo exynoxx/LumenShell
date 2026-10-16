@@ -47,12 +47,9 @@ namespace LumenSettings {
             wf_store = new IniStore(Paths.wayfire_ini());
 #endif
 
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
-                margin_top = 18, margin_bottom = 18,
-                margin_start = 18, margin_end = 18,
-            };
+            var page = new Adw.PreferencesPage();
 
-            var layout = new BoxedList("Layout");
+            var layout = new Adw.PreferencesGroup() { title = "Layout" };
 
             string[] pos_labels = { "Bottom", "Top" };
             string[] pos_values = { "bottom", "top" };
@@ -67,10 +64,10 @@ namespace LumenSettings {
                 wf_store.save();
             });
 #endif
-            layout.add_row(position_row);
-            box.append(layout);
+            layout.add(position_row);
+            page.add(layout);
 
-            var colors = new BoxedList("Colors");
+            var colors = new Adw.PreferencesGroup() { title = "Colors" };
 
             var panel_bg_initial = theme.get_string("panel.background") ?? "#1a1d27ff";
             panel_rgba = ColorRow.parse_or_white(panel_bg_initial);
@@ -82,7 +79,7 @@ namespace LumenSettings {
 
             var panel_color_row = new ColorRow("Panel color", panel_bg_initial,
                 "panel color shown on the bottom strip");
-            var panel_opacity_row = new SpinRow("Panel opacity", 0, 100, 1, panel_opacity, 0,
+            var panel_opacity_row = SettingsRows.spin_row("Panel opacity", 0, 100, 1, panel_opacity, 0,
                 "panel opacity at all times, in percent");
             panel_color_row.value_changed.connect((hex) => {
                 var picked = ColorRow.parse_or_white(hex);
@@ -94,33 +91,37 @@ namespace LumenSettings {
                 // not whatever alpha the picker dialog returned.
                 panel_color_row.set_color_hex(panel_bg_hex());
             });
-            colors.add_row(panel_color_row);
+            colors.add(panel_color_row);
 
-            panel_opacity_row.value_changed.connect((v) => {
-                panel_opacity = (int) v;
+            panel_opacity_row.notify["value"].connect(() => {
+                panel_opacity = (int) panel_opacity_row.value;
                 write_panel_colors();
                 panel_color_row.set_color_hex(panel_bg_hex());
             });
-            colors.add_row(panel_opacity_row);
+            colors.add(panel_opacity_row);
 
-            colors.add_row(theme_rows.color_row("tray.background",    "Tray background", "#222633ff", "tray icon background when not hovered"));
-            colors.add_row(theme_rows.color_row("tray.icon-hover",    "Tray icon hover", "#2c3140ff", "tray icon background while the pointer is over it"));
-            colors.add_row(theme_rows.color_row("app.hover",          "App hover",       "#2c3140ff", "taskbar app background while the pointer is over it"));
-            colors.add_row(theme_rows.color_row("app.open-indicator-color", "Open app indicator", "#3d7affff", "color of the open-app dot, brackets, or shade"));
+            colors.add(theme_rows.color_row("tray.background",    "Tray background", "#222633ff", "tray icon background when not hovered"));
+            colors.add(theme_rows.color_row("tray.icon-hover",    "Tray icon hover", "#2c3140ff", "tray icon background while the pointer is over it"));
+            colors.add(theme_rows.color_row("app.hover",          "App hover",       "#2c3140ff", "taskbar app background while the pointer is over it"));
+            colors.add(theme_rows.color_row("app.open-indicator-color", "Open app indicator", "#3d7affff", "color of the open-app dot, brackets, or shade"));
 
-            var clock_group = new BoxedList("Clock");
+            var clock_group = new Adw.PreferencesGroup() { title = "Clock" };
 
             var fmt_initial = store.get_string("clock.format") ?? "%a %d %b  %H:%M";
-            var fmt_row = new EntryRow("Format", fmt_initial, "strftime pattern, e.g. %H:%M or %Y-%m-%d %H:%M");
-            fmt_row.value_changed.connect((v) => {
-                store.set_string("clock.format", v);
+            var fmt_row = new Adw.EntryRow() {
+                title = "Format",
+                text = fmt_initial,
+                tooltip_text = "strftime pattern, e.g. %H:%M or %Y-%m-%d %H:%M",
+            };
+            fmt_row.changed.connect(() => {
+                store.set_string("clock.format", fmt_row.text);
                 store.save();
             });
-            clock_group.add_row(fmt_row);
+            clock_group.add(fmt_row);
 
-            box.append(clock_group);
+            page.add(clock_group);
 
-            var behavior_group = new BoxedList("Behavior");
+            var behavior_group = new Adw.PreferencesGroup() { title = "Behavior" };
 
             string[] mode_labels = { "Always visible", "Auto-hide (overlay)", "Push reveal" };
             string[] mode_values = { "normal", "hidden", "push" };
@@ -137,9 +138,9 @@ namespace LumenSettings {
                 if (push) sync_push_options();
 #endif
             });
-            behavior_group.add_row(mode_row);
+            behavior_group.add(mode_row);
 
-            behavior_group.add_row(store_rows.bool_row("app.launcher-button",
+            behavior_group.add(store_rows.bool_row("app.launcher-button",
                 "Show app launcher button", false,
                 "Pin an app button to the left edge that opens the app drawer (peek)"));
 
@@ -151,70 +152,71 @@ namespace LumenSettings {
             var tray_key_row = new BindingRow("Toggle tray shortcut", tray_key_initial,
                 "global key that opens or closes the tray; right-click to clear");
             tray_key_row.value_changed.connect((binding) => set_tray_binding(binding));
-            behavior_group.add_row(tray_key_row);
+            behavior_group.add(tray_key_row);
 #endif
 
-            var autohide_opacity_row = new SpinRow("Auto-hide opacity", 0, 100, 1, autohide_opacity, 0,
+            var autohide_opacity_row = SettingsRows.spin_row("Auto-hide opacity", 0, 100, 1, autohide_opacity, 0,
                 "panel opacity while auto-hidden, in percent (uses the panel color)");
-            autohide_opacity_row.value_changed.connect((v) => {
-                autohide_opacity = (int) v;
+            autohide_opacity_row.notify["value"].connect(() => {
+                autohide_opacity = (int) autohide_opacity_row.value;
                 theme.set_string("panel.autohide-background", autohide_hex());
                 theme.save();
             });
-            behavior_group.add_row(autohide_opacity_row);
+            behavior_group.add(autohide_opacity_row);
 
             string[] active_labels = { "Underline", "Ring", "Sunshine", "Glass (navy)", "Circle (glass)" };
             string[] active_values = { "underline", "ring", "sunshine", "glass", "circle" };
-            behavior_group.add_row(store_rows.combo_row("app.active-indicator", "Active app indicator",
+            behavior_group.add(store_rows.combo_row("app.active-indicator", "Active app indicator",
                 active_labels, active_values, "underline",
                 "how the focused app is marked: an accent bar, a ring, sunshine rays, a navy glass disc, or a faint glass circle"));
 
             string[] ind_labels = { "Bottom shade", "Dot", "Corner brackets", "Glass (squared)", "Glass (rounded)", "None" };
             string[] ind_values = { "shade", "dot", "corners", "glass", "round", "none" };
-            behavior_group.add_row(store_rows.combo_row("app.open-indicator", "Open app indicator",
+            behavior_group.add(store_rows.combo_row("app.open-indicator", "Open app indicator",
                 ind_labels, ind_values, "shade",
                 "how a running app is marked apart from a pinned, closed one"));
 
-            box.append(behavior_group);
+            page.add(behavior_group);
 
-            box.append(build_tray_group());
+            page.add(build_tray_group());
 
-            var multi_group = new BoxedList("Multi-monitor");
+            var multi_group = new Adw.PreferencesGroup() { title = "Multi-monitor" };
             var multi_initial = store.get_bool("behavior.multi-monitor", false);
 
             var multi_row = store_rows.bool_row("behavior.multi-monitor",
                 "Show panel on every screen", false,
                 "Place a panel on each connected monitor");
-            multi_group.add_row(multi_row);
+            multi_group.add(multi_row);
 
             var per_row = store_rows.bool_row("behavior.per-monitor-apps",
                 "Show only this screen's apps", false,
                 "Each monitor's panel lists only the windows on that monitor");
-            per_row.sw.set_sensitive(multi_initial);
-            multi_group.add_row(per_row);
+            per_row.sensitive = multi_initial;
+            multi_group.add(per_row);
 
             var tray_row = store_rows.bool_row("behavior.tray-all-monitors",
                 "Show tray on every screen", false,
                 "Each monitor's panel shows the tray area (system-tray icons stay on the primary)");
-            tray_row.sw.set_sensitive(multi_initial);
-            multi_group.add_row(tray_row);
+            tray_row.sensitive = multi_initial;
+            multi_group.add(tray_row);
 
             // The two per-monitor options are meaningless without a panel on
             // every monitor, so they follow the master switch.
-            multi_row.toggled.connect((v) => {
-                per_row.sw.set_sensitive(v);
-                tray_row.sw.set_sensitive(v);
+            multi_row.notify["active"].connect(() => {
+                var v = multi_row.active;
+                per_row.sensitive = v;
+                tray_row.sensitive = v;
                 if (!v) {
-                    per_row.sw.active = false;
-                    tray_row.sw.active = false;
+                    per_row.active = false;
+                    tray_row.active = false;
                 }
             });
 
-            box.append(multi_group);
+            page.add(multi_group);
 
-            box.append(colors);
+            page.add(colors);
 
-            return box;
+            return page;
         }
 
         public override string? restart_target() { return "lumen-panel"; }
@@ -224,7 +226,7 @@ namespace LumenSettings {
         // any id not listed), each switch reflecting tray.disabled. Edits are
         // written straight to panel.json's tray.order/tray.disabled arrays; the
         // header Restart applies them (restart_target() is already lumen-panel).
-        Gtk.Widget build_tray_group() {
+        Adw.PreferencesGroup build_tray_group() {
             var stored_order = store.get_string_array("tray.order");
             var disabled_set = new Gee.HashSet<string>();
             foreach (var id in store.get_string_array("tray.disabled")) {
@@ -251,14 +253,14 @@ namespace LumenSettings {
                 enabled += !disabled_set.contains(id);
             }
 
-            var group = new BoxedList("Tray applets");
+            var group = new Adw.PreferencesGroup() { title = "Tray applets" };
             var reorder = new ReorderList(ids, labels, enabled);
             reorder.changed.connect((order, disabled) => {
                 store.set_string_array("tray.order",    order);
                 store.set_string_array("tray.disabled", disabled);
                 store.save();
             });
-            group.add_row(reorder);
+            group.add(reorder);
             return group;
         }
 

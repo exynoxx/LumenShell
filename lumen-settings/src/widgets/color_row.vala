@@ -3,7 +3,7 @@ using Gtk;
 namespace LumenSettings {
 
     /* Emits value_changed with #rrggbbaa. */
-    public class ColorRow : ActionRow {
+    public class ColorRow : Adw.ActionRow {
         Gtk.ColorDialogButton button;
         // Set while set_color_hex() writes the swatch, so a programmatic
         // correction (e.g. the Panel page re-applying its own opacity) doesn't
@@ -13,7 +13,7 @@ namespace LumenSettings {
         public signal void value_changed(string hex);
 
         public ColorRow(string title, string initial_hex, string subtitle = "") {
-            base(title, subtitle);
+            Object(title: title, subtitle: subtitle, use_markup: false);
 
             button = new Gtk.ColorDialogButton(new Gtk.ColorDialog() {
                 title = title,
@@ -27,7 +27,8 @@ namespace LumenSettings {
                 var picked = button.get_rgba();
                 if (!syncing && picked != null) value_changed(to_hex(picked));
             });
-            set_suffix(button);
+            button.valign = Gtk.Align.CENTER;
+            add_suffix(button);
         }
 
         public void set_color_hex(string hex) {
