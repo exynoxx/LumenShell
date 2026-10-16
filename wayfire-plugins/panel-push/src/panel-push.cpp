@@ -129,6 +129,8 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
             {
                 apply_progress(1.0);
                 state = state_t::PUSHED;
+                // Static once settled: stop the per-frame damage.
+                output->render->rem_effect(&on_frame);
             } else if (state == state_t::IN)
             {
                 apply_progress(0.0);
@@ -275,6 +277,13 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         if ((state != state_t::PUSHED) && (state != state_t::OUT))
         {
             return;
+        }
+
+        if (state == state_t::PUSHED)
+        {
+            // Hook was removed once settled; nothing else drives frames.
+            output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
+            output->render->schedule_redraw();
         }
 
         state = state_t::IN;

@@ -205,6 +205,8 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             {
                 apply_progress(1.0);
                 state = state_t::OPEN;
+                // Static once settled: stop the per-frame damage.
+                output->render->rem_effect(&on_frame);
             } else if (state == state_t::CLOSING)
             {
                 apply_progress(0.0);
@@ -356,6 +358,13 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         if ((state != state_t::OPEN) && (state != state_t::OPENING))
         {
             return;
+        }
+
+        if (state == state_t::OPEN)
+        {
+            // Hook was removed once settled; nothing else drives frames.
+            output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
+            output->render->schedule_redraw();
         }
 
         state = state_t::CLOSING;

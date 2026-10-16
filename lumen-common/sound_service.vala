@@ -95,22 +95,23 @@ public class SoundService : GLib.Object {
         });
     }
 
-    // ~11 blocking pactl spawns per pass, hence the worker thread. Calls made
+    // Two blocking pactl spawns per pass, hence the worker thread. Calls made
     // mid-pass re-run once it finishes.
     public void refresh() {
         if (poll_in_flight) { poll_again = true; return; }
         poll_in_flight = true;
 
         new GLib.Thread<void>("sound-poll", () => {
-            var new_sink        = pactl.query_default_sink();
-            var new_sinks       = pactl.query_sinks();
-            var new_volume      = pactl.query_volume_percent();
-            var new_muted       = pactl.query_muted();
-            var new_source      = pactl.query_default_source();
-            var new_sources     = pactl.query_sources();
-            var new_in_volume   = pactl.query_input_volume_percent();
-            var new_in_muted    = pactl.query_input_muted();
-            var new_sink_inputs = pactl.query_sink_inputs();
+            var st = pactl.query_state();
+            var new_sink        = st.default_sink;
+            var new_sinks       = st.sinks;
+            var new_volume      = st.volume_percent;
+            var new_muted       = st.muted;
+            var new_source      = st.default_source;
+            var new_sources     = st.sources;
+            var new_in_volume   = st.input_volume_percent;
+            var new_in_muted    = st.input_muted;
+            var new_sink_inputs = st.sink_inputs;
 
             GLib.Idle.add(() => {
                 poll_in_flight = false;

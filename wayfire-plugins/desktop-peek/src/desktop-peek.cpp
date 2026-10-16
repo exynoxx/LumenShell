@@ -100,6 +100,8 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
             {
                 apply_progress(1.0);
                 state = state_t::PEEKED;
+                // Static while peeked: stop re-damaging every view each frame.
+                output->render->rem_effect(&on_frame);
             } else if (state == state_t::IN)
             {
                 apply_progress(0.0);
@@ -249,6 +251,13 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
         if ((state != state_t::PEEKED) && (state != state_t::OUT))
         {
             return;
+        }
+
+        if (state == state_t::PEEKED)
+        {
+            // Hook was removed once the peek settled; nothing else drives frames.
+            output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
+            output->render->schedule_redraw();
         }
 
         state = state_t::IN;

@@ -6,6 +6,7 @@ namespace LumenDesktop {
             = new GLib.GenericArray<DesktopWindow>();
         private bool started = false;
         private bool removing = false;
+        private bool held = false;
 
         construct {
             application_id = "org.lumenshell.Desktop";
@@ -28,7 +29,15 @@ namespace LumenDesktop {
 
         // Each window builds its own widget instances (a Gtk.Widget has one
         // parent), so per-monitor browse state stays independent.
+        // No widgets → no windows: an empty layer surface never attaches a
+        // buffer, never maps, and Wayfire re-configures it on every commit
+        // (a 60 Hz configure/ack loop). Hold instead so the app stays up.
+        // Nothing adds widgets at runtime, so the hold is never released.
         private void build_windows() {
+            if (DesktopConfig.widgets.length == 0) {
+                if (!held) { held = true; hold(); }
+                return;
+            }
             var monitors = Gdk.Display.get_default().get_monitors();
             uint n = monitors.get_n_items();
             if (n == 0) {

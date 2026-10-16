@@ -1,5 +1,7 @@
 // Firmware changes the kbd backlight without a keypress, and Wayfire's
 // KEY_CAPSLOCK binding misses the press that turns CapsLock OFF — so poll.
+// Exception: the kbd LED's brightness_hw_changed is poll()able, and reading
+// brightness on Dell costs a ~4 ms SMM call, so watch that instead when present.
 public class StateWatcher : Object {
 
     private OsdService service;
@@ -24,10 +26,44 @@ public class StateWatcher : Object {
         int _unused;
         discover(out caps_path,   out _unused,    "/sys/class/leds",      "::capslock",      false);
 
+        if (kbd_path != null) watch_kbd_hw_changed();
+
         // sysfs writes don't reliably emit inotify. Don't arm with nothing to
-        // read, or a desktop wakes 5x/s forever.
+        // read, or a desktop wakes every second forever.
         if (kbd_path != null || screen_path != null || caps_path != null)
-            Timeout.add(200, this.tick);
+            Timeout.add(500, this.tick);
+    }
+
+    // Fires only on firmware-initiated changes (Fn keys); software writes come
+    // through lumen-osdctl's DBus call anyway. Reads ENODATA until the first
+    // hw change — the read still rearms poll(), so errors are just ignored.
+    private void watch_kbd_hw_changed() {
+        string hw_path = Path.get_dirname((!) kbd_path) + "/brightness_hw_changed";
+        if (!FileUtils.test(hw_path, FileTest.EXISTS)) return;
+        try {
+            var ch = new IOChannel.file(hw_path, "r");
+            ch.set_encoding(null);
+            read_channel_int(ch);
+            ch.add_watch(IOCondition.PRI | IOCondition.ERR, () => {
+                int now = read_channel_int(ch);
+                if (now >= 0 && kbd_max > 0)
+                    present_slider("kbd-brightness", (double) now / kbd_max);
+                return Source.CONTINUE;
+            });
+            kbd_path = null;  // stop polling the expensive brightness file
+        } catch (Error e) {}
+    }
+
+    private static int read_channel_int(IOChannel ch) {
+        try {
+            ch.seek_position(0, SeekType.SET);
+            string? line = null;
+            size_t len, term;
+            ch.read_line(out line, out len, out term);
+            int n = 0;
+            if (line != null && int.try_parse(((!) line).strip(), out n)) return n;
+        } catch (Error e) {}
+        return -1;
     }
 
     private static void discover(out string? path, out int max,

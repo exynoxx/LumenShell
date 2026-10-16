@@ -1,5 +1,6 @@
 public class PowerProfileService : GLib.Object {
 
+    // TLP only; PPD is event-driven off its PropertiesChanged.
     private const uint POLL_SEC = 10;
 
     public signal void state_changed();
@@ -16,7 +17,9 @@ public class PowerProfileService : GLib.Object {
         available = client.available(backend);
         requery();
 
-        if (backend != PowerBackend.NONE) {
+        if (backend == PowerBackend.PPD) {
+            client.changed.connect(requery);
+        } else if (backend == PowerBackend.TLP) {
             GLib.Timeout.add_seconds(POLL_SEC, () => {
                 requery();
                 return Source.CONTINUE;

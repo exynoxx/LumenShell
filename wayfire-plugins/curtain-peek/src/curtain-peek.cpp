@@ -442,6 +442,8 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             {
                 apply_progress(1.0);
                 state = state_t::OPEN;
+                // Static while open: stop the per-frame full-output damage.
+                output->render->rem_effect(&on_frame);
             } else if (state == state_t::CLOSING)
             {
                 apply_progress(0.0);
@@ -591,6 +593,13 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         if ((state != state_t::OPEN) && (state != state_t::OPENING))
         {
             return;
+        }
+
+        if (state == state_t::OPEN)
+        {
+            // Hook was removed once the open settled; nothing else drives frames.
+            output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
+            output->render->schedule_redraw();
         }
 
         state = state_t::CLOSING;

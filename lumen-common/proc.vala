@@ -1,4 +1,13 @@
 namespace LumenCommon {
+    // Linux prctl(2), declared here so proc.vala needs no --pkg=posix/linux
+    // (lumen-osd and lumen-osdctl compile it without either).
+    [CCode (cheader_filename = "sys/prctl.h", cname = "prctl")]
+    private extern int prctl(int option, ulong arg2);
+    [CCode (cheader_filename = "sys/prctl.h", cname = "PR_SET_PDEATHSIG")]
+    private extern const int PR_SET_PDEATHSIG;
+    [CCode (cheader_filename = "signal.h", cname = "SIGTERM")]
+    private extern const int SIGTERM;
+
     public class Proc {
         // null only on spawn failure; a nonzero exit still returns stdout.
         // `env`: "KEY=VALUE" overrides on top of the inherited environment.
@@ -39,6 +48,7 @@ namespace LumenCommon {
 
     // Streams stdout lines of a long-lived event command (`pactl subscribe`,
     // `nmcli monitor`). `running` is false if it failed to spawn or exited.
+    // The child gets SIGTERM when we die, so it never outlives us as an orphan.
     public class LineWatcher : GLib.Object {
         public signal void line(string text);
         public signal void ended();
@@ -52,6 +62,9 @@ namespace LumenCommon {
                 var launcher = new GLib.SubprocessLauncher(
                     GLib.SubprocessFlags.STDOUT_PIPE | GLib.SubprocessFlags.STDERR_SILENCE);
                 launcher.setenv("LC_ALL", "C", true);
+                // Fires on death of the *spawning thread*: start() must be
+                // called from the main thread, as every caller does today.
+                launcher.set_child_setup(() => { prctl(PR_SET_PDEATHSIG, SIGTERM); });
                 proc = launcher.spawnv(argv);
             } catch (GLib.Error e) {
                 return false;
@@ -59,6 +72,14 @@ namespace LumenCommon {
             running = true;
             read_loop.begin(new GLib.DataInputStream(proc.get_stdout_pipe()), proc);
             return true;
+        }
+
+        // Kills the child without emitting `ended` (read_loop sees proc != owner).
+        public void stop() {
+            var p = proc;
+            proc = null;
+            running = false;
+            if (p != null) p.force_exit();
         }
 
         private async void read_loop(GLib.DataInputStream stream, GLib.Subprocess owner) {

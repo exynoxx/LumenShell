@@ -10,6 +10,9 @@ public class PowerProfileClient : GLib.Object {
     private DBusProxy? ppd = null;
     private bool       ppd_tried = false;
 
+    // PPD only: its PropertiesChanged arrived (ActiveProfile/Profiles changed).
+    public signal void changed();
+
     // PPD and TLP are mutually exclusive in practice, so a live PPD wins.
     public PowerBackend detect_backend() {
         if (ensure_ppd() != null)
@@ -103,6 +106,7 @@ public class PowerProfileClient : GLib.Object {
                       "/org/freedesktop/UPower/PowerProfiles")
            ?? try_ppd("net.hadess.PowerProfiles",
                       "/net/hadess/PowerProfiles");
+        if (ppd != null) ppd.g_properties_changed.connect(() => changed());
         return ppd;
     }
 
