@@ -546,7 +546,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 
 struct wayfire_slide_peek_plugin_t : lumen::ipc_plugin_t<wayfire_slide_peek_t>
 {
-    wayfire_slide_peek_plugin_t() : ipc_plugin_t("wayfire-slide-peek")
+    wayfire_slide_peek_plugin_t() : ipc_plugin_t("lumen-peek")
     {}
 };
 

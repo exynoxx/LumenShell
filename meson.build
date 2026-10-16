@@ -321,7 +321,6 @@ drawer_sources = files(
   'lumen-drawer/src/window.vala',
   'lumen-drawer/src/appentry.vala',
   'lumen-drawer/src/searchdb.vala',
-  'lumen-drawer/src/curtain_ipc.vala',
   'lumen-drawer/src/wl/toplevels.vala',
   'lumen-drawer/src/components/apptile.vala',
   'lumen-drawer/src/components/pagedgrid.vala',

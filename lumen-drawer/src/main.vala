@@ -21,7 +21,7 @@ public class DrawerApp : Gtk.Application {
             build_windows();
 
             // Hides the grid if lumen-drawer restarted while peeked.
-            LumenDrawer.CurtainIpc.close();
+            LumenCommon.WayfireIpc.send_method("lumen-peek/stop");
 
             var monitors = Gdk.Display.get_default().get_monitors();
             monitors.items_changed.connect((p, r, a) => rebuild_windows());

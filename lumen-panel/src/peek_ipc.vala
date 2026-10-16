@@ -3,10 +3,9 @@
 #if PANEL_PEEK
 public class PeekIpc : GLib.Object {
 
-    // Only one of curtain-peek / slide-peek is loaded; the other toggle no-ops.
+    // Whichever reveal plugin is loaded answers the generic lumen-peek verbs.
     public static void app_drawer () {
-        LumenCommon.WayfireIpc.send_method("wayfire-curtain-peek/toggle");
-        LumenCommon.WayfireIpc.send_method("wayfire-slide-peek/toggle");
+        LumenCommon.WayfireIpc.send_method("lumen-peek/toggle");
     }
 
     public static void push_start () {

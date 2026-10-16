@@ -179,7 +179,7 @@ public class DrawerWindow : Gtk.ApplicationWindow {
             var entry = new AppEntry(info);
             entry.launched.connect(() => {
                 reset_view();
-                LumenDrawer.CurtainIpc.close();
+                LumenCommon.WayfireIpc.send_method("lumen-peek/stop");
             });
             list.add(entry);
         }
@@ -300,7 +300,7 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         switch (keyval) {
             case Gdk.Key.Escape:
                 reset_view();
-                LumenDrawer.CurtainIpc.close();
+                LumenCommon.WayfireIpc.send_method("lumen-peek/stop");
                 return true;
             case Gdk.Key.Left:
                 if (!search_db.active && mods == 0) { grid.prev_page(); return true; }

@@ -771,7 +771,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
 struct wayfire_curtain_peek_plugin_t : lumen::ipc_plugin_t<wayfire_curtain_peek_t>
 {
-    wayfire_curtain_peek_plugin_t() : ipc_plugin_t("wayfire-curtain-peek")
+    wayfire_curtain_peek_plugin_t() : ipc_plugin_t("lumen-peek")
     {}
 };
 

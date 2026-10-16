@@ -4,8 +4,9 @@
 // `<prefix>/{toggle,start,stop}` and routes each verb to the per-output
 // instance on the active output (falling back to any tracked output).
 // Instance must expose bool ipc_toggle() / ipc_start() / ipc_stop().
-// Replies are {"result":"ok"|"noop"} — lumen-panel and lumen-drawer rely on
-// the verb names, so keep the prefix exactly the plugin name.
+// Replies are {"result":"ok"|"noop"}. The drawer reveal plugins (curtain/slide)
+// share the method-agnostic prefix "lumen-peek" — all lumen-panel / lumen-drawer
+// know about; the others use their plugin name.
 
 #include <wayfire/per-output-plugin.hpp>
 #include <wayfire/core.hpp>
