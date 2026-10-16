@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     public class AboutPage : GLib.Object, SettingsPage {

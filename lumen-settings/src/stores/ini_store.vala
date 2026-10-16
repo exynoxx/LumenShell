@@ -1,5 +1,3 @@
-using GLib;
-
 namespace LumenSettings {
 
     // KEEP_COMMENTS round-trips comments and ordering; KeyFile only rewrites

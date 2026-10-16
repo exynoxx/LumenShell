@@ -1,6 +1,4 @@
 using LumenCommon;
-using Gee;
-using GLib;
 
 namespace LumenSettings {
 
@@ -8,8 +6,6 @@ namespace LumenSettings {
         public int    width;
         public int    height;
         public double refresh;     // Hz, e.g. 59.951
-        public bool   preferred;
-        public bool   current;
 
         // Built from integer mHz: %.3f would emit "59,951" under da_DK etc.
         public string refresh_key() {
@@ -63,18 +59,6 @@ namespace LumenSettings {
             return this == ROT_90 || this == ROT_270
                 || this == FLIPPED_90 || this == FLIPPED_270;
         }
-        public static OutputTransform parse(string s) {
-            switch (s.strip()) {
-                case "90":          return ROT_90;
-                case "180":         return ROT_180;
-                case "270":         return ROT_270;
-                case "flipped":     return FLIPPED;
-                case "flipped-90":  return FLIPPED_90;
-                case "flipped-180": return FLIPPED_180;
-                case "flipped-270": return FLIPPED_270;
-                default:            return NORMAL;
-            }
-        }
         public static OutputTransform from_index(int i) {
             if (i < 0 || i > 7) return NORMAL;
             return (OutputTransform) i;
@@ -110,7 +94,6 @@ namespace LumenSettings {
             foreach (var m in modes) {
                 var nm = new OutputMode();
                 nm.width = m.width; nm.height = m.height; nm.refresh = m.refresh;
-                nm.preferred = m.preferred; nm.current = m.current;
                 o.modes.add(nm);
                 if (current_mode == m) o.current_mode = nm;
             }
@@ -176,9 +159,6 @@ namespace LumenSettings {
 
         public bool available() { return WLHooks.output_mgmt_available(); }
 
-        // Roundtrips the private queue so pending hotplug events dispatch; cheap enough for a timer.
-        public void pump() { WLHooks.output_mgmt_refresh(); }
-
         public Gee.ArrayList<OutputInfo> enumerate() {
             WLHooks.output_mgmt_refresh();
 
@@ -200,7 +180,6 @@ namespace LumenSettings {
                 WLHooks.output_mgmt_for_each_mode(idxs.get(i), (hidx, w, h, mhz, preferred, current) => {
                     var m = new OutputMode();
                     m.width = w; m.height = h; m.refresh = mhz / 1000.0;
-                    m.preferred = preferred; m.current = current;
                     o.modes.add(m);
                     if (current) o.current_mode = m;
                 });

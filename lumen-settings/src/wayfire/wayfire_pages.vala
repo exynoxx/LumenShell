@@ -1,6 +1,4 @@
 using LumenCommon;
-using Gtk;
-using Gee;
 
 namespace LumenSettings.Wayfire {
 

@@ -1,6 +1,3 @@
-using LumenCommon;
-using Json;
-
 namespace LumenSettings {
 
     public class Theme : GLib.Object {

@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     public class ReorderList : Gtk.Box {
@@ -77,7 +75,6 @@ namespace LumenSettings {
             drop.drop.connect((v, x, y) => {
                 var dragged = v.get_object() as Row;
                 if (dragged == null || dragged == row) return false;
-                int target = row.get_index();
                 bool after = y > row.get_height() / 2.0;
                 list.remove(dragged);
                 int idx = row.get_index();   // recompute: removal may have shifted it

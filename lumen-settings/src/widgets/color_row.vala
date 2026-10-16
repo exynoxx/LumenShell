@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     /* Emits value_changed with #rrggbbaa. */

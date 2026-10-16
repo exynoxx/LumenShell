@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     // Passive service constructors: opening Settings must never toggle the radios.
@@ -7,8 +5,6 @@ namespace LumenSettings {
         public string id        { owned get { return "networking"; } }
         public string title     { owned get { return "Networking"; } }
         public string icon_name { owned get { return "network-wireless-symbolic"; } }
-
-        public override string? restart_target() { return null; }   // live page
 
         WifiService      wifi = new WifiService.passive();
         BluetoothService bt   = new BluetoothService.passive();

@@ -1,5 +1,4 @@
 using LumenCommon;
-using Gtk;
 
 namespace LumenSettings {
 

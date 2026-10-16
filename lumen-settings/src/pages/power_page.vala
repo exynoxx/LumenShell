@@ -1,5 +1,4 @@
 using LumenCommon;
-using Gtk;
 
 namespace LumenSettings {
 
@@ -50,8 +49,5 @@ namespace LumenSettings {
 
             return page;
         }
-
-        // power.ini is re-read on each sleep event; [idle] applies on next login.
-        public override string? restart_target() { return null; }
     }
 }

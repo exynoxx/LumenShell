@@ -1,5 +1,3 @@
-using Gee;
-
 namespace LumenSettings {
 
     // evdev.lst: `! layout` lines are `<code> <name>`, `! variant` lines are

@@ -1,6 +1,4 @@
 using LumenCommon;
-using Gtk;
-using Gee;
 
 namespace LumenSettings {
 
@@ -14,7 +12,6 @@ namespace LumenSettings {
         Gee.ArrayList<OutputInfo> working  = new Gee.ArrayList<OutputInfo>();
 
         int sel = 0;
-        bool dirty = false;
         bool building = false;        // suppress signal handlers during rebuild
 
         DisplayArranger arranger;
@@ -75,7 +72,6 @@ namespace LumenSettings {
             var cb = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
                 margin_top = 6,
             };
-            cb.add_css_class("lumen-confirm-bar");
             confirm_label = new Gtk.Label("Keep these display settings?") { hexpand = true, xalign = 0 };
             var keep = new Gtk.Button.with_label("Keep");
             keep.add_css_class("suggested-action");
@@ -103,21 +99,19 @@ namespace LumenSettings {
             return page;
         }
 
-        public override string? restart_target() { return null; }
-
         // outputs_changed only fires while the private queue is dispatched, so a
         // 1 s pump drives it; an fd watch would contend with GDK's reads.
         void start_output_watch() {
             if (watch_id != 0) return;
             WLHooks.output_mgmt_register_outputs_changed(on_outputs_changed);
             watch_id = Timeout.add_seconds(1, () => {
-                wlr.pump();
+                WLHooks.output_mgmt_refresh();
                 return GLib.Source.CONTINUE;
             });
         }
 
         void on_outputs_changed() {
-            // Fired from inside pump()'s roundtrip; defer the reload to idle so
+            // Fired from inside the timer's roundtrip; defer the reload to idle so
             // we never re-enter wl_display_roundtrip_queue reentrantly.
             if (reload_pending) return;
             reload_pending = true;
@@ -134,7 +128,6 @@ namespace LumenSettings {
             sel = working.size > 0 ? 0 : -1;
             arranger.set_outputs(working);
             rebuild_controls();
-            dirty = false;
             if (apply_btn != null) apply_btn.sensitive = false;
         }
 
@@ -165,7 +158,7 @@ namespace LumenSettings {
                     return;
                 }
                 o.enabled = v;
-                arranger.refresh();
+                arranger.queue_draw();
                 mark_dirty();
                 rebuild_controls();
             });
@@ -183,7 +176,7 @@ namespace LumenSettings {
                         // modes_for() sorts descending: highest refresh.
                         o.current_mode = cands.get(0);
                     }
-                    arranger.refresh();
+                    arranger.queue_draw();
                     mark_dirty();
                     rebuild_controls();
                 });
@@ -223,7 +216,7 @@ namespace LumenSettings {
                 or_row.value_changed.connect((v) => {
                     if (building) return;
                     o.transform = OutputTransform.from_index(int.parse(v));
-                    arranger.refresh();
+                    arranger.queue_draw();
                     mark_dirty();
                 });
                 bl.add(or_row);
@@ -240,7 +233,6 @@ namespace LumenSettings {
         }
 
         void mark_dirty() {
-            dirty = true;
             if (apply_btn != null) apply_btn.sensitive = true;
         }
 
@@ -276,7 +268,6 @@ namespace LumenSettings {
             persist();
             save_profile();
             baseline = clone_list(working);
-            dirty = false;
             apply_btn.sensitive = false;
             confirm_revealer.reveal_child = false;
         }
@@ -289,7 +280,6 @@ namespace LumenSettings {
             arranger.set_outputs(working);
             if (sel >= working.size) sel = working.size > 0 ? 0 : -1;
             rebuild_controls();
-            dirty = false;
             apply_btn.sensitive = false;
             confirm_revealer.reveal_child = false;
         }

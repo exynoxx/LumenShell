@@ -1,6 +1,3 @@
-using Gtk;
-using Gee;
-
 namespace LumenSettings.Wayfire {
 
     public class PluginPage : GLib.Object, SettingsPage {

@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     public class SettingsWindow : Adw.ApplicationWindow {
@@ -49,7 +47,6 @@ namespace LumenSettings {
             };
             set_content(split);
 
-            registry.changed.connect(rebuild_stack);
             rebuild_stack();
 
             sidebar.page_selected.connect(show_page);
@@ -84,12 +81,6 @@ namespace LumenSettings {
         }
 
         void rebuild_stack() {
-            Gtk.Widget? child = stack.get_first_child();
-            while (child != null) {
-                Gtk.Widget? next = child.get_next_sibling();
-                stack.remove(child);
-                child = next;
-            }
             for (uint i = 0; i < registry.size; i++) {
                 var page = registry.get_at(i);
                 stack.add_named(page.build(), page.id);

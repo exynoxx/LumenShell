@@ -1,6 +1,3 @@
-using GLib;
-using Gee;
-
 namespace LumenSettings.Wayfire {
 
     public enum OptionType {
@@ -29,7 +26,6 @@ namespace LumenSettings.Wayfire {
         public string min_value;
         public string max_value;
         public string precision;
-        public string hint;
         public Gee.ArrayList<EnumChoice> choices = new Gee.ArrayList<EnumChoice>();
         public Gee.ArrayList<DynamicEntry> entries = new Gee.ArrayList<DynamicEntry>();
         public string group_label;
@@ -44,8 +40,6 @@ namespace LumenSettings.Wayfire {
     }
 
     public class Metadata {
-        static bool initialised = false;
-
         public static OptionType parse_type(string s) {
             switch (s) {
                 case "bool":         return OptionType.BOOL;
@@ -65,11 +59,6 @@ namespace LumenSettings.Wayfire {
         }
 
         public static PluginDef? load_file(string path) {
-            if (!initialised) {
-                Xml.Parser.init();
-                initialised = true;
-            }
-
             Xml.Doc* doc = Xml.Parser.parse_file(path);
             if (doc == null) {
                 stderr.printf("lumen-settings: wayfire metadata: failed to parse %s\n", path);
@@ -182,7 +171,6 @@ namespace LumenSettings.Wayfire {
             o.min_value = "";
             o.max_value = "";
             o.precision = "";
-            o.hint = "";
 
             for (Xml.Node* c = node->children; c != null; c = c->next) {
                 if (c->type != Xml.ElementType.ELEMENT_NODE) continue;
@@ -193,7 +181,6 @@ namespace LumenSettings.Wayfire {
                     case "min":       o.min_value     = text_of(c); break;
                     case "max":       o.max_value     = text_of(c); break;
                     case "precision": o.precision     = text_of(c); break;
-                    case "hint":      o.hint          = text_of(c); break;
                     case "desc":      parse_desc(c, o); break;
                     case "entry":     parse_entry(c, o); break;
                     default: break;

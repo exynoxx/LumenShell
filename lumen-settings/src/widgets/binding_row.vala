@@ -1,6 +1,3 @@
-using Gtk;
-using Gdk;
-
 namespace LumenSettings {
 
     public class BindingRow : Adw.ActionRow {

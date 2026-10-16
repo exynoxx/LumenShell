@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     // Kept in an index-keyed map so each poll diffs rows instead of rebuilding.
@@ -15,8 +13,6 @@ namespace LumenSettings {
         public string id        { owned get { return "sound"; } }
         public string title     { owned get { return "Sound"; } }
         public string icon_name { owned get { return "audio-volume-high-symbolic"; } }
-
-        public override string? restart_target() { return null; }
 
         // Sets a captured bool field; used to wire scale drag tracking.
         private delegate void SetBool(bool v);

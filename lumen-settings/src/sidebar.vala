@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace LumenSettings {
 
     public class Sidebar : Gtk.Box {
@@ -32,7 +30,6 @@ namespace LumenSettings {
                 if (id != null) page_selected(id);
             });
 
-            registry.changed.connect(rebuild);
             rebuild();
         }
 
@@ -42,12 +39,6 @@ namespace LumenSettings {
         }
 
         void rebuild() {
-            Gtk.Widget? child = list.get_first_child();
-            while (child != null) {
-                Gtk.Widget? next = child.get_next_sibling();
-                list.remove(child);
-                child = next;
-            }
             for (uint i = 0; i < registry.size; i++) {
                 var page = registry.get_at(i);
                 var row = make_row(page);

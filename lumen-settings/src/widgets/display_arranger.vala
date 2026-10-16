@@ -1,6 +1,3 @@
-using Gtk;
-using Gee;
-
 namespace LumenSettings {
 
     // Edits the page's working OutputInfo list in place, so drags are what Apply sends.
@@ -34,14 +31,12 @@ namespace LumenSettings {
         static Gdk.RGBA canvas_bg = rgba(0.08f, 0.09f, 0.12f, 1f);
         static Gdk.RGBA rect_bg   = rgba(0.20f, 0.22f, 0.28f, 1f);
         static Gdk.RGBA rect_sel  = rgba(0.12f, 0.30f, 0.72f, 1f);
-        static Gdk.RGBA rect_off  = rgba(0.14f, 0.15f, 0.18f, 1f);
         static Gdk.RGBA txt       = rgba(0.95f, 0.96f, 1.0f, 1f);
         static Gdk.RGBA txt_dim   = rgba(0.55f, 0.57f, 0.64f, 1f);
 
         public DisplayArranger() {
             hexpand = true;
             height_request = CANVAS_H;
-            add_css_class("lumen-display-arranger");
 
             var drag = new Gtk.GestureDrag() { button = Gdk.BUTTON_PRIMARY };
             drag.drag_begin.connect(on_drag_begin);
@@ -56,8 +51,6 @@ namespace LumenSettings {
             if (selected < 0 && outs.size > 0) selected = 0;
             queue_draw();
         }
-
-        public void refresh() { queue_draw(); }
 
         public override Gtk.SizeRequestMode get_request_mode() {
             return Gtk.SizeRequestMode.CONSTANT_SIZE;
