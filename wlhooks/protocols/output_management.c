@@ -165,6 +165,11 @@ static void head_finished(void *data, struct zwlr_output_head_v1 *h) {
     hd->finished = true;
     zwlr_output_head_v1_destroy(h);
     hd->proxy = NULL;               // don't let teardown re-destroy this proxy
+    for (int m = 0; m < hd->mode_count; m++) {   // slot may be reused by mgr_head
+        if (hd->modes[m].proxy) zwlr_output_mode_v1_destroy(hd->modes[m].proxy);
+        hd->modes[m].proxy = NULL;
+    }
+    hd->mode_count = 0;
 }
 static void head_make(void *data, struct zwlr_output_head_v1 *h, const char *s) {
     (void) h; om_head_t *hd = data; snprintf(hd->make, sizeof(hd->make), "%s", s ? s : "");
@@ -199,8 +204,13 @@ static const struct zwlr_output_head_v1_listener head_listener = {
 
 static void mgr_head(void *data, struct zwlr_output_manager_v1 *mgr, struct zwlr_output_head_v1 *h) {
     (void) data; (void) mgr;
-    if (s_head_count >= OM_MAX_HEADS) { zwlr_output_head_v1_destroy(h); return; }
-    om_head_t *hd = &s_heads[s_head_count++];
+    om_head_t *hd = NULL;
+    for (int i = 0; i < s_head_count && !hd; i++)    // reuse an unplugged head's slot
+        if (s_heads[i].finished) hd = &s_heads[i];
+    if (!hd) {
+        if (s_head_count >= OM_MAX_HEADS) { zwlr_output_head_v1_destroy(h); return; }
+        hd = &s_heads[s_head_count++];
+    }
     memset(hd, 0, sizeof(*hd));
     hd->proxy = h;
     hd->scale = 1.0;
