@@ -60,7 +60,7 @@ public class LockManager : GLib.Object {
         logind.prepare_for_sleep.connect((starting) => {
             DiagLog.log("trigger: PrepareForSleep starting=%s", starting.to_string());
             if (starting) {
-                lock_now();
+                if (lock_on_suspend_enabled()) lock_now();
                 // Lock request is in flight; let the kernel proceed to sleep.
                 logind.release_delay_inhibitor();
             } else {
@@ -68,6 +68,17 @@ public class LockManager : GLib.Object {
                 logind.take_delay_inhibitor();
             }
         });
+    }
+
+    // power.ini [power] lock-on-suspend, written by lumen-settings; default on.
+    private static bool lock_on_suspend_enabled() {
+        var kf = new KeyFile();
+        try {
+            kf.load_from_file(Paths.power_ini(), KeyFileFlags.NONE);
+            return kf.get_string("power", "lock-on-suspend").strip() == "true";
+        } catch (Error e) {
+            return true;
+        }
     }
 
     // Bind ext-idle-notify-v1 (idle auto-lock) on GTK's own wl_display, so the

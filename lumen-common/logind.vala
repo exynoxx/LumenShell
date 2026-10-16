@@ -35,7 +35,7 @@ public class LogindBridge : GLib.Object {
     int         inhibit_fd   = -1;
     int         idle_fd      = -1;
 
-    public LogindBridge() {
+    public LogindBridge(bool sleep_inhibitor = true) {
         try {
             manager = new DBusProxy.for_bus_sync(
                 BusType.SYSTEM, DBusProxyFlags.DO_NOT_LOAD_PROPERTIES, null,
@@ -55,7 +55,7 @@ public class LogindBridge : GLib.Object {
         });
 
         resolve_session();
-        take_delay_inhibitor();
+        if (sleep_inhibitor) take_delay_inhibitor();
     }
 
     void resolve_session() {

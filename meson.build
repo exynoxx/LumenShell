@@ -254,7 +254,6 @@ panel_sources = files(
   'lumen-panel/src/components/control_center/control_module.vala',
   'lumen-panel/src/components/control_center/control_center.vala',
   'lumen-panel/src/components/clock/clock.vala',
-  'lumen-panel/src/components/system/logind_service.vala',
   'lumen-panel/src/components/exit/exit.vala',
   'lumen-panel/src/components/app.vala',
   'lumen-panel/src/components/apppopup.vala',
@@ -283,7 +282,7 @@ panel_sources = files(
 )
 
 executable('lumen-panel',
-  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source + tray_catalog_source + network_backend_source + sound_source + paths_source + dbus_cli_source,
+  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source + tray_catalog_source + network_backend_source + sound_source + paths_source,
   vala_args: panel_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: panel_deps,

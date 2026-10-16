@@ -20,7 +20,7 @@ public class App : GLib.Object {
     PanelService panel_service;              // session-bus ToggleTray (global hotkey)
     SniWatcher sni_watcher;                  // SNI registry singleton, shared by every SysTray
     TrayRegistry registry;                   // id → applet factory
-    LogindService logind_service;
+    LogindBridge logind;
 
     // One instance each, shared by every panel's applets — see activate().
     WifiService         wifi_service;
@@ -38,8 +38,8 @@ public class App : GLib.Object {
         PanelConfig.load();
         Theme.install();
 
-        // Session/power bridge: owns logind, locks before suspend.
-        logind_service = new LogindService();
+        // Power actions + Caffeine. Lock-on-suspend belongs to lumen-lockscreen.
+        logind = new LogindBridge(false);
 
         // The SNI watcher owns a single DBus name (org.kde.StatusNotifierWatcher)
         // and must exist exactly once, but its item registry feeds every panel's
@@ -70,7 +70,7 @@ public class App : GLib.Object {
         registry.register("battery",   () => new BatteryTray(battery_service, power_profile_service));
         registry.register("sound",     () => new SoundTray(sound_service));
         registry.register("clock",     () => new Clock());
-        registry.register("exit",      () => new ExitTray(logind_service.bridge));
+        registry.register("exit",      () => new ExitTray(logind));
 
         // Bind foreign-toplevel before building any AppBar so replay happens
         // synchronously when each AppBar subscribes inside its constructor.
@@ -97,7 +97,7 @@ public class App : GLib.Object {
     // full set of configured applets; each applet owns only its own widgets and
     // reads the shared services, so duplicating across monitors is safe.
     TrayBar make_tray () {
-        var t = new TrayBar(logind_service.bridge);
+        var t = new TrayBar(logind);
         foreach (var id in PanelConfig.tray_enabled_order()) {
             var applet = registry.create(id);
             if (applet != null) t.add(applet);
