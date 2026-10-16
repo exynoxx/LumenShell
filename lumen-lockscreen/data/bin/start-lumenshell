@@ -27,6 +27,8 @@ if command -v systemctl >/dev/null 2>&1; then
         XDG_CURRENT_DESKTOP \
         XDG_SESSION_DESKTOP \
         XDG_SESSION_TYPE \
+        XDG_SESSION_CLASS \
+        XDG_SESSION_ID \
         WAYLAND_DISPLAY \
         DISPLAY \
         2>/dev/null || true
