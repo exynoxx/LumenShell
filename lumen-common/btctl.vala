@@ -22,7 +22,6 @@ public class BtDeviceDetails : GLib.Object {
     public string dev_icon     = "";
     public bool   paired       = false;
     public bool   bonded       = false;
-    public bool   trusted      = false;
     public bool   connected    = false;
     public int    battery      = -1;   // -1 when absent
 }
@@ -100,7 +99,6 @@ public class BtctlClient : GLib.Object {
         d.dev_icon     = str_prop(props, "Icon");
         d.paired       = bool_prop(props, "Paired");
         d.bonded       = bool_prop(props, "Bonded");
-        d.trusted      = bool_prop(props, "Trusted");
         d.connected    = bool_prop(props, "Connected");
 
         // Battery level lives on a sibling interface of the same object.
@@ -137,11 +135,6 @@ public class BtctlClient : GLib.Object {
                 result += new BtDevice(d.mac, d.name, d.dev_icon, d.paired, d.connected);
         }
         return result;
-    }
-
-    public BtDevice info(string mac) {
-        var d = device_details(mac);
-        return new BtDevice(d.mac, d.name, d.dev_icon, d.paired, d.connected);
     }
 
     public BtDeviceDetails device_details(string mac) {

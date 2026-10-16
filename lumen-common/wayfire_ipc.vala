@@ -13,16 +13,16 @@ namespace LumenCommon {
             return null;
         }
 
-        public static bool send_method(string method, string data_json = "{}") {
+        public static void send_method(string method) {
             var path = socket_path();
-            if (path == null) return false;
+            if (path == null) return;
 
             try {
                 var client = new GLib.SocketClient();
                 var addr   = new GLib.UnixSocketAddress(path);
                 var conn   = client.connect(addr, null);
 
-                var body  = @"{\"method\":\"$method\",\"data\":$data_json}";
+                var body  = @"{\"method\":\"$method\",\"data\":{}}";
                 var bytes = body.data;
                 uint32 len = (uint32) bytes.length;
 
@@ -57,10 +57,8 @@ namespace LumenCommon {
                 }
 
                 conn.close();
-                return true;
             } catch (GLib.Error e) {
                 GLib.stderr.printf("wayfire-ipc: IPC error: %s\n", e.message);
-                return false;
             }
         }
     }

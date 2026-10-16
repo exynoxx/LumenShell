@@ -16,7 +16,6 @@ public class SoundService : GLib.Object {
     public string       default_source       { get; private set; default = ""; }
     public SourceInfo[] sources              = {};
     public StreamInfo[] sink_inputs          = {};
-    public double       input_peak           { get; private set; default = 0.0; }
 
     private const uint POLL_MS = 1500;
 
@@ -170,7 +169,6 @@ public class SoundService : GLib.Object {
     public void stop_input_monitor() {
         meter_running = false;
         kill_meter();
-        input_peak = 0.0;
         input_peak_changed(0.0);
     }
 
@@ -223,7 +221,6 @@ public class SoundService : GLib.Object {
                 }
                 double peak = ((double) max) / 128.0;
                 if (peak > 1.0) peak = 1.0;
-                input_peak = peak;
 
                 int64 now = GLib.get_monotonic_time();
                 if (now - last_peak_emit_us >= 50000) {   // ~20 Hz

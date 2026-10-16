@@ -7,13 +7,6 @@ namespace GtkSessionLock {
     [CCode(cname = "gtk_session_lock_is_supported")]
     public bool is_supported();
 
-    [CCode(cname = "gtk_session_lock_get_major_version")]
-    public uint get_major_version();
-    [CCode(cname = "gtk_session_lock_get_minor_version")]
-    public uint get_minor_version();
-    [CCode(cname = "gtk_session_lock_get_micro_version")]
-    public uint get_micro_version();
-
     [CCode(cname = "GtkSessionLockInstance", type_id = "gtk_session_lock_instance_get_type ()")]
     public class Instance : GLib.Object {
         [CCode(cname = "gtk_session_lock_instance_new")]
@@ -27,9 +20,6 @@ namespace GtkSessionLock {
         // Destroys all lock surfaces.
         [CCode(cname = "gtk_session_lock_instance_unlock")]
         public void unlock();
-
-        [CCode(cname = "gtk_session_lock_instance_is_locked")]
-        public bool is_locked();
 
         // Each Gtk.Window must be assigned to exactly one Gdk.Monitor before it
         // is presented; the protocol requires one lock surface per output.
