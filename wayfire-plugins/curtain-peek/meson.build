@@ -14,6 +14,7 @@ shared_module(
   'wayfire-curtain-peek',
   'src/curtain-peek.cpp',
   dependencies: [wayfire_dep, wlroots_dep],
+  include_directories: include_directories('../common'),
   cpp_args:     ['-std=c++17'],
   name_prefix:  'lib',
   install:      true,

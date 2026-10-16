@@ -12,8 +12,7 @@
 #include <wayfire/scene-operations.hpp>
 #include <wayfire/scene-input.hpp>
 #include <wayfire/scene.hpp>
-#include <wayfire/plugins/ipc/ipc-method-repository.hpp>
-#include <wayfire/plugins/common/shared-core-data.hpp>
+#include "ipc_wrapper.hpp"
 #include <wayfire/seat.hpp>
 #include <wayfire/debug.hpp>
 
@@ -94,18 +93,7 @@ class wayfire_desktop_peek_t :
 
     wf::activator_callback on_toggle = [this] (const wf::activator_data_t&)
     {
-        if (state == state_t::IDLE)
-        {
-            return start_peek();
-        }
-
-        if ((state == state_t::PEEKED) || (state == state_t::OUT))
-        {
-            start_restore();
-            return true;
-        }
-
-        return false;
+        return ipc_toggle();
     };
 
     // dismiss is restore-only; firing it from IDLE is a no-op so it doesn't
@@ -113,13 +101,7 @@ class wayfire_desktop_peek_t :
     // is peeked. Returning false in that case lets the keypress propagate.
     wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
     {
-        peek_log("on_dismiss: state=%d", (int) state);
-        if ((state == state_t::PEEKED) || (state == state_t::OUT))
-        {
-            start_restore();
-            return true;
-        }
-        return false;
+        return ipc_stop();
     };
 
     wf::effect_hook_t on_frame = [this] ()
@@ -359,80 +341,10 @@ class wayfire_desktop_peek_t :
     }
 };
 
-class wayfire_desktop_peek_plugin_t :
-    public wf::per_output_plugin_t<wayfire_desktop_peek_t>
+struct wayfire_desktop_peek_plugin_t : lumen::ipc_plugin_t<wayfire_desktop_peek_t>
 {
-    wf::shared_data::ref_ptr_t<wf::ipc::method_repository_t> ipc_repo;
-
-    wayfire_desktop_peek_t *instance_for_active_output()
-    {
-        auto seat = wf::get_core().seat.get();
-        wf::output_t *active = seat ? seat->get_active_output() : nullptr;
-        peek_log("instance_for_active_output: active=%p", (void *) active);
-
-        if (active)
-        {
-            auto it = this->output_instance.find(active);
-            if (it != this->output_instance.end())
-            {
-                return it->second.get();
-            }
-        }
-
-        if (!this->output_instance.empty())
-        {
-            peek_log("falling back to first tracked output instance");
-            return this->output_instance.begin()->second.get();
-        }
-
-        return nullptr;
-    }
-
-    wf::ipc::method_callback on_toggle_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        peek_log("IPC: wayfire-desktop-peek/toggle invoked");
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_toggle() ? "ok" : "noop";
-        return res;
-    };
-
-    wf::ipc::method_callback on_start_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        peek_log("IPC: wayfire-desktop-peek/start invoked");
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_start() ? "ok" : "noop";
-        return res;
-    };
-
-    wf::ipc::method_callback on_stop_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        peek_log("IPC: wayfire-desktop-peek/stop invoked");
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_stop() ? "ok" : "noop";
-        return res;
-    };
-
-  public:
-    void init() override
-    {
-        peek_log("plugin init: registering IPC methods");
-        wf::per_output_plugin_t<wayfire_desktop_peek_t>::init();
-        ipc_repo->register_method("wayfire-desktop-peek/toggle", on_toggle_ipc);
-        ipc_repo->register_method("wayfire-desktop-peek/start",  on_start_ipc);
-        ipc_repo->register_method("wayfire-desktop-peek/stop",   on_stop_ipc);
-    }
-
-    void fini() override
-    {
-        peek_log("plugin fini: unregistering IPC methods");
-        ipc_repo->unregister_method("wayfire-desktop-peek/toggle");
-        ipc_repo->unregister_method("wayfire-desktop-peek/start");
-        ipc_repo->unregister_method("wayfire-desktop-peek/stop");
-        wf::per_output_plugin_t<wayfire_desktop_peek_t>::fini();
-    }
+    wayfire_desktop_peek_plugin_t() : ipc_plugin_t("wayfire-desktop-peek")
+    {}
 };
 
 DECLARE_WAYFIRE_PLUGIN(wayfire_desktop_peek_plugin_t)

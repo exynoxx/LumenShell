@@ -15,8 +15,7 @@
 #include <wayfire/scene.hpp>
 #include <wayfire/scene-render.hpp>
 #include <wayfire/scene-operations.hpp>
-#include <wayfire/plugins/ipc/ipc-method-repository.hpp>
-#include <wayfire/plugins/common/shared-core-data.hpp>
+#include "ipc_wrapper.hpp"
 #include <wayfire/seat.hpp>
 #include <wayfire/region.hpp>
 
@@ -176,30 +175,14 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 
     wf::activator_callback on_toggle = [this] (const wf::activator_data_t&)
     {
-        if (state == state_t::IDLE)
-        {
-            return start_open();
-        }
-
-        if ((state == state_t::OPEN) || (state == state_t::OPENING))
-        {
-            start_close();
-            return true;
-        }
-
-        return false;
+        return ipc_toggle();
     };
 
     // Restore-only; a no-op from IDLE so it doesn't steal Escape from other
     // consumers when nothing is open.
     wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
     {
-        if ((state == state_t::OPEN) || (state == state_t::OPENING))
-        {
-            start_close();
-            return true;
-        }
-        return false;
+        return ipc_stop();
     };
 
     // Keep the desktop grid hidden until a slide peek reveals it. Catch it as
@@ -637,79 +620,10 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     }
 };
 
-// ---------------------------------------------------------------------------
-// Plugin wrapper: per-output instances + plugin-wide IPC surface, identical in
-// shape to wayfire-curtain-peek so lumen-drawer/lumen-panel can drive it.
-// ---------------------------------------------------------------------------
-class wayfire_slide_peek_plugin_t :
-    public wf::per_output_plugin_t<wayfire_slide_peek_t>
+struct wayfire_slide_peek_plugin_t : lumen::ipc_plugin_t<wayfire_slide_peek_t>
 {
-    wf::shared_data::ref_ptr_t<wf::ipc::method_repository_t> ipc_repo;
-
-    wayfire_slide_peek_t *instance_for_active_output()
-    {
-        auto seat = wf::get_core().seat.get();
-        wf::output_t *active = seat ? seat->get_active_output() : nullptr;
-
-        if (active)
-        {
-            auto it = this->output_instance.find(active);
-            if (it != this->output_instance.end())
-            {
-                return it->second.get();
-            }
-        }
-
-        if (!this->output_instance.empty())
-        {
-            return this->output_instance.begin()->second.get();
-        }
-
-        return nullptr;
-    }
-
-    wf::ipc::method_callback on_toggle_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_toggle() ? "ok" : "noop";
-        return res;
-    };
-
-    wf::ipc::method_callback on_start_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_start() ? "ok" : "noop";
-        return res;
-    };
-
-    wf::ipc::method_callback on_stop_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_stop() ? "ok" : "noop";
-        return res;
-    };
-
-  public:
-    void init() override
-    {
-        slide_log("plugin init: registering IPC methods");
-        wf::per_output_plugin_t<wayfire_slide_peek_t>::init();
-        ipc_repo->register_method("wayfire-slide-peek/toggle", on_toggle_ipc);
-        ipc_repo->register_method("wayfire-slide-peek/start",  on_start_ipc);
-        ipc_repo->register_method("wayfire-slide-peek/stop",   on_stop_ipc);
-    }
-
-    void fini() override
-    {
-        slide_log("plugin fini: unregistering IPC methods");
-        ipc_repo->unregister_method("wayfire-slide-peek/toggle");
-        ipc_repo->unregister_method("wayfire-slide-peek/start");
-        ipc_repo->unregister_method("wayfire-slide-peek/stop");
-        wf::per_output_plugin_t<wayfire_slide_peek_t>::fini();
-    }
+    wayfire_slide_peek_plugin_t() : ipc_plugin_t("wayfire-slide-peek")
+    {}
 };
 
 DECLARE_WAYFIRE_PLUGIN(wayfire_slide_peek_plugin_t)

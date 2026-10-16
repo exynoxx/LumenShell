@@ -12,8 +12,7 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/scene.hpp>
 #include <wayfire/scene-operations.hpp>
-#include <wayfire/plugins/ipc/ipc-method-repository.hpp>
-#include <wayfire/plugins/common/shared-core-data.hpp>
+#include "ipc_wrapper.hpp"
 #include <wayfire/seat.hpp>
 
 #include <memory>
@@ -102,28 +101,14 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
 
     wf::activator_callback on_toggle = [this] (const wf::activator_data_t&)
     {
-        if (state == state_t::IDLE)
-        {
-            return start_push();
-        }
-        if ((state == state_t::PUSHED) || (state == state_t::OUT))
-        {
-            start_restore();
-            return true;
-        }
-        return false;
+        return ipc_toggle();
     };
 
     // Restore-only; a no-op from IDLE so it doesn't steal Escape from other
     // consumers when nothing is pushed.
     wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
     {
-        if ((state == state_t::PUSHED) || (state == state_t::OUT))
-        {
-            start_restore();
-            return true;
-        }
-        return false;
+        return ipc_stop();
     };
 
     // A view that maps while the scene is (or is becoming) pushed — e.g. a new
@@ -376,79 +361,10 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
     }
 };
 
-// ---------------------------------------------------------------------------
-// Plugin wrapper: per-output instances + plugin-wide IPC surface, same shape as
-// the peek plugins so lumen-panel can drive it.
-// ---------------------------------------------------------------------------
-class wayfire_panel_push_plugin_t :
-    public wf::per_output_plugin_t<wayfire_panel_push_t>
+struct wayfire_panel_push_plugin_t : lumen::ipc_plugin_t<wayfire_panel_push_t>
 {
-    wf::shared_data::ref_ptr_t<wf::ipc::method_repository_t> ipc_repo;
-
-    wayfire_panel_push_t *instance_for_active_output()
-    {
-        auto seat = wf::get_core().seat.get();
-        wf::output_t *active = seat ? seat->get_active_output() : nullptr;
-
-        if (active)
-        {
-            auto it = this->output_instance.find(active);
-            if (it != this->output_instance.end())
-            {
-                return it->second.get();
-            }
-        }
-
-        if (!this->output_instance.empty())
-        {
-            return this->output_instance.begin()->second.get();
-        }
-
-        return nullptr;
-    }
-
-    wf::ipc::method_callback on_toggle_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_toggle() ? "ok" : "noop";
-        return res;
-    };
-
-    wf::ipc::method_callback on_start_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_start() ? "ok" : "noop";
-        return res;
-    };
-
-    wf::ipc::method_callback on_stop_ipc = [this] (const wf::json_t&) -> wf::json_t
-    {
-        auto inst = instance_for_active_output();
-        wf::json_t res;
-        res["result"] = (inst != nullptr) && inst->ipc_stop() ? "ok" : "noop";
-        return res;
-    };
-
-  public:
-    void init() override
-    {
-        push_log("plugin init: registering IPC methods");
-        wf::per_output_plugin_t<wayfire_panel_push_t>::init();
-        ipc_repo->register_method("wayfire-panel-push/toggle", on_toggle_ipc);
-        ipc_repo->register_method("wayfire-panel-push/start",  on_start_ipc);
-        ipc_repo->register_method("wayfire-panel-push/stop",   on_stop_ipc);
-    }
-
-    void fini() override
-    {
-        push_log("plugin fini: unregistering IPC methods");
-        ipc_repo->unregister_method("wayfire-panel-push/toggle");
-        ipc_repo->unregister_method("wayfire-panel-push/start");
-        ipc_repo->unregister_method("wayfire-panel-push/stop");
-        wf::per_output_plugin_t<wayfire_panel_push_t>::fini();
-    }
+    wayfire_panel_push_plugin_t() : ipc_plugin_t("wayfire-panel-push")
+    {}
 };
 
 DECLARE_WAYFIRE_PLUGIN(wayfire_panel_push_plugin_t)
