@@ -13,7 +13,6 @@
 #include <wayfire/scene.hpp>
 #include <wayfire/scene-operations.hpp>
 #include "ipc_wrapper.hpp"
-#include <wayfire/seat.hpp>
 
 #include <memory>
 #include <vector>

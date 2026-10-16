@@ -19,6 +19,5 @@ void registry_add_handler(const char *interface_name,
 void registry_set_remover(const char *interface_name, registry_remover_fn remover);
 
 void registry_init(struct wl_display *display);
-void registry_cleanup(void);
 
 #endif // REGISTRY_H

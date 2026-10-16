@@ -40,14 +40,6 @@ void idle_notify_init(void) {
                          idle_registry_handler, NULL);
 }
 
-void idle_notify_cleanup(void) {
-    idle_notify_unregister();
-    if (notifier) {
-        ext_idle_notifier_v1_destroy(notifier);
-        notifier = NULL;
-    }
-}
-
 bool idle_notify_available(void) {
     return notifier != NULL;
 }

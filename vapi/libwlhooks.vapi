@@ -7,9 +7,6 @@ namespace WLHooks {
     [CCode(cname="wlhooks_init_toplevel_with_display")]
     public int init_toplevel_with_display(Wl.Display display);
 
-    [CCode(cname="wlhooks_destroy_toplevel")]
-    public void destroy_toplevel();
-
     public delegate void ToplevelWindowNew(uint id, string app_id, string title);
     public delegate void ToplevelWindowRemove(uint id);
     public delegate void ToplevelWindowFocus(uint id);
@@ -31,9 +28,6 @@ namespace WLHooks {
 
     [CCode (cname = "toplevel_activate_by_id")]
     void toplevel_activate_by_id(uint id);
-
-    [CCode (cname = "toplevel_minimize_by_id")]
-    void toplevel_minimize_by_id(uint id);
 
     [CCode (cname = "toplevel_close_by_id")]
     void toplevel_close_by_id(uint id);
@@ -119,9 +113,6 @@ namespace WLHooks {
 
     [CCode (cname = "wlhooks_idle_notify_unregister")]
     public void idle_notify_unregister ();
-
-    [CCode (cname = "wlhooks_idle_notify_destroy")]
-    public void idle_notify_destroy ();
 
     // ---- zwp-idle-inhibit-v1 (lumen-panel Caffeine) ------------------------
     // Returns 0 if the inhibit manager was bound, -1 if unsupported.

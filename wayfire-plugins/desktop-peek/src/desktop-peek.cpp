@@ -10,14 +10,8 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/geometry.hpp>
 #include <wayfire/scene-operations.hpp>
-#include <wayfire/scene-input.hpp>
 #include <wayfire/scene.hpp>
 #include "ipc_wrapper.hpp"
-#include <wayfire/seat.hpp>
-#include <wayfire/debug.hpp>
-
-#include <wayland-server-protocol.h>
-#include <wlr/types/wlr_pointer.h>
 
 #include <memory>
 #include <vector>
@@ -55,9 +49,7 @@ inline void peek_log(const char *fmt, ...)
 }
 }
 
-class wayfire_desktop_peek_t :
-    public wf::per_output_plugin_instance_t,
-    public wf::pointer_interaction_t
+class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-desktop-peek/toggle"};
     wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-desktop-peek/dismiss"};
@@ -170,12 +162,6 @@ class wayfire_desktop_peek_t :
             return true;
         }
         return false;
-    }
-
-    // Required by pointer_interaction_t; never invoked without an input grab.
-    void handle_pointer_button(const wlr_pointer_button_event& event) override
-    {
-        (void) event;
     }
 
   private:

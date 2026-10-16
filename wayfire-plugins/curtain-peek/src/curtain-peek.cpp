@@ -29,8 +29,6 @@
 
 namespace
 {
-constexpr const char *SCREENSHOT_NODE_NAME = "wayfire-curtain-peek-screenshot";
-
 // Debug log, append-only; truncate manually before a test session.
 inline void curtain_log(const char *fmt, ...)
 {
@@ -212,7 +210,6 @@ class curtain_screenshot_node_t : public wf::scene::node_t
   public:
     wf::geometry_t geo;            // full output, output-relative {0,0,W,H}
     wlr_texture   *tex = nullptr;  // the captured snapshot (owned by the plugin)
-    float tex_scale = 1.0f;        // output scale: logical px -> buffer texels
     int   seam_x    = 0;           // seam position, output-relative
     int   edge_px   = 0;           // residual gathered stack width per half (px)
     float progress  = 0.0f;        // 0 = closed (flat), 1 = fully gathered open
@@ -226,8 +223,8 @@ class curtain_screenshot_node_t : public wf::scene::node_t
     bool               gl_ready = false;
     std::vector<float> grid;
 
-    curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t, float scale) :
-        wf::scene::node_t(false), geo(g), tex(t), tex_scale(scale)
+    curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t) :
+        wf::scene::node_t(false), geo(g), tex(t)
     {}
 
     ~curtain_screenshot_node_t() override
@@ -543,7 +540,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         // geometry would double-offset); capture_output() needs layout geometry.
         const auto rel = output->get_relative_geometry();
         const int W = rel.width;
-        const float scale = output->handle ? output->handle->scale : 1.0f;
         const double ratio = std::clamp((double) split_ratio_opt, 0.1, 0.9);
         const int seam_off = (int) std::lround(W * ratio);
         const int edge = std::clamp((int) edge_px_opt, 0,
@@ -572,7 +568,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         set_live_layers_hidden(true);
 
         screenshot_node = std::make_shared<curtain_screenshot_node_t>(
-            rel, screenshot_buf.get_texture(), scale);
+            rel, screenshot_buf.get_texture());
         screenshot_node->seam_x      = rel.x + seam_off;
         screenshot_node->edge_px     = edge;
         screenshot_node->progress    = 0.0f;

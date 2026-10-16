@@ -76,10 +76,3 @@ static void registry_handler(void *data, struct wl_registry *registry,
 void wlr_toplevel_init(void) {
     registry_add_handler("zwlr_foreign_toplevel_manager_v1", registry_handler, NULL);
 }
-
-void wlr_toplevel_cleanup(void) {
-    if (manager) {
-        zwlr_foreign_toplevel_manager_v1_destroy(manager);
-        manager = NULL;
-    }
-}

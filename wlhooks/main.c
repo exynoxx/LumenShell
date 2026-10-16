@@ -6,11 +6,8 @@
 #include "protocols/idle_notify.h"
 #include "protocols/idle_inhibit.h"
 
-struct wl_display *wl_display = NULL;
-
 int wlhooks_init_toplevel_with_display(struct wl_display *external) {
     if (!external) return -1;
-    wl_display = external;
 
     toplevel_init();
     seat_init();
@@ -18,37 +15,19 @@ int wlhooks_init_toplevel_with_display(struct wl_display *external) {
     // to connector names (per-monitor taskbar filtering). Read-only listeners.
     output_init();
 
-    registry_init(wl_display);
+    registry_init(external);
     return 0;
-}
-
-void wlhooks_destroy_toplevel(void) {
-    toplevel_cleanup();
-    output_destroy();
-    seat_cleanup();
-    registry_cleanup();
-    // Do NOT disconnect: the caller (GTK/GDK) owns the wl_display.
-    wl_display = NULL;
 }
 
 // ---- ext-idle-notify-v1 (lumen-lockscreen idle auto-lock) ------------------
 int wlhooks_idle_notify_init(struct wl_display *external) {
     if (!external) return -1;
-    wl_display = external;
 
     seat_init();
     idle_notify_init();
 
-    registry_init(wl_display);
+    registry_init(external);
     return idle_notify_available() ? 0 : -1;
-}
-
-void wlhooks_idle_notify_destroy(void) {
-    idle_notify_cleanup();
-    seat_cleanup();
-    registry_cleanup();
-    // Do NOT disconnect: GTK/GDK owns the wl_display.
-    wl_display = NULL;
 }
 
 int wlhooks_idle_notify_register(uint32_t timeout_ms,

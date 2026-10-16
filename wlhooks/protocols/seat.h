@@ -7,7 +7,6 @@ struct wl_seat;
 // owns pointer/keyboard dispatch. wlhooks exposes wl_seat only so
 // foreign-toplevel activate() and ext-idle-notify have a seat to reference.
 void seat_init(void);
-void seat_cleanup(void);
 struct wl_seat *get_wl_seat(void);
 
 #endif

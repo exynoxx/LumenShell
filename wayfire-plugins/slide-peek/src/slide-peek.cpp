@@ -29,7 +29,6 @@
 
 namespace
 {
-constexpr const char *SCREENSHOT_NODE_NAME = "wayfire-slide-peek-screenshot";
 constexpr const char *DESKTOP_TRANSFORMER_NAME = "wayfire-slide-peek-slide";
 
 // Debug log, append-only; truncate manually before a test session.

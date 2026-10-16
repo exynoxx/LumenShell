@@ -20,7 +20,6 @@ struct toplevel_window {
 };
 
 void window_list_init(void);
-void window_list_cleanup(void);
 
 toplevel_window_t *window_list_create(struct zwlr_foreign_toplevel_handle_v1 *handle);
 toplevel_window_t *window_list_find(uint32_t id);

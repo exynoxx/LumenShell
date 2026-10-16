@@ -12,7 +12,6 @@ typedef void (*idle_notify_cb)(void *user_data);
 
 // Register the ext_idle_notifier_v1 registry handler. Call BEFORE registry_init.
 void idle_notify_init(void);
-void idle_notify_cleanup(void);
 
 // True once the compositor's ext_idle_notifier_v1 global has been bound.
 bool idle_notify_available(void);

@@ -25,18 +25,6 @@ void window_list_init(void) {
     wl_list_init(&windows);
 }
 
-void window_list_cleanup(void) {
-    toplevel_window_t *w, *tmp;
-    wl_list_for_each_safe(w, tmp, &windows, link) {
-        zwlr_foreign_toplevel_handle_v1_destroy(w->handle);
-        wl_list_remove(&w->link);
-        free(w->app_id);
-        free(w->title);
-        free(w->output);
-        free(w);
-    }
-}
-
 toplevel_window_t *window_list_create(struct zwlr_foreign_toplevel_handle_v1 *handle) {
     toplevel_window_t *w = calloc(1, sizeof(*w));
     w->id     = next_window_id++;

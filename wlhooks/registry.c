@@ -1,6 +1,5 @@
 #include "registry.h"
 #include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 
 #define MAX_HANDLERS 64
@@ -78,16 +77,4 @@ void registry_init(struct wl_display *display) {
     // the first roundtrip (e.g. wl_output mode/scale).
     wl_display_roundtrip(display);
     wl_display_roundtrip(display);
-}
-
-void registry_cleanup(void) {
-    for (int i = 0; i < handler_count; i++) {
-        free(handlers[i].interface_name);
-    }
-    handler_count = 0;
-
-    if (global_registry) {
-        wl_registry_destroy(global_registry);
-        global_registry = NULL;
-    }
 }
