@@ -29,13 +29,21 @@ public class ClockWidget : Gtk.Box {
         append(date_label);
 
         update();
+    }
+
+    // The tick closure holds a ref on `this`, so it must stop on unrealize
+    // or the widget (and timer) outlives its lock window.
+    public override void realize() {
+        base.realize();
+        update();
         // Re-tick aligned to the next wall-clock second would be nicer, but a
         // 1 s timer is plenty for a lock face and matches the OSD's simplicity.
         tick_source = Timeout.add_seconds(1, () => { update(); return Source.CONTINUE; });
     }
 
-    ~ClockWidget() {
-        if (tick_source != 0) Source.remove(tick_source);
+    public override void unrealize() {
+        if (tick_source != 0) { Source.remove(tick_source); tick_source = 0; }
+        base.unrealize();
     }
 
     private void update() {
