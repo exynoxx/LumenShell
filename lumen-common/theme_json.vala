@@ -1,4 +1,3 @@
-// Flat-JSON theme reader (lumen-common). Source-level reuse only.
 // A missing or invalid file reads as empty, so every getter returns its default.
 namespace LumenCommon {
     public class ThemeJson {

@@ -4,10 +4,8 @@ public class WifiService : GLib.Object {
 
     public signal void state_changed();
 
-    /** Fires on the main thread once a connect_to() attempt resolves. */
     public signal void connect_result(string ssid, WifiConnectResult result);
 
-    /** Fires on the main thread once request_details() resolves. */
     public signal void details_ready(NetDetails wifi, NetDetails eth);
 
     public string    connected_ssid     { get; private set; default = ""; }
@@ -27,9 +25,7 @@ public class WifiService : GLib.Object {
     private bool        scan_in_flight = false;
 
     public WifiService() {
-        // Re-apply the remembered radio state before the first poll, so a panel
-        // restart restores the user's last choice rather than mirroring whatever
-        // NetworkManager currently reports. Null ⇒ never toggled ⇒ just poll.
+        // Re-apply the remembered radio state; null ⇒ never toggled ⇒ just poll.
         var saved = RadioState.get_wifi();
         if (saved != null) apply_radio(saved);
         else               poll_connection();
@@ -39,9 +35,8 @@ public class WifiService : GLib.Object {
         });
     }
 
-    // Same as the default ctor but WITHOUT re-applying the saved radio state, so
-    // merely constructing the service (e.g. the settings page building at app
-    // launch) never toggles the user's WiFi. Use in read/observe contexts.
+    // Does NOT re-apply the saved radio state, so merely constructing it (e.g. the
+    // settings page) never toggles the user's WiFi.
     public WifiService.passive() {
         poll_connection();
         GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
@@ -55,8 +50,7 @@ public class WifiService : GLib.Object {
         apply_radio(on);
     }
 
-    // Push the radio to `on` on a worker thread (rfkill+nmcli block), reflecting
-    // the intent optimistically first so the toggle doesn't bounce back mid-call.
+    // Optimistic first so the toggle doesn't bounce back during the blocking call.
     private void apply_radio(bool on) {
         enabled = on;
         if (!on) { nets = {}; connected_ssid = ""; }
@@ -70,11 +64,6 @@ public class WifiService : GLib.Object {
         });
     }
 
-    /**
-     * Connect to an SSID. If password is "", brings up an existing saved
-     * connection. The attempt runs on a background thread; connect_result
-     * fires with the outcome and the connection state is refreshed on success.
-     */
     public void connect_to(string ssid, string password, bool from_saved = false) {
         if (connecting_ssid != "") return;   // one attempt at a time
         connecting_ssid = ssid;
@@ -97,13 +86,11 @@ public class WifiService : GLib.Object {
         schedule_rescan(1000);
     }
 
-    /** Delete the saved NetworkManager profile for an SSID, then rescan. */
     public void forget(string ssid) {
         nmcli.forget(ssid);
         schedule_rescan(800);
     }
 
-    /** Full network scan + connection refresh. rescan=true asks nmcli to re-probe. */
     public void refresh_scan(bool rescan = false) {
         if (scan_in_flight) return;
         scan_in_flight = true;
@@ -131,16 +118,11 @@ public class WifiService : GLib.Object {
         });
     }
 
-    /** Bring the ethernet device up/down, then refresh. */
     public void set_ethernet(bool on) {
         nmcli.set_ethernet_enabled(on);
         schedule_rescan(1000);
     }
 
-    /**
-     * Connect to a hidden SSID (one that doesn't broadcast). Runs on a worker
-     * thread and emits connect_result exactly like connect_to().
-     */
     public void connect_to_hidden(string ssid, string password) {
         if (connecting_ssid != "") return;
         connecting_ssid = ssid;
@@ -158,18 +140,12 @@ public class WifiService : GLib.Object {
         });
     }
 
-    /**
-     * Fetch per-device IP details for the WiFi and ethernet devices off the
-     * main loop; details_ready fires with both halves.
-     */
     public void request_details() {
         string conn = connected_ssid;
         new GLib.Thread<void>("wifi-details", () => {
             var wifi_det = nmcli.device_details(nmcli.get_wifi_device());
             var eth_det  = nmcli.device_details(ethernet_device);
 
-            // `nmcli device show` carries neither the security type nor the
-            // band/passphrase, so pull those from the live AP + saved profile.
             string sec, band;
             nmcli.active_ap(out sec, out band);
             wifi_det.security = sec;

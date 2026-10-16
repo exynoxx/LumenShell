@@ -1,9 +1,5 @@
 using GLib;
 
-// lumen-lockctl — thin CLI mirror of lumen-osdctl. Sends DBus calls to the
-// lumen-lockscreen daemon. Does NOT auto-spawn it: prints an error and exits
-// non-zero if org.lumenshell.Lock has no owner.
-
 private const string USAGE =
 """Usage: lumen-lockctl <command>
 

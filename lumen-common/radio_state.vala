@@ -1,15 +1,7 @@
 using GLib;
 
-// Remembered WiFi / Bluetooth power state, persisted across panel restarts and
-// reboots. The tray toggles only ever mirror the live system state otherwise, so
-// without this the radios come back in whatever the underlying daemons default to
-// (notably BlueZ AutoEnable re-powers Bluetooth at boot). WifiService/BluetoothService
-// write the user's choice here on toggle and re-apply it from their constructors.
-//
-// Stored as ~/.config/lumen-shell/radio-state.json with flat dotted bool keys
-// ("wifi.enabled", "bluetooth.enabled"). An absent key reads as null — "never
-// toggled" — so a fresh install applies nothing and the radios follow the system
-// default; only an explicit saved value is enforced.
+// Remembered radio power state. An absent key reads as null ("never toggled"),
+// so a fresh install enforces nothing and follows the system default.
 public class RadioState {
 
     static bool   loaded         = false;
@@ -20,8 +12,7 @@ public class RadioState {
         return LumenCommon.Paths.radio_state_json();
     }
 
-    // Fail-soft parse, mirroring PanelConfig: a missing or unparseable file leaves
-    // both values null, so every getter returns "unset".
+    // Fail-soft: a missing or unparseable file leaves both values null.
     static void ensure_loaded () {
         if (loaded) return;
         loaded = true;

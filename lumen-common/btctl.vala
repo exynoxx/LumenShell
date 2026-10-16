@@ -16,10 +16,6 @@ public class BtDevice : GLib.Object {
     }
 }
 
-/**
- * Extended per-device info — everything BtDevice holds plus pairing/trust/
- * battery detail for the settings device-detail expansion.
- */
 public class BtDeviceDetails : GLib.Object {
     public string mac          = "";
     public string name         = "";
@@ -31,25 +27,10 @@ public class BtDeviceDetails : GLib.Object {
     public int    battery      = -1;   // -1 when absent
 }
 
-/**
- * BlueZ client, split by direction:
- *
- *   READS go over DBus. One ObjectManager.GetManagedObjects call on org.bluez
- *   returns every adapter and device with all its properties — the whole list
- *   in a single round trip, where bluetoothctl needs one `info <mac>` fork per
- *   device on top of `devices`.
- *
- *   WRITES stay on bluetoothctl. Pairing over DBus requires registering an
- *   org.bluez.Agent1 to answer passkey/confirmation requests, which is a lot
- *   more machinery than the one-shot shell-out.
- *
- * BlueZ also pushes changes, so `changed` fires on InterfacesAdded/Removed and
- * on any Adapter1/Device1/Battery1 property change — callers can react instead
- * of polling.
- */
+// Reads over BlueZ DBus; writes shell bluetoothctl, because pairing over DBus
+// needs an org.bluez.Agent1 registration to answer passkey prompts.
 public class BtctlClient : GLib.Object {
 
-    /** Emitted on the main loop whenever BlueZ reports an adapter/device change. */
     public signal void changed();
 
     const string BLUEZ         = "org.bluez";
@@ -186,11 +167,7 @@ public class BtctlClient : GLib.Object {
         });
     }
 
-    /**
-     * Power the controller on or off. Powering on first clears any rfkill
-     * soft-block, otherwise `bluetoothctl power on` fails with off-blocked.
-     * Blocking sequence — call from a background thread.
-     */
+    // Blocking. rfkill unblock first, otherwise `power on` fails with off-blocked.
     public void set_powered(bool on) {
         if (on) {
             LumenCommon.Proc.run_capture(new string[] { "rfkill", "unblock", "bluetooth" });
@@ -208,11 +185,7 @@ public class BtctlClient : GLib.Object {
         LumenCommon.Proc.spawn_detached(new string[] { "bluetoothctl", "disconnect", mac });
     }
 
-    /**
-     * Pair → trust → connect, run synchronously in order. Best-effort
-     * "just works" pairing; interactive passkey/PIN confirmation is not
-     * handled. Call from a background thread — each step blocks.
-     */
+    // Blocking. "Just works" pairing only; passkey/PIN confirmation is not handled.
     public void pair(string mac) {
         LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "pair",    mac });
         LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "trust",   mac });

@@ -3,7 +3,7 @@ using GLib;
 public class SoundService : GLib.Object {
 
     public signal void state_changed();
-    // Opt-in input level meter (see start_input_monitor). Throttled to ~20 Hz.
+    // Throttled to ~20 Hz.
     public signal void input_peak_changed(double peak);
 
     public int        volume_percent { get; private set; default = 0; }
@@ -23,7 +23,6 @@ public class SoundService : GLib.Object {
     private PactlClient pactl          = new PactlClient();
     private bool        poll_in_flight = false;
 
-    // ---- Input level meter (parec) state ----
     private GLib.Subprocess? meter_proc = null;
     private bool             meter_running = false;
     private int64            last_peak_emit_us = 0;
@@ -36,12 +35,8 @@ public class SoundService : GLib.Object {
         });
     }
 
-    /**
-     * Re-read the whole PulseAudio state. One pass is ~11 blocking pactl
-     * spawns, so it runs on a worker thread (same shape as WifiService /
-     * BluetoothService) and the properties are assigned back on the main loop;
-     * state_changed fires there. Overlapping calls are dropped, not queued.
-     */
+    // ~11 blocking pactl spawns per pass, hence the worker thread. Overlapping
+    // calls are dropped, not queued.
     public void refresh() {
         if (poll_in_flight) return;
         poll_in_flight = true;
@@ -72,7 +67,6 @@ public class SoundService : GLib.Object {
                 input_muted          = new_in_muted;
                 sink_inputs          = new_sink_inputs;
 
-                // Follow a default-source change (e.g. hotplug) with the live meter.
                 if (meter_running && default_source != old_source)
                     respawn_meter();
 
@@ -108,8 +102,6 @@ public class SoundService : GLib.Object {
         state_changed();
     }
 
-    // ---- Input (source) control ----
-
     public void change_input_volume(int pct) {
         pct = int.max(0, int.min(100, pct));
         if (pct == input_volume_percent && !input_muted) return;
@@ -137,13 +129,10 @@ public class SoundService : GLib.Object {
         state_changed();
     }
 
-    // ---- Per-application playback streams ----
-
     public void change_sink_input_volume(string index, int pct) {
         if (index == "") return;
         pct = int.max(0, int.min(150, pct));
         pactl.set_sink_input_volume(index, pct);
-        // Optimistic local update.
         foreach (var s in sink_inputs) {
             if (s.index == index) { s.volume_pct = pct; break; }
         }
@@ -164,10 +153,8 @@ public class SoundService : GLib.Object {
         state_changed();
     }
 
-    // ---- Opt-in input level meter ----
-    // NOT started in the constructor: lumen-panel constructs SoundService too
-    // and must never hold a mic capture open. Only lumen-settings' Sound page
-    // starts/stops this, gated on the Input group's visibility.
+    // Opt-in input meter: never started by the ctor, so lumen-panel never holds
+    // the mic open. Only lumen-settings' Sound page starts it.
 
     public bool meter_available() {
         return GLib.Environment.find_program_in_path("parec") != null;
@@ -221,8 +208,7 @@ public class SoundService : GLib.Object {
         }
     }
 
-    // Async, non-blocking read loop. `owner` pins the subprocess this loop was
-    // started for, so a respawn (new meter_proc) makes the old loop exit.
+    // `owner` pins this loop's subprocess, so a respawn makes the old loop exit.
     private async void read_loop(GLib.InputStream stream, GLib.Subprocess owner) {
         while (meter_running && meter_proc == owner) {
             try {

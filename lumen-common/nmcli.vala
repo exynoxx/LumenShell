@@ -1,9 +1,5 @@
 using GLib;
 
-/**
- * Outcome of a connection attempt — lets the UI distinguish a wrong
- * passphrase (worth re-prompting) from a generic failure.
- */
 public enum WifiConnectResult {
     SUCCESS,
     BAD_PASSWORD,
@@ -23,16 +19,11 @@ public class WifiNet : GLib.Object {
         this.is_saved = is_saved;
     }
 
-    /** True when the network advertises some form of encryption. */
     public bool is_secured() {
         return security != "" && security != "--";
     }
 }
 
-/**
- * Per-device network details (IP configuration, link identity), as reported by
- * `nmcli device show`. Empty strings for fields NetworkManager doesn't report.
- */
 public class NetDetails : GLib.Object {
     public string   ip4      = "";
     public string   gateway  = "";
@@ -45,10 +36,7 @@ public class NetDetails : GLib.Object {
 
 public class NmcliClient : GLib.Object {
 
-    /**
-     * Split an nmcli terse-format line on ':' with backslash-escape support.
-     * Stops splitting after max_fields fields (-1 = unlimited).
-     */
+    // nmcli -t output: ':'-separated, backslash-escaped; max_fields < 0 = unlimited.
     private string[] split_terse(string line, int max_fields = -1) {
         string[] parts = {};
         var sb = new GLib.StringBuilder();
@@ -95,10 +83,8 @@ public class NmcliClient : GLib.Object {
     private GenericArray<DevRow>?   table_cache = null;
     private int64                   table_us    = 0;
 
-    // WifiService asks all four device questions back-to-back on every poll, so
-    // the one `nmcli device` listing they share is cached briefly — one spawn
-    // per poll instead of four. The TTL is far shorter than the 4 s poll, so a
-    // state change is never held for more than one pass.
+    // WifiService asks four device questions per poll; cache the shared listing
+    // so that's one spawn, not four. TTL is well under the 4 s poll.
     private const int64 TABLE_TTL_US = 1000000;
 
     private GenericArray<DevRow> device_table() {
@@ -156,11 +142,7 @@ public class NmcliClient : GLib.Object {
         return "";
     }
 
-    /**
-     * BLOCKING — call from a background thread. Reads a device's IP config and
-     * link identity via `nmcli device show`, parsing the terse KEY:VALUE lines
-     * (indexed keys like IP4.ADDRESS[1] / IP4.DNS[1]). Missing fields stay "".
-     */
+    // Blocking.
     public NetDetails device_details(string dev) {
         var d = new NetDetails();
         if (dev == "") return d;
@@ -180,7 +162,6 @@ public class NmcliClient : GLib.Object {
             string val = p[1].strip();
             if (val == "" || val == "--") continue;
 
-            // Strip the [n] index suffix so IP4.ADDRESS[1] matches IP4.ADDRESS.
             int br = key.index_of_char('[');
             string bare = br >= 0 ? key.substring(0, br) : key;
 
@@ -193,13 +174,8 @@ public class NmcliClient : GLib.Object {
         return d;
     }
 
-    /**
-     * BLOCKING — call from a background thread. Reads the security type and RF
-     * band of the currently associated access point from the scan list (the
-     * IN-USE `*` row). `nmcli device show` reports neither, so the band is
-     * derived from the AP's frequency: sub-3 GHz ⇒ 2.4, sub-5.925 GHz ⇒ 5,
-     * else 6. Both stay "" when nothing is connected.
-     */
+    // Blocking. `nmcli device show` has neither security nor band, so read the
+    // IN-USE row of the scan list and derive the band from FREQ.
     public void active_ap(out string security, out string band) {
         security = "";
         band     = "";
@@ -215,7 +191,6 @@ public class NmcliClient : GLib.Object {
 
             security = p[2].strip();
 
-            // FREQ arrives as e.g. "5640 MHz"; take the leading integer.
             int mhz = 0;
             if (int.try_parse(p[1].strip().split(" ")[0], out mhz) && mhz > 0) {
                 if      (mhz < 3000) band = "2.4 GHz";
@@ -226,12 +201,7 @@ public class NmcliClient : GLib.Object {
         }
     }
 
-    /**
-     * BLOCKING — call from a background thread. Returns the saved passphrase for
-     * a connection profile (`nmcli -s -g …psk`), or "" when the profile has no
-     * PSK (open/enterprise network) or the secret can't be read. `-s` is
-     * required for nmcli to emit secrets at all.
-     */
+    // Blocking. `-s` is required for nmcli to emit secrets at all.
     public string connection_psk(string name) {
         if (name == "") return "";
         string? out_str = LumenCommon.Proc.run_capture(new string[]{
@@ -248,28 +218,17 @@ public class NmcliClient : GLib.Object {
         return out_str.strip() == "enabled";
     }
 
-    /**
-     * Blocking — call from a background thread. rfkill unblock clears any
-     * hard/soft block first, otherwise `nmcli radio wifi on` can no-op.
-     */
+    // Blocking. rfkill unblock first, otherwise `nmcli radio wifi on` can no-op.
     public void set_enabled(bool on) {
         if (on) LumenCommon.Proc.run_capture(new string[] { "rfkill", "unblock", "wifi" });
         LumenCommon.Proc.run_capture(new string[] { "nmcli", "radio", "wifi", on ? "on" : "off" });
     }
 
-    /** Fire-and-forget: ask NetworkManager to re-probe the air. */
     public void rescan() {
         LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "device", "wifi", "rescan" });
     }
 
-    /**
-     * Connect to an SSID, blocking until nmcli finishes so the caller can
-     * report success/failure. With from_saved, brings up the existing profile
-     * (`connection up`, no passphrase needed); otherwise associates via
-     * `device wifi connect`, passing the passphrase when one was given (open
-     * networks pass none). Call from a background thread — this can block for
-     * several seconds while NetworkManager negotiates the association.
-     */
+    // Blocking for seconds while NetworkManager associates — worker thread only.
     public WifiConnectResult connect(string ssid, string password, bool from_saved) {
         if (from_saved)
             return run_connect(new string[] { "nmcli", "connection", "up", "id", ssid });
@@ -280,11 +239,7 @@ public class NmcliClient : GLib.Object {
         });
     }
 
-    /**
-     * Connect to a hidden SSID (not present in scan results). Mirrors connect()
-     * but adds `hidden yes` so NetworkManager probes the SSID directly. Blocking
-     * — call from a background thread.
-     */
+    // Blocking.
     public WifiConnectResult connect_hidden(string ssid, string password) {
         if (password == "")
             return run_connect(new string[] {
@@ -295,16 +250,8 @@ public class NmcliClient : GLib.Object {
         });
     }
 
-    /**
-     * Run one nmcli connect variant to completion and classify the outcome.
-     *
-     * NOTE: the passphrase is an argv element, so it is readable in
-     * /proc/<pid>/cmdline for the duration of the association. `nmcli device
-     * wifi connect` offers no passwd-file option (only `connection up` does),
-     * and `--ask` reads its prompts from stdin but gives no guarantee about
-     * which prompt a piped line answers, so there is no reliable stdin route
-     * for the create-and-activate path.
-     */
+    // Known limitation: the PSK is an argv element (visible in /proc/<pid>/cmdline).
+    // `device wifi connect` has no passwd-file option and `--ask` can't be piped reliably.
     private WifiConnectResult run_connect(string[] argv) {
         string std_out = "", std_err = "";
         int status = -1;
@@ -319,9 +266,7 @@ public class NmcliClient : GLib.Object {
         try { ok = Process.check_wait_status(status); } catch (Error e) { ok = false; }
         if (ok) return WifiConnectResult.SUCCESS;
 
-        // NetworkManager reports a rejected passphrase a few different ways
-        // depending on version; treat any secrets/auth wording as bad password
-        // so the UI can re-prompt instead of showing a dead-end failure.
+        // NM words a rejected passphrase differently per version; match them all.
         string err = (std_err + " " + std_out).down();
         if (err.contains("secrets were required")
             || err.contains("no secrets")
@@ -333,7 +278,6 @@ public class NmcliClient : GLib.Object {
         return WifiConnectResult.FAILED;
     }
 
-    /** Resolves the ethernet device (blocking), then brings it up or down. */
     public void set_ethernet_enabled(bool on) {
         string dev = get_ethernet_device();
         if (dev == "") return;
@@ -342,11 +286,6 @@ public class NmcliClient : GLib.Object {
         });
     }
 
-    /**
-     * SSIDs that already have a saved NetworkManager profile. These can be
-     * re-joined without re-entering a passphrase, and NetworkManager will
-     * auto-connect to them on its own at login / when in range.
-     */
     public Gee.HashSet<string> saved_ssids() {
         var saved = new Gee.HashSet<string>();
         string? out_str = LumenCommon.Proc.run_capture(new string[]{
@@ -368,7 +307,6 @@ public class NmcliClient : GLib.Object {
         LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "device", "disconnect", dev });
     }
 
-    /** Delete the saved profile for an SSID (`nmcli connection delete id <ssid>`). */
     public void forget(string ssid) {
         LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "connection", "delete", "id", ssid });
     }

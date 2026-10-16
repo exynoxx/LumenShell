@@ -12,78 +12,53 @@ json_dep        = dependency('json-glib-1.0')
 wayland_dep     = dependency('wayland-client')
 m_dep           = cc.find_library('m')
 
-# lumen-panel (GTK4 port) extends wlhooks's foreign-toplevel surface to take
-# a GDK-owned wl_display. The legacy EGL/GLES2 rendering half of wlhooks and
-# libdrawkit remain in tree (see their DEPRECATED.md) but are not built by
-# default.
 wlhooks_sub = subproject('wlhooks')
 wlhooks_dep = wlhooks_sub.get_variable('wlhooks_dep')
 
 vapi_dir = meson.project_source_root() / 'vapi'
 
-# Bake the resolved install datadir into every binary that resolves a packaged
-# default (LumenCommon.Paths.theme_file), so the file is found whatever the
-# prefix (/usr vs /usr/local vs a $HOME/.local user install).
+# Install datadir baked in for Paths.theme_file; required on every target
+# compiling paths_source (it declares extern LUMEN_DATADIR).
 lumen_datadir_c_args = [
   '-DLUMEN_DATADIR="' + (get_option('prefix') / get_option('datadir')) + '"',
 ]
 
-# Shared path resolver (LumenCommon.Paths): the ONE place a config filename or
-# the theme-file precedence is written down. Compiled into every binary that
-# touches ~/.config/lumen-shell/ — which is all of them. Requires
-# lumen_datadir_c_args on the target.
+# Requires lumen_datadir_c_args on the consuming target.
 paths_source = files(
   'lumen-common/paths.vala',
 )
 
-# Flat-JSON theme reader (LumenCommon.ThemeJson) with typed, defaulted getters.
-# Used by lumen-osd, lumen-notifications and lumen-lockscreen; needs json-glib
-# and gtk4 on the consuming target.
+# Needs json-glib + gtk4 on the consuming target.
 theme_json_source = files(
   'lumen-common/theme_json.vala',
 )
 
-# Persistent diagnostic log (LumenCommon.DiagLog). Needs --pkg=posix on the
-# consuming target.
+# Needs --pkg=posix on the consuming target.
 diaglog_source = files(
   'lumen-common/diaglog.vala',
 )
 
-# .desktop Exec field-code stripping — shared by lumen-panel (pinned-app launch)
-# and lumen-drawer (run-as-root), which must agree on what argv an Exec line
-# turns into.
 desktop_exec_source = files(
   'lumen-common/desktop_exec.vala',
 )
 
-# Shared GLib.Subprocess spawn helper (run_capture / spawn_detached). Defined
-# before the first target that consumes it (lumen-osd).
 proc_source = files(
   'lumen-common/proc.vala',
 )
 
-# Remembered display layouts, keyed by the EDID identity set of the connected
-# outputs. Written by lumen-settings and by DisplayCtl's extend snapshot; read
-# by lumen-session on hotplug. Separate from lumen_common_sources so consumers
-# don't drag in logind/gio-unix just to read profiles.
 display_profiles_source = files(
   'lumen-common/display_profiles.vala',
 )
 
-# Win+P display-mode switching over wlr-output-management-v1. Shared by
-# lumen-osdctl (the --display-mode CLI) and lumen-osd (the picker reads the
-# live mode and owns the tile labels/icons). Requires wayland + wlhooks +
-# display_profiles_source on the consuming target.
+# Requires wayland + wlhooks + display_profiles_source on the consuming target.
 display_ctl_source = files(
   'lumen-common/display_ctl.vala',
 )
 
 # --- lumen-osd ---
-# Independent dep set: no drawkit, no wlhooks, no GLES.
 gtk4_dep             = dependency('gtk4')
 gtk4_layer_shell_dep = dependency('gtk4-layer-shell-0')
-# Hoisted to the top level so lumen-drawer can use Adw.Carousel; lumen-settings
-# resolves its own copy in its subdir fragment.
+# Top-level only for lumen-drawer's Adw.Carousel.
 adwaita_dep          = dependency('libadwaita-1')
 
 osd_deps = [
@@ -139,7 +114,6 @@ panel_resources = gnome.compile_resources(
   c_name: 'panel',
 )
 
-# UnixSocketAddress for the Wayfire peek IPC client lives in gio-unix-2.0.
 gio_unix_dep = dependency('gio-unix-2.0')
 
 panel_deps = [
@@ -173,29 +147,15 @@ panel_vala_args = [
   '--pkg=gio-unix-2.0',
 ]
 
-# Desktop-peek-on-panel-click is opt-out: gate the peek IPC source, the
-# gio-unix dep it needs, and the PANEL_PEEK Vala define behind one option so a
-# standalone panel build has zero Wayfire coupling.
-# Shared source module(s) reused across components (SESSION_GLUE §3). Scoped to
-# what exists today; the lockscreen adds accounts.vala here later. Source-level
-# reuse only — no shared .so until a third consumer appears.
 lumen_common_sources = files(
   'lumen-common/logind.vala',
 )
 
-
-# AccountsService client (avatar/real-name read + last-session write). Shared by
-# lumen-lockscreen (reads) and lumen-session (writes). Kept separate from
-# lumen_common_sources for the same reason as display_profiles_source: a
-# consumer pulls in only what it needs.
 accounts_source = files(
   'lumen-common/accounts.vala',
 )
 
-
-# Networking backends (nmcli/bluetoothctl shell-out: WiFi + Bluetooth + Ethernet).
-# Global namespace, UI-free. Compiled into lumen-panel (tray) and lumen-settings
-# (Networking page). Depend on proc_source (LumenCommon.Proc) + gee_dep/json_dep.
+# Needs proc_source + json_dep on the consuming target.
 network_backend_source = files(
   'lumen-common/nmcli.vala',
   'lumen-common/wifi_service.vala',
@@ -204,24 +164,16 @@ network_backend_source = files(
   'lumen-common/radio_state.vala',
 )
 
-# Sound backend (pactl/wpctl shell-out: sinks, sources, per-app streams, opt-in
-# input peak meter). Global namespace, UI-free. Compiled into lumen-panel (tray)
-# and lumen-settings (Sound page). Depends on proc_source (LumenCommon.Proc).
+# Needs proc_source on the consuming target.
 sound_source = files(
   'lumen-common/sound_pactl.vala',
   'lumen-common/sound_service.vala',
 )
 
-# Shared DBus CLI helper (name_has_owner "is the daemon running?" check). Used by
-# lumen-osdctl and lumen-lockctl.
 dbus_cli_source = files(
   'lumen-common/dbus_cli.vala',
 )
 
-# Tray-applet catalog (id + label, default order). Single source of truth for
-# the set of known tray applets, compiled into BOTH lumen-panel (default order +
-# known-id set) and lumen-settings (reorder list rows). Separate file for the
-# same reason as display_profiles_source: a consumer pulls in only what it needs.
 tray_catalog_source = files(
   'lumen-common/tray_applets.vala',
 )
@@ -298,8 +250,6 @@ install_data(
 )
 
 # --- lumen-notifications ---
-# Independent dep set: no drawkit, no wlhooks, no GLES.
-# Reuses gtk4_dep and gtk4_layer_shell_dep from lumen-osd block above.
 notif_deps = [
   glib_dep,
   gio_dep,
@@ -337,8 +287,6 @@ executable('lumen-notifications',
 )
 
 # --- lumen-drawer ---
-# Independent dep set: no drawkit, no wlhooks, no GLES.
-# Reuses gtk4_dep and gtk4_layer_shell_dep from lumen-osd block above.
 drawer_deps = [
   # Same link-order rule as lumen-panel: gtk4-layer-shell must come before
   # gtk4/wayland-client/wlhooks for layer-shell init to actually take effect.
@@ -391,10 +339,7 @@ executable('lumen-drawer',
 )
 
 # --- lumen-desktop ---
-# The desktop widget layer: a BOTTOM-layer surface per monitor hosting
-# persistent widgets above the wallpaper and below every app window.
-# Same link-order rule as lumen-panel/lumen-drawer: gtk4-layer-shell first.
-# No wlhooks and no Wayfire IPC — it is a pure layer-shell client.
+# Same link-order rule as lumen-panel: gtk4-layer-shell first.
 desktopwidgets_deps = [
   gtk4_layer_shell_dep,
   gtk4_dep,
@@ -471,10 +416,7 @@ executable('lumen-osdctl',
   install: true,
 )
 
-# --- lumen-session (headless display-profile restore daemon; no GTK) ---
-# Owns its own Wayland connection and re-applies remembered monitor layouts on
-# hotplug. Reuses the shared display-profile store (display_profiles_source,
-# defined above) — the same format lumen-settings writes on "Keep".
+# --- lumen-session (headless; no GTK) ---
 session_deps = [
   glib_dep,
   gio_dep,
@@ -508,14 +450,8 @@ executable('lumen-session',
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
 
-# --- lumen-polkit-agent (PolicyKit authentication agent) ---
-# Gated behind `with_polkit_agent` (auto). Uses libpolkit-agent-1 +
-# libpolkit-gobject-1: the agent registers a PolkitAgent.Listener for the login
-# session and pops a password dialog whenever polkitd requests authentication
-# (privileged actions, and lumen-drawer's Ctrl+click "run as administrator",
-# which goes through `pkexec`). The Vala bindings (polkit-agent-1.vapi /
-# polkit-gobject-1.vapi) ship with Vala; only the -devel .pc files are a build
-# prereq. Auto-skipped when either dep is missing so the rest of the tree builds.
+# --- lumen-polkit-agent ---
+# The polkit vapis ship with Vala; only the -devel .pc files are a build prereq.
 polkit_agent_dep   = dependency('polkit-agent-1',   required: get_option('with_polkit_agent'))
 polkit_gobject_dep = dependency('polkit-gobject-1', required: get_option('with_polkit_agent'))
 
@@ -535,17 +471,13 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       '--pkg=polkit-gobject-1',
       '--pkg=posix',
     ],
-    # polkit guards its headers behind these "I know the API is unstable"
-    # defines; libpolkit-agent-1 / libpolkit-gobject-1 have in practice been
-    # stable for years (every polkit agent defines these).
+    # polkit refuses to expose its headers without these opt-in defines.
     c_args: [
       '-DPOLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
       '-DPOLKIT_GOBJECT_I_KNOW_API_IS_SUBJECT_TO_CHANGE',
     ],
     dependencies: [
-      # gtk4-layer-shell MUST precede gtk4 in the link line, or
-      # gtk_layer_init_for_window() silently no-ops at runtime (same rule as
-      # lumen-panel). See https://github.com/wmww/gtk4-layer-shell/blob/main/linking.md
+      # gtk4-layer-shell MUST precede gtk4 (same rule as lumen-panel).
       gtk4_layer_shell_dep,
       gtk4_dep,
       glib_dep,
@@ -554,8 +486,7 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       polkit_gobject_dep,
       m_dep,
     ],
-    # Belt-and-suspenders with the link order above; the linker must not drop
-    # the layer-shell lib as "unused" before its constructor runs.
+    # Keep the linker from dropping layer-shell as "unused".
     link_args: ['-Wl,--no-as-needed'],
     install: true,
   )
@@ -564,13 +495,7 @@ else
   message('lumen-polkit-agent: disabled (need polkit-agent-1 + polkit-gobject-1)')
 endif
 
-# --- lumen-lockscreen + lumen-lockctl (ext-session-lock-v1 lock screen) ---
-# Gated behind `with_lockscreen` (auto). The lock SURFACE is created by
-# gtk4-session-lock (sister lib to gtk4-layer-shell — see vapi/gtk4-session-lock-0.vapi);
-# auth is PAM via the in-tree pam_auth.c helper. Idle auto-lock is delegated to
-# an external idle daemon (swayidle → `lumen-lockctl lock`), so wlhooks is
-# untouched. When either dep is missing and the feature is 'auto', the whole
-# component is silently skipped and the rest of the tree still builds.
+# --- lumen-lockscreen + lumen-lockctl ---
 gtk4_session_lock_dep = dependency('gtk4-session-lock-0', required: get_option('with_lockscreen'))
 pam_dep               = cc.find_library('pam', required: get_option('with_lockscreen'))
 
@@ -588,14 +513,12 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     # gtk4-layer-shell), or the lock-surface protocol hook silently no-ops.
     gtk4_session_lock_dep,
     gtk4_dep,
-    # gtk4-wayland + wayland + wlhooks: idle auto-lock binds ext-idle-notify-v1
-    # on GTK's wl_display (IdleWatcher), same link set as lumen-panel.
     gtk4_wayland_dep,
     wayland_dep,
     wlhooks_dep,
     glib_dep,
     gio_dep,
-    # logind.vala (lumen_common) uses UnixFDList for the sleep delay-inhibitor.
+    # UnixFDList for logind.vala's sleep delay-inhibitor.
     gio_unix_dep,
     json_dep,
     pam_dep,
@@ -654,7 +577,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     install: true,
   )
 
-  # PAM service file — see SESSION_GLUE.md §2. Always /etc/pam.d (not prefixed).
+  # Always /etc/pam.d, never under the install prefix.
   install_data(
     'lumen-lockscreen/data/pam.d/lumen-lockscreen',
     install_dir: '/etc/pam.d',
@@ -666,10 +589,8 @@ else
 endif
 
 # --- session / XDG portal glue ---
-# lumenshell-session.target binds graphical-session.target so
-# xdg-desktop-portal can start under Wayfire; the *-portals.conf routes portal
-# backends (Settings->gtk, ScreenCast/Screenshot->wlr). See nautilus-portal-bug.md.
-# systemd user units are arch-independent — always /usr/lib/systemd/user.
+# The target binds graphical-session.target so xdg-desktop-portal can start
+# under Wayfire. systemd user units always go in <prefix>/lib, never lib64.
 install_data(
   'data/systemd/lumenshell-session.target',
   install_dir: get_option('prefix') / 'lib' / 'systemd' / 'user',
@@ -679,17 +600,8 @@ install_data(
   install_dir: get_option('datadir') / 'xdg-desktop-portal',
 )
 
-# Display-manager session glue. These files live under lumen-lockscreen/data/
-# (where they were first drafted) but are session-level config, owned and
-# installed here so a system install is greeter-ready:
-#   * wayland-sessions/lumenshell.desktop — the session a Wayland-aware login
-#     manager (GDM/SDDM/greetd/…) lists; its Exec= runs start-lumenshell.
-#   * start-lumenshell — the session launcher (sets XDG_*; execs wayfire).
-# The Wayfire [autostart] block lives directly in the user's ~/.config/wayfire.ini.
-# Generate the session entry so its Exec= points at the bindir we actually
-# install into (configure_file substitutes @BINDIR@). A hardcoded /usr/bin
-# only matched a --prefix=/usr install and silently broke the greeter session
-# for the default --prefix=/usr/local (or a $HOME/.local user install).
+# Display-manager session glue. @BINDIR@ is substituted so Exec= matches the
+# actual install prefix.
 session_conf = configuration_data()
 session_conf.set('BINDIR', get_option('prefix') / get_option('bindir'))
 configure_file(
@@ -703,18 +615,14 @@ install_data(
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x',
 )
-# The Wayfire autostart snippet. Its own header tells users to
-# `cat /usr/share/lumenshell/wayfire.ini.d/autostart.ini >> ~/.config/wayfire.ini`,
-# so it has to actually land there.
+# Path is referenced by the snippet's own header; keep them in sync.
 install_data(
   'lumen-lockscreen/data/wayfire/lumenshell.ini.d/autostart.ini',
   install_dir: get_option('datadir') / 'lumenshell' / 'wayfire.ini.d',
 )
 
-# --- wayfire-plugins/* (C++ Wayfire plugins) ---
-# All Wayfire plugins live under wayfire-plugins/ and are standalone
-# C++ shared modules (no link with the rest of the tree). Each is gated
-# so users without Wayfire dev headers can disable any of them.
+# --- wayfire-plugins/* ---
+# C++ is only enabled when a plugin is, so the Vala tree builds without it.
 if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
    or get_option('with_slide_peek') \
@@ -748,13 +656,8 @@ if get_option('with_night_light')
   subdir('wayfire-plugins/night-light')
 endif
 
-# --- dev environment (replaces the old hand-written env.sh) -----------------
-# `meson devenv -C build` (or `meson devenv -C build ./lumen-panel`) runs the
-# uninstalled build-tree binaries with these set, so resource/theme lookups
-# resolve into the source tree instead of /usr/share. meson devenv already puts
-# the built executables on PATH; these vars are the LUMEN_* overrides the
-# binaries read (see lumen-panel/src/utils.vala and each theme.vala). The
-# GSK_RENDERER pin mirrors start-lumenshell so dev runs match the real session.
+# --- dev environment (`meson devenv -C build`) ---
+# GSK_RENDERER mirrors start-lumenshell so dev runs match the real session.
 devenv = environment()
 devenv.set('LUMEN_THEME_FILE', meson.project_source_root() / 'default-theme.json')
 devenv.set('GSK_RENDERER', 'ngl')

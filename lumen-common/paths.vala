@@ -1,14 +1,12 @@
 using GLib;
 
-// Install datadir baked in at build time (meson: -DLUMEN_DATADIR=...), so a
-// packaged default is found whatever the prefix (/usr vs /usr/local).
+// Baked in by meson (-DLUMEN_DATADIR); the target must pass lumen_datadir_c_args.
 [CCode (cname = "LUMEN_DATADIR")]
 extern const string LUMEN_DATADIR;
 
 namespace LumenCommon {
 
-    // Single source of truth for every path LumenShell reads or writes. Each
-    // config filename appears exactly once in the tree so a rename can never
+    // Every config filename lives here and nowhere else, so a rename can't
     // leave one binary writing a file another no longer reads.
     public class Paths {
 
@@ -38,16 +36,8 @@ namespace LumenCommon {
                 warning("lumen: could not create %s", config_dir());
         }
 
-        // Resolve a component's theme/config file by the shell-wide precedence:
-        // explicit env override → the user's copy in ~/.config/lumen-shell/
-        // (what lumen-settings writes) → the packaged read-only default. Keeping
-        // all editable config in the home dir is what makes the packaged file
-        // safe to overwrite on upgrade.
-        //
-        // `packaged_relpath` is relative to the datadir, e.g.
-        // "lumen-panel/default-theme.json". LUMEN_DATADIR (env, else the value
-        // baked in at build time) locates it for non-/usr prefixes. null = no
-        // packaged file (defaults live in code): the user path is returned.
+        // env override → ~/.config/lumen-shell/<basename> → packaged default.
+        // packaged_relpath == null (defaults in code) returns the user path.
         public static string theme_file(string env_var,
                                         string config_basename,
                                         string? packaged_relpath) {

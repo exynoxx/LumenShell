@@ -1,16 +1,6 @@
 using GLib;
 
-// lumen-session — persistent, headless (no-GTK) session daemon.
-//
-// Today its single job is *display-profile restore*: it owns its own Wayland
-// connection, watches wlr-output-management hotplug, and whenever the connected
-// SET of monitors matches a remembered layout (written by lumen-settings on
-// "Keep" to ~/.config/lumen-shell/display-profiles.json) it re-applies that
-// layout. Profiles are keyed by EDID identity (see DisplayProfileStore) so a
-// layout follows a monitor across ports.
-//
-// It must be launched as a descendant of the Wayfire process (Wayfire
-// [autostart]) so it inherits $WAYLAND_DISPLAY. See lumen-session/PLAN.md.
+// Must run as a child of Wayfire ([autostart]) to inherit $WAYLAND_DISPLAY.
 namespace LumenSession {
 
     static MainLoop loop;
@@ -19,14 +9,10 @@ namespace LumenSession {
     public static int main(string[] args) {
         loop = new MainLoop();
 
-        // Session bootstrap (the Nautilus/libadwaita portal fix) MUST run first,
-        // before any Wayland work, so it happens even on a compositor without
-        // wlr-output-management-v1 (where we exit early below). See
-        // nautilus-portal-bug.md.
+        // MUST run before any Wayland work, so it still happens on a compositor
+        // without wlr-output-management-v1 (where we exit early below).
         session_bootstrap();
 
-        // Own Wayland connection — no GDK in this process. Mirror
-        // wl_display_connect(NULL): honour $WAYLAND_DISPLAY, else "wayland-0".
         string sock = Environment.get_variable("WAYLAND_DISPLAY") ?? "wayland-0";
         Wl.Display? display = new Wl.Display.connect(sock);
         if (display == null) {
@@ -41,9 +27,7 @@ namespace LumenSession {
             return 1;
         }
 
-        // Pump the private event queue from the main loop (no GDK to do it).
-        // add_watch refs the channel for the source's lifetime, so it outlives
-        // this scope.
+        // add_watch refs the channel, so it outlives this scope.
         int fd = WLHooks.output_mgmt_get_fd();
         if (fd < 0) {
             warning("lumen-session: no wayland fd; exiting");
@@ -60,9 +44,8 @@ namespace LumenSession {
             return Source.CONTINUE;
         });
 
-        // Re-apply on hotplug. Registration baselines the current set, so this
-        // does NOT fire for the heads already present — we restore those once,
-        // explicitly, below.
+        // Registration baselines the current set and won't fire for it, hence
+        // the explicit first restore.
         WLHooks.output_mgmt_register_outputs_changed(() => schedule_restore());
         schedule_restore();
 
@@ -73,28 +56,17 @@ namespace LumenSession {
         return 0;
     }
 
-    // Push the Wayland session environment into systemd/D-Bus and activate
-    // lumenshell-session.target. Under Wayfire nothing else does this, so
-    // xdg-desktop-portal (Requisite=graphical-session.target) never starts and
-    // libadwaita apps (Nautilus, etc.) fall back to light theme / ScreenCast is
-    // dead. lumen-session is the right owner: it runs as a child of Wayfire, so
-    // $WAYLAND_DISPLAY and the XDG_* identity vars are already in our
-    // environment, and it outlives the GUI shell. All steps are best-effort —
-    // failures are logged, never fatal (keeps ./build dev-runs and non-systemd
-    // distros harmless). Idempotent, so a daemon restart safely re-runs it.
+    // Under Wayfire nothing else imports the env and starts the target, so
+    // xdg-desktop-portal (Requisite=graphical-session.target) would never start.
+    // Best-effort and idempotent.
     static void session_bootstrap() {
         string vars = "WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP";
         run_best_effort("systemctl --user import-environment " + vars);
         run_best_effort("dbus-update-activation-environment --systemd " + vars);
         run_best_effort("systemctl --user start lumenshell-session.target");
 
-        // Stamp the chosen session onto the user's AccountsService record so a
-        // Wayland login manager preselects LumenShell next time. This is the one
-        // responsibility the (junked) lumen-greeter would have owned — the
-        // greeter is unprivileged and read-only w.r.t. AccountsService, so the
-        // *session* self-sets it instead (greeter PLAN, "Deferred"). Guarded on
-        // our own desktop id so a dev-run under another DE never clobbers the
-        // user's real last-session; fail-soft inside AccountsClient.
+        // Guarded so a dev-run under another DE never clobbers the user's real
+        // last-session.
         if (Environment.get_variable("XDG_CURRENT_DESKTOP") == "LumenShell")
             AccountsClient.set_current_session("lumenshell");
     }
@@ -115,10 +87,8 @@ namespace LumenSession {
         }
     }
 
-    // Coalesce change events and defer the apply to idle so it runs OUTSIDE the
-    // fd-dispatch callback: config_apply does a synchronous roundtrip on the
-    // private queue, and nesting that inside the dispatch that delivered the
-    // event would reenter the queue.
+    // Deferred to idle: config_apply's synchronous roundtrip must not reenter
+    // the queue from inside the fd-dispatch callback.
     static void schedule_restore() {
         if (restore_queued) return;
         restore_queued = true;
@@ -132,7 +102,6 @@ namespace LumenSession {
     static void do_restore() {
         WLHooks.output_mgmt_refresh();
 
-        // Current connected set: EDID identity per head + identity->connector.
         var current_keys = new GenericArray<string>();
         var conn_for = new HashTable<string, string>(str_hash, str_equal);
         WLHooks.output_mgmt_for_each_head_identity((idx, name, make, model, serial, desc) => {
@@ -170,9 +139,7 @@ namespace LumenSession {
             }
         }
 
-        // Never blank every screen — if the profile would disable all connected
-        // heads, abandon the config rather than apply it (the next
-        // config_begin frees the dangling configuration object).
+        // Never blank every screen; the next config_begin frees the abandoned config.
         if (enable_count == 0) {
             warning("lumen-session: profile for set [%s] enables no output; skipping",
                     prof.set_key());

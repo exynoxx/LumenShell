@@ -1,8 +1,6 @@
-// Shared DBus CLI helpers (lumen-common). Source-level reuse only.
 namespace LumenCommon {
     public class DbusCli {
-        // True if `name` currently has an owner on the given bus connection.
-        // Returns false on any error (treat as "not running").
+        // Any error reads as "not running".
         public static bool name_has_owner(GLib.DBusConnection conn, string name) {
             try {
                 var reply = conn.call_sync(

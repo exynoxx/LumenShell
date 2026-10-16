@@ -16,7 +16,7 @@ option(
   'with_panel_peek',
   type: 'boolean',
   value: true,
-  description: 'Let a click on the empty middle of lumen-panel trigger the Wayfire desktop-peek (Win+D). Disable for a standalone panel with no Wayfire coupling.',
+  description: 'Wayfire IPC from lumen-panel: launcher (drawer peek), panel-push auto-hide, night-light. Disable for a standalone panel with no Wayfire coupling.',
 )
 
 option(

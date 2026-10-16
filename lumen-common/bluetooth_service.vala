@@ -4,7 +4,6 @@ public class BluetoothService : GLib.Object {
 
     public signal void state_changed();
 
-    /** Fires on the main thread once request_device_details() resolves. */
     public signal void device_details_ready(BtDeviceDetails d);
 
     public bool       powered        { get; private set; default = false; }
@@ -23,26 +22,22 @@ public class BluetoothService : GLib.Object {
     private bool        refresh_pending = false;
 
     public BluetoothService() {
-        // Re-apply the remembered power state before the first poll, so a panel
-        // restart (or boot, where BlueZ AutoEnable would otherwise power the
-        // adapter on) restores the user's last choice. Null ⇒ never toggled.
+        // Re-apply the remembered power state (beats BlueZ AutoEnable at boot).
+        // Null ⇒ never toggled.
         var saved = RadioState.get_bluetooth();
         if (saved != null) apply_power(saved);
         else               poll_state();
         watch_bluez();
     }
 
-    // Same as the default ctor but WITHOUT re-applying the saved power state, so
-    // merely constructing the service (e.g. the settings page building at app
-    // launch) never toggles the user's Bluetooth. Use in read/observe contexts.
+    // Does NOT re-apply the saved power state, so merely constructing it (e.g. the
+    // settings page) never toggles the user's Bluetooth.
     public BluetoothService.passive() {
         poll_state();
         watch_bluez();
     }
 
-    // BlueZ pushes adapter/device changes over DBus, so there is no poll timer.
-    // A discovery scan reports devices one at a time, so bursts are coalesced
-    // into a single refresh.
+    // No poll timer; a discovery scan reports devices one at a time, so coalesce.
     private void watch_bluez() {
         btctl.changed.connect(() => {
             if (refresh_pending) return;
@@ -60,17 +55,14 @@ public class BluetoothService : GLib.Object {
         apply_power(on);
     }
 
-    // Push the adapter to `on` on a worker thread (rfkill+bluetoothctl block),
-    // reflecting the intent optimistically first so the toggle doesn't bounce back.
+    // Optimistic first so the toggle doesn't bounce back during the blocking call.
     private void apply_power(bool on) {
         powered = on;
         state_changed();
         new GLib.Thread<void>("bt-power", () => {
             btctl.set_powered(on);
             GLib.Idle.add(() => {
-                // Powering on: run a discovery scan so nearby devices appear
-                // without the user having to hit "Scan" manually. Powering
-                // off: just refresh the (now empty) list.
+                // Powering on also runs a discovery scan.
                 refresh_scan(on);
                 return Source.REMOVE;
             });
@@ -102,7 +94,6 @@ public class BluetoothService : GLib.Object {
         schedule_rescan(800);
     }
 
-    /** Fetch extended info for one device off the main loop. */
     public void request_device_details(string mac) {
         new GLib.Thread<void>("bt-details", () => {
             var d = btctl.device_details(mac);
@@ -154,8 +145,6 @@ public class BluetoothService : GLib.Object {
                 bool changed = false;
                 if (pw   != powered)        { powered = pw;          changed = true; }
                 if (conn != connected_name) { connected_name = conn; changed = true; }
-                // Always adopt the freshest list so the page reflects newly
-                // (un)paired devices even when power/connection are unchanged.
                 devices = devs;
                 if (changed) state_changed();
                 return Source.REMOVE;

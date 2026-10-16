@@ -38,9 +38,7 @@ public class StreamInfo : GLib.Object {
 
 public class PactlClient : GLib.Object {
 
-    // PulseAudio stream name our own parec level meter runs under, so
-    // query_sink_inputs() can recognize and skip it (defensive: parec is a
-    // source-output, not a sink-input, so it usually won't appear anyway).
+    // Our parec meter's stream name, so query_sink_inputs() can skip it.
     public const string METER_STREAM_NAME = "lumen-settings-meter";
 
     public string query_default_sink() {
@@ -122,8 +120,6 @@ public class PactlClient : GLib.Object {
         LumenCommon.Proc.spawn_detached(new string[] { "pactl", "set-default-sink", sink_id });
     }
 
-    // ---- Input (source) queries + writes, mirroring the sink API ----
-
     public string query_default_source() {
         var out_str = run_pactl_sync({ "get-default-source" }).strip();
         if (out_str != "") return out_str;
@@ -204,8 +200,6 @@ public class PactlClient : GLib.Object {
         });
     }
 
-    // ---- Per-device writes (non-default devices + over-amplification) ----
-
     public void set_sink_volume_by_id(string id, int pct, int max = 100) {
         if (id == "") return;
         pct = int.max(0, int.min(max, pct));
@@ -214,14 +208,10 @@ public class PactlClient : GLib.Object {
         });
     }
 
-    // ---- Per-application playback streams (sink-inputs) ----
-
     public StreamInfo[] query_sink_inputs() {
         StreamInfo[] result = {};
         var text = run_pactl_sync({ "list", "sink-inputs" });
 
-        // Split on the block marker; the element before the first marker is
-        // header junk (no valid index) and is skipped.
         foreach (var block in text.split("Sink Input #")) {
             var b = block.strip();
             if (b == "") continue;
@@ -263,7 +253,6 @@ public class PactlClient : GLib.Object {
             if (name == "") name = media_name;
             if (name == "") name = binary;
             if (name == "") name = "Application";
-            // Skip our own level-meter capture stream if it ever shows up here.
             if (name.contains(METER_STREAM_NAME)) continue;
 
             result += new StreamInfo(index, name, vol < 0 ? 0 : vol, muted);
@@ -286,7 +275,6 @@ public class PactlClient : GLib.Object {
         });
     }
 
-    // Extract the quoted value from a `key = "value"` property line.
     private string prop_value(string line) {
         int eq = line.index_of("=");
         if (eq < 0) return "";
@@ -296,8 +284,7 @@ public class PactlClient : GLib.Object {
         return v;
     }
 
-    // Everything below parses pactl/wpctl output by its English field prefixes
-    // ("Description:", "Volume:", "Mute:"), so the locale must be pinned.
+    // Output is parsed by English field prefixes, so pin the locale.
     private const string[] C_LOCALE = { "LC_ALL=C" };
 
     private string run_pactl_sync(string[] args) {
@@ -311,8 +298,7 @@ public class PactlClient : GLib.Object {
             new string[] { "wpctl", "get-volume", target }, C_LOCALE) ?? "";
     }
 
-    // First "NN%" in the text — pactl prints volumes as
-    // "front-left: 45874 /  70% / -9.35 dB". -1 when there is none.
+    // pactl: "front-left: 45874 /  70% / -9.35 dB". -1 when none.
     private int first_percent(string text) {
         for (int pct = text.index_of_char('%'); pct > 0;
              pct = text.index_of_char('%', pct + 1)) {
@@ -324,8 +310,7 @@ public class PactlClient : GLib.Object {
         return -1;
     }
 
-    // wpctl prints "Volume: 0.70" (plus " [MUTED]" when muted). double.try_parse
-    // is g_ascii_strtod-backed, so the decimal point stays '.' in any locale.
+    // wpctl: "Volume: 0.70 [MUTED]". double.try_parse is locale-independent.
     private int parse_wpctl_percent(string text) {
         int i = 0;
         while (i < text.length && !text[i].isdigit()) i++;

@@ -1,17 +1,7 @@
 using GLib;
 
-// Remembered multi-monitor layouts, keyed by the SET of connected outputs
-// (each output identified by EDID make/model/serial, falling back to its
-// description, then connector name). Written by lumen-settings when a layout is
-// applied + kept; read by the lumen-session daemon to re-apply the matching
-// layout whenever that exact set of monitors (re)connects.
-//
-// Stored as JSON at ~/.config/lumen-shell/display-profiles.json:
-//   { "profiles": [ { "outputs": [<sorted identity keys>],
-//                     "states": { <identity>: {enabled,w,h,mhz,x,y,transform} } } ] }
-//
-// Shared (lumen-common) so the writer (settings) and the reader (session) agree
-// on the format and the identity scheme. Global namespace, matching logind.vala.
+// Layouts keyed by the SET of connected output identities. Refresh is integer
+// mHz end to end, so the file never carries a locale decimal separator.
 
 public class DisplayOutputState : GLib.Object {
     public bool enabled;
@@ -45,9 +35,8 @@ public class DisplayProfileStore {
         return LumenCommon.Paths.display_profiles_json();
     }
 
-    // Stable per-output identity. Prefer EDID (make/model/serial); fall back to
-    // the human description, then the connector name. Independent of which
-    // physical port the monitor is plugged into (unless we fell back to it).
+    // EDID → description → connector; port-independent unless it falls back
+    // to the connector.
     public static string identity_for(string make, string model, string serial,
                                       string description, string connector) {
         string mk = make.strip(), md = model.strip(), sn = serial.strip();
@@ -58,7 +47,6 @@ public class DisplayProfileStore {
         return "conn:%s".printf(connector.strip());
     }
 
-    // The canonical set key for a collection of identity keys.
     public static string set_key_for(GenericArray<string> keys) {
         var p = new DisplayProfile();
         for (int i = 0; i < keys.length; i++) p.outputs.add(keys.get(i));
@@ -164,7 +152,6 @@ public class DisplayProfileStore {
         }
     }
 
-    // Insert or replace the profile whose set matches `prof` (same set_key).
     public static void save_or_update(DisplayProfile prof) {
         var all = load();
         var key = prof.set_key();
@@ -176,7 +163,6 @@ public class DisplayProfileStore {
         save(kept);
     }
 
-    // Find a saved profile for the currently-connected set of identity keys.
     public static DisplayProfile? match(GenericArray<string> current_keys) {
         var want = set_key_for(current_keys);
         var all = load();

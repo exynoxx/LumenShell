@@ -1,13 +1,7 @@
-// Shared process-spawn helpers (lumen-common). Source-level reuse only.
 namespace LumenCommon {
     public class Proc {
-        // Synchronous: run argv, capture stdout, return it (or null on spawn
-        // failure / nonzero is NOT treated as failure — we still return stdout).
-        // argv form avoids shell quoting; PATH is searched.
-        //
-        // `env` is an optional list of "KEY=VALUE" overrides applied on top of
-        // the inherited environment — cheaper than prefixing argv with `env`,
-        // which costs an extra process just to set one variable.
+        // null only on spawn failure; a nonzero exit still returns stdout.
+        // `env`: "KEY=VALUE" overrides on top of the inherited environment.
         public static string? run_capture(string[] argv, string[]? env = null) {
             try {
                 var flags = GLib.SubprocessFlags.STDOUT_PIPE
@@ -32,7 +26,7 @@ namespace LumenCommon {
             }
         }
 
-        // Fire-and-forget: spawn argv detached, don't wait. Errors swallowed.
+        // Errors are swallowed.
         public static void spawn_detached(string[] argv) {
             try {
                 GLib.Pid pid;

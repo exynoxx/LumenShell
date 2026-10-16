@@ -63,14 +63,11 @@ def install_ubuntu():
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
         # lumen-lockscreen: PAM (build) + keyring/accounts (runtime).
-        # gtk4-session-lock is NOT in Debian/Ubuntu repos — build from source
-        # (https://github.com/wmww/gtk4-session-lock); the lockscreen is
-        # auto-skipped by meson until it is present.
+        # gtk4-session-lock isn't packaged: build https://github.com/wmww/gtk4-session-lock
         'libpam0g-dev',
         'gnome-keyring',
         'accountsservice',
-        # lumen-polkit-agent: PolicyKit authentication agent (build-time .pc +
-        # headers). Runtime libs are pulled in by the base system.
+        # lumen-polkit-agent (build-time .pc + headers).
         'libpolkit-agent-1-dev',
         'libpolkit-gobject-1-dev',
     ]
@@ -109,15 +106,11 @@ def install_fedora():
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
         # lumen-lockscreen: PAM (build) + keyring/accounts (runtime).
-        # gtk4-session-lock is NOT in Fedora repos — build from source
-        # (https://github.com/wmww/gtk4-session-lock); the lockscreen is
-        # auto-skipped by meson until it is present.
+        # gtk4-session-lock isn't packaged: build https://github.com/wmww/gtk4-session-lock
         'pam-devel',
         'gnome-keyring',
         'accountsservice',
-        # lumen-polkit-agent: PolicyKit authentication agent build-time deps
-        # (polkit-agent-1.pc / polkit-gobject-1.pc + headers). The Vala bindings
-        # ship with vala; the runtime libs come with the base polkit package.
+        # lumen-polkit-agent (build-time .pc + headers).
         'polkit-devel',
     ]
 
@@ -152,13 +145,11 @@ def install_arch():
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
         # lumen-lockscreen: PAM (build) + keyring/accounts (runtime).
-        # gtk4-session-lock is in the AUR (gtk4-session-lock) — install with an
-        # AUR helper; the lockscreen is auto-skipped by meson until it is present.
+        # gtk4-session-lock comes from the AUR.
         'pam',
         'gnome-keyring',
         'accountsservice',
-        # lumen-polkit-agent: PolicyKit authentication agent. Arch's `polkit`
-        # ships both the runtime libs and the development .pc/headers.
+        # lumen-polkit-agent: Arch's `polkit` also ships the .pc/headers.
         'polkit',
     ]
 
@@ -186,7 +177,6 @@ def main():
     elif distro == 'arch':
         success = install_arch()
     
-    # Print result
     print()
     print("=" * 50)
     if success:

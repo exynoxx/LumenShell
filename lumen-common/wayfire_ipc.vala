@@ -1,19 +1,5 @@
-// Shared Wayfire IPC client (lumen-common).
-//
-// Frame format (matches wf::ipc::server_t in /usr/lib64/wayfire/libipc.so):
-//   [u32 LE payload-length] [JSON body bytes]
-//
-// JSON body shape:
-//   {"method":"<plugin>/<verb>","data":{}}
-//
-// The socket path comes from the env var Wayfire's `ipc` plugin exports
-// (_WAYFIRE_SOCKET, leading underscore — easy to mistype; falls back to
-// WAYFIRE_SOCKET). Without it — e.g. running a binary outside Wayfire — every
-// call is a silent no-op so a stand-alone test doesn't trip over a missing dep.
-//
-// Source-level reuse only (no shared .so): added to lumen-drawer (always) and
-// lumen-panel (under with_panel_peek). Callers keep their own thin verb
-// wrappers — lumen-panel/src/peek_ipc.vala, lumen-drawer/src/curtain_ipc.vala.
+// Frame: [u32 LE payload-length][{"method":"<plugin>/<verb>","data":{}}].
+// Socket from _WAYFIRE_SOCKET (leading underscore); no socket = silent no-op.
 
 namespace LumenCommon {
 
@@ -27,9 +13,6 @@ namespace LumenCommon {
             return null;
         }
 
-        // Send one {"method":...} request and read the reply header so the
-        // server-side handler runs before we close. Returns false on no socket
-        // or any IPC error; the reply payload is read best-effort and discarded.
         public static bool send_method(string method, string data_json = "{}") {
             var path = socket_path();
             if (path == null) return false;

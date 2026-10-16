@@ -44,9 +44,7 @@ namespace WLHooks {
     void toplevel_set_rectangle_by_id(uint id, Wl.Surface surface, int x, int y, int width, int height);
 
     // ---- wlr-output-management-v1 (display configuration) ------------------
-    // In-process replacement for the wlr-randr CLI. Runs on a private event
-    // queue (see protocols/output_management.c); roundtrips are synchronous and
-    // do not reenter GDK dispatch.
+    // Private event queue: roundtrips are synchronous and never reenter GDK dispatch.
 
     public delegate void OutputMgmtHead(int idx, string name, string description,
                                         bool enabled, int x, int y, int transform, double scale);
@@ -60,7 +58,6 @@ namespace WLHooks {
     [CCode (cname = "wlhooks_output_mgmt_init")]
     public int output_mgmt_init (Wl.Display display);
 
-    // Headless-daemon hotplug + main-loop integration (lumen-session).
     [CCode (cname = "wlhooks_output_mgmt_register_outputs_changed")]
     public void output_mgmt_register_outputs_changed (OutputMgmtOutputsChanged cb);
 
@@ -102,13 +99,11 @@ namespace WLHooks {
     public int output_mgmt_config_apply ();
 
     // ---- ext-idle-notify-v1 (lumen-lockscreen idle auto-lock) --------------
-    // Binds wl_seat + ext_idle_notifier_v1 on GTK's wl_display; the GDK main
-    // loop dispatches the idled/resumed callbacks. Init BEFORE arming.
+    // Runs on GDK's default queue (GDK dispatches the callbacks). Init before arming.
 
     public delegate void IdleNotifyCallback ();
 
-    // Returns 0 if the notifier was bound, -1 if the compositor lacks
-    // ext-idle-notify-v1 (caller should fall back / skip idle lock).
+    // -1 if the compositor lacks ext-idle-notify-v1.
     [CCode (cname = "wlhooks_idle_notify_init")]
     public int idle_notify_init (Wl.Display display);
 
@@ -122,7 +117,6 @@ namespace WLHooks {
                                      IdleNotifyCallback idled,
                                      IdleNotifyCallback resumed);
 
-    // Disarm (e.g. while already locked, so it does not re-fire).
     [CCode (cname = "wlhooks_idle_notify_unregister")]
     public void idle_notify_unregister ();
 

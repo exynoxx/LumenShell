@@ -2,28 +2,12 @@ using GLib;
 
 namespace LumenCommon {
 
-    /* Persistent diagnostic log for debugging a component after it has exited or
-     * crashed. Appends timestamped lines to $XDG_RUNTIME_DIR/<name>.log — the
-     * runtime dir is per-user and mode 0700, so a lock daemon's breadcrumbs are
-     * not world-readable the way a fixed /tmp path would be. Two things land
-     * there:
-     *
-     *   * lifecycle breadcrumbs — written directly via DiagLog.log() at state
-     *     transitions, the trail that is missing when a daemon vanishes with no
-     *     journal line.
-     *   * GLib warning()/critical()/error() + GTK/GDK diagnostics — routed in by
-     *     the installed log writer so they survive the process.
-     *
-     * Tail it live while reproducing:   tail -f "$XDG_RUNTIME_DIR"/<name>.log
-     *
-     * SECURITY: never pass a password (or any auth secret) to these — log auth
-     * *outcomes* only.
-     */
+    // $XDG_RUNTIME_DIR (per-user, 0700), not /tmp, so breadcrumbs aren't world-readable.
+    // SECURITY: never pass a password or other auth secret — log outcomes only.
     public class DiagLog {
         static string? path = null;
 
-        // Raw append — never throws, never recurses into GLib logging. A no-op
-        // until install() has named the file.
+        // Never recurses into GLib logging. No-op until install().
         public static void raw(string line) {
             if (path == null) return;
             var f = FileStream.open((!) path, "a");
@@ -40,9 +24,7 @@ namespace LumenCommon {
             raw(fmt.vprintf(args));
         }
 
-        // Route GLib structured logs (warning/critical/error + GTK/GDK's own)
-        // into the file, while still printing to stderr via the default writer.
-        // Call once at startup, as early as possible.
+        // Call as early as possible at startup.
         public static void install(string name) {
             if (path != null) return;
             path = Environment.get_user_runtime_dir() + "/" + name + ".log";
@@ -54,9 +36,7 @@ namespace LumenCommon {
                 Environment.get_variable("XDG_CURRENT_DESKTOP") ?? "(unset)"));
 
             Log.set_writer_func((level, fields) => {
-                // Only persist WARNING and above — INFO/DEBUG/MESSAGE from GTK,
-                // GDK (Vulkan loader etc.) would bury the lifecycle trail. Our
-                // own lines are written directly via DiagLog.log(), not here.
+                // WARNING+ only: GTK/GDK info chatter would bury the trail.
                 var sev = level & LogLevelFlags.LEVEL_MASK;
                 if (sev == LogLevelFlags.LEVEL_INFO
                     || sev == LogLevelFlags.LEVEL_DEBUG

@@ -7,9 +7,8 @@ public class Backends {
         public bool   muted;
     }
 
-    // Every setter runs through run_capture rather than spawn_detached: the
-    // query that follows must observe the new value, and only a waited-on
-    // process guarantees that ordering.
+    // Setters use run_capture, not spawn_detached: the follow-up query must
+    // observe the new value.
     private static void set_sync(string[] argv) {
         LumenCommon.Proc.run_capture(argv);
     }

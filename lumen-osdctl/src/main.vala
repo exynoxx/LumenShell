@@ -175,10 +175,7 @@ private static int handle_display_current() {
 public static int main(string[] args) {
     if (args.length < 2) { stderr.printf(USAGE); return 1; }
 
-    // pactl/brightnessctl output is machine-parsed ("yes"/"no", "45%"), so pin
-    // the locale for every child we spawn. Setting it on our own environment is
-    // enough — spawned processes inherit it — and avoids an `env LC_ALL=C`
-    // wrapper process per query. Nothing we print is localised.
+    // Children inherit this: pactl/brightnessctl output is machine-parsed.
     Environment.set_variable("LC_ALL", "C", true);
 
     switch (args[1]) {

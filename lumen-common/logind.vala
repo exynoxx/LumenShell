@@ -1,22 +1,6 @@
 using GLib;
 
-/**
- * LogindBridge — the single place LumenShell talks to systemd-logind
- * (org.freedesktop.login1). Mirrors the raw-GVariant DBusProxy style of
- * lumen-panel's PowerProfileClient: no typed [DBus] interface, signals handled
- * via the proxy's "g-signal".
- *
- * Responsibilities:
- *   - session control: suspend / reboot / power_off / terminate_session
- *     (all interactive=false; polkit authorizes for the active session, no prompt)
- *   - re-emit Manager.PrepareForSleep as prepare_for_sleep(bool)
- *   - re-emit Session.Lock / Session.Unlock as lock_requested / unlock_requested
- *   - hold a *delay* sleep inhibitor so a locker can map before the kernel
- *     freezes the machine (release_delay_inhibitor lets sleep proceed)
- *
- * Fail-soft throughout: if the system bus or login1 is unavailable every method
- * is a no-op (warn-and-return), matching the repo's swallow-and-warn convention.
- */
+// Fail-soft: without login1 every method is a warn-and-return no-op.
 public class LogindBridge : GLib.Object {
 
     public signal void prepare_for_sleep(bool starting);
@@ -97,8 +81,7 @@ public class LogindBridge : GLib.Object {
         }
     }
 
-    // ---- delay inhibitor ----------------------------------------------------
-
+    // Delay (not block) so a locker can map before sleep; release to let it proceed.
     public void take_delay_inhibitor() {
         if (manager == null || inhibit_fd >= 0) return;
         try {
@@ -117,9 +100,8 @@ public class LogindBridge : GLib.Object {
         }
     }
 
-    // ---- idle block inhibitor (panel Caffeine) ------------------------------
-    // Blocks logind's IdleAction (e.g. auto-suspend). Manual suspend and the
-    // lid switch are deliberately left alone.
+    // Blocks logind's IdleAction only; manual suspend and the lid switch are
+    // deliberately left alone.
     public void set_idle_inhibited(bool on) {
         if (!on) {
             if (idle_fd >= 0) { Posix.close(idle_fd); idle_fd = -1; }
@@ -148,8 +130,7 @@ public class LogindBridge : GLib.Object {
         }
     }
 
-    // ---- session control ----------------------------------------------------
-
+    // interactive=false: polkit allows these for the active session, no prompt.
     public async void suspend()   { yield call_manager("Suspend"); }
     public async void reboot()    { yield call_manager("Reboot"); }
     public async void power_off() { yield call_manager("PowerOff"); }
@@ -167,8 +148,6 @@ public class LogindBridge : GLib.Object {
     public async void terminate_session() {
         if (manager == null) return;
         if (session_id == "") {
-            // No id resolved — fall back to ending the seat gracefully is not
-            // possible; warn and bail rather than killing the compositor.
             warning("logind: no session id; cannot TerminateSession");
             return;
         }

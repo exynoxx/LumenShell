@@ -1,20 +1,5 @@
 using GLib;
 
-/**
- * AccountsClient — the single place LumenShell reads (and writes) the current
- * user's AccountsService record (org.freedesktop.Accounts). Mirrors the
- * raw-DBusProxy style of lumen-common/logind.vala: no typed [DBus] interface,
- * synchronous calls, fail-soft everywhere.
- *
- * Two consumers today:
- *   - lumen-lockscreen: avatar + real name on the lock card (load_current_user).
- *   - lumen-session: stamps the chosen session back onto the user record at
- *     login (set_current_session) so a Wayland login manager preselects
- *     LumenShell next time — the job the (junked) greeter would otherwise own.
- *
- * Source-included into each consumer (no shared .so), same convention as
- * logind.vala / display_profiles.vala.
- */
 public class AccountsClient : GLib.Object {
 
     public struct UserInfo {
@@ -27,8 +12,7 @@ public class AccountsClient : GLib.Object {
     const string ACC_IFACE = "org.freedesktop.Accounts";
     const string USR_IFACE = "org.freedesktop.Accounts.User";
 
-    // Resolve the object path of the current user's AccountsService record.
-    // Returns "" (and warns) if Accounts is unavailable.
+    // "" if Accounts is unavailable.
     static string current_user_path() {
         var name = Environment.get_user_name();
         try {
@@ -46,14 +30,11 @@ public class AccountsClient : GLib.Object {
         }
     }
 
-    // The current user's identity never changes during a session, so the
-    // (system-bus-blocking) lookup is memoized after the first call. This keeps
-    // it off the lock critical path: lumen-lockscreen warms it once at startup
-    // and every subsequent make_window() reads the cache. See load_current_user.
+    // Memoized: the lookup blocks on the system bus and must stay off the
+    // lock critical path (lumen-lockscreen warms it at startup).
     static UserInfo? cached = null;
 
-    // Synchronous, fail-soft. Fallback chain for the avatar:
-    // AccountsService IconFile → ~/.face → "". Result is memoized.
+    // Avatar: AccountsService IconFile → ~/.face → "".
     public static UserInfo load_current_user() {
         if (cached != null)
             return cached;
@@ -91,9 +72,8 @@ public class AccountsClient : GLib.Object {
         return info;
     }
 
-    // Stamp the chosen session id onto the user record so login managers
-    // preselect it next time. Both setters are own-user-data writes (polkit
-    // allows them for the active local session — no prompt). Fail-soft.
+    // So login managers preselect this session next time. polkit allows
+    // own-user writes for the active local session without a prompt.
     public static void set_current_session(string session_id) {
         if (session_id == "") return;
         var path = current_user_path();
