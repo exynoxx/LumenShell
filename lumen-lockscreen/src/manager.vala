@@ -20,6 +20,9 @@ public class LockManager : GLib.Object {
 
     private bool authenticating = false;
     private int  failures = 0;
+    private uint lock_gen = 0;          // bumped per lock; stale PAM verdicts are dropped
+    private uint backoff_id = 0;        // 3-strike backoff timer; nonzero = input disabled
+    private uint sleep_timeout_id = 0;  // nonzero = delay inhibitor held for a pending suspend
 
     private Gdk.Texture? backdrop = null;       // cached blurred wallpaper (card backdrop)
 
@@ -52,14 +55,34 @@ public class LockManager : GLib.Object {
         logind.prepare_for_sleep.connect((starting) => {
             DiagLog.log("trigger: PrepareForSleep starting=%s", starting.to_string());
             if (starting) {
+                // Hold the inhibitor until the compositor answers (on_locked /
+                // on_failed); the timeout keeps a silent compositor from
+                // stalling suspend (logind's InhibitDelayMaxSec caps it anyway).
+                if (sleep_timeout_id != 0) Source.remove(sleep_timeout_id);
+                sleep_timeout_id = Timeout.add_seconds(4, () => {
+                    sleep_timeout_id = 0;
+                    warning("lumen-lockscreen: lock not granted before suspend; releasing inhibitor");
+                    logind.release_delay_inhibitor();
+                    return Source.REMOVE;
+                });
                 if (lock_on_suspend_enabled()) lock_now();
-                // Lock request is in flight; let the kernel proceed to sleep.
-                logind.release_delay_inhibitor();
+                // Nothing in flight (disabled, already locked, unsupported, failed).
+                if (instance == null || is_locked) release_sleep_inhibitor();
             } else {
                 // Re-arm for the next sleep cycle.
+                release_sleep_inhibitor();
                 logind.take_delay_inhibitor();
             }
         });
+    }
+
+    // No-op unless a suspend is waiting on the lock, so the startup inhibitor
+    // is never dropped by an ordinary (non-suspend) lock.
+    private void release_sleep_inhibitor() {
+        if (sleep_timeout_id == 0) return;
+        Source.remove(sleep_timeout_id);
+        sleep_timeout_id = 0;
+        logind.release_delay_inhibitor();
     }
 
     // power.ini [power] lock-on-suspend, written by lumen-settings; default on.
@@ -109,6 +132,7 @@ public class LockManager : GLib.Object {
     private void begin_lock() {
         // Null falls back to the theme image / a solid scrim.
         backdrop = BlurredWallpaper.get_texture();
+        lock_gen++;
 
         instance = new GtkSessionLock.Instance();
         instance.locked.connect(on_locked);
@@ -118,8 +142,7 @@ public class LockManager : GLib.Object {
         DiagLog.log("begin_lock: requesting ext-session-lock");
         if (!instance.@lock()) {
             warning("lumen-lockscreen: lock request could not be sent");
-            instance = null;
-            backdrop = null;
+            on_failed();
         }
     }
 
@@ -145,13 +168,18 @@ public class LockManager : GLib.Object {
 
         focus_primary();
         locked();
+        release_sleep_inhibitor();   // surfaces exist; safe to sleep now
     }
 
+    // Idempotent: `failed` may fire inside lock() before begin_lock's own
+    // failure path runs.
     private void on_failed() {
-        warning("lumen-lockscreen: another locker holds the session; aborting");
+        if (instance == null) return;
+        warning("lumen-lockscreen: lock not granted (another locker, or request failed); aborting");
         teardown_windows();
         instance = null;
         is_locked = false;
+        release_sleep_inhibitor();
     }
 
     // ---- unlock ------------------------------------------------------------
@@ -185,6 +213,7 @@ public class LockManager : GLib.Object {
         }
         windows.remove_all();
         primary_monitor = null;
+        if (backoff_id != 0) { Source.remove(backoff_id); backoff_id = 0; }
         backdrop = null;        // release the blurred-wallpaper texture
     }
 
@@ -204,10 +233,16 @@ public class LockManager : GLib.Object {
         authenticating = true;
         primary.password.set_busy(true);
 
+        uint gen = lock_gen;
         pam.authenticate_async(password, (ok) => {
             authenticating = false;
             // Outcome only — the password buffer is never logged anywhere.
             DiagLog.log("auth: %s", ok ? "success" : "failure");
+            // The lock this attempt was for is gone (unlocked, maybe re-locked).
+            if (gen != lock_gen || !is_locked) {
+                DiagLog.log("auth: stale result ignored");
+                return;
+            }
             if (ok) {
                 unlock_now();
             } else {
@@ -227,7 +262,9 @@ public class LockManager : GLib.Object {
         if (failures >= 3) {
             // Backoff: lock input for the configured window, then reset.
             primary.password.set_input_enabled(false);
-            Timeout.add(Theme.failure_backoff_ms, () => {
+            if (backoff_id != 0) Source.remove(backoff_id);
+            backoff_id = Timeout.add(Theme.failure_backoff_ms, () => {
+                backoff_id = 0;
                 failures = 0;
                 var p = current_primary();
                 if (p != null && p.password != null) {
@@ -283,6 +320,7 @@ public class LockManager : GLib.Object {
                 make_window(mon, want_primary);
             }
         }
+        focus_primary();
     }
 
     private void make_window(Gdk.Monitor mon, bool is_primary) {
@@ -291,8 +329,16 @@ public class LockManager : GLib.Object {
         // Assign to the output BEFORE present() so gtk4-session-lock makes it a
         // lock surface on that monitor.
         instance.assign_window_to_monitor(win, mon);
-        if (is_primary && win.password != null)
+        if (is_primary && win.password != null) {
             win.password.submitted.connect((pw) => try_auth(pw));
+            // A replacement primary (old one unplugged) inherits the lockout.
+            if (backoff_id != 0) {
+                win.password.set_input_enabled(false);
+                win.password.set_error("Incorrect password");
+            } else if (authenticating) {
+                win.password.set_busy(true);
+            }
+        }
         win.present();
         windows.set(mon, win);
     }
