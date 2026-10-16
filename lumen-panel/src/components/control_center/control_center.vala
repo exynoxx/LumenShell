@@ -101,6 +101,7 @@ public class ControlCenter : Gtk.Box {
         // so a permanent handler would pin a rebuilt-away tray in memory.
         ulong changed_id = 0;
         slider.map.connect (() => {
+            brightness.watch ();
             suppress = true;
             slider.set_value (brightness.percent);
             suppress = false;
@@ -111,6 +112,7 @@ public class ControlCenter : Gtk.Box {
             });
         });
         slider.unmap.connect (() => {
+            brightness.unwatch ();
             if (changed_id != 0) SignalHandler.disconnect (brightness, changed_id);
             changed_id = 0;
         });

@@ -87,6 +87,13 @@ public class NmcliClient : GLib.Object {
     // so that's one spawn, not four. TTL is well under the 4 s poll.
     private const int64 TABLE_TTL_US = 1000000;
 
+    // So a poll triggered by an `nmcli monitor` event isn't answered from cache.
+    public void invalidate_devices() {
+        table_lock.lock();
+        table_cache = null;
+        table_lock.unlock();
+    }
+
     private GenericArray<DevRow> device_table() {
         table_lock.lock();
         var cached = table_cache;

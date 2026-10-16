@@ -12,11 +12,32 @@ public class BrightnessService : GLib.Object {
 
     private const uint POLL_MS = 1000;
 
+    uint watchers   = 0;
+    uint poll_timer = 0;
+    LumenCommon.Coalescer writer;
+
     public BrightnessService () {
+        writer = new LumenCommon.Coalescer ((pct) => {
+            // -d: the device read() reads, not brightnessctl's default.
+            LumenCommon.Proc.spawn_detached (new string[] {
+                "brightnessctl", "-d", Path.get_basename (dir), "set", "%d%%".printf (pct)
+            });
+        });
         detect ();
-        if (!available) return;
+        if (available) read ();
+    }
+
+    // Polled only while a slider is mapped (sysfs has no inotify).
+    public void watch () {
+        if (!available || watchers++ > 0) return;
         read ();
-        GLib.Timeout.add (POLL_MS, () => { read (); return Source.CONTINUE; });
+        poll_timer = GLib.Timeout.add (POLL_MS, () => { read (); return Source.CONTINUE; });
+    }
+
+    public void unwatch () {
+        if (watchers == 0 || --watchers > 0) return;
+        GLib.Source.remove (poll_timer);
+        poll_timer = 0;
     }
 
     void detect () {
@@ -35,7 +56,7 @@ public class BrightnessService : GLib.Object {
     }
 
     void read () {
-        if (!available) return;
+        if (!available || writer.busy) return;
         int cur = read_int (dir + "/brightness");
         int pct = (int) Math.round ((double) cur / max * 100.0);
         pct = pct.clamp (1, 100);
@@ -49,9 +70,7 @@ public class BrightnessService : GLib.Object {
         if (!available) return;
         pct = pct.clamp (1, 100);
         percent = pct;
-        LumenCommon.Proc.spawn_detached (new string[] {
-            "brightnessctl", "set", "%d%%".printf (pct)
-        });
+        writer.push (pct);
     }
 
     int read_int (string path) {

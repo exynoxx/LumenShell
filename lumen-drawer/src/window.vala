@@ -116,6 +116,7 @@ private const string DRAWER_CSS = """
 public class DrawerWindow : Gtk.ApplicationWindow {
 
     private AppEntry[] apps;
+    private ulong      focus_id = 0;
     private SearchDb search_db;
 
     private Gtk.SearchEntry search_entry;
@@ -157,11 +158,20 @@ public class DrawerWindow : Gtk.ApplicationWindow {
             sync_keyboard_mode();
         });
 
-        DrawerToplevels.instance.focus_changed.connect((any) => {
+        focus_id = DrawerToplevels.instance.focus_changed.connect((any) => {
             // Grid is now hidden; reset so it never reopens mid-search.
             if (any) reset_view();
             sync_keyboard_mode();
         });
+    }
+
+    // The focus and launched handlers capture `this`; drop them so a hotplug
+    // rebuild frees the window.
+    public override void dispose() {
+        if (focus_id != 0) DrawerToplevels.instance.disconnect(focus_id);
+        focus_id = 0;
+        apps = {};
+        base.dispose();
     }
 
     // The compositor hands keys back to this surface when no toplevel is

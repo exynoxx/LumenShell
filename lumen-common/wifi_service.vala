@@ -18,10 +18,17 @@ public class WifiService : GLib.Object {
 
     public bool connected { get { return connected_ssid != ""; } }
 
+    // Fallback poll, only while `nmcli monitor` isn't running.
     private const uint POLL_INTERVAL_SEC = 4;
+    private const uint EVENT_DEBOUNCE_MS = 300;
+
+    private LumenCommon.LineWatcher watcher = new LumenCommon.LineWatcher();
+    private uint poll_timer  = 0;
+    private uint event_timer = 0;
 
     private NmcliClient nmcli          = new NmcliClient();
     private bool        poll_in_flight = false;
+    private bool        poll_again     = false;
     private bool        scan_in_flight = false;
 
     // Skips the periodic poll (not explicit calls) while set.
@@ -32,17 +39,47 @@ public class WifiService : GLib.Object {
         var saved = RadioState.get_wifi();
         if (saved != null) apply_radio(saved);
         else               poll_connection();
-        GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
-            if (!paused) poll_connection();
-            return Source.CONTINUE;
-        });
+        init_watch();
     }
 
     // Does NOT re-apply the saved radio state, so merely constructing it (e.g. the
     // settings page) never toggles the user's WiFi.
     public WifiService.passive() {
         poll_connection();
-        GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
+        init_watch();
+    }
+
+    // Any `nmcli monitor` line triggers a poll; the text is never parsed.
+    private void init_watch() {
+        watcher.line.connect(() => {
+            if (event_timer != 0) GLib.Source.remove(event_timer);
+            event_timer = GLib.Timeout.add(EVENT_DEBOUNCE_MS, () => {
+                event_timer = 0;
+                nmcli.invalidate_devices();
+                poll_connection();
+                return Source.REMOVE;
+            });
+        });
+        watcher.ended.connect(() => {
+            start_poll();
+            GLib.Timeout.add_seconds(5, () => { start_watch(); return Source.REMOVE; });
+        });
+        start_watch();
+    }
+
+    private void start_watch() {
+        if (watcher.running) return;
+        if (watcher.start({ "nmcli", "monitor" })) {
+            if (poll_timer != 0) { GLib.Source.remove(poll_timer); poll_timer = 0; }
+            poll_connection();
+        } else {
+            start_poll();
+        }
+    }
+
+    private void start_poll() {
+        if (poll_timer != 0) return;
+        poll_timer = GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
             if (!paused) poll_connection();
             return Source.CONTINUE;
         });
@@ -170,8 +207,9 @@ public class WifiService : GLib.Object {
         });
     }
 
+    // Calls made mid-poll re-run once it finishes.
     private void poll_connection() {
-        if (poll_in_flight) return;
+        if (poll_in_flight) { poll_again = true; return; }
         poll_in_flight = true;
         new GLib.Thread<void>("wifi-poll", () => {
             var en   = nmcli.query_enabled();
@@ -179,6 +217,7 @@ public class WifiService : GLib.Object {
             var eth  = nmcli.query_ethernet_connected();
             GLib.Idle.add(() => {
                 poll_in_flight = false;
+                if (poll_again) { poll_again = false; poll_connection(); }
                 bool changed = false;
                 if (en   != enabled)            { enabled = en;             changed = true; }
                 if (conn != connected_ssid)     { connected_ssid = conn;    changed = true; }

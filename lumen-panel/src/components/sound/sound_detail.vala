@@ -3,6 +3,7 @@ public class SoundDetail : CcDetail {
     SoundService service;
     Gtk.Box list_card;
     Gtk.Label empty_label;
+    string?   shown = null;
 
     public SoundDetail (SoundService service) {
         base ();
@@ -32,7 +33,13 @@ public class SoundDetail : CcDetail {
         rebuild ();
     }
 
+    // Skips volume/mute-only changes so rows aren't torn down mid-click.
     void rebuild () {
+        var key = new StringBuilder (service.default_sink);
+        foreach (var s in service.sinks) key.append_printf ("|%s\t%s", s.id, s.name);
+        if (key.str == shown) return;
+        shown = key.str;
+
         Gtk.Widget? w;
         while ((w = list_card.get_first_child ()) != null) list_card.remove (w);
 

@@ -182,7 +182,6 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
                 node->tint[i] = 1.0f + (warm[i] - 1.0f) * p; // LERP white -> warm
             }
 
-            // Once settled the node stays in OVERLAY and re-applies on natural damage.
             output->render->damage_whole();
         }
 
@@ -190,7 +189,9 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
         {
             if (state == state_t::FADING_IN)
             {
+                // Settled: the node re-applies on natural damage.
                 state = state_t::ON;
+                unhook();
             } else if (state == state_t::FADING_OUT)
             {
                 teardown();
@@ -236,6 +237,7 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
+        hook();
         state = state_t::FADING_OUT;
         anim.animate((double) anim, 0.0);
         return true;
@@ -252,12 +254,33 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
     {
         node = std::make_shared<night_tint_node_t>(output->get_relative_geometry());
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY), node);
-        output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
+        hook();
+    }
+
+    // on_frame is hooked only while a fade animates.
+    bool hooked = false;
+
+    void hook()
+    {
+        if (!hooked)
+        {
+            output->render->add_effect(&on_frame, wf::OUTPUT_EFFECT_PRE);
+            hooked = true;
+        }
+    }
+
+    void unhook()
+    {
+        if (hooked)
+        {
+            output->render->rem_effect(&on_frame);
+            hooked = false;
+        }
     }
 
     void teardown()
     {
-        output->render->rem_effect(&on_frame);
+        unhook();
         if (node)
         {
             wf::scene::remove_child(node);

@@ -23,7 +23,7 @@ public class App : GLib.Object {
     SoundService        sound_service;
     BatteryService      battery_service;
     PowerProfileService power_profile_service;
-    BrightnessService   brightness_service;     // one 1 s sysfs poll, not one per tray
+    BrightnessService   brightness_service;     // polls sysfs only while a slider is mapped
 
     GLib.GenericArray<PanelWindow> windows = new GLib.GenericArray<PanelWindow>();
     bool hotplug_wired = false;

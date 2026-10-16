@@ -36,4 +36,68 @@ namespace LumenCommon {
             } catch (GLib.SpawnError e) {}
         }
     }
+
+    // Streams stdout lines of a long-lived event command (`pactl subscribe`,
+    // `nmcli monitor`). `running` is false if it failed to spawn or exited.
+    public class LineWatcher : GLib.Object {
+        public signal void line(string text);
+        public signal void ended();
+
+        public bool running { get; private set; default = false; }
+
+        private GLib.Subprocess? proc = null;
+
+        public bool start(string[] argv) {
+            try {
+                var launcher = new GLib.SubprocessLauncher(
+                    GLib.SubprocessFlags.STDOUT_PIPE | GLib.SubprocessFlags.STDERR_SILENCE);
+                launcher.setenv("LC_ALL", "C", true);
+                proc = launcher.spawnv(argv);
+            } catch (GLib.Error e) {
+                return false;
+            }
+            running = true;
+            read_loop.begin(new GLib.DataInputStream(proc.get_stdout_pipe()), proc);
+            return true;
+        }
+
+        private async void read_loop(GLib.DataInputStream stream, GLib.Subprocess owner) {
+            try {
+                string? l;
+                while ((l = yield stream.read_line_async()) != null) line(l);
+            } catch (GLib.Error e) {}
+            if (proc != owner) return;
+            running = false;
+            proc = null;
+            ended();
+        }
+    }
+
+    // Latest-value-wins throttle for slider drags: one spawn per window instead
+    // of one per step, spaced so they can't finish out of order.
+    public class Coalescer : GLib.Object {
+        public delegate void Apply(int value);
+
+        private const uint WINDOW_MS = 40;
+
+        private Apply apply;
+        private int   pending = 0;
+        private uint  timer   = 0;
+
+        public Coalescer(owned Apply apply) {
+            this.apply = (owned) apply;
+        }
+
+        public bool busy { get { return timer != 0; } }
+
+        public void push(int value) {
+            pending = value;
+            if (timer != 0) return;
+            timer = GLib.Timeout.add(WINDOW_MS, () => {
+                timer = 0;
+                apply(pending);
+                return GLib.Source.REMOVE;
+            });
+        }
+    }
 }
