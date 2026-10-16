@@ -45,16 +45,17 @@ namespace LumenCommon {
         // safe to overwrite on upgrade.
         //
         // `packaged_relpath` is relative to the datadir, e.g.
-        // "lumen-osd/default-theme.json". LUMEN_DATADIR (env, else the value
-        // baked in at build time) locates it for non-/usr prefixes.
+        // "lumen-panel/default-theme.json". LUMEN_DATADIR (env, else the value
+        // baked in at build time) locates it for non-/usr prefixes. null = no
+        // packaged file (defaults live in code): the user path is returned.
         public static string theme_file(string env_var,
                                         string config_basename,
-                                        string packaged_relpath) {
+                                        string? packaged_relpath) {
             var env = Environment.get_variable(env_var);
             if (env != null) return env;
 
             var user = config_dir() + "/" + config_basename;
-            if (FileUtils.test(user, FileTest.EXISTS)) return user;
+            if (packaged_relpath == null || FileUtils.test(user, FileTest.EXISTS)) return user;
 
             var datadir = Environment.get_variable("LUMEN_DATADIR") ?? LUMEN_DATADIR;
             var packaged = datadir + "/" + packaged_relpath;

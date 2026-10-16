@@ -1,26 +1,20 @@
-using Json;
-
 public class Theme {
-    // Non-trivial initializers (anything not a C constant expression) are
-    // emitted by Vala into class_init. Theme is never instantiated, so
-    // class_init never runs and these Gdk.RGBA / string defaults stay
-    // zero-initialized — which is fully transparent, hiding the entire OSD.
-    // The fields are set imperatively in load() instead; the values below
-    // document intent only.
-    public static Gdk.RGBA background;       // rgba(0, 0, 0, 0.75)
-    public static Gdk.RGBA text;             // rgba(1, 1, 1, 1)
-    public static Gdk.RGBA progress_track;   // rgba(1, 1, 1, 0.15)
-    public static Gdk.RGBA progress_fill;    // rgba(1, 1, 1, 1)
+    // Theme is never instantiated, so non-const static initializers (emitted
+    // into class_init) would never run; load() assigns every field instead.
+    public static Gdk.RGBA background;
+    public static Gdk.RGBA text;
+    public static Gdk.RGBA progress_track;
+    public static Gdk.RGBA progress_fill;
 
-    public static string  position;          // "bottom-center" (set in load())
-    public static int     margin           = 76;       // px from anchored edge
-    public static int     width            = 360;
-    public static int     height           = 56;
-    public static int     corner_radius    = -1;       // -1 → pill (height/2)
-    public static int     timeout_ms       = 1500;
-    public static int     padding_x        = 22;       // pill internal horizontal padding
-    public static int     padding_y        = 10;       // pill internal vertical padding
-    public static int     content_spacing  = 14;       // gap between icon / bar / label
+    public static string  position;
+    public static int     margin;           // px from anchored edge
+    public static int     width;
+    public static int     height;
+    public static int     corner_radius;    // -1 → pill (height/2)
+    public static int     timeout_ms;
+    public static int     padding_x;        // pill internal horizontal padding
+    public static int     padding_y;        // pill internal vertical padding
+    public static int     content_spacing;  // gap between icon / bar / label
 
     // Side anchors (…-left / …-right) stack the pill vertically; the top/bottom
     // centred anchors and dead centre stay horizontal.
@@ -29,59 +23,20 @@ public class Theme {
     }
 
     public static void load() {
-        position       = "bottom-center";
-        background     = rgba(0.00f, 0.00f, 0.00f, 0.75f);
-        text           = rgba(1.00f, 1.00f, 1.00f, 1.00f);
-        progress_track = rgba(1.00f, 1.00f, 1.00f, 0.15f);
-        progress_fill  = rgba(1.00f, 1.00f, 1.00f, 1.00f);
-
-        var path = Utils.THEME_FILE;
-        if (!FileUtils.test(path, FileTest.EXISTS)) return;
-
-        var parser = new Json.Parser();
-        try {
-            parser.load_from_file(path);
-        } catch (Error e) {
-            stderr.printf("lumen-osd theme load failed: %s\n", e.message);
-            return;
-        }
-
-        var root = parser.get_root();
-        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
-
-        root.get_object().foreach_member((obj, name, node) => {
-            var t = node.get_value_type();
-            if (t == typeof(string)) {
-                apply_string(name, node.get_string());
-            } else if (t == typeof(int64)) {
-                apply_int(name, (int) node.get_int());
-            }
-        });
-    }
-
-    private static void apply_string(string key, string val) {
-        if (key == "osd.position") {
-            position = val;
-            return;
-        }
-        if (!val.has_prefix("#")) {
-            warning("lumen-osd: unknown theme key: %s", key);
-            return;
-        }
-        var c = Gdk.RGBA();
-        if (!c.parse(val)) {
-            warning("lumen-osd: invalid color for %s: %s", key, val);
-            return;
-        }
-        switch (key) {
-            case "osd.background":     background     = c; break;
-            case "osd.text":           text           = c; break;
-            case "osd.progress.track": progress_track = c; break;
-            case "osd.progress.fill":  progress_fill  = c; break;
-            default:
-                warning("lumen-osd: unknown theme key: %s", key);
-                break;
-        }
+        var t = new LumenCommon.ThemeJson(Utils.THEME_FILE);
+        position        = t.get_str("osd.position", "bottom-center");
+        background      = t.get_color("osd.background", "rgba(0,0,0,0.75)");
+        text            = t.get_color("osd.text", "rgba(255,255,255,1)");
+        progress_track  = t.get_color("osd.progress.track", "rgba(255,255,255,0.15)");
+        progress_fill   = t.get_color("osd.progress.fill", "rgba(255,255,255,1)");
+        margin          = t.get_int("osd.margin", 76);
+        width           = t.get_int("osd.width", 360);
+        height          = t.get_int("osd.height", 56);
+        corner_radius   = t.get_int("osd.corner-radius", -1);
+        timeout_ms      = t.get_int("osd.timeout-ms", 1500);
+        padding_x       = t.get_int("osd.padding-x", 22);
+        padding_y       = t.get_int("osd.padding-y", 10);
+        content_spacing = t.get_int("osd.content-spacing", 14);
     }
 
     public static string generate_root_css() {
@@ -89,27 +44,5 @@ public class Theme {
                 ".lumen-osd-root label { color: %s; }" +
                 ".lumen-osd-root image { color: %s; }").printf(
                     text.to_string(), text.to_string());
-    }
-
-    private static void apply_int(string key, int v) {
-        switch (key) {
-            case "osd.margin":          margin          = v; break;
-            case "osd.width":           width           = v; break;
-            case "osd.height":          height          = v; break;
-            case "osd.corner-radius":   corner_radius   = v; break;
-            case "osd.timeout-ms":      timeout_ms      = v; break;
-            case "osd.padding-x":       padding_x       = v; break;
-            case "osd.padding-y":       padding_y       = v; break;
-            case "osd.content-spacing": content_spacing = v; break;
-            default:
-                warning("lumen-osd: unknown theme key: %s", key);
-                break;
-        }
-    }
-
-    private static Gdk.RGBA rgba(float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
     }
 }

@@ -5,7 +5,7 @@ public class Utils {
         owned get {
             return LumenCommon.Paths.theme_file(
                 "LUMEN_OSD_THEME_FILE", "osd.json",
-                "lumen-osd/default-theme.json");
+                null);
         }
     }
 }

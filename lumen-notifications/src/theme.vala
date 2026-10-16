@@ -1,5 +1,3 @@
-using Json;
-
 public enum DismissStyle {
     SLIDE_RIGHT,
     FADE;
@@ -14,14 +12,8 @@ public enum DismissStyle {
 }
 
 public class Theme {
-    // NOTE: these Gdk.RGBA fields are declared without initializers on
-    // purpose. Vala emits static field initializers that call a method
-    // (like rgba()) into the class's class_init, which only runs once the
-    // GType is registered — i.e. when an instance is created. Theme is used
-    // purely statically and never instantiated, so those initializers would
-    // never execute, leaving every color at {0} (transparent black) and
-    // making notifications invisible. The defaults are assigned in
-    // apply_color_defaults(), called from load() at startup instead.
+    // Theme is never instantiated, so non-const static initializers (emitted
+    // into class_init) would never run; load() assigns every field instead.
     public static Gdk.RGBA banner_bg;
     public static Gdk.RGBA banner_border;
     public static Gdk.RGBA banner_text;
@@ -29,108 +21,51 @@ public class Theme {
     public static Gdk.RGBA action_bg;
     public static Gdk.RGBA action_bg_hover;
     public static Gdk.RGBA action_text;
-    public static int     clear_all_radius = 6;
+    public static int     clear_all_radius;
 
-    public static int radius        = 12;
-    public static int padding       = 14;
-    public static int spacing       = 8;
-    public static int width         = 360;
-    public static int gap           = 10;
-    public static int margin_top    = 16;
-    public static int margin_right  = 16;
+    public static int radius;
+    public static int padding;
+    public static int spacing;
+    public static int width;
+    public static int gap;
+    public static int margin_top;
+    public static int margin_right;
 
     // Duration of a banner's leave transition (BannerStack's Gtk.Revealer).
-    public static int fade_out_ms   = 800;
+    public static int fade_out_ms;
 
-    public static int expire_default_ms = 5000;
+    public static int expire_default_ms;
 
-    public static DismissStyle dismiss_style = DismissStyle.SLIDE_RIGHT;
-    public static int          cascade_ms       = 80;
-    public static int          clear_threshold  = 3;
-
-    private static void apply_color_defaults() {
-        banner_bg        = rgba(0.07f, 0.08f, 0.12f, 0.96f);
-        banner_border    = rgba(1.00f, 1.00f, 1.00f, 0.12f);
-        banner_text      = rgba(0.92f, 0.92f, 0.92f, 1.00f);
-        banner_subtext   = rgba(0.69f, 0.69f, 0.69f, 1.00f);
-        action_bg        = rgba(1.00f, 1.00f, 1.00f, 0.08f);
-        action_bg_hover  = rgba(1.00f, 1.00f, 1.00f, 0.16f);
-        action_text      = rgba(1.00f, 1.00f, 1.00f, 1.00f);
-    }
+    public static DismissStyle dismiss_style;
+    public static int          cascade_ms;
+    public static int          clear_threshold;
 
     public static void load() {
-        // Always seed the runtime color defaults first; the theme file (if
-        // present) overrides individual keys on top.
-        apply_color_defaults();
+        var t = new LumenCommon.ThemeJson(Utils.THEME_FILE);
+        banner_bg         = t.get_color("banner.background", "rgba(7%,8%,12%,0.96)");
+        banner_border     = t.get_color("banner.border", "rgba(255,255,255,0.12)");
+        banner_text       = t.get_color("banner.text", "rgba(92%,92%,92%,1)");
+        banner_subtext    = t.get_color("banner.subtext", "rgba(69%,69%,69%,1)");
+        action_bg         = t.get_color("action.background", "rgba(255,255,255,0.08)");
+        action_bg_hover   = t.get_color("action.background-hover", "rgba(255,255,255,0.16)");
+        action_text       = t.get_color("action.text", "rgba(255,255,255,1)");
+        radius            = t.get_int("banner.radius", 12);
+        padding           = t.get_int("banner.padding", 14);
+        spacing           = t.get_int("banner.spacing", 8);
+        width             = t.get_int("banner.width", 360);
+        gap               = t.get_int("banner.gap", 10);
+        margin_top        = t.get_int("banner.margin.top", 16);
+        margin_right      = t.get_int("banner.margin.right", 16);
+        clear_all_radius  = t.get_int("clear-all.radius", 6);
+        fade_out_ms       = t.get_int("animation.fade-out-ms", 800);
+        expire_default_ms = t.get_int("expire.default-ms", 5000);
+        cascade_ms        = t.get_int("dismiss.cascade-ms", 80);
+        clear_threshold   = t.get_int("clear-all.threshold", 3);
 
-        var path = Utils.THEME_FILE;
-        if (!FileUtils.test(path, FileTest.EXISTS)) return;
-
-        var parser = new Json.Parser();
-        try {
-            parser.load_from_file(path);
-        } catch (Error e) {
-            stderr.printf("lumen-notifications: theme load failed: %s\n", e.message);
-            return;
-        }
-
-        var root = parser.get_root();
-        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
-
-        root.get_object().foreach_member((obj, name, node) => {
-            var t = node.get_value_type();
-            if (t == typeof(string)) {
-                apply_string(name, node.get_string());
-            } else if (t == typeof(int64)) {
-                apply_int(name, (int) node.get_int());
-            }
-        });
-    }
-
-    private static void apply_string(string key, string val) {
-        if (key == "dismiss.style") {
-            DismissStyle? d = DismissStyle.parse(val);
-            if (d != null) dismiss_style = (!) d;
-            else warning("lumen-notifications: unknown dismiss.style: %s", val);
-            return;
-        }
-        var c = Gdk.RGBA();
-        if (!c.parse(val)) {
-            warning("lumen-notifications: invalid color for %s: %s", key, val);
-            return;
-        }
-        switch (key) {
-            case "banner.background":        banner_bg        = c; break;
-            case "banner.border":            banner_border    = c; break;
-            case "banner.text":              banner_text      = c; break;
-            case "banner.subtext":           banner_subtext   = c; break;
-            case "action.background":        action_bg        = c; break;
-            case "action.background-hover":  action_bg_hover  = c; break;
-            case "action.text":              action_text      = c; break;
-            default:
-                warning("lumen-notifications: unknown theme key: %s", key);
-                break;
-        }
-    }
-
-    private static void apply_int(string key, int v) {
-        switch (key) {
-            case "banner.radius":         radius            = v; break;
-            case "banner.padding":        padding           = v; break;
-            case "banner.spacing":        spacing           = v; break;
-            case "banner.width":          width             = v; break;
-            case "banner.gap":            gap               = v; break;
-            case "banner.margin.top":     margin_top        = v; break;
-            case "banner.margin.right":   margin_right      = v; break;
-            case "clear-all.radius":      clear_all_radius  = v; break;
-            case "animation.fade-out-ms": fade_out_ms       = v; break;
-            case "expire.default-ms":     expire_default_ms = v; break;
-            case "dismiss.cascade-ms":    cascade_ms        = v; break;
-            case "clear-all.threshold":   clear_threshold   = v; break;
-            default:
-                warning("lumen-notifications: unknown theme key: %s", key);
-                break;
-        }
+        var style = t.get_str("dismiss.style", "slide-right");
+        DismissStyle? d = DismissStyle.parse(style);
+        if (d == null) warning("lumen-notifications: unknown dismiss.style: %s", style);
+        dismiss_style = d ?? DismissStyle.SLIDE_RIGHT;
     }
 
     public static string generate_root_css() {
@@ -210,11 +145,5 @@ public class Theme {
             Theme.action_bg.to_string(),
             sep
         );
-    }
-
-    private static Gdk.RGBA rgba(float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
     }
 }

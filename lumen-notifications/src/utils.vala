@@ -5,7 +5,7 @@ public class Utils {
         owned get {
             return LumenCommon.Paths.theme_file(
                 "LUMEN_NOTIFICATIONS_THEME_FILE", "notifications.json",
-                "lumen-notifications/default-notifications-theme.json");
+                null);
         }
     }
 

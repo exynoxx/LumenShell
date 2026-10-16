@@ -5,7 +5,7 @@ public class Utils {
         owned get {
             return LumenCommon.Paths.theme_file(
                 "LUMEN_LOCKSCREEN_THEME_FILE", "lockscreen.json",
-                "lumen-lockscreen/default-lockscreen-theme.json");
+                null);
         }
     }
 

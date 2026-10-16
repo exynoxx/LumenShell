@@ -1,12 +1,10 @@
-using Json;
-
-// Theme — static config for lumen-lockscreen, mirroring lumen-osd/src/theme.vala.
-// Exposes typed fields for code (colors as Gdk.RGBA, sizes as int, flags as
-// bool) AND a generate_root_css() that emits @define-color tokens so the stock
-// GTK widgets on the card (Gtk.PasswordEntry, buttons) pick up the palette.
+// Theme — static config for lumen-lockscreen. Exposes typed fields for code
+// (colors as Gdk.RGBA, sizes as int, flags as bool) AND a generate_root_css()
+// that emits @define-color tokens so the stock GTK widgets on the card
+// (Gtk.PasswordEntry, buttons) pick up the palette.
 public class Theme {
-    // See lumen-osd note: Theme is never instantiated, so non-const field
-    // initializers never run; load() sets every field imperatively.
+    // Theme is never instantiated, so non-const static initializers (emitted
+    // into class_init) would never run; load() assigns every field instead.
     public static Gdk.RGBA text;              // primary text (clock, name)
     public static Gdk.RGBA muted_text;        // date, hints
     public static Gdk.RGBA entry_background;
@@ -14,92 +12,30 @@ public class Theme {
     public static Gdk.RGBA scrim;             // tint over the blurred desktop snapshot
 
     public static string background_image;    // fallback when no snapshot ("" = solid)
-    public static int    clock_font_size   = 96;
-    public static int    date_font_size    = 18;
-    public static int    avatar_size       = 256;
-    public static int    blur_radius       = 12;       // light GSK frost over the wallpaper
-    public static int    idle_timeout_ms   = 300000;   // ext-idle-notify-v1; 0 disables auto-lock
-    public static int    failure_backoff_ms = 3000;
-    public static bool   show_power_menu   = true;
+    public static int    clock_font_size;
+    public static int    date_font_size;
+    public static int    avatar_size;
+    public static int    blur_radius;         // light GSK frost over the wallpaper
+    public static int    idle_timeout_ms;     // ext-idle-notify-v1; 0 disables auto-lock
+    public static int    failure_backoff_ms;
+    public static bool   show_power_menu;
 
     public static void load() {
-        text             = rgba(1.00f, 1.00f, 1.00f, 1.00f);
-        muted_text       = rgba(0.90f, 0.90f, 0.94f, 0.75f);
+        var t = new LumenCommon.ThemeJson(Utils.THEME_FILE);
+        text               = t.get_color("lockscreen.text", "rgba(255,255,255,1)");
+        muted_text         = t.get_color("lockscreen.muted-text", "rgba(90%,90%,94%,0.75)");
         // Apple-style translucent-white password pill on a blurred backdrop.
-        entry_background = rgba(1.00f, 1.00f, 1.00f, 0.18f);
-        entry_error      = rgba(0.95f, 0.42f, 0.42f, 1.00f);
-        scrim            = rgba(0.00f, 0.00f, 0.00f, 0.35f);
-        background_image = "";
-
-        var path = Utils.THEME_FILE;
-        if (!FileUtils.test(path, FileTest.EXISTS)) return;
-
-        var parser = new Json.Parser();
-        try {
-            parser.load_from_file(path);
-        } catch (Error e) {
-            stderr.printf("lumen-lockscreen theme load failed: %s\n", e.message);
-            return;
-        }
-
-        var root = parser.get_root();
-        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
-
-        root.get_object().foreach_member((obj, name, node) => {
-            var t = node.get_value_type();
-            if (t == typeof(string)) {
-                apply_string(name, node.get_string());
-            } else if (t == typeof(int64)) {
-                apply_int(name, (int) node.get_int());
-            } else if (t == typeof(bool)) {
-                apply_bool(name, node.get_boolean());
-            }
-        });
-    }
-
-    private static void apply_string(string key, string val) {
-        if (key == "lockscreen.background-image") {
-            background_image = val;
-            return;
-        }
-        var c = Gdk.RGBA();
-        if (!c.parse(val)) {
-            warning("lumen-lockscreen: invalid color for %s: %s", key, val);
-            return;
-        }
-        switch (key) {
-            case "lockscreen.text":             text             = c; break;
-            case "lockscreen.muted-text":       muted_text       = c; break;
-            case "lockscreen.entry-background": entry_background = c; break;
-            case "lockscreen.entry-error":      entry_error      = c; break;
-            case "lockscreen.scrim":            scrim            = c; break;
-            default:
-                warning("lumen-lockscreen: unknown theme key: %s", key);
-                break;
-        }
-    }
-
-    private static void apply_int(string key, int v) {
-        switch (key) {
-            case "lockscreen.clock-font-size":    clock_font_size    = v; break;
-            case "lockscreen.date-font-size":     date_font_size     = v; break;
-            case "lockscreen.avatar-size":        avatar_size        = v; break;
-            case "lockscreen.blur-radius":        blur_radius        = v; break;
-            case "lockscreen.idle-timeout-ms":    idle_timeout_ms    = v; break;
-            case "lockscreen.failure-backoff-ms": failure_backoff_ms = v; break;
-            default:
-                warning("lumen-lockscreen: unknown theme key: %s", key);
-                break;
-        }
-    }
-
-    private static void apply_bool(string key, bool v) {
-        switch (key) {
-            case "lockscreen.show-power-menu": show_power_menu = v; break;
-            default:
-                warning("lumen-lockscreen: unknown theme key: %s", key);
-                break;
-        }
+        entry_background   = t.get_color("lockscreen.entry-background", "rgba(255,255,255,0.18)");
+        entry_error        = t.get_color("lockscreen.entry-error", "rgba(95%,42%,42%,1)");
+        scrim              = t.get_color("lockscreen.scrim", "rgba(0,0,0,0.35)");
+        background_image   = t.get_str("lockscreen.background-image", "");
+        clock_font_size    = t.get_int("lockscreen.clock-font-size", 96);
+        date_font_size     = t.get_int("lockscreen.date-font-size", 18);
+        avatar_size        = t.get_int("lockscreen.avatar-size", 256);
+        blur_radius        = t.get_int("lockscreen.blur-radius", 12);
+        idle_timeout_ms    = t.get_int("lockscreen.idle-timeout-ms", 300000);
+        failure_backoff_ms = t.get_int("lockscreen.failure-backoff-ms", 3000);
+        show_power_menu    = t.get_bool("lockscreen.show-power-menu", true);
     }
 
     // @define-color tokens consumed by res/style.css for the stock widgets.
@@ -110,11 +46,5 @@ public class Theme {
                 "@define-color lockscreen_entry_error %s;\n").printf(
                     text.to_string(), muted_text.to_string(),
                     entry_background.to_string(), entry_error.to_string());
-    }
-
-    private static Gdk.RGBA rgba(float r, float g, float b, float a) {
-        var c = Gdk.RGBA();
-        c.red = r; c.green = g; c.blue = b; c.alpha = a;
-        return c;
     }
 }

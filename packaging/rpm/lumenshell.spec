@@ -112,11 +112,9 @@ package adds a "LumenShell" entry to the display manager's session menu.
 %{_bindir}/lumen-session
 %{_bindir}/lumen-settings
 %{_bindir}/start-lumenshell
-%{_datadir}/lumen-osd/
 %{_datadir}/lumen-panel/
 %{_datadir}/lumen-desktop/
 %{_datadir}/lumenshell/
-%{_datadir}/lumen-notifications/
 %{_datadir}/lumen-settings/
 %{_datadir}/applications/org.lumenshell.Settings.desktop
 %{_datadir}/wayland-sessions/lumenshell.desktop
@@ -125,7 +123,6 @@ package adds a "LumenShell" entry to the display manager's session menu.
 %if %{with lockscreen}
 %{_bindir}/lumen-lockscreen
 %{_bindir}/lumen-lockctl
-%{_datadir}/lumen-lockscreen/
 %config(noreplace) %{_sysconfdir}/pam.d/lumen-lockscreen
 %endif
 %if %{with polkit_agent}

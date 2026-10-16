@@ -36,6 +36,13 @@ paths_source = files(
   'lumen-common/paths.vala',
 )
 
+# Flat-JSON theme reader (LumenCommon.ThemeJson) with typed, defaulted getters.
+# Used by lumen-osd, lumen-notifications and lumen-lockscreen; needs json-glib
+# and gtk4 on the consuming target.
+theme_json_source = files(
+  'lumen-common/theme_json.vala',
+)
+
 # Persistent diagnostic log (LumenCommon.DiagLog). Needs --pkg=posix on the
 # consuming target.
 diaglog_source = files(
@@ -114,16 +121,11 @@ osd_sources = files(
 )
 
 executable('lumen-osd',
-  osd_sources + paths_source + proc_source + display_ctl_source + display_profiles_source,
+  osd_sources + paths_source + theme_json_source + proc_source + display_ctl_source + display_profiles_source,
   vala_args: osd_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: osd_deps,
   install: true,
-)
-
-install_data(
-  'lumen-osd/default-theme.json',
-  install_dir: get_option('datadir') / 'lumen-osd',
 )
 
 # --- lumen-panel (GTK4 + gtk4-layer-shell + GSK) ---
@@ -327,16 +329,11 @@ notif_sources = files(
 )
 
 executable('lumen-notifications',
-  notif_sources + paths_source,
+  notif_sources + paths_source + theme_json_source,
   vala_args: notif_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: notif_deps,
   install: true,
-)
-
-install_data(
-  'lumen-notifications/default-notifications-theme.json',
-  install_dir: get_option('datadir') / 'lumen-notifications',
 )
 
 # --- lumen-drawer ---
@@ -638,7 +635,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
   )
 
   executable('lumen-lockscreen',
-    lockscreen_sources + lockscreen_resources + lumen_common_sources + accounts_source + paths_source + diaglog_source,
+    lockscreen_sources + lockscreen_resources + lumen_common_sources + accounts_source + paths_source + theme_json_source + diaglog_source,
     vala_args: lockscreen_vala_args,
     c_args: lumen_datadir_c_args,
     dependencies: lockscreen_deps,
@@ -655,11 +652,6 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     vala_args: ['--pkg=gio-2.0', '--pkg=glib-2.0'],
     dependencies: [glib_dep, gio_dep, m_dep],
     install: true,
-  )
-
-  install_data(
-    'lumen-lockscreen/default-lockscreen-theme.json',
-    install_dir: get_option('datadir') / 'lumen-lockscreen',
   )
 
   # PAM service file — see SESSION_GLUE.md §2. Always /etc/pam.d (not prefixed).
@@ -765,8 +757,5 @@ endif
 # GSK_RENDERER pin mirrors start-lumenshell so dev runs match the real session.
 devenv = environment()
 devenv.set('LUMEN_THEME_FILE', meson.project_source_root() / 'default-theme.json')
-devenv.set('LUMEN_OSD_THEME_FILE', meson.project_source_root() / 'lumen-osd' / 'default-theme.json')
-devenv.set('LUMEN_NOTIFICATIONS_THEME_FILE', meson.project_source_root() / 'lumen-notifications' / 'default-notifications-theme.json')
-devenv.set('LUMEN_LOCKSCREEN_THEME_FILE', meson.project_source_root() / 'lumen-lockscreen' / 'default-lockscreen-theme.json')
 devenv.set('GSK_RENDERER', 'ngl')
 meson.add_devenv(devenv)
