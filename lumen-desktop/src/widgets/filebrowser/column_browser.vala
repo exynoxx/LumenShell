@@ -1,14 +1,3 @@
-// The Miller-column strip.
-//
-// Columns are appended to the right as the user descends, and truncated as
-// soon as the selection in an earlier column moves — the Finder model:
-//
-//   ~ ›  Documents ›  reports ›  q3.pdf
-//   ^column 0        ^column 2
-//
-// Selecting a directory in column N drops every column after N and appends a
-// fresh one for it. Selecting a file just drops the deeper columns.
-
 namespace LumenDesktop {
 
     public class ColumnBrowser : Gtk.Widget {
@@ -71,8 +60,6 @@ namespace LumenDesktop {
             if (entry != null && entry.is_dir) push_column(entry.file);
         }
 
-        // Drop every column to the right of `index`, along with the separators
-        // that precede them.
         private void truncate_after(int index) {
             while ((int) columns.length() > index + 1) {
                 var last = columns.nth_data(columns.length() - 1);
@@ -111,8 +98,6 @@ namespace LumenDesktop {
                     return col.move_selection(1);
 
                 case Gdk.Key.Left:
-                    // Step back into the parent column, keeping the child
-                    // column visible (Finder keeps the trail intact).
                     if (focused_column > 0) {
                         focused_column--;
                         scroll_to_column(focused_column);
@@ -120,8 +105,6 @@ namespace LumenDesktop {
                     return true;
 
                 case Gdk.Key.Right:
-                    // Only meaningful once the selected directory has spawned
-                    // its column; selecting it already did that.
                     if (focused_column + 1 < (int) columns.length()) {
                         focused_column++;
                         columns.nth_data(focused_column).select_first_if_empty();

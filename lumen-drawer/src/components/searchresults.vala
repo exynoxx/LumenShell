@@ -7,9 +7,7 @@ public class SearchResults : Gtk.Box {
         Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         add_css_class("search-results");
 
-        // Mirror the main-page layout: full-bleed page with the same edge
-        // margins, a homogeneous Grid inside. Tiles occupy fixed cell
-        // positions so the layout stays stable as results come and go.
+        // Same margins and grid as PagedGrid so tiles land on the same cells.
         set_hexpand(true);
         set_vexpand(true);
         set_halign(Gtk.Align.FILL);
@@ -35,9 +33,7 @@ public class SearchResults : Gtk.Box {
         tiles = new AppTile[per_page];
         for (int i = 0; i < per_page; i++) {
             tiles[i] = new AppTile();
-            // Reserve the cell visually-empty until bound. Opacity 0 + not
-            // sensitive keeps the allocation but hides icon/label and
-            // prevents stray clicks.
+            // Opacity 0 + insensitive keeps the cell allocated but inert.
             tiles[i].set_opacity(0);
             tiles[i].set_sensitive(false);
             grid.attach(tiles[i], i % cols, i / cols, 1, 1);

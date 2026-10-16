@@ -38,12 +38,10 @@ private const string DRAWER_CSS = """
     .drawer-search > text {
         color: black;
     }
-    /* GtkSearchEntry ships the leading magnifier and a trailing clear (x)
-       icon; the stock grey is nearly invisible on our white pill. */
+    /* stock icon grey is nearly invisible on the white pill */
     .drawer-search > image {
         color: alpha(black, 0.55);
     }
-    /* breathing room between the magnifier and the query text */
     .drawer-search > image:first-child {
         margin-right: 6px;
     }
@@ -134,26 +132,16 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         GtkLayerShell.init_for_window(this);
         GtkLayerShell.set_namespace(this, "lumen-drawer");
         if (monitor != null) GtkLayerShell.set_monitor(this, monitor);
-        // BOTTOM (not BACKGROUND) so we stack ABOVE wf-shell's wf-background
-        // wallpaper surface — wf-background also lives on BACKGROUND and
-        // tends to map after us, hiding us. BOTTOM still renders below all
-        // regular app windows, so the "closing apps re-exposes the tile
-        // grid" property is preserved.
+        // BOTTOM, not BACKGROUND: wf-background lives on BACKGROUND and tends
+        // to map after us, which would hide the grid.
         GtkLayerShell.set_layer(this, GtkLayerShell.Layer.BOTTOM);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,   true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.RIGHT,  true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP,    true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.BOTTOM, true);
-        // 0 = do not consume an exclusive zone; foreground windows ignore
-        // our presence when sizing.
         GtkLayerShell.set_exclusive_zone(this, 0);
-        // ON_DEMAND on every drawer (one per monitor) — wlr-layer-shell forbids
-        // EXCLUSIVE below the shell layer (it is silently ignored). ON_DEMAND
-        // never grabs the keyboard on its own; the compositor decides which
-        // drawer receives it: wayfire-curtain-peek focuses the grid on the
-        // peeked output, and wayfire-default-focus keeps focus on the active
-        // output's grid whenever no toplevel holds it. Per-monitor grids must
-        // therefore all be focusable so a peek on a secondary output can type.
+        // ON_DEMAND is load-bearing: NONE kills the search bar, and EXCLUSIVE
+        // is silently ignored below the shell layer.
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
         decorated = false;
@@ -172,24 +160,15 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         });
 
         DrawerToplevels.instance.focus_changed.connect((any) => {
-            // A toplevel took the foreground, so the grid is now hidden behind
-            // it (curtain/slide stop refocuses the previous window). Drop the
-            // query and page so the drawer never reopens mid-search.
+            // Grid is now hidden; reset so it never reopens mid-search.
             if (any) reset_view();
             sync_keyboard_mode();
         });
     }
 
-    // The compositor hands keyboard focus back to our layer surface whenever
-    // no toplevel is focused (wayfire-curtain-peek on reveal, then
-    // wayfire-default-focus thereafter). Make sure the search entry is the
-    // GTK-side focus target so the keys land there and not on some other
-    // widget that happened to be last-focused.
+    // The compositor hands keys back to this surface when no toplevel is
+    // focused; keep the search entry as the GTK-side target so typing lands there.
     private void sync_keyboard_mode() {
-        // GTK-internal focus only (per-window, harmless to do on every drawer):
-        // keep this window's search entry as the key target so that whenever the
-        // compositor routes the keyboard to this output's grid, typing lands in
-        // the search box rather than some other last-focused widget.
         if (!DrawerToplevels.instance.any_focused) {
             search_entry.grab_focus();
         }
@@ -200,10 +179,6 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         foreach (var info in AppInfo.get_all()) {
             if (!info.should_show()) continue;
             var entry = new AppEntry(info);
-            // Dispatching an app closes the curtain over the grid so the new
-            // window is revealed as the doors swing shut. Also reset transient
-            // UI state (query + page) so the drawer doesn't reopen later in a
-            // filtered/paginated state.
             entry.launched.connect(() => {
                 reset_view();
                 LumenDrawer.CurtainIpc.close();
@@ -223,10 +198,7 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         dots.set_visible(grid.page_count > 1);
     }
 
-    // Driven by DrawerApp's AppInfoMonitor when installed .desktop files change
-    // (dnf/flatpak install/remove). The grid is immutable after construction, so
-    // we swap in a fresh PagedGrid; SearchDb must be rebuilt too because it holds
-    // an *unowned* alias of the old apps[] backing array.
+    // SearchDb must be rebuilt too: it holds an *unowned* alias of the old apps[].
     public void reload() {
         load_apps();
         search_db = new SearchDb(apps);
@@ -254,9 +226,8 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         search_entry = new Gtk.SearchEntry();
         search_entry.add_css_class("drawer-search");
         search_entry.set_placeholder_text("Search");
-        // GtkSearchEntry's stock clear glyph is edit-clear-symbolic: a filled
-        // blob with the x knocked *out* of it, so on our white pill the x reads
-        // as white-on-white. Swap the internal image for the plain stroked x.
+        // Stock edit-clear-symbolic knocks the x out of a blob: invisible on
+        // the white pill, so swap in the stroked x.
         var clear_icon = search_entry.get_last_child() as Gtk.Image;
         if (clear_icon != null) clear_icon.set_from_icon_name("window-close-symbolic");
         search_entry.set_size_request(320, -1);
@@ -286,9 +257,7 @@ public class DrawerWindow : Gtk.ApplicationWindow {
         dots.page_clicked.connect((p) => grid.goto_page(p));
         root.append(dots);
 
-        // Float a discreet hint advertising the Ctrl+click "run as administrator"
-        // gesture, centered along the bottom just above the page indicators. An
-        // Overlay keeps it out of the grid's layout so it never shifts the tiles.
+        // Overlay keeps the hint out of the grid's layout so tiles never shift.
         var overlay = new Gtk.Overlay();
         overlay.set_child(root);
 
@@ -316,12 +285,8 @@ public class DrawerWindow : Gtk.ApplicationWindow {
     }
 
     private void install_key_controller() {
-        // CAPTURE phase: the search entry has focus the moment the drawer is
-        // clicked, and it would otherwise swallow Left/Right for caret motion
-        // before our handler ever sees them. Capturing first lets us claim
-        // arrow keys for page navigation while still returning false for
-        // printable keys, so typing falls through to the SearchEntry and
-        // populates the query as expected.
+        // CAPTURE, or the focused search entry swallows Left/Right for caret
+        // motion; printable keys still fall through to it.
         var key = new Gtk.EventControllerKey();
         key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
         key.key_pressed.connect(on_key_pressed);

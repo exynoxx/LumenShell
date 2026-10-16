@@ -1,16 +1,6 @@
-// Minimal foreign-toplevel watcher for lumen-drawer. We don't need the full
-// per-window metadata that lumen-panel's ToplevelStore exposes — only the
-// derived question "is some normal app window currently focused?". The drawer
-// uses it to keep keyboard focus on its search entry when no window is focused.
-//
-// Bound to GTK's existing wl_display via wlhooks (same pattern as the panel),
-// so there's no second Wayland connection.
-
 public class DrawerToplevels : GLib.Object {
 
-    // Fires on every meaningful focus event — both transitions of
-    // `any_focused` AND focus moves between two real windows (id changes
-    // while still `true`).
+    // Also re-fires (true) when focus moves between two real windows.
     public signal void focus_changed(bool any_focused);
 
     public bool any_focused { get; private set; default = false; }
@@ -65,8 +55,6 @@ public class DrawerToplevels : GLib.Object {
             any_focused = new_focused;
             focus_changed(new_focused);
         } else if (new_focused && id_changed) {
-            // Same boolean, different window — re-fire so listeners can react
-            // to focus moving between two real windows.
             focus_changed(true);
         }
     }

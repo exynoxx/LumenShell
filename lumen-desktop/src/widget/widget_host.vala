@@ -1,23 +1,7 @@
-// Places widgets on the desktop surface.
-//
-// Each widget keeps a position of its own, resolved per monitor: the host is
-// built with the connector name of the output it lives on, and asks the spec
-// what that monitor's coordinates are. A widget with no entry for this monitor
-// falls back to the spec's top-level x/y, and -1 still means "centre" — so a
-// fresh config with no positions at all behaves exactly as it did before
-// anything was draggable.
-//
-// Dragging goes: DesktopWidget reports move intent -> the host resolves it
-// into pixels and re-allocates -> on drop the clamped result is written back
-// to desktop.json. The widget never knows where it is, and the config layer
-// never knows about pointers.
-
 namespace LumenDesktop {
 
     public class WidgetHost : Gtk.Widget {
 
-        // One placed widget: what it is, where it is, and where a drag in
-        // progress started from.
         private class Placement {
             public DesktopWidget widget;
             public WidgetSpec spec;
@@ -37,17 +21,11 @@ namespace LumenDesktop {
         private GLib.GenericArray<Placement> placements
             = new GLib.GenericArray<Placement>();
 
-        // Connector name of the output this host is on ("eDP-1"), or
-        // "default" when there is no monitor to name.
-        private string monitor_key;
+        private string monitor_key;   // connector name, or "default"
 
-        // Emitted whenever the set or geometry of placed widgets changes, so
-        // the window can re-clip its Wayland input region.
+        // Lets the window re-clip its input region (live during a drag).
         public signal void layout_changed();
 
-        // A widget's close glyph was pressed. The config file is owned further
-        // up (DesktopApp), because a removal has to take effect on every
-        // monitor, not just this one.
         public signal void widget_removed(WidgetSpec spec);
 
         public WidgetHost(WidgetSpec[] specs, string monitor_key) {
@@ -70,8 +48,7 @@ namespace LumenDesktop {
 
         private void wire(Placement p) {
             p.widget.move_started.connect(() => {
-                // Resolve whatever the widget currently is — centred or not —
-                // into absolute pixels, so the drag has a fixed origin.
+                // Resolve "centred" into pixels so the drag has a fixed origin.
                 var r = place(p, get_width(), get_height());
                 p.drag_x = r.x;
                 p.drag_y = r.y;
@@ -84,9 +61,7 @@ namespace LumenDesktop {
             });
 
             p.widget.move_finished.connect(() => {
-                // place() clamps to the output; persist what was actually
-                // used, or a widget dragged off the edge would come back at
-                // coordinates it can never be drawn at.
+                // Persist the clamped position, not the raw drag offset.
                 var r = place(p, get_width(), get_height());
                 p.x = r.x;
                 p.y = r.y;
@@ -108,8 +83,7 @@ namespace LumenDesktop {
             return Gtk.SizeRequestMode.CONSTANT_SIZE;
         }
 
-        // The host always fills the whole output; it never asks for space of
-        // its own, or the layer surface would try to shrink to the widgets.
+        // Requests nothing, or the layer surface would shrink to the widgets.
         public override void measure(Gtk.Orientation orientation, int for_size,
                                      out int minimum, out int natural,
                                      out int minimum_baseline, out int natural_baseline) {
@@ -129,9 +103,7 @@ namespace LumenDesktop {
             layout_changed();
         }
 
-        // Where one widget goes: its configured size at its own coordinates,
-        // centred on any axis it has none for. Clamped so a widget dragged past
-        // an edge — or an oversized one — still lands fully on screen.
+        // Clamped so a widget dragged past an edge still lands fully on screen.
         private Cairo.RectangleInt place(Placement p, int host_w, int host_h) {
             int cw = int.min(p.spec.width, host_w);
             int ch = int.min(p.spec.height, host_h);
@@ -142,11 +114,8 @@ namespace LumenDesktop {
             return Cairo.RectangleInt() { x = cx, y = cy, width = cw, height = ch };
         }
 
-        // The rectangles the window must make click-through-proof. Everything
-        // outside them stays transparent to input so the wallpaper below keeps
-        // receiving clicks (Win+D peek dismissal, etc.). A widget contributes
-        // its shape's rects, not its bounding box, so the empty corner beside
-        // a folder tab stays click-through too.
+        // Shape rects, not bounding boxes, so the corner beside a folder tab
+        // stays click-through.
         public Cairo.RectangleInt[] widget_rects() {
             Cairo.RectangleInt[] rects = {};
             int host_w = get_width();

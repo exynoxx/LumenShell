@@ -5,9 +5,7 @@ public class SearchDb {
     public int size;
 
     private unowned AppEntry[] all_apps;
-    // Fixed-capacity result buffer: the grid can only show one page of tiles,
-    // so indexing stops there and the array is never reallocated per
-    // keystroke. Only the first `size` slots are meaningful.
+    // Fixed one-page capacity, never reallocated; only the first `size` slots are valid.
     public AppEntry[] filtered;
 
     private string last_query = "";
@@ -33,9 +31,8 @@ public class SearchDb {
     }
 
     private void index(string search_lc) {
-        // Pass 1: prefix matches. has_prefix is a cheap memcmp on the head
-        // of the name, so re-running it in pass 2 is faster than allocating
-        // a bool[all_apps.length] tracker per keystroke.
+        // Prefix matches first; re-checking has_prefix in pass 2 is cheaper
+        // than a per-keystroke seen[] array.
         int cap = filtered.length;
         size = 0;
         for (int i = 0; i < all_apps.length && size < cap; i++) {

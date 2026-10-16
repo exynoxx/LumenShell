@@ -1,13 +1,4 @@
-// Per-instance widget variables.
-//
-// Every widget on the desktop gets its own settings bag, read from the
-// "settings" object of its entry in desktop.json. The file browser reads
-// "root" and "show-hidden" from here; a future clock widget would read
-// "format", a weather widget "location", and so on — no plumbing changes,
-// because DesktopConfig hands the bag straight to the widget factory.
-//
-// Values are stored as strings and coerced on read, so a config that writes
-// true or "true" for a bool both work.
+// Values are stored as strings and coerced on read, so true and "true" both work.
 
 namespace LumenDesktop {
 
@@ -20,9 +11,6 @@ namespace LumenDesktop {
             values.insert(key, value);
         }
 
-        // For serialising the bag back out to desktop.json. Values come back
-        // as they were stored — strings — because that is all this bag ever
-        // knew about them.
         public GLib.List<weak string> keys() {
             return values.get_keys();
         }
@@ -37,9 +25,7 @@ namespace LumenDesktop {
             return (v == null || v == "") ? fallback : v;
         }
 
-        // As get_string, but expands a leading ~ and any $VAR / ${VAR}, so
-        // paths in the config file can be written the way a user would type
-        // them in a shell.
+        // Expands a leading ~ and any $VAR / ${VAR}.
         public string get_path(string key, string fallback) {
             return expand_path(get_string(key, fallback));
         }
@@ -72,8 +58,7 @@ namespace LumenDesktop {
             return p;
         }
 
-        // Minimal $VAR / ${VAR} substitution. Unset variables expand to "",
-        // matching shell behaviour.
+        // Unset variables expand to "", as in a shell.
         private static string expand_vars(string raw) {
             var sb = new GLib.StringBuilder();
             int i = 0;

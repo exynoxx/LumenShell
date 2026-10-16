@@ -10,11 +10,9 @@ public class AppTile : Gtk.Button {
 
     public AppTile() {
         add_css_class("app-tile");
-        // strip default button chrome; CSS provides hover/active backgrounds
         add_css_class("flat");
 
-        // Center the tile within its cell so a homogeneous Grid can spread
-        // cells across the page without stretching individual tiles.
+        // Centred so the homogeneous Grid never stretches the tile.
         set_halign(Gtk.Align.CENTER);
         set_valign(Gtk.Align.CENTER);
 
@@ -36,10 +34,7 @@ public class AppTile : Gtk.Button {
 
         clicked.connect(() => {
             if (entry == null) return;
-            // Ctrl held at click → launch as administrator (pkexec). We query
-            // the live keyboard modifier state rather than a press-time gesture
-            // because Gtk.Button consumes the click internally; the seat's
-            // keyboard still reports Ctrl as held through the release.
+            // Live modifier state: Gtk.Button consumes the press internally.
             if (ctrl_held()) entry.launch_as_root();
             else             entry.launch();
         });
@@ -56,9 +51,7 @@ public class AppTile : Gtk.Button {
     }
 
     public void bind(AppEntry e) {
-        // Skip when this tile is already showing the same entry — search
-        // results often keep tile[0] = firefox across "fi" → "fir" → "fire",
-        // and Gtk.Image.set_from_gicon triggers icon-theme lookup each call.
+        // Skip rebinds: set_from_gicon does an icon-theme lookup per call.
         if (this.entry == e) return;
         this.entry = e;
         label.set_text(e.short_name);

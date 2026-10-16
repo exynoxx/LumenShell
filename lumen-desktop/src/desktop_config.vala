@@ -1,50 +1,12 @@
-// ~/.config/lumen-shell/desktop.json — the desktop widget layout.
-//
-// Unlike panel.json (flat dotted keys) this is a real nested document,
-// because widgets are a list and each carries its own free-form settings
-// object:
-//
-//   {
-//     "widgets": [
-//       {
-//         "type": "file-browser",
-//         "shape": "folder",
-//         "radius": 22,
-//         "width": 630,
-//         "height": 364,
-//         "border-width": 5,
-//         "tab-height": 26,
-//         "tab-width": 0.34,
-//         "border-color": "#ffffff",
-//         "settings": { "root": "~", "show-hidden": false },
-//         "positions": { "eDP-1": { "x": 120, "y": 80 } }
-//       }
-//     ]
-//   }
-//
-// A missing or unreadable file yields one file-browser at defaults, so a
-// fresh install shows something rather than an empty screen. An *explicitly*
-// empty widget list is honoured, though — that is what deleting the last
-// widget leaves behind, and re-seeding the default would resurrect it.
-//
-// This is also the only writer of the file: dragging a widget records its new
-// place under "positions" (keyed by monitor connector) and the close glyph
-// removes its entry outright. Both write by parsing what is on disk and
-// patching that tree, so hand-written keys — and widget types this build does
-// not know about — survive the round trip.
-
 namespace LumenDesktop {
 
-    // Where one widget sits on one monitor.
     public class WidgetPosition : GLib.Object {
         public int x;
         public int y;
         public WidgetPosition(int x, int y) { this.x = x; this.y = y; }
     }
 
-    // One widget instance as described by the config file. Geometry is in
-    // logical pixels; the top-level x/y are the fallback for a monitor with
-    // no entry of its own (-1 meaning "centre").
+    // x/y are the fallback for a monitor with no `positions` entry.
     public class WidgetSpec : GLib.Object {
         public string type_name  { get; set; default = "file-browser"; }
         public string shape_name { get; set; default = "folder"; }
@@ -54,22 +16,17 @@ namespace LumenDesktop {
         public int x             { get; set; default = -1; }   // -1 = centre
         public int y             { get; set; default = -1; }
 
-        // The white frame around the content, plus the folder tab that makes
-        // it heavier at the top. tab_ratio is a fraction of the widget width;
-        // border_color takes any spelling Gdk.RGBA.parse() accepts.
+        // tab_ratio is a fraction of the widget width.
         public double border_width { get; set; default = 5.0; }
         public double tab_height   { get; set; default = 26.0; }
         public double tab_ratio    { get; set; default = 0.34; }
         public string border_color { get; set; default = "#ffffff"; }
         public WidgetSettings settings { get; set; default = new WidgetSettings(); }
 
-        // Index in the config file's "widgets" array: the handle used to write
-        // this widget's new position back, or to drop it from the file.
+        // Index in the file's "widgets" array: the write-back handle.
         public int index { get; set; default = -1; }
 
-        // Per-monitor placement, keyed by connector name ("eDP-1", "HDMI-A-1").
-        // Each monitor's copy of a widget is dragged independently, so the
-        // position cannot live in a single x/y.
+        // Keyed by connector name; each monitor's copy is dragged independently.
         public GLib.HashTable<string, WidgetPosition> positions
             = new GLib.HashTable<string, WidgetPosition>(str_hash, str_equal);
 
@@ -202,11 +159,8 @@ namespace LumenDesktop {
             return spec;
         }
 
-        // --- writing -------------------------------------------------------
-
-        // Record where a widget was dropped on one monitor. The in-memory spec
-        // is updated first so a second drag before the next reload starts from
-        // the right place.
+        // In-memory spec updated first so a second drag before reload starts
+        // from the right place.
         public static void save_position(WidgetSpec spec, string monitor,
                                          int px, int py) {
             spec.set_position(monitor, px, py);
@@ -218,8 +172,7 @@ namespace LumenDesktop {
             write(root);
         }
 
-        // Drop a widget from the desktop for good. Callers reload afterwards —
-        // the indices of everything after it have shifted.
+        // Callers must reload afterwards: later indices have shifted.
         public static void remove_widget(WidgetSpec spec) {
             var root = document();
             var arr = root.get_object().get_array_member("widgets");
@@ -232,11 +185,8 @@ namespace LumenDesktop {
             write(root);
         }
 
-        // The config file as a tree we can patch. Parsing the real file rather
-        // than serialising our own model is what keeps unknown keys, comments
-        // on unknown members, and widget types this build cannot construct.
-        // A file that no longer describes the same number of widgets is stale
-        // (someone edited it while we ran), so fall back to the model.
+        // Patch the on-disk tree so unknown keys and widget types survive; a
+        // widget-count mismatch means it was edited under us, so use the model.
         private static Json.Node document() {
             var path = config_path();
             if (GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
@@ -287,9 +237,7 @@ namespace LumenDesktop {
             entry.set_object_member("positions", po);
         }
 
-        // Last resort when there is no usable file to patch. Settings come
-        // back out as strings — that is all the bag ever kept — which reads
-        // identically, since every getter coerces.
+        // No usable file to patch. Settings are written as strings; getters coerce.
         private static Json.Node generate() {
             var arr = new Json.Array();
             foreach (var spec in widgets) {
@@ -338,8 +286,6 @@ namespace LumenDesktop {
             }
         }
 
-        // Settings are stored as strings and coerced on read (see
-        // WidgetSettings), so accept whichever JSON scalar the user wrote.
         private static string? scalar_to_string(Json.Node node) {
             if (node.get_node_type() != Json.NodeType.VALUE) return null;
             var t = node.get_value_type();

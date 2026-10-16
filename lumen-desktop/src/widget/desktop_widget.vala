@@ -1,21 +1,3 @@
-// Base class for everything that can live on the desktop.
-//
-// A DesktopWidget is chrome + one content child. The chrome (silhouette,
-// background fill, inner edge shadow) is entirely delegated to a WidgetShape,
-// so a subclass only ever supplies content. v1 has one subclass
-// (FileBrowserWidget); clock / weather / app-chooser widgets slot in the same
-// way and need to override nothing but set_content().
-//
-// The chrome also carries the widget's own edit affordances — a pin, plus a
-// close glyph while unpinned — drawn inside the frame by ChromeButtons. An
-// unpinned widget can be dragged **by its frame only**, so the content stays
-// live and browsable the whole time. The widget itself never moves anything:
-// it reports intent through move_started / move_delta / move_finished and
-// leaves placement (and persistence) to WidgetHost.
-//
-// Pinned state is deliberately runtime-only. Position and existence persist
-// to desktop.json; a restart always comes back pinned.
-
 namespace LumenDesktop {
 
     public abstract class DesktopWidget : Gtk.Widget {
@@ -28,24 +10,17 @@ namespace LumenDesktop {
         public float shadow_blur { get; set; default = 18.0f; }
         public float shadow_spread { get; set; default = 1.0f; }
 
-        // The frame: the silhouette filled with border_color, the content
-        // clipped to a smaller opening inside it. How much smaller is the
-        // shape's call — see WidgetShape.frame_insets.
         public Gdk.RGBA border_color { get; set; }
         public float border_width { get; set; default = 5.0f; }
 
-        // Unpinned means "being arranged": draggable by the frame, and showing
-        // the close glyph. Never persisted.
+        // Runtime-only: a restart always comes back pinned.
         public bool pinned { get; private set; default = true; }
 
-        // Move intent, in the widget's own coordinates. WidgetHost turns these
-        // into a placement and writes the result back to desktop.json.
+        // Intent only; WidgetHost places and persists.
         public signal void move_started();
         public signal void move_delta(double dx, double dy);
         public signal void move_finished();
 
-        // The user asked for this widget to be removed from the desktop
-        // entirely. Travels up to DesktopApp, which owns the config file.
         public signal void close_requested();
 
         private Gtk.Widget? content = null;
@@ -53,8 +28,6 @@ namespace LumenDesktop {
         private bool dragging = false;
 
         construct {
-            // Content is clipped to the silhouette, so a child that overflows
-            // (a scrolled column strip, say) never leaks past the corners.
             overflow = Gtk.Overflow.HIDDEN;
             background = { 0.10f, 0.11f, 0.13f, 0.88f };
             shadow_color = { 0.0f, 0.0f, 0.0f, 0.45f };
@@ -63,8 +36,7 @@ namespace LumenDesktop {
             install_chrome_controllers();
         }
 
-        // Where the pin / close glyphs live. Empty until the shape and a size
-        // exist, which is why every caller re-asks rather than caching.
+        // Empty until sized, so callers re-ask rather than cache.
         private Cairo.RectangleInt chrome_band() {
             int w = get_width();
             int h = get_height();
@@ -78,8 +50,7 @@ namespace LumenDesktop {
             return ChromeButtons.hit_test(chrome_band(), !pinned, x, y);
         }
 
-        // True inside the content opening — where the frame is not, and so
-        // where a drag must not start.
+        // Drags start on the frame only, so content stays live while unpinned.
         private bool in_content(double x, double y) {
             var f = frame();
             return x >= f[3] && x < get_width() - f[1]
@@ -156,8 +127,7 @@ namespace LumenDesktop {
             }
         }
 
-        // Frame widths in whole pixels, so the content inset and the drawn
-        // opening can never disagree by a sub-pixel and leave a seam.
+        // Whole pixels, so content inset and drawn opening never leave a seam.
         private float[] frame() {
             var f = shape.frame_insets(float.max(0, border_width));
             return { GLib.Math.ceilf(f[0]), GLib.Math.ceilf(f[1]),
@@ -228,8 +198,7 @@ namespace LumenDesktop {
             shape.inner_shadow(s, w, h, f, shadow_color, shadow_blur, shadow_spread);
             s.pop();
 
-            // Inside the silhouette clip but outside the content opening, so
-            // the glyphs sit in the frame and can never spill past the edge.
+            // Inside the silhouette clip, outside the content clip.
             ChromeButtons.snapshot(s, shape.chrome_rect(w, h, float.max(0, border_width)),
                                    pinned, hover, background);
 

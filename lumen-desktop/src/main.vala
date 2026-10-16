@@ -1,10 +1,3 @@
-// lumen-desktop — the desktop widget layer.
-//
-// One always-mapped BOTTOM-layer surface per monitor, hosting persistent
-// desktop widgets above the wallpaper and below every app window. v1 places a
-// single centred widget (a Miller-column file browser); the widget framework
-// under src/widget/ is what makes the rest additive.
-
 namespace LumenDesktop {
 
     public class DesktopApp : Gtk.Application {
@@ -33,10 +26,8 @@ namespace LumenDesktop {
             for (int i = 0; i < wins.length; i++) wins.get(i).present();
         }
 
-        // Every monitor gets its own copy of the configured widgets. Each
-        // window builds its own widget instances (a Gtk.Widget can only have
-        // one parent), so per-monitor state stays independent — browsing to a
-        // different folder on one screen does not disturb the other.
+        // Each window builds its own widget instances (a Gtk.Widget has one
+        // parent), so per-monitor browse state stays independent.
         private void build_windows() {
             var monitors = Gdk.Display.get_default().get_monitors();
             uint n = monitors.get_n_items();
@@ -56,10 +47,8 @@ namespace LumenDesktop {
             wins.add(win);
         }
 
-        // Removing a widget is a config edit, so it has to reach every
-        // monitor's copy — hence a full reload and rebuild rather than
-        // dropping one child. Deferred to an idle callback because we are
-        // inside a signal emitted by the very window about to be destroyed.
+        // Full reload + rebuild so every monitor drops it; deferred to idle
+        // because the emitting window is about to be destroyed.
         private void remove_widget(WidgetSpec spec) {
             if (removing) return;
             removing = true;

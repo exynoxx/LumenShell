@@ -1,14 +1,3 @@
-// One directory's worth of rows — a single Miller column.
-//
-// Owns its own scroll area; the browser strip scrolls horizontally between
-// columns, each column scrolls vertically within itself.
-//
-// Backed by Gtk.ListView over a Gtk.SingleSelection, so rows are recycled
-// rather than materialised per directory entry, and selection lookups are
-// O(1). ColumnBrowser stays the sole keyboard authority — the list and its
-// rows are deliberately non-focusable so Up/Down/Left/Right keep arriving at
-// the browser's key controller instead of being eaten by a focused list.
-
 namespace LumenDesktop {
 
     public class FileColumn : Gtk.Widget {
@@ -18,13 +7,10 @@ namespace LumenDesktop {
         public GLib.File dir { get; construct; }
         public bool show_hidden { get; construct; }
 
-        // Emitted when the user moves the selection (click or arrow key).
         public signal void selection_changed(FsEntry? entry);
-        // Emitted on Enter / double-click, i.e. "act on this".
         public signal void activated(FsEntry entry);
-        // A click landed in this column. Selecting already re-targets the
-        // browser's arrow keys; this covers re-clicking the current row, which
-        // changes no selection but should still move the keyboard here.
+        // Covers re-clicking the selected row, which changes no selection but
+        // must still move keyboard focus to this column.
         public signal void clicked();
 
         private Gtk.ScrolledWindow scroller;
@@ -48,6 +34,7 @@ namespace LumenDesktop {
                 var item = (Gtk.ListItem) obj;
                 var row = new FileRow();
                 item.child = row;
+                // Load-bearing (with list.focusable): ColumnBrowser must get the arrow keys.
                 item.focusable = false;
                 item.bind_property("selected", row, "selected",
                                    GLib.BindingFlags.SYNC_CREATE);
@@ -65,9 +52,7 @@ namespace LumenDesktop {
                 margin_top = 6, margin_bottom = 6,
             };
             list.add_css_class("fb-list");
-            // single_click_activate stays off: a click selects (which opens a
-            // directory's column), and only a double-click activates — the
-            // Finder split between "reveal" and "launch".
+            // single_click_activate off: click selects (reveals), double-click launches.
             list.activate.connect(on_activate);
 
             scroller = new Gtk.ScrolledWindow() {
@@ -80,8 +65,7 @@ namespace LumenDesktop {
             scroller.set_size_request(WIDTH, -1);
             scroller.set_parent(this);
 
-            // CAPTURE so the list still receives the press and does its own
-            // selecting; this only observes.
+            // CAPTURE and never claims: the list still does its own selecting.
             var click = new Gtk.GestureClick();
             click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
             click.pressed.connect(() => clicked());
@@ -126,8 +110,6 @@ namespace LumenDesktop {
             foreach (var entry in entries) store.append(entry);
         }
 
-        // Errors and empty folders read the same way: a dim inline line, never
-        // a dialog and never a crash.
         private void show_placeholder(string text) {
             var placeholder = new Gtk.Label(text) {
                 wrap = true,
@@ -152,8 +134,6 @@ namespace LumenDesktop {
             var entry = store.get_item(position) as FsEntry;
             if (entry != null) activated(entry);
         }
-
-        // --- keyboard navigation, driven by ColumnBrowser ---
 
         public bool move_selection(int delta) {
             uint n = store.get_n_items();

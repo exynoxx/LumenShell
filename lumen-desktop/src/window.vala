@@ -1,20 +1,5 @@
-// The desktop widget layer surface.
-//
-// One per monitor, full-output, on the BOTTOM layer: above wf-background's
-// wallpaper, below every normal window — so opening an app covers the widgets
-// and closing it re-exposes them, with no compositor involvement.
-//
-// Two things make a full-output BOTTOM surface safe here:
-//
-//  1. The Wayland input region is clipped to the widgets' rectangles (see
-//     update_input_region, modelled on lumen-panel/src/panel_window.vala).
-//     Without it this surface would eat every click on empty desktop and
-//     break the panel's Win+D peek dismissal.
-//
-//  2. lumen-drawer also lives on BOTTOM, but the curtain/slide peek plugins
-//     keep its scene node disabled except during a peek — and during a peek
-//     they disable *our* node (their widget_app_id option). The two are never
-//     enabled at the same time, so their relative stacking never matters.
+// lumen-drawer shares BOTTOM, but the peek plugins never enable both surfaces
+// at once (their widget_app_id option), so relative stacking never matters.
 
 private const string DESKTOP_CSS = """
 window.lumen-desktop-root {
@@ -44,9 +29,7 @@ namespace LumenDesktop {
         private WidgetHost host;
         private Cairo.Region? last_region = null;
 
-        // A widget's close glyph was pressed on this output. Relayed to
-        // DesktopApp, which owns desktop.json and must drop the widget from
-        // every monitor, not just this one.
+        // Relayed to DesktopApp: removal must reach every monitor, not just this one.
         public signal void widget_removed(WidgetSpec spec);
 
         public DesktopWindow(Gtk.Application app, Gdk.Monitor? monitor, WidgetSpec[] specs) {
@@ -55,28 +38,22 @@ namespace LumenDesktop {
             GtkLayerShell.init_for_window(this);
             GtkLayerShell.set_namespace(this, "lumen-desktop");
             if (monitor != null) GtkLayerShell.set_monitor(this, monitor);
-            // BOTTOM, not BACKGROUND: wf-background's wallpaper surface lives on
-            // BACKGROUND and tends to map after us, which would hide the
-            // widgets. BOTTOM still renders below every regular window.
+            // BOTTOM, not BACKGROUND: wf-background lives on BACKGROUND and
+            // tends to map after us, which would hide the widgets.
             GtkLayerShell.set_layer(this, GtkLayerShell.Layer.BOTTOM);
             GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,   true);
             GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.RIGHT,  true);
             GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP,    true);
             GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.BOTTOM, true);
-            // Never consume an exclusive zone — windows must size as if the
-            // desktop layer were not there.
             GtkLayerShell.set_exclusive_zone(this, 0);
-            // ON_DEMAND: keys arrive only after a click into a widget, and go
-            // back to apps as soon as one is focused. NONE would make the file
-            // browser's arrow-key navigation dead.
+            // ON_DEMAND is load-bearing: NONE would kill the file browser's
+            // arrow-key navigation, EXCLUSIVE would steal keys from apps.
             GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
 
             decorated = false;
             add_css_class("lumen-desktop-root");
             install_css();
 
-            // Widgets are dragged per output, so each host is keyed by the
-            // connector it is showing on.
             var key = monitor != null ? monitor.get_connector() : null;
             host = new WidgetHost(specs, key ?? "default");
             set_child(host);
@@ -98,8 +75,8 @@ namespace LumenDesktop {
                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
 
-        // Restrict pointer input to the widgets. Everything else on this
-        // full-output surface is click-through.
+        // Input region clipped to the widgets; without it this full-output
+        // surface would eat every desktop click and break Win+D peek dismissal.
         private void update_input_region() {
             var gdk_surface = get_surface();
             if (gdk_surface == null) return;

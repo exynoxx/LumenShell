@@ -1,10 +1,4 @@
-// One row in a column: [icon] name [chevron for directories].
-//
-// Snapshot-drawn rather than composed from stock widgets, matching the house
-// style for dense list rows (lumen-panel/src/components/wifi/wifirow.vala).
-//
-// FileColumn's Gtk.ListView recycles these, so `entry` is settable and every
-// derived resource (icon, text layout) is invalidated when it changes.
+// Recycled by FileColumn's ListView: setting `entry` invalidates icon and layout.
 
 namespace LumenDesktop {
 
@@ -37,9 +31,7 @@ namespace LumenDesktop {
 
         private Gdk.Paintable? icon_paintable = null;
 
-        // measure() and snapshot() both need the name laid out, and snapshot()
-        // runs per frame for every visible row — so the layout is built once
-        // and only re-wrapped when the width it must fit into changes.
+        // Cached: snapshot() runs per frame per row; re-wrapped only on width change.
         private Pango.Layout? layout = null;
         private int layout_width = int.MIN;
         private int natural_text_w = -1;
@@ -55,14 +47,12 @@ namespace LumenDesktop {
             natural_text_w = -1;
         }
 
-        // A font change (theme reload, scale change) invalidates the metrics.
         public override void css_changed(Gtk.CssStyleChange change) {
             base.css_changed(change);
             invalidate_layout();
         }
 
-        // `width` is the pixel width the text must fit into, or -1 for the
-        // unconstrained natural width.
+        // width -1 = unconstrained natural width.
         private unowned Pango.Layout text_layout(int width) {
             if (layout == null) {
                 layout = create_pango_layout(_entry == null ? "" : _entry.display_name);
@@ -106,8 +96,7 @@ namespace LumenDesktop {
                 natural_text_w = tw;
             }
             int want = PAD_X * 2 + ICON_SIZE + GAP + natural_text_w + GAP + CHEVRON_W;
-            // The column, not the row, decides the final width; ask for a
-            // modest minimum so a long file name doesn't blow the layout up.
+            // Modest minimum so a long name doesn't blow up the column.
             minimum = int.min(want, 120);
             natural = want;
         }
@@ -155,8 +144,6 @@ namespace LumenDesktop {
             if (_entry.is_dir) draw_chevron(s, w - PAD_X - CHEVRON_W, h);
         }
 
-        // A small right-pointing "›" telling the user this row expands into
-        // the next column.
         private void draw_chevron(Gtk.Snapshot s, int x, int h) {
             var color = Gdk.RGBA() { red = 1.0f, green = 1.0f, blue = 1.0f, alpha = 0.45f };
             var builder = new Gsk.PathBuilder();

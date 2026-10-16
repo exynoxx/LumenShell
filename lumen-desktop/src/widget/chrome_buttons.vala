@@ -1,14 +1,5 @@
-// The pin and close glyphs a widget draws inside its own frame.
-//
-// They live in the band the shape hands back from chrome_rect() — for the
-// default folder silhouette that is the tab, the only piece of frame tall
-// enough to hold anything. Everything here is snapshot-drawn rather than
-// built from Gtk.Buttons: DesktopWidget's frame is a *fill* the content is
-// clipped inside, not a stroke around a box, so there is no chrome container
-// a real child could be packed into.
-//
-// The pin is always shown; the close glyph only while the widget is unpinned,
-// so a pinned desktop never offers a one-click way to delete a widget.
+// Snapshot-drawn, not Gtk.Buttons: the frame is a fill the content is clipped
+// inside, so there is no chrome container a real child could be packed into.
 
 namespace LumenDesktop {
 
@@ -20,9 +11,7 @@ namespace LumenDesktop {
         private const int MIN_SIZE = 12;   // below this the glyphs stop reading
         private const int PAD = 5;         // gap from the band's ends
 
-        // Where the buttons go inside the band, or false when the band is too
-        // small for them — a widget configured with a tiny tab simply shows no
-        // chrome rather than an unreadable smudge.
+        // False when the band is too small: no chrome rather than a smudge.
         public static bool layout(Cairo.RectangleInt band, bool with_close,
                                   out Cairo.RectangleInt pin,
                                   out Cairo.RectangleInt close) {
@@ -75,9 +64,6 @@ namespace LumenDesktop {
             return x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height;
         }
 
-        // A wash of the glyph colour behind the hovered button. The frame is
-        // light and the glyphs are the widget's dark background colour, so
-        // tinting with the same colour reads as a press target either way.
         private static void draw_hover(Gtk.Snapshot s, Cairo.RectangleInt r,
                                        Gdk.RGBA fg, bool on) {
             if (!on) return;
@@ -92,9 +78,7 @@ namespace LumenDesktop {
             s.pop();
         }
 
-        // A pushpin: round head, shoulder bar, tapering needle. Drawn in a
-        // 0..100 unit box scaled to the button, and tilted 45° when unpinned —
-        // the pin lying loose rather than driven in.
+        // Drawn in a 0..100 unit box; tilted 45° when unpinned.
         private static void draw_pin(Gtk.Snapshot s, Cairo.RectangleInt r,
                                      bool pinned, Gdk.RGBA fg) {
             float n = r.width;

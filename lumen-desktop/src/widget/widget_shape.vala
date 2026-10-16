@@ -1,54 +1,33 @@
-// Widget silhouettes.
-//
-// A WidgetShape owns everything about *what a widget looks like around its
-// edges*: the clip its content is confined to, the background fill, the frame
-// widths the content must be inset by, and the inner shadow that gives the
-// panel its recessed feel. DesktopWidget never hard-codes a silhouette — it
-// just asks the shape to draw. Adding a circle or a squircle later means one
-// new subclass here and one new string case in from_spec(); nothing else in
-// the tree changes.
-//
-// The frame is not a stroke: the widget fills the whole silhouette with the
-// border colour and clips the content to a smaller opening, so the frame is
-// the fill left showing around it. That is what lets each shape pick its own
-// inner corner radius.
+// The frame is not a stroke: the silhouette is filled with the border colour
+// and content clipped to a smaller opening, so each shape picks its own inner
+// corner radius.
 
 namespace LumenDesktop {
 
     public abstract class WidgetShape : GLib.Object {
 
-        // Extra chrome above the opening, on top of the uniform border width:
-        // the folder tab for FolderShape, a plain heavier top edge otherwise.
+        // Extra chrome above the opening: the folder tab, or a heavier top edge.
         protected float top_extra;
 
-        // Confine everything drawn until the matching pop() to the silhouette.
         // Implementations must push exactly one clip node.
         public abstract void push_clip(Gtk.Snapshot s, int w, int h);
 
-        // Fill the silhouette. Called immediately after push_clip, so a plain
-        // rect fill is enough for any shape — the clip does the work.
+        // Called right after push_clip, so a plain rect fill suffices.
         public virtual void fill(Gtk.Snapshot s, int w, int h, Gdk.RGBA color) {
             var r = Graphene.Rect();
             r.init(0, 0, w, h);
             s.append_color(color, r);
         }
 
-        // How far the content sits inside the silhouette, in CSS order —
-        // top, right, bottom, left. The shape reports it so extra chrome on
-        // one side (the folder tab) stays the shape's business alone.
+        // CSS order: top, right, bottom, left.
         public virtual float[] frame_insets(float border) {
             return { border + top_extra, border, border, border };
         }
 
-        // The opening the content lives in: the silhouette shrunk by the frame.
         // Implementations must push exactly one clip node.
         public abstract void push_content_clip(Gtk.Snapshot s, int w, int h, float[] frame);
 
-        // The band of chrome a widget may draw its pin / close buttons in, in
-        // widget-local coordinates. It must lie inside the silhouette and
-        // outside the content opening, so the buttons sit *in* the frame
-        // rather than over the content. A band too small to hold a button
-        // simply means that widget shows none — see ChromeButtons.layout.
+        // Pin / close band: inside the silhouette, outside the content opening.
         public virtual Cairo.RectangleInt chrome_rect(int w, int h, float border) {
             return Cairo.RectangleInt() {
                 x = 0, y = 0,
@@ -57,24 +36,16 @@ namespace LumenDesktop {
             };
         }
 
-        // Rects covering the silhouette, in widget-local coordinates. They
-        // feed the window's input region, so a shape that doesn't fill its
-        // box (the folder's tab strip) must report the parts it does — the
-        // rest has to stay click-through.
+        // Feeds the input region: a shape that doesn't fill its box (the
+        // folder's tab strip) must report only the parts it does.
         public virtual Cairo.RectangleInt[] hit_rects(int w, int h) {
             return { Cairo.RectangleInt() { x = 0, y = 0, width = w, height = h } };
         }
 
-        // The recessed edge falloff, drawn on top of the content but still
-        // inside the content clip, so it hugs the opening and not the outer
-        // silhouette. Shapes with no notion of an inset shadow may leave this
-        // empty.
+        // Drawn over the content inside the content clip, so it hugs the opening.
         public abstract void inner_shadow(Gtk.Snapshot s, int w, int h, float[] frame,
                                           Gdk.RGBA color, float blur, float spread);
 
-        // Build a shape from a widget spec's "shape" string plus its numeric
-        // parameters. Unknown names fall back to a folder rather than failing
-        // to place the widget at all.
         public static WidgetShape from_spec(string name, double radius,
                                             double top_extra, double tab_ratio) {
             switch (name) {
@@ -97,8 +68,7 @@ namespace LumenDesktop {
         }
     }
 
-    // A rectangle with uniform corner radius. A negative radius means "pill" —
-    // half the height, resolved per draw (same convention as lumen-osd's Pill).
+    // Negative radius means pill (half the height), as in lumen-osd's Pill.
     public class RoundedRectShape : WidgetShape {
 
         protected float radius;
@@ -123,11 +93,8 @@ namespace LumenDesktop {
             return rr;
         }
 
-        // The opening, with ONE radius on all four corners, derived from the
-        // thinnest side so the frame never pinches to nothing at a corner.
-        // Shrinking each corner by its own two side widths instead — what CSS
-        // and Gtk.Snapshot.append_border do — leaves an asymmetric frame with
-        // bulging corners on its heavy side.
+        // ONE inner radius from the thinnest side: per-corner shrinking (as
+        // append_border does) bulges the corners on an asymmetric frame's heavy side.
         protected Gsk.RoundedRect opening(int w, int h, float[] frame) {
             float top = frame[0], right = frame[1], bottom = frame[2], left = frame[3];
             float iw = float.max(0, w - left - right);
@@ -145,10 +112,8 @@ namespace LumenDesktop {
             return rr;
         }
 
-        // Inset from the sides by half the corner radius: a button placed
-        // flush against the edge would have its top corner sliced off by the
-        // silhouette's curve, since the band is measured at the widget's full
-        // width but the outline is not there yet at the band's top edge.
+        // Half-radius side inset: a glyph flush to the edge gets its top
+        // corner sliced off by the silhouette's curve.
         public override Cairo.RectangleInt chrome_rect(int w, int h, float border) {
             int inset = (int) (effective_radius(w, h) * 0.5f);
             return Cairo.RectangleInt() {
@@ -169,32 +134,23 @@ namespace LumenDesktop {
         public override void inner_shadow(Gtk.Snapshot s, int w, int h, float[] frame,
                                           Gdk.RGBA color, float blur, float spread) {
             if (color.alpha <= 0 || (blur <= 0 && spread <= 0)) return;
-            // append_inset_shadow draws the shadow ring directly, on top of
-            // whatever content has already been snapshotted inside the clip.
             s.append_inset_shadow(opening(w, h, frame), color, 0, 0, spread, blur);
         }
     }
 
-    // The file-folder silhouette: a body rounded on all four corners with a
-    // tab raised above the left part of its top edge. The opening stays a
-    // plain rounded rect inside the body, so content never has to cope with a
-    // non-rectangular hole.
     public class FolderShape : RoundedRectShape {
 
-        private float tab_ratio;    // tab width as a fraction of the widget
+        private float tab_ratio;
 
         public FolderShape(float radius, float tab_height, float tab_ratio) {
             base(radius, tab_height);
             this.tab_ratio = tab_ratio.clamp(0.1f, 0.9f);
         }
 
-        // Leave the body at least half the widget, or the silhouette stops
-        // reading as a folder and starts reading as a lopsided box.
         private float tab_height(int h) {
             return float.min(top_extra, h / 2.0f);
         }
 
-        // The step off the tab is a short slant, as on a real folder tab.
         private float slant(int h) { return tab_height(h) * 0.55f; }
 
         private float tab_width(int w, int h) {
@@ -202,15 +158,12 @@ namespace LumenDesktop {
             return (w * tab_ratio).clamp(2 * r + slant(h), w - 2 * r - slant(h));
         }
 
-        // The body's corners, not the widget's: the tab eats into the height.
         private float corner_radius(int w, int h) {
             return float.min(effective_radius(w, h), (h - tab_height(h)) / 2.0f);
         }
 
-        // Walked clockwise from the left edge just below the tab's top-left
-        // corner. html_arc_to() is canvas/CSS arcTo — it rounds the corner
-        // between the current point, the corner and the next point, concave
-        // ones included, which is the join a rounded rect can't express.
+        // html_arc_to() is canvas arcTo: it fillets concave joins too, which a
+        // rounded rect can't express.
         private Gsk.Path outline(int w, int h) {
             float th = tab_height(h);
             float r = corner_radius(w, h);
@@ -238,10 +191,8 @@ namespace LumenDesktop {
             s.push_rounded_clip(opening(w, h, frame));
         }
 
-        // The tab, minus the slant: the one part of a folder's frame tall
-        // enough to hold a button. The slant is excluded so a glyph never
-        // straddles the sloped edge, and both ends are inset by half the
-        // corner radius so neither glyph is clipped by the tab's own curves.
+        // The tab minus its slant (so a glyph never straddles the sloped edge),
+        // inset by half the corner radius so the tab's curves don't clip glyphs.
         public override Cairo.RectangleInt chrome_rect(int w, int h, float border) {
             int inset = (int) (corner_radius(w, h) * 0.5f);
             return Cairo.RectangleInt() {

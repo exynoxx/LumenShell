@@ -1,8 +1,3 @@
-// Directory listing for the column browser.
-//
-// One FsEntry per child; FsModel.list_async enumerates a directory off the
-// main loop so a slow or network-mounted path never freezes the desktop.
-
 namespace LumenDesktop {
 
     public class FsEntry : GLib.Object {
@@ -26,9 +21,7 @@ namespace LumenDesktop {
             GLib.FileAttribute.STANDARD_IS_HIDDEN + "," +
             GLib.FileAttribute.STANDARD_IS_BACKUP;
 
-        // Enumerate `dir`. Throws on unreadable directories so the caller can
-        // render the message inline instead of silently showing an empty
-        // column.
+        // Async so a slow or network mount never freezes the desktop.
         public static async GLib.List<FsEntry> list_async(GLib.File dir, bool show_hidden)
                 throws GLib.Error {
             var result = new GLib.List<FsEntry>();
@@ -50,8 +43,6 @@ namespace LumenDesktop {
                 }
             }
 
-            // Directories first, then case-insensitive by name — the ordering
-            // every file manager uses.
             result.sort((a, b) => {
                 if (a.is_dir != b.is_dir) return a.is_dir ? -1 : 1;
                 return a.display_name.collate_key_for_filename(-1)
@@ -60,9 +51,6 @@ namespace LumenDesktop {
             return result;
         }
 
-        // Open a file with its default handler (the xdg-open equivalent, with
-        // no shell-out). Directories are never passed here — they open a
-        // column instead.
         public static void launch_default(GLib.File file) {
             try {
                 GLib.AppInfo.launch_default_for_uri(file.get_uri(), null);

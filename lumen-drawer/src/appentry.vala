@@ -24,13 +24,8 @@ public class AppEntry {
         launched();
     }
 
-    // Ctrl+click path: run the app as root via pkexec. pkexec triggers polkit's
-    // org.freedesktop.policykit.exec action, which makes lumen-polkit-agent
-    // prompt for the password. pkexec scrubs the environment for safety, so a
-    // GUI child would have no display handle to connect to — we forward the
-    // Wayland/X11 session vars explicitly through `env` so the elevated program
-    // can actually map a window. (Some hardened apps still refuse to run as
-    // root; that is the app's policy, not a launch failure on our side.)
+    // pkexec scrubs the environment, so session vars are forwarded via `env`
+    // or the elevated GUI has no display to map into.
     public void launch_as_root() {
         var cmd = info.get_commandline();
         if (cmd == null || cmd == "") {

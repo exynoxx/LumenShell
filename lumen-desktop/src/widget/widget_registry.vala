@@ -1,9 +1,3 @@
-// type-name -> widget factory.
-//
-// The only place that knows which widget types exist. A new widget type is
-// one register() call in register_builtins() plus its own source file; the
-// config parser, the host and the window stay untouched.
-
 namespace LumenDesktop {
 
     public delegate DesktopWidget WidgetFactory(WidgetSpec spec);
@@ -23,8 +17,6 @@ namespace LumenDesktop {
             types.insert(type_name, new Entry((owned) factory));
         }
 
-        // Returns null (with a warning) for an unknown type so one bad config
-        // entry drops that widget rather than taking the desktop down.
         public static DesktopWidget? create(WidgetSpec spec) {
             ensure();
             var e = types.lookup(spec.type_name);
@@ -37,8 +29,6 @@ namespace LumenDesktop {
             return w;
         }
 
-        // Chrome every widget type gets for free, so a subclass only ever has
-        // to supply content.
         private static void apply_chrome(DesktopWidget w, WidgetSpec spec) {
             w.border_width = (float) spec.border_width;
 

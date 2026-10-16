@@ -1,9 +1,3 @@
-// The paginated tile grid: one homogeneous cols x rows Gtk.Grid per page,
-// carried by an Adw.Carousel. The carousel owns the paging, the slide
-// animation and the swipe/scroll-wheel gestures; this class only builds the
-// pages and translates between page indices and carousel children, so the
-// window can keep driving it with Left/Right and the PageDots indicator.
-
 public class PagedGrid : Gtk.Box {
 
     public int page_count { get; private set; }
@@ -24,8 +18,7 @@ public class PagedGrid : Gtk.Box {
             hexpand = true,
             vexpand = true,
         };
-        // Fires for swipe- and scroll-wheel-driven paging too, which our own
-        // scroll_to() calls filter out by comparing against active_page.
+        // Also fires for our own scroll_to(); filtered via active_page.
         carousel.page_changed.connect(on_carousel_page_changed);
 
         int per_page = LumenDrawer.DrawerConfig.per_page;
@@ -42,8 +35,6 @@ public class PagedGrid : Gtk.Box {
         page_changed(active_page);
     }
 
-    // Snap back to page 0 without animation. Used after launching an app so
-    // the always-visible drawer returns to its idle state.
     public void reset_to_first_page() {
         scroll_to_page(0, false);
     }
@@ -62,18 +53,13 @@ public class PagedGrid : Gtk.Box {
 
     private void scroll_to_page(int page, bool animate) {
         if (page < 0 || page >= page_count || page == active_page) return;
-        // Announce the new page up front so the dots track the keypress rather
-        // than the end of the animation.
+        // Announce up front so the dots track the keypress, not the animation end.
         active_page = page;
         page_changed(page);
         carousel.scroll_to(carousel.get_nth_page(page), animate);
     }
 
     private Gtk.Widget build_page(AppEntry[] apps, int page_index) {
-        // Homogeneous fill so cells distribute the page area evenly — the
-        // grid is as large as its margins allow, and each cell gets equal
-        // space. Tiles are centered within their cells via AppTile's
-        // halign/valign.
         var grid = new Gtk.Grid() {
             halign             = Gtk.Align.FILL,
             valign             = Gtk.Align.FILL,
