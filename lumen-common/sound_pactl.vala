@@ -78,13 +78,14 @@ public class PactlClient : GLib.Object {
         return result;
     }
 
-    public int query_volume_percent() {
+    // max > 100 reports over-amplification instead of clamping it away.
+    public int query_volume_percent(int max = 100) {
         var out_str = run_pactl_sync({ "get-sink-volume", "@DEFAULT_SINK@" });
-        int pct = first_percent(out_str);
+        int pct = first_percent(out_str, max);
         if (pct >= 0) return pct;
 
         out_str = run_wpctl_sync("@DEFAULT_AUDIO_SINK@");
-        return parse_wpctl_percent(out_str);
+        return parse_wpctl_percent(out_str, max);
     }
 
     public bool query_muted() {
@@ -299,19 +300,19 @@ public class PactlClient : GLib.Object {
     }
 
     // pactl: "front-left: 45874 /  70% / -9.35 dB". -1 when none.
-    private int first_percent(string text) {
+    private int first_percent(string text, int max = 100) {
         for (int pct = text.index_of_char('%'); pct > 0;
              pct = text.index_of_char('%', pct + 1)) {
             int start = pct;
             while (start > 0 && text[start - 1].isdigit()) start--;
             if (start < pct)
-                return int.max(0, int.min(100, int.parse(text.substring(start, pct - start))));
+                return int.max(0, int.min(max, int.parse(text.substring(start, pct - start))));
         }
         return -1;
     }
 
     // wpctl: "Volume: 0.70 [MUTED]". double.try_parse is locale-independent.
-    private int parse_wpctl_percent(string text) {
+    private int parse_wpctl_percent(string text, int max = 100) {
         int i = 0;
         while (i < text.length && !text[i].isdigit()) i++;
         int start = i;
@@ -320,7 +321,7 @@ public class PactlClient : GLib.Object {
 
         double v = 0;
         if (!double.try_parse(text.substring(start, i - start), out v)) return 0;
-        return int.max(0, int.min(100, (int)(v * 100.0)));
+        return int.max(0, int.min(max, (int)(v * 100.0)));
     }
 
     private GLib.HashTable<string, string> parse_sink_descriptions(string text) {

@@ -56,14 +56,25 @@ namespace LumenSettings {
         public Gtk.Widget build() {
             service   = new SoundService();
             app_rows  = new GLib.HashTable<string, AppRowWidgets>(str_hash, str_equal);
+            // No config key: the sink's own volume is the remembered state.
+            int raw_volume = pactl.query_volume_percent(150);
+            allow_over = raw_volume > 100;
 
             var page = new Adw.PreferencesPage();
+
+            // Pages are built eagerly; poll only while this one is on screen.
+            service.paused = true;
+            page.map.connect(() => { service.paused = false; service.refresh(); });
+            page.unmap.connect(() => { service.paused = true; });
 
             page.add(build_output_group());
             page.add(build_input_group());
             page.add(build_apps_group());
             page.add(build_alerts_group());
 
+            syncing = true;
+            if (allow_over) out_scale.set_value(raw_volume);
+            syncing = false;
             service.state_changed.connect(sync_ui);
             sync_ui();
 
@@ -81,7 +92,7 @@ namespace LumenSettings {
             });
             group.add(output_combo);
 
-            out_scale = make_scale(0, 100);
+            out_scale = make_scale(0, allow_over ? 150 : 100);
             track_drag(out_scale, (v) => { out_dragging = v; });
             out_scale.value_changed.connect(() => {
                 if (syncing) return;
@@ -109,6 +120,7 @@ namespace LumenSettings {
 
             allow_over_row = new Adw.SwitchRow() {
                 title = "Allow volume above 100%", subtitle = "over-amplify the output up to 150%",
+                active = allow_over,
             };
             allow_over_row.notify["active"].connect(() => {
                 var on = allow_over_row.active;
@@ -292,6 +304,7 @@ namespace LumenSettings {
                 }
                 if (!aw.dragging && (int) aw.scale.get_value() != s.volume_pct)
                     aw.scale.set_value(s.volume_pct);
+                aw.label.label = "%d%%".printf((int) aw.scale.get_value());
                 set_mute_icon(aw.mute_btn, s.muted,
                               "audio-volume-muted-symbolic", "audio-volume-high-symbolic");
             }

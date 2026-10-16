@@ -15,6 +15,13 @@ namespace LumenSettings.Wayfire {
             this._id = "wayfire-" + plugin.name;
         }
 
+        // Other pages write wayfire.ini too; never save a stale snapshot.
+        void put(string key, string value) {
+            store.reload();
+            store.set_value(plugin.name, key, value);
+            store.save();
+        }
+
         public Gtk.Widget build() {
             var page = new Adw.PreferencesPage() {
                 description = Markup.escape_text(plugin.long_label),
@@ -69,8 +76,7 @@ namespace LumenSettings.Wayfire {
                 active = parse_bool(raw), use_markup = false,
             };
             row.notify["active"].connect(() => {
-                store.set_value(plugin.name, opt.name, row.active ? "true" : "false");
-                store.save();
+                put(opt.name, row.active ? "true" : "false");
             });
             return row;
         }
@@ -84,8 +90,7 @@ namespace LumenSettings.Wayfire {
                                             opt.long_label);
             row.use_markup = false;
             row.notify["value"].connect(() => {
-                store.set_value(plugin.name, opt.name, "%d".printf((int) row.value));
-                store.save();
+                put(opt.name, "%d".printf((int) row.value));
             });
             return row;
         }
@@ -100,8 +105,7 @@ namespace LumenSettings.Wayfire {
                                             digits_for(prec), opt.long_label);
             row.use_markup = false;
             row.notify["value"].connect(() => {
-                store.set_value(plugin.name, opt.name, "%g".printf(row.value));
-                store.save();
+                put(opt.name, "%g".printf(row.value));
             });
             return row;
         }
@@ -118,8 +122,7 @@ namespace LumenSettings.Wayfire {
                 var combo = new ComboRow(opt.short_label, labels, values, initial,
                                          opt.long_label);
                 combo.value_changed.connect((v) => {
-                    store.set_value(plugin.name, opt.name, v);
-                    store.save();
+                    put(opt.name, v);
                 });
                 return combo;
             }
@@ -130,8 +133,7 @@ namespace LumenSettings.Wayfire {
             var initial = store.get_value(plugin.name, opt.name) ?? opt.default_value;
             var row = new ColorRow(opt.short_label, initial, opt.long_label);
             row.value_changed.connect((v) => {
-                store.set_value(plugin.name, opt.name, v);
-                store.save();
+                put(opt.name, v);
             });
             return row;
         }
@@ -140,8 +142,7 @@ namespace LumenSettings.Wayfire {
             var initial = store.get_value(plugin.name, opt.name) ?? opt.default_value;
             var row = new BindingRow(opt.short_label, initial, opt.long_label);
             row.value_changed.connect((v) => {
-                store.set_value(plugin.name, opt.name, v);
-                store.save();
+                put(opt.name, v);
             });
             return row;
         }
@@ -153,8 +154,7 @@ namespace LumenSettings.Wayfire {
                 tooltip_text = opt.long_label, use_markup = false,
             };
             row.changed.connect(() => {
-                store.set_value(plugin.name, opt.name, row.text);
-                store.save();
+                put(opt.name, row.text);
             });
             return row;
         }
@@ -173,6 +173,7 @@ namespace LumenSettings.Wayfire {
             };
             add_button.add_css_class("flat");
             add_button.clicked.connect(() => {
+                store.reload();
                 var next = next_tail(opt);
                 foreach (var e in opt.entries) {
                     store.set_value(plugin.name, e.prefix + next, "");
@@ -208,8 +209,7 @@ namespace LumenSettings.Wayfire {
                 case OptionType.ACTIVATOR:
                     var br = new BindingRow(e.short_label, current, "");
                     br.value_changed.connect((v) => {
-                        store.set_value(plugin.name, ini_key, v);
-                        store.save();
+                        put(ini_key, v);
                     });
                     return br;
                 case OptionType.BOOL:
@@ -217,8 +217,7 @@ namespace LumenSettings.Wayfire {
                         title = e.short_label, active = parse_bool(current), use_markup = false,
                     };
                     sw.notify["active"].connect(() => {
-                        store.set_value(plugin.name, ini_key, sw.active ? "true" : "false");
-                        store.save();
+                        put(ini_key, sw.active ? "true" : "false");
                     });
                     return sw;
                 default:
@@ -226,8 +225,7 @@ namespace LumenSettings.Wayfire {
                         title = e.short_label, text = current, use_markup = false,
                     };
                     er.changed.connect(() => {
-                        store.set_value(plugin.name, ini_key, er.text);
-                        store.save();
+                        put(ini_key, er.text);
                     });
                     return er;
             }

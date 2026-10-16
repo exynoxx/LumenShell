@@ -3,6 +3,5 @@ main
 .agents
 *.md
 !README.md
-!KNOWN_BUGS.md
 /swayosd*
 .claude/worktrees/

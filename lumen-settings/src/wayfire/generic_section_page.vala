@@ -45,9 +45,17 @@ namespace LumenSettings.Wayfire {
                 width_chars = 20,
                 max_width_chars = 20,
             };
+            // Debounced so Wayfire never reloads a half-typed value.
+            uint save_id = 0;
             entry.changed.connect(() => {
-                store.set_value(section, key, entry.text);
-                store.save();
+                if (save_id != 0) Source.remove(save_id);
+                save_id = Timeout.add(500, () => {
+                    save_id = 0;
+                    store.reload();
+                    store.set_value(section, key, entry.text);
+                    store.save();
+                    return Source.REMOVE;
+                });
             });
 
             var del = new Gtk.Button.from_icon_name("user-trash-symbolic") {
@@ -56,6 +64,8 @@ namespace LumenSettings.Wayfire {
             };
             del.add_css_class("flat");
             del.clicked.connect(() => {
+                if (save_id != 0) { Source.remove(save_id); save_id = 0; }
+                store.reload();
                 store.remove_key(section, key);
                 store.save();
                 list.remove(ar);
@@ -87,6 +97,7 @@ namespace LumenSettings.Wayfire {
             add.clicked.connect(() => {
                 var key = key_entry.text.strip();
                 if (key == "") return;
+                store.reload();
                 if (store.get_value(section, key) != null) return;
                 store.set_value(section, key, val_entry.text);
                 store.save();

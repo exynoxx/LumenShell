@@ -31,6 +31,11 @@ namespace LumenCommon {
             return Environment.get_user_config_dir() + "/wayfire.ini";
         }
 
+        // wf-background's config, also beside ours rather than inside.
+        public static string wf_shell_ini() {
+            return Environment.get_user_config_dir() + "/wf-shell.ini";
+        }
+
         public static void ensure_dir() {
             if (DirUtils.create_with_parents(config_dir(), 0755) != 0)
                 warning("lumen: could not create %s", config_dir());

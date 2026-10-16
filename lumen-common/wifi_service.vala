@@ -24,13 +24,16 @@ public class WifiService : GLib.Object {
     private bool        poll_in_flight = false;
     private bool        scan_in_flight = false;
 
+    // Skips the periodic poll (not explicit calls) while set.
+    public bool paused = false;
+
     public WifiService() {
         // Re-apply the remembered radio state; null ⇒ never toggled ⇒ just poll.
         var saved = RadioState.get_wifi();
         if (saved != null) apply_radio(saved);
         else               poll_connection();
         GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
-            poll_connection();
+            if (!paused) poll_connection();
             return Source.CONTINUE;
         });
     }
@@ -40,7 +43,7 @@ public class WifiService : GLib.Object {
     public WifiService.passive() {
         poll_connection();
         GLib.Timeout.add_seconds(POLL_INTERVAL_SEC, () => {
-            poll_connection();
+            if (!paused) poll_connection();
             return Source.CONTINUE;
         });
     }
@@ -81,8 +84,9 @@ public class WifiService : GLib.Object {
         });
     }
 
+    // Off-thread: the device lookup may spawn `nmcli device` on cache expiry.
     public void disconnect_active() {
-        nmcli.disconnect();
+        new GLib.Thread<void>("wifi-disconnect", () => { nmcli.disconnect(); });
         schedule_rescan(1000);
     }
 
@@ -119,7 +123,7 @@ public class WifiService : GLib.Object {
     }
 
     public void set_ethernet(bool on) {
-        nmcli.set_ethernet_enabled(on);
+        new GLib.Thread<void>("eth-power", () => { nmcli.set_ethernet_enabled(on); });
         schedule_rescan(1000);
     }
 

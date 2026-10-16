@@ -26,10 +26,13 @@ public class SoundService : GLib.Object {
     private bool             meter_running = false;
     private int64            last_peak_emit_us = 0;
 
+    // Skips the periodic poll (not explicit refresh() calls) while set.
+    public bool paused = false;
+
     public SoundService() {
         refresh();
         GLib.Timeout.add(POLL_MS, () => {
-            refresh();
+            if (!paused) refresh();
             return Source.CONTINUE;
         });
     }

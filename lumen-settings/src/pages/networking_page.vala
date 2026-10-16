@@ -84,6 +84,10 @@ namespace LumenSettings {
             var holder = new Adw.PreferencesGroup();
             holder.add(root_box);
             var page = new Adw.PreferencesPage();
+            // Pages are built eagerly; poll only while this one is on screen.
+            wifi.paused = true;
+            page.map.connect(() => { wifi.paused = false; });
+            page.unmap.connect(() => { wifi.paused = true; });
             page.add(holder);
             return page;
         }

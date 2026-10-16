@@ -27,13 +27,12 @@ public class BlurredWallpaper : GLib.Object {
 
     // wallpaper.ini → wf-shell.ini (what wf-background renders) → theme image.
     private static string resolve_path() {
-        var cfg = Environment.get_user_config_dir();
         string? p;
 
         p = read_ini_key(LumenCommon.Paths.wallpaper_ini(), "wallpaper", "image");
         if (usable(p)) return (!) p;
 
-        p = read_ini_key(cfg + "/wf-shell.ini", "background", "image");
+        p = read_ini_key(LumenCommon.Paths.wf_shell_ini(), "background", "image");
         if (usable(p)) return (!) p;
 
         if (usable(Theme.background_image)) return Theme.background_image;

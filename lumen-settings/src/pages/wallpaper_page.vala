@@ -22,6 +22,12 @@ namespace LumenSettings {
             file_row.value_changed.connect((p) => {
                 store.set_value(SECTION, "image", p);
                 store.save();
+                // The desktop itself is drawn by wf-background, which reads
+                // wf-shell.ini and reloads it live; wallpaper.ini only reaches
+                // the lock screen.
+                var wf_shell = new IniStore(LumenCommon.Paths.wf_shell_ini());
+                wf_shell.set_value("background", "image", p);
+                wf_shell.save();
             });
             group.add(file_row);
 
