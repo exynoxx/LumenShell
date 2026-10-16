@@ -20,9 +20,8 @@ public class OsdService : Object {
                      string                       text,
                      HashTable<string, Variant>   opts) throws DBusError, IOError {
 
-        // Don't let a transient pill (e.g. a sysfs brightness tick) clobber the
-        // picker mid-pick. The commit's confirmation chip arrives after the
-        // pick has ended, so it still shows.
+        // Don't let a transient pill clobber the picker mid-pick; the commit's
+        // confirmation chip arrives after the pick ends, so it still shows.
         if (picker.active) return;
 
         bool    muted         = lookup_bool  (opts, "muted",      false);
@@ -36,9 +35,7 @@ public class OsdService : Object {
         arm_hide(timeout);
     }
 
-    // Win+P entry point. Each <super> KEY_P binding-fire lands here: the first
-    // opens the centered picker (and grabs the keyboard), each subsequent one
-    // advances the highlight. Releasing Super (or clicking a tile) applies it.
+    // Win+P entry point: first call opens the picker, each later one advances.
     public void begin_picker() throws DBusError, IOError {
         cancel_hide();
         picker.step();

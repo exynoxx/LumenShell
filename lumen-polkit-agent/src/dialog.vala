@@ -1,8 +1,5 @@
 using Gtk;
 
-// Black "pause-screen" bar styling. The bar is a full-width OVERLAY layer-shell
-// surface, so it owns its own background (no system theme to inherit, unlike the
-// old floating dialog) — paint it black and force the text white.
 public const string AGENT_CSS = """
     .polkit-bar     { background-color: rgba(0,0,0,0.92); }
     .polkit-title   { font-weight: bold; font-size: 14pt; color: #ffffff; }
@@ -12,18 +9,8 @@ public const string AGENT_CSS = """
     .polkit-error   { color: #ff6b6b; opacity: 1.0; }
 """;
 
-// AuthDialog — the password prompt, rendered as a horizontal black bar spanning
-// the full screen width and centered vertically (a game-style pause overlay).
-//
-// It is a gtk4-layer-shell OVERLAY surface with EXCLUSIVE keyboard, NOT a plain
-// toplevel: a bare Wayfire session wouldn't reliably focus a floating xdg dialog
-// (the old "dialog renders but buttons do nothing" bug), whereas an EXCLUSIVE
-// layer surface grabs the keyboard unconditionally for as long as the prompt is
-// up — exactly what an authentication gate wants.
-//
-// The dialog is dumb: it emits submit/cancel/identity_changed and exposes
-// show_prompt/show_error/… setters; AuthFlow owns all the state and the
-// PolkitAgent.Session.
+// Layer-shell OVERLAY with EXCLUSIVE keyboard, not a toplevel: Wayfire doesn't
+// reliably focus a floating xdg dialog. AuthFlow owns all state.
 public class AuthDialog : Gtk.Window {
 
     public signal void submit(string password);
@@ -37,9 +24,7 @@ public class AuthDialog : Gtk.Window {
     private Polkit.Identity[] ids;
     private bool        closing = false;
 
-    // Programmatic close (the flow finished): tear the window down WITHOUT
-    // re-emitting cancel. Distinct from a user-initiated close (Esc), which must
-    // cancel the pending authentication.
+    // Programmatic close: unlike a user close (Esc), does NOT emit cancel.
     public void dismiss() {
         closing = true;
         close();
@@ -52,16 +37,12 @@ public class AuthDialog : Gtk.Window {
 
         set_title("Authentication Required");
 
-        // --- layer-shell: full-width OVERLAY bar, vertically centered ---------
         // Init MUST happen before the window is first realized/mapped.
         GtkLayerShell.init_for_window(this);
         GtkLayerShell.set_namespace(this, "lumen-polkit");
         GtkLayerShell.set_layer(this, GtkLayerShell.Layer.OVERLAY);
-        // EXCLUSIVE: the bar grabs the keyboard for the whole prompt — this is
-        // the load-bearing fix over the old floating dialog.
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.EXCLUSIVE);
-        // Anchor LEFT+RIGHT only → spans the full width; leaving TOP/BOTTOM
-        // unanchored lets the compositor center the bar vertically.
+        // LEFT+RIGHT only: full width, vertically centred by the compositor.
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,  true);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.RIGHT, true);
 
@@ -71,15 +52,12 @@ public class AuthDialog : Gtk.Window {
         foreach (var id in identities) arr += id;
         ids = arr;
 
-        // Single horizontal row, centered in the full-width bar. Generous
-        // vertical margins give it the height of a pause-screen banner.
         var bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 22) {
             halign = Gtk.Align.CENTER, valign = Gtk.Align.CENTER,
             margin_top = 30, margin_bottom = 30,
             margin_start = 28, margin_end = 28,
         };
 
-        // Icon + title/message/status stacked at the left of the row.
         var img = new Gtk.Image.from_icon_name(
             icon_name != "" ? icon_name : "dialog-password");
         img.pixel_size = 44;
@@ -107,8 +85,6 @@ public class AuthDialog : Gtk.Window {
         titles.append(status_label);
         bar.append(titles);
 
-        // When polkit offers more than one identity (e.g. root + several admin
-        // users), let the user pick which one to authenticate as.
         if (arr.length > 1) {
             var names = new string[0];
             foreach (var id in arr) names += identity_label(id);
@@ -160,9 +136,8 @@ public class AuthDialog : Gtk.Window {
             return false;
         });
         ((Gtk.Widget) this).add_controller(key);
-        // Returning true here would VETO the close — the window could then never
-        // be destroyed, by us or the user. Always return false (allow close);
-        // emit cancel only for a genuine user close, not our own dismiss().
+        // Returning true would VETO the close forever; always allow it, and
+        // cancel only on a genuine user close, not dismiss().
         close_request.connect(() => {
             GLib.debug("dialog: close_request (closing=%s)", closing.to_string());
             if (!closing) cancel();
@@ -180,9 +155,7 @@ public class AuthDialog : Gtk.Window {
         return id.to_string();
     }
 
-    // PAM prompt arrived ("Password:", or a custom message for e.g. fingerprint
-    // backends). echo_on is currently informational — the field stays masked,
-    // which is correct for the overwhelmingly common password case.
+    // echo_on is ignored: the field stays masked.
     public void show_prompt(string text, bool echo_on) {
         prompt_label.label = text;
         set_busy(false);

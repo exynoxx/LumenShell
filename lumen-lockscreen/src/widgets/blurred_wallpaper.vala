@@ -1,12 +1,5 @@
 using Gtk;
 
-// BlurredWallpaper — produces the frosted backdrop the lock card sits on.
-//
-// v1: rather than a live wlr-screencopy of the desktop (which shared GDK's
-// Wayland display and crashed the daemon on every lock), we take the
-// configured wallpaper image, blur it ONCE through GSK, and cache the
-// resulting texture. Every lock — on every monitor, for the whole session —
-// reuses that one texture, so the costly blur runs at most once per wallpaper.
 public class BlurredWallpaper : GLib.Object {
 
     private static Gdk.Texture? cached     = null;
@@ -34,11 +27,7 @@ public class BlurredWallpaper : GLib.Object {
         return tex;
     }
 
-    // Wallpaper source, in priority order:
-    //   1. lumen-shell/wallpaper.ini  [wallpaper] image  — set via lumen-settings
-    //   2. wf-shell.ini               [background] image — what wf-background
-    //      actually renders on the desktop (the common case)
-    //   3. the lockscreen theme's background-image
+    // wallpaper.ini → wf-shell.ini (what wf-background renders) → theme image.
     private static string resolve_path() {
         var cfg = Environment.get_user_config_dir();
         string? p;
@@ -69,10 +58,8 @@ public class BlurredWallpaper : GLib.Object {
         }
     }
 
-    // Render the image through a GSK blur into a texture. We crop a blur-radius
-    // border off every side so the edge fade (the blur sampling past the image
-    // into transparency) never shows; the backdrop then covers the screen with
-    // what remains.
+    // Crops a blur-radius border off every side so the edge fade (blur sampling
+    // into transparency) never shows.
     private static Gdk.Texture? blur(string path) {
         Gdk.Texture src;
         try {
@@ -104,12 +91,8 @@ public class BlurredWallpaper : GLib.Object {
         viewport.init(r, r, w - 2 * r, h - 2 * r);
         var tex = renderer.render_texture(node, viewport);
 
-        // render_texture() on the GL renderer hands back a GL-backed texture
-        // tied to THIS renderer's GL context. Once we unrealize() below, that
-        // context dies and the texture renders black (and only flickers into
-        // view for a frame when the dead context is briefly touched during
-        // unlock teardown). Copy the pixels into a self-contained CPU texture
-        // BEFORE unrealizing so the cached backdrop survives the renderer.
+        // The GL texture dies with this renderer's context (renders black), so
+        // copy to a CPU texture BEFORE unrealize().
         int tw = tex.get_width();
         int th = tex.get_height();
         var dl = new Gdk.TextureDownloader(tex);

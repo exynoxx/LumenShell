@@ -1,9 +1,6 @@
 using Gtk;
 using LumenCommon;
 
-// LockApp — long-running, invisible-until-locked daemon. Owns org.lumenshell.Lock
-// and the LockManager. Realize-hidden idiom from lumen-osd: no window exists
-// until a trigger calls LockManager.lock_now(), which creates the lock surfaces.
 public class LockApp : Gtk.Application {
 
     private LockManager manager;
@@ -31,8 +28,6 @@ public class LockApp : Gtk.Application {
         manager = new LockManager(this);
         service = new LockService(manager);
         own_bus_name();
-
-        // No visible window until something locks. Keep the app alive anyway.
         hold();
     }
 
@@ -51,9 +46,6 @@ public class LockApp : Gtk.Application {
             },
             () => { },
             () => {
-                // The silent-exit path: another owner holds the name, so this
-                // instance quits. Persist it — this is exactly what left no
-                // trace when the daemon failed to come up.
                 warning("lumen-lockscreen: could not acquire org.lumenshell.Lock (already running?); exiting");
                 quit();
             }

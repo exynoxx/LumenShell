@@ -1,10 +1,7 @@
 using Gtk;
 
-// One lock surface. NOT a layer-shell window — gtk4-session-lock turns it into
-// an ext_session_lock_surface_v1 via assign_window_to_monitor()+present() (done
-// by LockManager). The compositor sizes it to fill its output. The primary
-// surface carries the auth card (avatar + name + password, Apple-style);
-// secondary outputs show the backdrop + clock only.
+// NOT layer-shell: gtk4-session-lock turns it into a lock surface when
+// LockManager calls assign_window_to_monitor() + present().
 public class LockWindow : Gtk.ApplicationWindow {
 
     public bool is_primary { get; private set; }
@@ -19,7 +16,6 @@ public class LockWindow : Gtk.ApplicationWindow {
         decorated = false;
         add_css_class("lockscreen-root");
 
-        // Centered cluster on top of the frosted backdrop.
         var center = new Gtk.Box(Gtk.Orientation.VERTICAL, 18) {
             halign = Gtk.Align.CENTER,
             valign = Gtk.Align.CENTER,
@@ -37,7 +33,6 @@ public class LockWindow : Gtk.ApplicationWindow {
             password = new PasswordField();
             center.append(password);
         } else {
-            // Secondary outputs: just the clock over the backdrop.
             center.append(new ClockWidget());
         }
 
@@ -45,8 +40,7 @@ public class LockWindow : Gtk.ApplicationWindow {
         overlay.set_child(new LockBackdrop(snapshot));
         overlay.add_overlay(center);
 
-        // Power actions hug the bottom edge (macOS-style), separate from the
-        // centered auth cluster so they stay pinned regardless of card height.
+        // Separate overlay so it stays pinned to the bottom regardless of card height.
         if (is_primary && Theme.show_power_menu) {
             var pm = new PowerMenu(logind) {
                 halign = Gtk.Align.CENTER,

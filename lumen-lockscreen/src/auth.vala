@@ -1,11 +1,6 @@
 using GLib;
 
-// PamAuth — runs the blocking PAM stack off the main thread and delivers the
-// verdict back on the main loop (so the compositor keeps getting frame/ping
-// events while the user's password is verified). Wraps the C helper in
-// pam_auth.c via the PamHelper binding.
-//
-// Invariant (AGENTS.md): the password buffer is never logged.
+// Invariant: the password buffer is never logged.
 public class PamAuth : GLib.Object {
 
     public delegate void ResultFunc(bool ok);

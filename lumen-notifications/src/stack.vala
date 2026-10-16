@@ -1,20 +1,12 @@
 using Gtk;
 
-/**
- * `by_id` maps id → Banner only for *active* (not-yet-leaving) banners. A
- * banner whose leave transition is running has already been removed from this
- * map so it cannot be picked up by `cascade_dismiss` or closed a second time.
- *
- * Each banner lives inside its own Gtk.Revealer, which owns the leave
- * animation: `dismiss_banner` un-reveals it and the widget is dropped once
- * `child-revealed` goes false.
- */
 public class BannerStack : Gtk.Box {
 
     public signal void empty();
     public signal void count_changed(int active_count);
     public signal void close_requested(uint32 id);
 
+    // Active banners only; a leaving banner is already removed.
     private HashTable<uint32, Banner> by_id
         = new HashTable<uint32, Banner>(direct_hash, direct_equal);
 
@@ -81,7 +73,6 @@ public class BannerStack : Gtk.Box {
         return (int) by_id.size();
     }
 
-    /** Uses one repeating source rather than N independent timeouts. */
     public void cascade_dismiss() {
         uint32[] ids = {};
         Gtk.Widget? child = get_first_child();

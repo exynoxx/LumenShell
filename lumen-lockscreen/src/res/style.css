@@ -1,7 +1,4 @@
-/* lumen-lockscreen — Apple-style lock card over a blurred desktop snapshot.
- * The backdrop blur + scrim are drawn in GSK (LockBackdrop). This sheet themes
- * the stock widgets on the card. Color tokens come from Theme.generate_root_css
- * (@define-color …). */
+/* @define-color tokens come from Theme.generate_root_css(). */
 
 .lockscreen-root {
     background-color: @lockscreen_text;   /* never seen (backdrop fills); opaque base */
@@ -45,8 +42,6 @@
     border: none;
     box-shadow: none;
 }
-/* The password pill: translucent frosted white, rounded, with the masked text
- * and the trailing circular go button living inside it. */
 .lockscreen-pill {
     background-color: @lockscreen_entry_background;
     border: none;

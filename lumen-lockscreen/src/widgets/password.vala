@@ -1,9 +1,6 @@
 using Gtk;
 
-// Apple-style password pill: a translucent rounded field with a trailing
-// circular arrow "go" button. Enter OR the arrow submits — including an empty
-// string, which is how no-password users log in (PAM nullok succeeds). Below
-// it sit the caps-lock warning and the error/working status line.
+// Submits even an empty string — that's how no-password users log in (PAM nullok).
 public class PasswordField : Gtk.Box {
 
     public signal void submitted(string password);

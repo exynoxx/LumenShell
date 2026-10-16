@@ -10,10 +10,8 @@ struct conv_data {
     const char *password;
 };
 
-/* PAM conversation: answer every prompt-for-secret / prompt-with-echo message
- * with the captured password; ack info/error messages with no response. This
- * makes password, fingerprint-fallback, and "password expired" stacks behave
- * the same as any console login — the policy lives in /etc/pam.d, not here. */
+/* Answer every echo-off/echo-on prompt with the password; ack info/error.
+ * The policy lives in /etc/pam.d, not here. */
 static int lumen_conv(int num_msg, const struct pam_message **msg,
                       struct pam_response **resp, void *appdata_ptr)
 {
@@ -66,10 +64,8 @@ int lumen_pam_authenticate(const char *service, const char *user, const char *pa
     if (rc == PAM_SUCCESS)
         rc = pam_acct_mgmt(pamh, 0);
 
-    /* Reinitialise credentials on success so the `auth`-phase keyring unlock
-     * (pam_gnome_keyring) is committed for the live session. We do NOT open a
-     * new PAM session — logind already owns the user's session; we are merely
-     * re-authenticating to drop the lock. */
+    /* Commits the auth-phase keyring unlock. No pam_open_session: logind
+     * already owns the session; this only re-authenticates. */
     if (rc == PAM_SUCCESS)
         pam_setcred(pamh, PAM_REINITIALIZE_CRED);
 

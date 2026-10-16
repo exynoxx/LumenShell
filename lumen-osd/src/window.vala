@@ -29,7 +29,6 @@ public class OsdWindow : Gtk.Window {
         set_child(pill);
     }
 
-    // Transient pill (volume/brightness/display chip): the themed edge anchor.
     public void show_pill_view() {
         apply_position();
         if (get_child() != pill) set_child(pill);
@@ -41,9 +40,8 @@ public class OsdWindow : Gtk.Window {
         if (get_child() != selector) set_child(selector);
     }
 
-    // Win+P picker: take an exclusive keyboard grab so we see every key
-    // (including the Super release that commits the choice). Released back to
-    // NONE the moment the pick ends, so the OSD never steals keys otherwise.
+    // Exclusive grab so the picker sees the Super release that commits; dropped
+    // back to NONE the moment the pick ends.
     public void grab_keyboard() {
         GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.EXCLUSIVE);
     }

@@ -15,11 +15,8 @@ public class Pill : Gtk.Box {
 
         bool vert = Theme.vertical();
 
-        // The Pill itself spans the full background (with rounded corners).
-        // Content lives inside `inner`, whose margins act as internal padding
-        // so the icon/bar/label never touch the curved edge. padding_x is the
-        // pad along the long axis, padding_y across it — so they swap when the
-        // pill stands up.
+        // padding_x is along the long axis, padding_y across it — they swap
+        // when the pill stands up.
         inner = new Gtk.Box(orientation, Theme.content_spacing);
         inner.margin_start  = inner.margin_end    = vert ? Theme.padding_y : Theme.padding_x;
         inner.margin_top    = inner.margin_bottom = vert ? Theme.padding_x : Theme.padding_y;

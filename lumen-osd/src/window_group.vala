@@ -1,9 +1,5 @@
 using Gtk;
 
-// Owns one OsdWindow per connected monitor so transient OSD pills appear on
-// every display at once. A single persistent `primary` window carries the
-// interactive Win+P picker (one keyboard grab); the rest are pill-only mirrors
-// pinned to their output. Idempotent reconcile on monitor hotplug.
 public class OsdWindowGroup : Object {
 
     private Gtk.Application app;
@@ -26,7 +22,6 @@ public class OsdWindowGroup : Object {
         display.get_monitors().items_changed.connect((p, r, a) => reconcile());
     }
 
-    // primary + every live mirror.
     public OsdWindow[] windows() {
         var list = new OsdWindow[1 + (int) mirrors.size()];
         list[0] = primary;
@@ -35,7 +30,6 @@ public class OsdWindowGroup : Object {
         return list;
     }
 
-    // Transient pill (volume/brightness/display chip) on every display.
     public void show_pill_view() {
         foreach (var w in windows()) w.show_pill_view();
     }
@@ -61,7 +55,6 @@ public class OsdWindowGroup : Object {
         for (uint i = 0; i < n; i++)
             live.add((Gdk.Monitor) model.get_item(i));
 
-        // Drop mirrors whose monitor went away.
         var gone = new GenericArray<Gdk.Monitor>();
         mirrors.foreach((mon, win) => { if (!contains(live, mon)) gone.add(mon); });
         for (int i = 0; i < gone.length; i++) {
@@ -72,7 +65,6 @@ public class OsdWindowGroup : Object {
 
         if (live.length == 0) return;
 
-        // Keep the persistent primary pinned to a live output.
         if (primary_monitor == null || !contains(live, primary_monitor))
             primary_monitor = live.get(0);
         GtkLayerShell.set_monitor(primary, primary_monitor);
@@ -84,7 +76,6 @@ public class OsdWindowGroup : Object {
             mirrors.remove(primary_monitor);
         }
 
-        // One pill-only mirror on every non-primary output.
         for (int i = 0; i < live.length; i++) {
             var mon = live.get(i);
             if (mon == primary_monitor) continue;

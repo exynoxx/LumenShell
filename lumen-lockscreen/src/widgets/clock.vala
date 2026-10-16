@@ -1,8 +1,5 @@
 using Gtk;
 
-// Big time + date cluster, updated once a second. Stock labels with Pango
-// absolute sizing from the theme (Pango.attr_size_new doesn't exist in the
-// vapi — use AttrSize.new_absolute, per the repo-wide quirk note).
 public class ClockWidget : Gtk.Box {
 
     private Gtk.Label time_label;
@@ -36,8 +33,6 @@ public class ClockWidget : Gtk.Box {
     public override void realize() {
         base.realize();
         update();
-        // Re-tick aligned to the next wall-clock second would be nicer, but a
-        // 1 s timer is plenty for a lock face and matches the OSD's simplicity.
         tick_source = Timeout.add_seconds(1, () => { update(); return Source.CONTINUE; });
     }
 

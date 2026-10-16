@@ -1,10 +1,5 @@
 using Gtk;
 
-// LockBackdrop — the frosted backdrop behind the lock card. The blurred image
-// is precomputed and cached by BlurredWallpaper, so this widget just paints it
-// cover-fit under a scrim tint — the macOS lock look. Falls back to the raw
-// (unblurred) theme background image, then a solid scrim, when no blurred
-// texture is available.
 public class LockBackdrop : Gtk.Widget {
 
     private Gtk.Picture pic;

@@ -1,14 +1,5 @@
-// LumenAgentListener — our PolkitAgent.Listener subclass.
-//
-// libpolkit-agent-1 owns all the DBus plumbing: it exports the
-// org.freedesktop.PolicyKit1.AuthenticationAgent interface, handles
-// RegisterAuthenticationAgent for us (via Listener.register), and translates an
-// incoming BeginAuthentication into a call to initiate_authentication() below
-// (and CancelAuthentication into cancelling the GLib.Cancellable). All we add is
-// the UI: drive an AuthDialog through a PolkitAgent.Session, which itself runs
-// the setuid polkit-agent-helper-1 / PAM conversation and reports the verdict
-// back to polkitd. We never see, store, or transmit the password ourselves
-// beyond handing each typed response to Session.response().
+// libpolkit-agent-1 owns the DBus plumbing and the Session runs the PAM helper;
+// the password is never stored, only handed to Session.response().
 public class LumenAgentListener : PolkitAgent.Listener {
 
     private weak Gtk.Application app;

@@ -26,15 +26,11 @@ public class OsdApp : Gtk.Application {
 
         Theme.load();
         install_root_css();
-        // One window per monitor (primary + mirrors), each realized hidden until
-        // a Show request arrives.
         group = new OsdWindowGroup(this);
 
         service = new OsdService(group);
         watcher = new StateWatcher(service);
         own_bus_name();
-
-        // Keep the application alive even with no visible window.
         hold();
     }
 

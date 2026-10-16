@@ -105,12 +105,7 @@ public class Theme {
     }
 
     public static string generate_action_css() {
-        // GNOME-shell-style flat action buttons:
-        //   - transparent base, subtle hover
-        //   - no per-button radius (parent's rounded clip handles the bottom
-        //     corners; intermediate edges stay flat)
-        //   - 1px separator between the body and the action row, and between
-        //     adjacent buttons
+        // No per-button radius: the banner's rounded clip shapes the corners.
         string sep = Theme.banner_border.to_string();
         return ("""
         .lumen-notif-actions {

@@ -1,14 +1,9 @@
 using Gtk;
 
-/* Win+P-style display-mode picker: a centered panel of icon+label tiles laid
- * out side by side, with a rounded highlight behind the selected one. This
- * widget only renders state; Picker owns the selection and the key handling. */
 public class Selector : Gtk.Box {
 
-    // Fixed metrics so the selection highlight can be placed by arithmetic in
-    // snapshot() rather than querying child allocations (which aren't valid
-    // until after layout). `inner`'s margins act as the panel padding, exactly
-    // like Pill's `inner` box — so the first tile sits at {PAD, PAD}.
+    // Fixed metrics so snapshot() places the highlight by arithmetic; child
+    // allocations aren't valid until after layout. First tile sits at {PAD, PAD}.
     private const int PAD    = 18;   // panel padding around the tile row
     private const int TILE_W = 124;
     private const int TILE_H = 104;
@@ -19,7 +14,6 @@ public class Selector : Gtk.Box {
     private int         selected = 0;
     private int         count    = 0;
 
-    // Pointer hooks: hovering a tile moves the highlight, clicking applies it.
     public signal void hovered(int index);
     public signal void chosen(int index);
 
@@ -65,9 +59,8 @@ public class Selector : Gtk.Box {
                 lbl.set_justify(Gtk.Justification.CENTER);
                 lbl.set_wrap(true);
                 lbl.set_max_width_chars(12);
-                // An empty label (the abort tile) must not reserve a line of
-                // height, or the vexpanding icon would centre above it instead
-                // of in the middle of the box.
+                // An empty label (abort tile) must not reserve height, or the
+                // vexpanding icon centres above it instead of in the box.
                 lbl.set_visible(labels[i] != "");
                 tile.append(lbl);
 
@@ -85,7 +78,6 @@ public class Selector : Gtk.Box {
             }
             count = n;
         } else {
-            // Same shape: just refresh icon/label text in place.
             for (int i = 0; i < n; i++) {
                 var img = (Gtk.Image) tiles[i].get_first_child();
                 img.set_from_icon_name(icons[i]);

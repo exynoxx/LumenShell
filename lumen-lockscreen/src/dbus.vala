@@ -1,10 +1,6 @@
 using GLib;
 using LumenCommon;
 
-// LockService — org.lumenshell.Lock1, the DBus face of LockManager. Mirrors the
-// lumen-osd OsdService pattern (bus-owning done in main.vala). Third parties
-// (lumen-lockctl, panel power menu, scripts) call Lock/Unlock/IsLocked; the
-// Locked/Unlocked signals let session-aware services observe lock state.
 [DBus(name = "org.lumenshell.Lock1")]
 public class LockService : Object {
 
@@ -24,9 +20,8 @@ public class LockService : Object {
         manager.lock_now();
     }
 
-    // Drops the lock WITHOUT a password — the caller (loginctl unlock-session,
-    // an authenticated agent) is trusted. The password path lives entirely in
-    // LockManager.try_auth; it is not exposed on the bus.
+    // Drops the lock WITHOUT a password — callers are trusted. The password path
+    // (LockManager.try_auth) is never exposed on the bus.
     public void Unlock() throws DBusError, IOError {
         DiagLog.log("trigger: DBus Unlock");
         manager.unlock_now();

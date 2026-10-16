@@ -1,12 +1,6 @@
 using Gtk;
 using LumenCommon;
 
-// LockManager — the lock state machine. Owns the GtkSessionLock instance, one
-// LockWindow per output, the PAM auth orchestration, and the logind bridge.
-//
-// Triggers all converge here: DBus (LockService), logind Session.Lock/Unlock,
-// PrepareForSleep, the password Enter on the primary window, and idle (via
-// ext-idle-notify-v1 bound through wlhooks — see IdleWatcher).
 public class LockManager : GLib.Object {
 
     // Mirrored onto DBus by LockService.
@@ -45,9 +39,8 @@ public class LockManager : GLib.Object {
         idle.idled.connect(() => { DiagLog.log("trigger: idle timeout"); lock_now(); });
         idle.arm();
 
-        // Warm the blurred-wallpaper cache and the user-identity lookup off the
-        // main loop so the first lock doesn't pay the GL-realize + blur cost nor
-        // the system-bus AccountsService roundtrip (both cached for the session).
+        // Warm both session-long caches so the first lock doesn't pay the blur
+        // or the AccountsService roundtrip.
         Idle.add(() => {
             BlurredWallpaper.get_texture();
             AccountsClient.load_current_user();
@@ -97,14 +90,10 @@ public class LockManager : GLib.Object {
 
     // ---- lock --------------------------------------------------------------
 
-    // Lock the session. Used by every trigger (Win+L/DBus, logind Lock, idle,
-    // PrepareForSleep). The lock surfaces simply appear — there is no pre-lock
-    // transition.
     public void lock_now() {
         DiagLog.log("lock requested: (is_locked=%s instance=%s)",
             is_locked.to_string(), (instance != null).to_string());
 
-        // Re-entrancy guard: already locked or a lock in flight.
         if (is_locked || instance != null) {
             DiagLog.log("lock ignored: re-entrancy guard");
             return;
@@ -120,7 +109,6 @@ public class LockManager : GLib.Object {
 
     private void begin_lock() {
         if (is_locked || instance != null) return;
-        // Card backdrop: the wallpaper blurred once and cached (BlurredWallpaper).
         // Null falls back to the theme image / a solid scrim.
         backdrop = BlurredWallpaper.get_texture();
 
@@ -177,16 +165,9 @@ public class LockManager : GLib.Object {
     }
 
     private void on_unlocked() {
-        // gtk4-session-lock emits `unlocked` from inside its unlock() call
-        // BEFORE it sends ext_session_lock_v1.unlock_and_destroy to the
-        // compositor and BEFORE it unmaps + gtk_window_destroy()s our lock
-        // windows itself (see clear_lock_state() in the library). Destroying
-        // the windows from here would tear down the lock-surface wl_surfaces
-        // while the session is *still* locked — Wayfire is then briefly locked
-        // with no lock surface to draw, which flashes a stale frame for an
-        // instant before the real unlock reveals the desktop. So we must NOT
-        // touch the windows here; the library destroys them for us, correctly
-        // ordered after unlock_and_destroy. We only drop our bookkeeping.
+        // `unlocked` fires inside unlock() BEFORE unlock_and_destroy is sent.
+        // Destroying the windows here leaves Wayfire locked with no surface (a
+        // stale-frame flash); the library destroys them afterwards. Bookkeeping only.
         release_bookkeeping();
         instance = null;
         is_locked = false;
@@ -196,10 +177,8 @@ public class LockManager : GLib.Object {
         unlocked();
     }
 
-    // Drop the manager's references and the hotplug watch WITHOUT destroying the
-    // lock windows — gtk4-session-lock owns their lifecycle once they are lock
-    // surfaces. The GtkApplication keeps each window alive until the library's
-    // own gtk_window_destroy() runs, so clearing our HashTable here is safe.
+    // Does NOT destroy the windows: gtk4-session-lock owns lock surfaces, and the
+    // GtkApplication keeps them alive until the library destroys them.
     private void release_bookkeeping() {
         var display = Gdk.Display.get_default();
         if (display != null && monitors_handler != 0) {
@@ -211,9 +190,7 @@ public class LockManager : GLib.Object {
         backdrop = null;        // release the blurred-wallpaper texture
     }
 
-    // Hard teardown for the `failed` path: the lock was never granted, so the
-    // library will NOT destroy anything for us. Destroy whatever we built (a
-    // no-op when the lock failed before any surface was created).
+    // `failed` path: the lock was never granted, so the library destroys nothing.
     private void teardown_windows() {
         windows.foreach((mon, win) => win.destroy());
         release_bookkeeping();
@@ -268,9 +245,7 @@ public class LockManager : GLib.Object {
 
     // ---- per-output windows -------------------------------------------------
 
-    // Build/destroy lock windows so there is exactly one per connected output,
-    // with the password card on a single primary. Idempotent — safe to call on
-    // lock and on every hotplug.
+    // Idempotent: exactly one window per output, the card on a single primary.
     private void reconcile_monitors() {
         if (instance == null) return;
         var display = Gdk.Display.get_default();
@@ -279,12 +254,10 @@ public class LockManager : GLib.Object {
         var model = display.get_monitors();
         uint n = model.get_n_items();
 
-        // Snapshot the live set.
         var live = new GenericArray<Gdk.Monitor>();
         for (uint i = 0; i < n; i++)
             live.add((Gdk.Monitor) model.get_item(i));
 
-        // Drop windows for monitors that went away.
         var gone = new GenericArray<Gdk.Monitor>();
         windows.foreach((mon, win) => {
             if (!contains(live, mon)) gone.add(mon);
@@ -297,11 +270,9 @@ public class LockManager : GLib.Object {
 
         if (live.length == 0) return;
 
-        // Make sure a primary monitor is designated and still present.
         if (primary_monitor == null || !contains(live, primary_monitor))
             primary_monitor = live.get(0);
 
-        // Create or re-role windows so each monitor has the right surface.
         for (int i = 0; i < live.length; i++) {
             var mon = live.get(i);
             bool want_primary = (mon == primary_monitor);

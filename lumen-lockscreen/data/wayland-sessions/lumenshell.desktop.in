@@ -1,43 +1,5 @@
-# LumenShell — Wayland session entry  (TEMPLATE — processed by meson)
-#
-# This is a meson configure_file template: @BINDIR@ in the Exec= line below is
-# substituted at configure time with the install-time bindir (e.g. /usr/bin or
-# /usr/local/bin), so Exec= always matches where `meson install` actually drops
-# start-lumenshell. Do NOT hand-edit the generated copy installed under
-# <datadir>/wayland-sessions/lumenshell.desktop — edit this .in instead.
-#
-# `meson install` writes the generated file to:
-#   <datadir>/wayland-sessions/lumenshell.desktop
-#   (datadir defaults to <prefix>/share, e.g. /usr/share or /usr/local/share)
-#
-# Any standard Wayland-aware
-# login manager (GDM, SDDM, LightDM with the appropriate greeter, tuigreet,
-# greetd, ly, …) will list "LumenShell" as a session choice on the greeter.
-# Selecting it makes the greeter execute the `Exec=` line below as the user's
-# session leader, which in turn launches Wayfire and the Lumen layer-shell
-# apps.
-#
-# Requirements:
-#   * `start-lumenshell` must exist in $PATH (sibling file under data/bin/).
-#     It is what actually starts wayfire + lumen-panel/desktop/osd/etc.
-#   * Wayfire must be installed system-wide (`wayfire` package on Fedora /
-#     Ubuntu / Arch — install_dependencies.py covers it).
-#   * Wayfire's config (~/.config/wayfire.ini) should autostart the Lumen
-#     components; see data/wayfire/lumenshell.ini.d/autostart.ini for a
-#     reference snippet to paste under [autostart].
-#
-# Verifying it worked:
-#   1. Log out, look at the session menu on the greeter — "LumenShell" should
-#      appear alongside "GNOME", "KDE", etc.
-#   2. After logging in via that entry, `echo $XDG_CURRENT_DESKTOP` should
-#      print `LumenShell`.
-#   3. `loginctl show-session $XDG_SESSION_ID -p Type -p Desktop` should
-#      show `Type=wayland` and `Desktop=LumenShell`.
-#
-# Removing:
-#   sudo rm /usr/share/wayland-sessions/lumenshell.desktop
-#
-# Spec reference: https://www.freedesktop.org/wiki/Specifications/desktop-entry-spec/
+# meson configure_file template: @BINDIR@ is substituted at configure time.
+# Edit this .in, not the installed copy.
 
 [Desktop Entry]
 Name=LumenShell

@@ -1,10 +1,6 @@
 using GLib;
 
-// IdleWatcher — self-lock on inactivity via ext-idle-notify-v1. The wlhooks
-// binding is set up once by LockManager (WLHooks.idle_notify_init); this just
-// arms/disarms the notification. Fail-soft:
-// if the compositor lacks the protocol, `available` stays false and arm()/
-// disarm() are no-ops, so the other lock triggers still work.
+// Fail-soft: without ext-idle-notify-v1, arm()/disarm() are no-ops.
 public class IdleWatcher : GLib.Object {
 
     public signal void idled();

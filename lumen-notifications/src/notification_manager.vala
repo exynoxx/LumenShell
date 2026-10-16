@@ -14,11 +14,6 @@ public class NotificationManager : Object {
     public signal void notification_updated(Notification n);
     public signal void notification_closed(uint32 id, uint32 reason);
 
-    /**
-     * Submit a notification. If replaces_id matches an existing one, update
-     * in place (and emit notification_updated). Otherwise assign a new id and
-     * emit notification_added. Returns the id used.
-     */
     public uint32 submit(uint32 replaces_id,
                          string app_name, string? app_icon,
                          string summary, string body,

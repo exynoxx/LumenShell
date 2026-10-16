@@ -1,7 +1,3 @@
-// Theme — static config for lumen-lockscreen. Exposes typed fields for code
-// (colors as Gdk.RGBA, sizes as int, flags as bool) AND a generate_root_css()
-// that emits @define-color tokens so the stock GTK widgets on the card
-// (Gtk.PasswordEntry, buttons) pick up the palette.
 public class Theme {
     // Theme is never instantiated, so non-const static initializers (emitted
     // into class_init) would never run; load() assigns every field instead.
@@ -9,9 +5,9 @@ public class Theme {
     public static Gdk.RGBA muted_text;        // date, hints
     public static Gdk.RGBA entry_background;
     public static Gdk.RGBA entry_error;
-    public static Gdk.RGBA scrim;             // tint over the blurred desktop snapshot
+    public static Gdk.RGBA scrim;             // tint over the blurred wallpaper
 
-    public static string background_image;    // fallback when no snapshot ("" = solid)
+    public static string background_image;    // fallback when no blurred wallpaper ("" = solid)
     public static int    clock_font_size;
     public static int    date_font_size;
     public static int    avatar_size;
@@ -24,7 +20,6 @@ public class Theme {
         var t = new LumenCommon.ThemeJson(Utils.THEME_FILE);
         text               = t.get_color("lockscreen.text", "rgba(255,255,255,1)");
         muted_text         = t.get_color("lockscreen.muted-text", "rgba(90%,90%,94%,0.75)");
-        // Apple-style translucent-white password pill on a blurred backdrop.
         entry_background   = t.get_color("lockscreen.entry-background", "rgba(255,255,255,0.18)");
         entry_error        = t.get_color("lockscreen.entry-error", "rgba(95%,42%,42%,1)");
         scrim              = t.get_color("lockscreen.scrim", "rgba(0,0,0,0.35)");

@@ -1,15 +1,7 @@
 using GLib;
 
-/**
- * Polls sysfs for the screen backlight, keyboard backlight, and CapsLock LED,
- * and pops the OSD whenever any of them changes — regardless of cause.
- *
- * Needed because the laptop EC adjusts the keyboard backlight directly via
- * firmware (no keypress reaches Wayfire), and because Wayfire's
- * binding_capslock = KEY_CAPSLOCK doesn't match the press that turns CapsLock
- * OFF (the CapsLock modifier is active during that press, so the modifier-less
- * binding silently does not fire).
- */
+// Firmware changes the kbd backlight without a keypress, and Wayfire's
+// KEY_CAPSLOCK binding misses the press that turns CapsLock OFF — so poll.
 public class StateWatcher : Object {
 
     private OsdService service;
@@ -35,10 +27,8 @@ public class StateWatcher : Object {
         int _unused;
         discover(out caps_path,   out _unused,    "/sys/class/leds",      "::capslock",      false);
 
-        // sysfs writes don't reliably emit inotify, so a short periodic read is
-        // the most portable trigger. 200ms feels instant. On a machine with no
-        // backlight and no capslock LED there is nothing to read, so don't arm
-        // the timer at all rather than wake 5x/s forever.
+        // sysfs writes don't reliably emit inotify. Don't arm with nothing to
+        // read, or a desktop wakes 5x/s forever.
         if (kbd_path != null || screen_path != null || caps_path != null)
             tick_source = Timeout.add(200, this.tick);
     }

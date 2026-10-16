@@ -9,25 +9,16 @@ public class Utils {
         }
     }
 
-    // Convert a freedesktop notification body into valid Pango markup.
-    //
-    // Per the Desktop Notifications spec the body may carry a small markup
-    // subset (<b>, <i>, <u>, <a href>, <img>). Apps in the wild often send
-    // more than that — full HTML, unclosed tags, raw ampersands — which Pango
-    // refuses to parse, leaving the label to show the raw tags. We keep only
-    // the tags Pango understands, drop the rest, and escape stray text so the
-    // result always parses.
+    // Apps send full HTML, unclosed tags and bare '&' that Pango rejects; keep
+    // only tags Pango understands and escape the rest so the result always parses.
     public static string body_to_markup(string body) {
         var sb = new StringBuilder();
-        // Stack of formatting tags we've opened, so we can close any the app
-        // left dangling and ignore stray closes — the result is always
-        // well-balanced and accepted by GtkLabel.set_markup.
+        // Open tags, so dangling ones get closed and stray closes ignored.
         var open = new GLib.Queue<string>();
         int len = body.length; // byte length
         int i = 0;
-        // '<', '>', '&' are ASCII, so byte-wise scanning is safe for UTF-8:
-        // multi-byte sequences never contain these bytes, and non-matching
-        // bytes are copied through verbatim.
+        // Byte-wise scan is UTF-8 safe: multi-byte sequences never contain
+        // '<', '>' or '&'.
         while (i < len) {
             char c = body[i];
             if (c == '<') {
@@ -60,11 +51,7 @@ public class Utils {
         return sb.str;
     }
 
-    // Append the GtkLabel-markup equivalent of a single HTML/markup tag,
-    // updating the open-tag stack so output stays balanced.
     private static void emit_tag(StringBuilder sb, GLib.Queue<string> open, string tag) {
-        // tag includes the surrounding angle brackets, e.g. "<b>", "</a>",
-        // "<a href=\"x\">", "<br/>".
         string inner = tag.substring(1, tag.length - 2).strip(); // strip <>
         bool closing = inner.has_prefix("/");
         if (closing) inner = inner.substring(1).strip();

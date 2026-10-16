@@ -1,12 +1,4 @@
-// AuthFlow — one authentication request, start to finish.
-//
-// Bridges an AuthDialog (the UI) to a PolkitAgent.Session (the PAM driver) and
-// suspends the listener's async initiate_authentication() until the user either
-// authenticates, cancels, or runs out of attempts.
-//
 // A PolkitAgent.Session is single-use: each password attempt needs a fresh one.
-// So on a failed attempt we tear the session down and start_session() again,
-// keeping the same dialog open (Apple/GNOME "Sorry, try again." behaviour).
 public class AuthFlow : GLib.Object {
 
     private const int MAX_ATTEMPTS = 3;
@@ -39,9 +31,8 @@ public class AuthFlow : GLib.Object {
 
         dialog = new AuthDialog(app, message, icon_name, identities, chosen);
         dialog.submit.connect(on_submit);
-        // Only count a cancel that arrives while the flow is still live. A
-        // cancel emitted as a side effect of tearing the window down after a
-        // SUCCESSFUL auth must not flip the result to "dismissed".
+        // A cancel emitted by tearing the window down after a SUCCESSFUL auth
+        // must not flip the result to "dismissed".
         dialog.cancel.connect(() => {
             GLib.debug("flow: dialog.cancel signal (done=%s)", done.to_string());
             if (done) return;
@@ -55,8 +46,7 @@ public class AuthFlow : GLib.Object {
             cancellable.cancelled.connect(() => { GLib.debug("flow: cancellable.cancelled (polkitd CancelAuthentication)"); finish(false); });
     }
 
-    // Prefer authenticating as the current user when polkit offers that
-    // identity; otherwise prefer root; otherwise just take the first offered.
+    // Current user, else root, else the first offered.
     private static Polkit.Identity pick_default(Polkit.Identity[] ids) {
         int my = (int) Posix.getuid();
         Polkit.Identity? root = null;
@@ -81,8 +71,7 @@ public class AuthFlow : GLib.Object {
         GLib.debug("flow: resumed (done=%s gained=%s user_cancelled=%s)",
                 done.to_string(), gained.to_string(), user_cancelled.to_string());
 
-        // Decide the verdict BEFORE tearing the window down — dismiss() must not
-        // be able to influence it (it won't re-emit cancel, but be explicit).
+        // Decide the verdict BEFORE tearing the window down.
         bool cancelled = user_cancelled
             || (cancellable != null && cancellable.is_cancelled());
 
@@ -121,8 +110,6 @@ public class AuthFlow : GLib.Object {
         if (done) return;
         if (authorized) { finish(true); return; }
 
-        // Wrong password / PAM denial. Offer a retry with a fresh session until
-        // the attempt budget is spent.
         session = null;
         attempts++;
         dialog.set_busy(false);
@@ -140,8 +127,7 @@ public class AuthFlow : GLib.Object {
         if (done) return;
         done   = true;
         gained = authorized;
-        // Only cancel a still-running session; a session that already completed
-        // (success path) must not be cancelled.
+        // A session that already completed (success) must not be cancelled.
         if (session != null && !authorized) session.cancel();
         session = null;
         if (resume != null) {

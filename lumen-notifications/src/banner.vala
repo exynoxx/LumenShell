@@ -91,9 +91,7 @@ public class Banner : Gtk.Box {
     }
 
     private void set_body_markup(string body) {
-        // body_to_markup yields balanced, escaped GtkLabel markup, so
-        // set_markup accepts it (note: GtkLabel's <a> support means we can't
-        // pre-validate with Pango.parse_markup, which rejects <a>).
+        // body_to_markup always yields balanced, escaped markup.
         body_lbl.set_markup(Utils.body_to_markup(body));
     }
 
