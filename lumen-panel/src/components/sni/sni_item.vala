@@ -16,7 +16,6 @@ public class SniItem : Gtk.Button {
     DBusProxy? proxy = null;
     string? menu_path = null;
     string  status = "Active";
-    bool    item_is_menu = false;
 
     double scroll_acc_x = 0;
     double scroll_acc_y = 0;
@@ -28,6 +27,7 @@ public class SniItem : Gtk.Button {
 
         add_css_class("tray-icon");
         add_css_class("systray-item");
+        valign = Gtk.Align.CENTER;   // keep the 40×40 hover disc round
         image = new Gtk.Image() { pixel_size = 22 };
         set_child(image);
 
@@ -67,9 +67,9 @@ public class SniItem : Gtk.Button {
         var click = new Gtk.GestureClick() { button = 0 };  // any button
         click.released.connect((n_press, x, y) => {
             uint b = click.get_current_button();
-            // ItemIsMenu means "my only interaction is the menu" — those apps
-            // (all libappindicator ones) don't implement Activate at all.
-            if (b == Gdk.BUTTON_PRIMARY)        { if (item_is_menu) context(x, y); else activate_item(); }
+            // Left click activates. Apps without Activate (e.g. ItemIsMenu
+            // ones) just ignore the call, so nothing happens.
+            if (b == Gdk.BUTTON_PRIMARY)        { if (n_press == 1) activate_item(); }
             else if (b == Gdk.BUTTON_MIDDLE)    secondary_activate();
             else if (b == Gdk.BUTTON_SECONDARY) context(x, y);
         });
@@ -159,9 +159,6 @@ public class SniItem : Gtk.Button {
 
         var menu_v = props.lookup_value("Menu", VariantType.OBJECT_PATH);
         menu_path = (menu_v != null) ? menu_v.get_string() : null;
-
-        var iim = props.lookup_value("ItemIsMenu", VariantType.BOOLEAN);
-        item_is_menu = (iim != null) && iim.get_boolean();
 
         render_icon(props);
     }

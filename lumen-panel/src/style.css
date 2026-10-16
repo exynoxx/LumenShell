@@ -82,11 +82,20 @@ window.lumen-panel.auto-hide .panel-strip {
 .systray {
     padding: 0;
 }
+/* Bare icon (no GTK button chrome); a round disc only on hover. */
 button.systray-item {
-    min-width: 34px;
-    min-height: 48px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
     margin: 0;
-    border-radius: 18px;
+    border-radius: 20px;
+    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+button.systray-item:hover {
+    background: @tray_icon_hover;
 }
 /* Divider between the app-tray and the predefined system trays. */
 .tray-app-sep {
