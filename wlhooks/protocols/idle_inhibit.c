@@ -1,5 +1,5 @@
 #include "idle_inhibit.h"
-#include "../generated/idle-inhibit-unstable-v1-client-protocol.h"
+#include "idle-inhibit-unstable-v1-client-protocol.h"
 
 #include <string.h>
 #include <stdio.h>

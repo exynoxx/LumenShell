@@ -1,7 +1,7 @@
 #include "idle_notify.h"
 #include "registry.h"
 #include "seat.h"
-#include "../generated/ext-idle-notify-v1-client-protocol.h"
+#include "ext-idle-notify-v1-client-protocol.h"
 
 #include <stdio.h>
 

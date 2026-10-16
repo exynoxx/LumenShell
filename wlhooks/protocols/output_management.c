@@ -1,5 +1,5 @@
 #include "output_management.h"
-#include "../generated/wlr-output-management-unstable-v1-client-protocol.h"
+#include "wlr-output-management-unstable-v1-client-protocol.h"
 
 #include <stdio.h>
 #include <string.h>

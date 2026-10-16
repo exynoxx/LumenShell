@@ -3,7 +3,7 @@
 #include "registry.h"
 #include "seat.h"
 #include "output.h"
-#include "../generated/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
+#include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 #include <stdio.h>
 #include <string.h>

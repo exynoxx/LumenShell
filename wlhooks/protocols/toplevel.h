@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include "../generated/wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
+#include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 typedef void (*toplevel_window_new)(uint32_t id, const char* app_id, const char* title, void* user_data);
 typedef void (*toplevel_window_rm)(uint32_t id, void* user_data);

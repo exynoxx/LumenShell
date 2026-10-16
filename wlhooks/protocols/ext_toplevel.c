@@ -2,7 +2,7 @@
 #include "wlr_toplevel.h"
 #include "window_list.h"
 #include "registry.h"
-#include "../generated/ext-foreign-toplevel-list-v1-client-protocol.h"
+#include "ext-foreign-toplevel-list-v1-client-protocol.h"
 
 #include <stdio.h>
 #include <string.h>
