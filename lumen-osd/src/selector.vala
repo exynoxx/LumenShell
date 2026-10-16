@@ -1,5 +1,3 @@
-using Gtk;
-
 public class Selector : Gtk.Box {
 
     // Fixed metrics so snapshot() places the highlight by arithmetic; child
@@ -31,15 +29,9 @@ public class Selector : Gtk.Box {
     public void set_items(string[] icons, string[] labels, int sel) {
         int n = int.min(icons.length, labels.length);
 
+        // The picker always passes the same tile count: build on the first
+        // call, then only relabel.
         if (n != count) {
-            // Tile count changed (e.g. external display (un)plugged): rebuild.
-            Gtk.Widget? c = inner.get_first_child();
-            while (c != null) {
-                Gtk.Widget? next = c.get_next_sibling();
-                inner.remove(c);
-                c = next;
-            }
-            tiles = {};
             for (int i = 0; i < n; i++) {
                 var tile = new Gtk.Box(Gtk.Orientation.VERTICAL, 10);
                 tile.set_size_request(TILE_W, TILE_H);

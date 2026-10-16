@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BlurredWallpaper : GLib.Object {
 
     private static Gdk.Texture? cached     = null;

@@ -1,5 +1,3 @@
-using Gtk;
-
 public const string AGENT_CSS = """
     .polkit-bar     { background-color: rgba(0,0,0,0.92); }
     .polkit-title   { font-weight: bold; font-size: 14pt; color: #ffffff; }
@@ -21,7 +19,6 @@ public class AuthDialog : Gtk.Window {
     private Gtk.Label   prompt_label;
     private Gtk.Label   status_label;
     private Gtk.Button  auth_button;
-    private Polkit.Identity[] ids;
     private bool        closing = false;
 
     // Programmatic close: unlike a user close (Esc), does NOT emit cancel.
@@ -30,7 +27,7 @@ public class AuthDialog : Gtk.Window {
         close();
     }
 
-    public AuthDialog(Gtk.Application app, string message, string icon_name,
+    public AuthDialog(string message, string icon_name,
                       GLib.List<Polkit.Identity> identities,
                       Polkit.Identity? chosen) {
         Object();
@@ -50,7 +47,6 @@ public class AuthDialog : Gtk.Window {
 
         var arr = new Polkit.Identity[0];
         foreach (var id in identities) arr += id;
-        ids = arr;
 
         var bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 22) {
             halign = Gtk.Align.CENTER, valign = Gtk.Align.CENTER,
@@ -155,8 +151,8 @@ public class AuthDialog : Gtk.Window {
         return id.to_string();
     }
 
-    // echo_on is ignored: the field stays masked.
-    public void show_prompt(string text, bool echo_on) {
+    // Echo requests are ignored: the field stays masked.
+    public void show_prompt(string text) {
         prompt_label.label = text;
         set_busy(false);
         entry.grab_focus();

@@ -1,5 +1,3 @@
-using GLib;
-
 public class Notification : Object {
     public uint32   id;
     public string   app_name;

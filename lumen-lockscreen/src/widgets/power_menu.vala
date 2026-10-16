@@ -1,14 +1,9 @@
-using Gtk;
-
 // Available while locked by design (interactive=false: polkit authorizes the
 // active session without a prompt).
 public class PowerMenu : Gtk.Box {
 
-    private LogindBridge logind;
-
     public PowerMenu(LogindBridge logind) {
         Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 64);
-        this.logind = logind;
         set_halign(Gtk.Align.CENTER);
         add_css_class("lockscreen-power-menu");
 

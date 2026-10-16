@@ -1,5 +1,3 @@
-using GLib;
-
 // Invariant: the password buffer is never logged.
 public class PamAuth : GLib.Object {
 

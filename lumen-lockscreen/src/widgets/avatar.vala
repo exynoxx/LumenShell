@@ -1,5 +1,3 @@
-using Gtk;
-
 // Owns its Picture's layout because Picture's natural size is the image's (the
 // fallback SVG is 1024px). overflow=HIDDEN: border-radius doesn't clip children.
 public class AvatarWidget : Gtk.Widget {

@@ -1,5 +1,3 @@
-using GLib;
-
 [DBus(name = "org.lumenshell.OSD1")]
 public class OsdService : Object {
 

@@ -1,11 +1,8 @@
-using Gtk;
-
 public class OsdApp : Gtk.Application {
 
     private OsdWindowGroup group;
     private OsdService     service;
     private StateWatcher watcher;
-    private uint         owner_id = 0;
     private bool         activated = false;
 
     public OsdApp() {
@@ -35,7 +32,7 @@ public class OsdApp : Gtk.Application {
     }
 
     private void own_bus_name() {
-        owner_id = Bus.own_name(
+        Bus.own_name(
             BusType.SESSION,
             "org.lumenshell.OSD",
             BusNameOwnerFlags.NONE,

@@ -1,11 +1,9 @@
-using Gtk;
 using LumenCommon;
 
 public class LockApp : Gtk.Application {
 
     private LockManager manager;
     private LockService service;
-    private uint owner_id = 0;
     private bool activated = false;
 
     public LockApp() {
@@ -32,7 +30,7 @@ public class LockApp : Gtk.Application {
     }
 
     private void own_bus_name() {
-        owner_id = Bus.own_name(
+        Bus.own_name(
             BusType.SESSION,
             "org.lumenshell.Lock",
             BusNameOwnerFlags.NONE,

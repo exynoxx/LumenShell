@@ -1,5 +1,3 @@
-using GLib;
-
 // Firmware changes the kbd backlight without a keypress, and Wayfire's
 // KEY_CAPSLOCK binding misses the press that turns CapsLock OFF — so poll.
 public class StateWatcher : Object {
@@ -18,7 +16,6 @@ public class StateWatcher : Object {
     private int     caps_last   = -1;
 
     private bool primed = false;
-    private uint tick_source = 0;
 
     public StateWatcher(OsdService service) {
         this.service = service;
@@ -30,14 +27,7 @@ public class StateWatcher : Object {
         // sysfs writes don't reliably emit inotify. Don't arm with nothing to
         // read, or a desktop wakes 5x/s forever.
         if (kbd_path != null || screen_path != null || caps_path != null)
-            tick_source = Timeout.add(200, this.tick);
-    }
-
-    ~StateWatcher() {
-        if (tick_source != 0) {
-            Source.remove(tick_source);
-            tick_source = 0;
-        }
+            Timeout.add(200, this.tick);
     }
 
     private static void discover(out string? path, out int max,
@@ -91,11 +81,11 @@ public class StateWatcher : Object {
         return Source.CONTINUE;
     }
 
+    // Empty text: Presenter formats the percentage itself.
     private void present_slider(string kind, double frac) {
-        string txt = "%d%%".printf((int) Math.round(frac * 100));
         var opts = new HashTable<string, Variant>(str_hash, str_equal);
         try {
-            service.show(kind, frac, txt, opts);
+            service.show(kind, frac, "", opts);
         } catch (Error e) {}
     }
 

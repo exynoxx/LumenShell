@@ -1,5 +1,3 @@
-using Gtk;
-
 // NOT layer-shell: gtk4-session-lock turns it into a lock surface when
 // LockManager calls assign_window_to_monitor() + present().
 public class LockWindow : Gtk.ApplicationWindow {

@@ -1,5 +1,3 @@
-using GLib;
-
 public class Presenter : Object {
 
     private OsdWindowGroup group;

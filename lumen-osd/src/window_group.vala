@@ -1,5 +1,3 @@
-using Gtk;
-
 public class OsdWindowGroup : Object {
 
     private Gtk.Application app;

@@ -3,9 +3,7 @@ public class AuthFlow : GLib.Object {
 
     private const int MAX_ATTEMPTS = 3;
 
-    private weak Gtk.Application app;
     private string             cookie;
-    private Polkit.Identity[]  ids;
     private Polkit.Identity    chosen;
     private AuthDialog         dialog;
     private GLib.Cancellable?  cancellable;
@@ -17,19 +15,17 @@ public class AuthFlow : GLib.Object {
     private int          attempts      = 0;
     private SourceFunc?  resume        = null;
 
-    public AuthFlow(Gtk.Application app, string message, string icon_name,
+    public AuthFlow(string message, string icon_name,
                     string cookie, GLib.List<Polkit.Identity> identities,
                     GLib.Cancellable? cancellable) {
-        this.app         = app;
         this.cookie      = cookie;
         this.cancellable = cancellable;
 
         var arr = new Polkit.Identity[0];
         foreach (var id in identities) arr += id;
-        this.ids    = arr;
         this.chosen = pick_default(arr);
 
-        dialog = new AuthDialog(app, message, icon_name, identities, chosen);
+        dialog = new AuthDialog(message, icon_name, identities, chosen);
         dialog.submit.connect(on_submit);
         // A cancel emitted by tearing the window down after a SUCCESSFUL auth
         // must not flip the result to "dismissed".
@@ -85,7 +81,7 @@ public class AuthFlow : GLib.Object {
     private void start_session() {
         GLib.debug("flow: start_session()");
         session = new PolkitAgent.Session(chosen, cookie);
-        session.request.connect((req, echo) => { GLib.debug("session: request '%s' echo=%s", req, echo.to_string()); dialog.show_prompt(req, echo); });
+        session.request.connect((req, echo) => { GLib.debug("session: request '%s' echo=%s", req, echo.to_string()); dialog.show_prompt(req); });
         session.show_error.connect((t) => { GLib.debug("session: show_error '%s'", t); dialog.show_error_text(t); });
         session.show_info.connect((t) => { GLib.debug("session: show_info '%s'", t); dialog.show_info_text(t); });
         session.completed.connect(on_completed);

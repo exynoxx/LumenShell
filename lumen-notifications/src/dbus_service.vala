@@ -1,5 +1,3 @@
-using GLib;
-
 [DBus(name = "org.freedesktop.Notifications")]
 public class NotificationsService : Object {
 

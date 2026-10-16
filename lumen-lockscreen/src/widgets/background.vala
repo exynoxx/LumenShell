@@ -1,5 +1,3 @@
-using Gtk;
-
 public class LockBackdrop : Gtk.Widget {
 
     private Gtk.Picture pic;

@@ -1,12 +1,8 @@
-using Gtk;
-
 public class Pill : Gtk.Box {
 
     public Gtk.Image     icon     = new Gtk.Image();
     public ProgressTrack progress = new ProgressTrack();
     public Gtk.Label     label    = new Gtk.Label("");
-
-    private Gtk.Box inner;
 
     public Pill() {
         Object(orientation: Theme.vertical() ? Gtk.Orientation.VERTICAL
@@ -17,7 +13,7 @@ public class Pill : Gtk.Box {
 
         // padding_x is along the long axis, padding_y across it — they swap
         // when the pill stands up.
-        inner = new Gtk.Box(orientation, Theme.content_spacing);
+        var inner = new Gtk.Box(orientation, Theme.content_spacing);
         inner.margin_start  = inner.margin_end    = vert ? Theme.padding_y : Theme.padding_x;
         inner.margin_top    = inner.margin_bottom = vert ? Theme.padding_x : Theme.padding_y;
         inner.set_hexpand(true);

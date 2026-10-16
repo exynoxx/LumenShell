@@ -1,5 +1,3 @@
-using GLib;
-
 // Fail-soft: without ext-idle-notify-v1, arm()/disarm() are no-ops.
 public class IdleWatcher : GLib.Object {
 

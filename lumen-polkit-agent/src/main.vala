@@ -1,5 +1,3 @@
-using Gtk;
-
 // Must run inside the Wayfire session so it registers for the session the user
 // is sitting in front of.
 namespace LumenPolkitAgent {
@@ -40,7 +38,7 @@ public class App : Gtk.Application {
                 return false;
             }
 
-            listener = new LumenAgentListener(this);
+            listener = new LumenAgentListener();
             reg_handle = listener.register(
                 PolkitAgent.RegisterFlags.NONE,
                 subject,

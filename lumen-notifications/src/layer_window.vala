@@ -1,9 +1,6 @@
-using Gtk;
-
 public class LayerWindow : Gtk.Window {
 
     public BannerStack stack;
-    public Gtk.Button  clear_btn;
     public signal void clear_all_requested();
 
     public LayerWindow(Gtk.Application app) {
@@ -27,7 +24,7 @@ public class LayerWindow : Gtk.Window {
         outer.set_halign(Gtk.Align.END);
         outer.set_valign(Gtk.Align.START);
 
-        clear_btn = new Gtk.Button.with_label("Clear all");
+        var clear_btn = new Gtk.Button.with_label("Clear all");
         clear_btn.add_css_class("lumen-notif-clear-all");
         clear_btn.set_size_request(Theme.width, -1);
         clear_btn.set_halign(Gtk.Align.FILL);

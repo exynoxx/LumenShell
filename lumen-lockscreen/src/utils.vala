@@ -1,5 +1,3 @@
-using GLib;
-
 public class Utils {
     public static string THEME_FILE {
         owned get {

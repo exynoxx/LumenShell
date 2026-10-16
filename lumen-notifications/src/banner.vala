@@ -1,5 +1,3 @@
-using Gtk;
-
 public class Banner : Gtk.Box {
 
     public uint32 id;
@@ -10,7 +8,6 @@ public class Banner : Gtk.Box {
     private Gtk.Label      title_lbl;
     private Gtk.Label      body_lbl;
     private Gtk.Box        actions_row;
-    private bool           has_actions = false;
     private bool           has_default = false;
     private string[]       current_actions = {};
 
@@ -20,8 +17,6 @@ public class Banner : Gtk.Box {
         id = n.id;
 
         set_size_request(Theme.width, -1);
-        margin_top    = 0;
-        margin_bottom = 0;
 
         var top_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, Theme.spacing);
         top_row.margin_start  = Theme.padding;
@@ -131,7 +126,7 @@ public class Banner : Gtk.Box {
             child = next;
         }
 
-        has_actions = false;
+        bool has_actions = false;
         has_default = false;
         // actions[] is pairs of [key, label]. The special "default" key is
         // the whole-banner click, not a button.

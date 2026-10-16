@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BannerStack : Gtk.Box {
 
     public signal void empty();
@@ -55,18 +53,14 @@ public class BannerStack : Gtk.Box {
         by_id.remove(id);
         count_changed(active_count());
 
-        var rev = b.get_parent() as Gtk.Revealer;
-        if (rev == null) {                     // never happens; don't strand empty()
-            if (by_id.size() == 0) empty();
-            return;
-        }
+        var rev = (Gtk.Revealer) b.get_parent();   // add_banner always wraps
         b.set_sensitive(false);   // no clicks or actions once the leave starts
-        ((!) rev).notify["child-revealed"].connect(() => {
-            if (((!) rev).child_revealed) return;
-            remove((!) rev);
+        rev.notify["child-revealed"].connect(() => {
+            if (rev.child_revealed) return;
+            remove(rev);
             if (by_id.size() == 0) empty();
         });
-        ((!) rev).set_reveal_child(false);
+        rev.set_reveal_child(false);
     }
 
     public int active_count() {

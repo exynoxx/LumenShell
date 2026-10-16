@@ -1,12 +1,8 @@
-using Gtk;
-
 public class NotifApp : Gtk.Application {
 
     private LayerWindow          window;
     private NotificationManager  manager;
     private NotificationsService service;
-    private DBusConnection?      conn = null;
-    private uint                 owner_id = 0;
     private bool                 activated = false;
     public  string               bus_name = "org.freedesktop.Notifications";
     public  string               bus_path = "/org/freedesktop/Notifications";
@@ -88,12 +84,11 @@ public class NotifApp : Gtk.Application {
     }
 
     private void own_bus_name() {
-        owner_id = Bus.own_name(
+        Bus.own_name(
             BusType.SESSION,
             bus_name,
             BusNameOwnerFlags.DO_NOT_QUEUE,
             (c) => {
-                conn = c;
                 try {
                     c.register_object(bus_path, service);
                 } catch (IOError e) {

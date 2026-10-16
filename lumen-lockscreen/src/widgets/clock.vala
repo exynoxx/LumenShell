@@ -1,5 +1,3 @@
-using Gtk;
-
 public class ClockWidget : Gtk.Box {
 
     private Gtk.Label time_label;

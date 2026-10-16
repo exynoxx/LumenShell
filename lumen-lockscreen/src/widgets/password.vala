@@ -1,5 +1,3 @@
-using Gtk;
-
 // Submits even an empty string — that's how no-password users log in (PAM nullok).
 public class PasswordField : Gtk.Box {
 

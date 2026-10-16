@@ -1,4 +1,3 @@
-using GLib;
 using LumenCommon;
 
 [DBus(name = "org.lumenshell.Lock1")]

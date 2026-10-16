@@ -1,5 +1,3 @@
-using GLib;
-
 // Spec close reasons.
 public const uint32 REASON_EXPIRED   = 1;
 public const uint32 REASON_DISMISSED = 2;

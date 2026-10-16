@@ -1,4 +1,3 @@
-using Gtk;
 using LumenCommon;
 
 public class LockManager : GLib.Object {
@@ -108,7 +107,6 @@ public class LockManager : GLib.Object {
     }
 
     private void begin_lock() {
-        if (is_locked || instance != null) return;
         // Null falls back to the theme image / a solid scrim.
         backdrop = BlurredWallpaper.get_texture();
 

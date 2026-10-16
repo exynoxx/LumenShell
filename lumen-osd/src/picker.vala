@@ -1,5 +1,3 @@
-using Gtk;
-
 // The keyboard grab exists to see the Super release (Wayfire command bindings
 // fire on press only), which commits the highlighted mode.
 public class Picker : Object {

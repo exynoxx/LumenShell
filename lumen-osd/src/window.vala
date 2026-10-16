@@ -1,5 +1,3 @@
-using Gtk;
-
 public class OsdWindow : Gtk.Window {
 
     public Pill     pill;
