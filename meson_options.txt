@@ -60,3 +60,11 @@ option(
   value: 'auto',
   description: 'Build lumen-polkit-agent (PolicyKit authentication agent — prompts for a password when a program requests privilege; needs polkit-agent-1 + polkit-gobject-1). Auto: built only when both are present.',
 )
+
+option(
+  'pam_base',
+  type: 'combo',
+  choices: ['auto', 'system-auth', 'common'],
+  value: 'auto',
+  description: 'Base PAM stack for lumen-lockscreen: system-auth (Fedora/Arch) or common (common-auth/common-account: Debian/Ubuntu/openSUSE). Auto: system-auth if /etc/pam.d/system-auth exists.',
+)

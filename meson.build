@@ -4,6 +4,7 @@ project('lumenshell', ['c', 'vala'],
 )
 
 cc = meson.get_compiler('c')
+fs = import('fs')
 
 glib_dep        = dependency('glib-2.0')
 gio_dep         = dependency('gio-2.0')
@@ -582,10 +583,20 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
   )
 
   # Always /etc/pam.d, never under the install prefix.
-  install_data(
-    'lumen-lockscreen/data/pam.d/lumen-lockscreen',
-    install_dir: '/etc/pam.d',
+  pam_base = get_option('pam_base')
+  if pam_base == 'auto'
+    pam_base = fs.exists('/etc/pam.d/system-auth') ? 'system-auth' : 'common'
+  endif
+  pam_conf = configuration_data()
+  pam_conf.set('PAM_AUTH',    pam_base == 'common' ? 'common-auth'    : 'system-auth')
+  pam_conf.set('PAM_ACCOUNT', pam_base == 'common' ? 'common-account' : 'system-auth')
+  # .pam suffix: the build dir already has a lumen-lockscreen executable.
+  pam_file = configure_file(
+    input: 'lumen-lockscreen/data/pam.d/lumen-lockscreen.in',
+    output: 'lumen-lockscreen.pam',
+    configuration: pam_conf,
   )
+  install_data(pam_file, rename: 'lumen-lockscreen', install_dir: '/etc/pam.d')
 
   message('lumen-lockscreen: enabled')
 else

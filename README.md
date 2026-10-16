@@ -79,6 +79,19 @@ C++ `shared_module`s, each gated by a Meson option. IPC verbs are exposed throug
 
 # Build & install
 
+### Distro support
+
+| Distro | Shell | Wayfire plugins | Lockscreen |
+|---|---|---|---|
+| Fedora 44 | ✅ | ✅ | ⚠️ build gtk4-session-lock |
+| Ubuntu 26.04 | ✅ | ✅ | ✅ |
+| Ubuntu 24.04 | ❌ | ❌ | ❌ |
+| Debian 13 | ✅ | ❌ | ❌ |
+| Arch | ✅ | ❌ | ✅? |
+| openSUSE TW | ✅ | ❌ | ✅? |
+
+Plugins need Wayfire 0.10 + wlroots 0.19; elsewhere, configure with the plugin options off.
+
 ### 1. Install dependencies
 
 A helper script covers Fedora, Ubuntu/Debian and Arch:
