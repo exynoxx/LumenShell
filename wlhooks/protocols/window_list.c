@@ -28,7 +28,7 @@ void window_list_init(void) {
 void window_list_cleanup(void) {
     toplevel_window_t *w, *tmp;
     wl_list_for_each_safe(w, tmp, &windows, link) {
-        if (w->ops && w->ops->destroy_handle) w->ops->destroy_handle(w);
+        zwlr_foreign_toplevel_handle_v1_destroy(w->handle);
         wl_list_remove(&w->link);
         free(w->app_id);
         free(w->title);
@@ -37,11 +37,10 @@ void window_list_cleanup(void) {
     }
 }
 
-toplevel_window_t *window_list_create(void *handle, const toplevel_window_ops_t *ops) {
+toplevel_window_t *window_list_create(struct zwlr_foreign_toplevel_handle_v1 *handle) {
     toplevel_window_t *w = calloc(1, sizeof(*w));
     w->id     = next_window_id++;
     w->handle = handle;
-    w->ops    = ops;
     wl_list_insert(&windows, &w->link);
     return w;
 }

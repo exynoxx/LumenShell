@@ -1,7 +1,6 @@
 #include "wlr_toplevel.h"
 #include "window_list.h"
 #include "registry.h"
-#include "seat.h"
 #include "output.h"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
@@ -11,43 +10,6 @@
 #define WLR_TOPLEVEL_MAX_VERSION 3
 
 static struct zwlr_foreign_toplevel_manager_v1 *manager = NULL;
-
-static void op_activate(toplevel_window_t *w) {
-    struct wl_seat *s = get_wl_seat();
-    if (!s) {
-        fprintf(stderr, "wlr_toplevel: no seat for activate\n");
-        return;
-    }
-    zwlr_foreign_toplevel_handle_v1_activate(w->handle, s);
-}
-
-static void op_minimize(toplevel_window_t *w) {
-    zwlr_foreign_toplevel_handle_v1_set_minimized(w->handle);
-}
-
-static void op_close(toplevel_window_t *w) {
-    zwlr_foreign_toplevel_handle_v1_close(w->handle);
-}
-
-static void op_set_rectangle(toplevel_window_t *w, struct wl_surface *surface,
-                             int32_t x, int32_t y, int32_t width, int32_t height) {
-    zwlr_foreign_toplevel_handle_v1_set_rectangle(w->handle, surface, x, y, width, height);
-}
-
-static void op_destroy_handle(toplevel_window_t *w) {
-    if (w->handle) {
-        zwlr_foreign_toplevel_handle_v1_destroy(w->handle);
-        w->handle = NULL;
-    }
-}
-
-static const toplevel_window_ops_t wlr_ops = {
-    .activate       = op_activate,
-    .minimize       = op_minimize,
-    .close          = op_close,
-    .set_rectangle  = op_set_rectangle,
-    .destroy_handle = op_destroy_handle,
-};
 
 static void on_title (void *data, struct zwlr_foreign_toplevel_handle_v1 *h, const char *title)  { window_list_set_title (data, title);  }
 static void on_app_id(void *data, struct zwlr_foreign_toplevel_handle_v1 *h, const char *app_id) { window_list_set_app_id(data, app_id); }
@@ -93,7 +55,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener handle_listener = {
 static void on_toplevel(void *data,
                         struct zwlr_foreign_toplevel_manager_v1 *m,
                         struct zwlr_foreign_toplevel_handle_v1 *h) {
-    toplevel_window_t *w = window_list_create(h, &wlr_ops);
+    toplevel_window_t *w = window_list_create(h);
     zwlr_foreign_toplevel_handle_v1_add_listener(h, &handle_listener, w);
 }
 
@@ -120,8 +82,4 @@ void wlr_toplevel_cleanup(void) {
         zwlr_foreign_toplevel_manager_v1_destroy(manager);
         manager = NULL;
     }
-}
-
-bool wlr_toplevel_available(void) {
-    return manager != NULL;
 }

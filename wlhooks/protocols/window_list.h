@@ -8,22 +8,6 @@
 
 typedef struct toplevel_window toplevel_window_t;
 
-// Per-window vtable. The backend creating a window installs the ops it
-// supports; missing operations are reported as "not supported" by the public
-// toplevel API rather than fatal.
-typedef struct {
-    void (*activate)(toplevel_window_t *w);
-    void (*minimize)(toplevel_window_t *w);
-    void (*close)   (toplevel_window_t *w);
-    // Tell the compositor where this window is represented on screen (its
-    // taskbar button), relative to `surface`. Used as the minimize-animation
-    // target (e.g. Wayfire's squeezimize). Optional — NULL when the backend's
-    // protocol can't express it (the ext-foreign-toplevel list can't).
-    void (*set_rectangle)(toplevel_window_t *w, struct wl_surface *surface,
-                          int32_t x, int32_t y, int32_t width, int32_t height);
-    void (*destroy_handle)(toplevel_window_t *w); // tear down protocol handle
-} toplevel_window_ops_t;
-
 struct toplevel_window {
     uint32_t id;
     char    *app_id;
@@ -31,15 +15,14 @@ struct toplevel_window {
     char    *output;                       // last-entered output connector, or NULL
     bool     activated;
     bool     announced;
-    void    *handle;                       // backend-owned protocol object
-    const toplevel_window_ops_t *ops;
+    struct zwlr_foreign_toplevel_handle_v1 *handle;
     struct wl_list link;
 };
 
 void window_list_init(void);
 void window_list_cleanup(void);
 
-toplevel_window_t *window_list_create(void *handle, const toplevel_window_ops_t *ops);
+toplevel_window_t *window_list_create(struct zwlr_foreign_toplevel_handle_v1 *handle);
 toplevel_window_t *window_list_find(uint32_t id);
 
 // Mutators — handle the "if announced AND data complete, fire callbacks"

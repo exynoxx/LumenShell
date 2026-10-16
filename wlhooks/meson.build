@@ -16,7 +16,6 @@ wl_protocols_dir = dependency('wayland-protocols').get_variable('pkgdatadir')
 protocol_xmls = [
   'protocols/xml/wlr-foreign-toplevel-management-unstable-v1.xml',
   'protocols/xml/wlr-output-management-unstable-v1.xml',
-  wl_protocols_dir / 'staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml',
   wl_protocols_dir / 'staging/ext-idle-notify/ext-idle-notify-v1.xml',
   wl_protocols_dir / 'unstable/idle-inhibit/idle-inhibit-unstable-v1.xml',
 ]
@@ -43,7 +42,6 @@ sources = [
   'protocols/toplevel.c',
   'protocols/window_list.c',
   'protocols/wlr_toplevel.c',
-  'protocols/ext_toplevel.c',
   'protocols/output.c',
   'protocols/output_management.c',
   'protocols/idle_notify.c',
