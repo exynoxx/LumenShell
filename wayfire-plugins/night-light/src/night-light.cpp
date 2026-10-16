@@ -22,25 +22,17 @@
 
 namespace
 {
-// Tanner-Helland black-body approximation: map a colour temperature in Kelvin
-// to a linear RGB multiplier in [0, 1], then normalise so the brightest channel
-// is 1.0. The result is a pure colour shift (warm tint) with no dimming — at
-// 6500K it returns ~(1,1,1) and so leaves the screen untouched, while lower
-// temperatures push the green/blue channels down toward amber.
+// Tanner-Helland black-body approximation, normalised so the brightest channel
+// is 1.0: a pure warm shift with no dimming; ~(1,1,1) at 6500K.
 inline void kelvin_to_rgb(int kelvin, float &r, float &g, float &b)
 {
     const double t = std::clamp(kelvin, 1000, 40000) / 100.0;
 
     double rr, gg, bb;
 
-    // red
     rr = (t <= 66) ? 255.0 : 329.698727446 * std::pow(t - 60.0, -0.1332047592);
-
-    // green
     gg = (t <= 66) ? 99.4708025861 * std::log(t) - 161.1195681661
                    : 288.1221695283 * std::pow(t - 60.0, -0.0755148492);
-
-    // blue
     bb = (t >= 66) ? 255.0
          : (t <= 19) ? 0.0
          : 138.5177312231 * std::log(t - 10.0) - 305.0447927307;
@@ -55,9 +47,7 @@ inline void kelvin_to_rgb(int kelvin, float &r, float &g, float &b)
     b /= m;
 }
 
-// A trivial full-output solid-colour quad. No texture: the warm tint is a flat
-// colour, and the per-pixel multiply happens via the blend func, not the
-// shader. version 100 GLES so it matches the rest of the tree (curtain-peek).
+// Flat-colour quad; the per-pixel multiply happens in the blend func, not the shader.
 static const char *tint_vert_source =
     R"(
 #version 100
@@ -75,12 +65,7 @@ void main() { gl_FragColor = u_tint; }
 )";
 }
 
-// ---------------------------------------------------------------------------
-// Tint node: a full-output quad on the OVERLAY layer, drawn with a MULTIPLY
-// blend (out = dst * tint) so it shifts every pixel's colour toward amber
-// instead of laying a translucent veil over it. White goes warm, black stays
-// black — a true colour-temperature filter, like Redshift / GNOME Night Light.
-// ---------------------------------------------------------------------------
+// Full-output tint quad on the OVERLAY layer.
 class night_tint_node_t : public wf::scene::node_t
 {
   public:
@@ -147,8 +132,8 @@ class night_tint_render_instance_t :
                 glm::vec4(self->tint[0], self->tint[1], self->tint[2], 1.0f));
             self->program.attrib_pointer("pos", 2, 0, verts);
 
-            // MULTIPLY: out = dst * src. This is what makes it a warm filter
-            // rather than a dim haze (which a source-over alpha blend would be).
+            // MULTIPLY (out = dst * src): whites go amber without dimming, unlike
+            // a source-over veil.
             GL_CALL(glBlendFunc(GL_DST_COLOR, GL_ZERO));
             for (const auto& box : data.damage)
             {
@@ -157,8 +142,7 @@ class night_tint_render_instance_t :
                 GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
             }
 
-            // Restore the subpass default blend (1, 1-src_alpha) so any later
-            // draw in this pass composites normally.
+            // Restore the subpass default blend for later draws in this pass.
             GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
             GL_CALL(glDisable(GL_SCISSOR_TEST));
             self->program.deactivate();
@@ -174,12 +158,6 @@ inline void night_tint_node_t::gen_render_instances(
         this, push_damage, shown_on));
 }
 
-// ---------------------------------------------------------------------------
-// Per-output plugin instance. Owns this output's tint node and animation. The
-// node is added to the OVERLAY layer on start and removed once a fade-out
-// completes; while it is present the tint LERPs white -> warm by the 0..1
-// animation value, giving a smooth fade in / out.
-// ---------------------------------------------------------------------------
 class wayfire_night_light_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<int> temperature_opt{"wayfire-night-light/temperature"};
@@ -204,10 +182,7 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
                 node->tint[i] = 1.0f + (warm[i] - 1.0f) * p; // LERP white -> warm
             }
 
-            // Repaint while animating. Once settled we keep a single trailing
-            // damage so the static tint is composited at least once more; the
-            // node then stays in the OVERLAY layer and re-applies on natural
-            // damage from windows below it.
+            // Once settled the node stays in OVERLAY and re-applies on natural damage.
             output->render->damage_whole();
         }
 
@@ -293,12 +268,8 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
     }
 };
 
-// ---------------------------------------------------------------------------
-// Plugin wrapper: per-output instances + a plugin-wide IPC surface. Night light
-// is a global effect, so each verb fans out to EVERY tracked output (not just
-// the focused one, unlike the peek plugins). A single plugin-level `enabled`
-// flag keeps all outputs in lockstep so toggle stays consistent.
-// ---------------------------------------------------------------------------
+// Global effect: each verb fans out to EVERY output (not just the active one, unlike
+// lumen::ipc_plugin_t); one plugin-level `enabled` keeps toggle in lockstep.
 class wayfire_night_light_plugin_t :
     public wf::per_output_plugin_t<wayfire_night_light_t>
 {

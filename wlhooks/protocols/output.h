@@ -15,13 +15,10 @@ void output_destroy(void);
 surface_size_t *get_screen_size(void);
 int32_t get_output_scale(void);
 
-// Returns the proxy of the first output with a current mode, or any output if
-// none have reported one yet. Used by screencopy etc. NULL if no outputs.
+// First output with a current mode, else any output, else NULL.
 struct wl_output *output_get_primary(void);
 
-// Connector name (e.g. "HDMI-A-1", wl_output v4) for a bound output proxy, or
-// NULL if the proxy isn't one of ours / has no name yet. Used to map a
-// foreign-toplevel output_enter back to a Gdk.Monitor connector.
+// Connector name (wl_output v4) for a bound proxy, or NULL if unknown/unnamed.
 const char *output_name_for_proxy(struct wl_output *proxy);
 
 #endif

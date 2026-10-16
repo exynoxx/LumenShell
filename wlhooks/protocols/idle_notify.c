@@ -8,8 +8,6 @@
 static struct ext_idle_notifier_v1    *notifier     = NULL;
 static struct ext_idle_notification_v1 *notification = NULL;
 
-// Vala-side callbacks (function pointer + target), stored across the
-// registration's lifetime. Mirrors the output_management.c convention.
 static idle_notify_cb s_idled_cb     = NULL;
 static void          *s_idled_data   = NULL;
 static idle_notify_cb s_resumed_cb   = NULL;
@@ -67,7 +65,6 @@ int idle_notify_register(uint32_t timeout_ms,
         return -1;
     }
 
-    // Replace any previously-armed notification.
     idle_notify_unregister();
 
     s_idled_cb     = idled;

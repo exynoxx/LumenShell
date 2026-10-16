@@ -42,7 +42,7 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 
     std::vector<std::unique_ptr<tracked_t>> tracked;
 
-    // Hard deadline so we don't sit RUNNING forever if no view ever maps.
+    // Gives up if no view maps within grace_ms, so we never sit armed forever.
     wl_event_source *grace_timer = nullptr;
 
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
@@ -77,7 +77,6 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
     static int grace_timer_cb(void *data)
     {
         auto *self = static_cast<wayfire_startup_zoom_t *>(data);
-        // If the grace window expires before anything mapped, give up quietly.
         if (self->state == state_t::PENDING)
         {
             self->finish();
@@ -193,10 +192,8 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
             const double vcx = wgeo.x + wgeo.width  / 2.0;
             const double vcy = wgeo.y + wgeo.height / 2.0;
 
-            // view_2d_transformer scales about the view center, then translates
-            // in screen pixels. To make the scale appear to happen about the
-            // output center, push the view center toward the output center
-            // by (1 - s).
+            // The transformer scales about the view centre; translate by (1 - s)
+            // toward the output centre so the zoom is centred on the output.
             auto tnode = t->view->get_transformed_node();
             tnode->begin_transform_update();
             t->tr->scale_x       = (float) s;

@@ -4,7 +4,6 @@ project('wlhooks', 'c',
 
 fs = import('fs')
 
-# --- Find dependencies using pkg-config ---
 wayland_client_dep = dependency('wayland-client', required: true)
 glib_dep           = dependency('glib-2.0', required: true)
 
@@ -34,7 +33,6 @@ foreach xml : protocol_xmls
     command: [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'])
 endforeach
 
-# --- Source and header files ---
 sources = [
   'main.c',
   'registry.c',

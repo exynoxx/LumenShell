@@ -31,8 +31,7 @@ namespace
 {
 constexpr const char *SCREENSHOT_NODE_NAME = "wayfire-curtain-peek-screenshot";
 
-// Tmp logging, mirroring the desktop-peek plugin's /tmp log so a single
-// tail -f can follow both peek variants. Append-only; truncate before a session.
+// Debug log, append-only; truncate manually before a test session.
 inline void curtain_log(const char *fmt, ...)
 {
     FILE *fp = std::fopen("/tmp/wayfire-curtain-peek.log", "a");
@@ -55,12 +54,7 @@ inline void curtain_log(const char *fmt, ...)
 }
 }
 
-// ---------------------------------------------------------------------------
-// Backdrop: a static full-output solid-colour fill drawn behind the desktop
-// grid (a flat, GNOME-Shell-like grey). While the curtain is closed it is
-// hidden under the screenshot; once the screenshot splits it shows through the
-// grid's transparent areas. It never moves, so it is a plain node.
-// ---------------------------------------------------------------------------
+// Static solid fill behind the desktop grid, showing through its transparent areas.
 class curtain_backdrop_node_t : public wf::scene::node_t
 {
   public:
@@ -105,26 +99,11 @@ inline void curtain_backdrop_node_t::gen_render_instances(
         this, push_damage, shown_on));
 }
 
-// ---------------------------------------------------------------------------
-// Screenshot curtain: a full-output node, sitting on the OVERLAY layer (above
-// everything), that draws a captured snapshot of the screen split down a
-// vertical seam, then gathers each half aside like a real fabric curtain.
-//
-// Each half is drawn as a single warped triangle mesh through a small GLES
-// program. The vertex shader maps a regular (u, v) grid over the half's
-// snapshot region onto the gathered band: a sinusoidal fold function compresses
-// the cloth where a pleat turns away from the viewer and stretches it where one
-// faces forward (the classic "vertex displacement" curtain trick), while the
-// band's width grows quadratically toward the floor so the free inner edge
-// bows out in a smooth arc instead of a straight line. The fragment shader
-// samples the snapshot and shades it per-pixel with a cosine fold-lighting
-// term, giving the flat capture a 3D, cloth-like read with no banding. This is
-// two draw calls per frame — far cheaper, and far smoother, than the previous
-// approach of tiling the half with thousands of axis-aligned textured strips.
-// ---------------------------------------------------------------------------
+// OVERLAY node: the frozen snapshot split at a seam, each half one warped mesh
+// (one draw call) gathered aside like a pleated curtain.
 
-// Vertex shader: warp a (u, v) grid of the half onto the gathered, pleated,
-// arced band. All displacement is analytic so the grid can stay coarse.
+// Warps a (u, v) grid of the half onto the gathered, pleated, arced band.
+// All displacement is analytic so the grid can stay coarse.
 static const char *curtain_vert_source =
     R"(
 #version 100
@@ -176,9 +155,8 @@ void main()
 }
 )";
 
-// Fragment shader: sample the snapshot and fake fold lighting. The phase offset
-// keeps the lit ridge and shadowed trough off the geometric crease, so it reads
-// as a side light rather than flat ambient occlusion.
+// Fake fold lighting; the phase offset keeps ridge/trough off the crease so it
+// reads as a side light, not flat ambient occlusion.
 static const char *curtain_frag_source =
     R"(
 #version 100
@@ -210,9 +188,7 @@ void main()
 }
 )";
 
-// Build the static (u, v) grid for one half as a triangle list. The mesh is
-// identical every frame and for both halves, so it is built once and reused;
-// all the per-frame motion lives in the vertex shader's uniforms.
+// Static (u, v) triangle list shared by both halves; motion lives in uniforms.
 inline std::vector<float> curtain_build_grid(int nu, int nv)
 {
     std::vector<float> g;
@@ -241,13 +217,11 @@ class curtain_screenshot_node_t : public wf::scene::node_t
     int   edge_px   = 0;           // residual gathered stack width per half (px)
     float progress  = 0.0f;        // 0 = closed (flat), 1 = fully gathered open
 
-    // Cloth-fold tunables (mirrored from plugin options).
     int   fold_count  = 5;         // pleats across each half
     float fold_depth  = 0.4f;      // strip-width modulation amplitude (0..1)
     float shade_depth = 0.5f;      // peak fold shadow opacity (0..1)
 
-    // GLES warp program + cached mesh, compiled/built lazily on first render
-    // (the only point we are guaranteed a current GL context).
+    // Built lazily on first render: the only point with a guaranteed GL context.
     OpenGL::program_t  program;
     bool               gl_ready = false;
     std::vector<float> grid;
@@ -266,8 +240,6 @@ class curtain_screenshot_node_t : public wf::scene::node_t
         return "curtain-peek-screenshot";
     }
 
-    // The two halves only ever gather within the output, so the full output is
-    // a safe (and simple) bounding box.
     wf::geometry_t get_bounding_box() override
     {
         return geo;
@@ -283,9 +255,7 @@ class curtain_screenshot_render_instance_t :
   public:
     using simple_render_instance_t::simple_render_instance_t;
 
-    // Mesh resolution per half. The warp is analytic and interpolates smoothly,
-    // so a coarse grid suffices: NU across resolves the pleats, NV down resolves
-    // the inner-edge arc. 64 x 24 = ~9k verts/half, two draw calls per frame.
+    // NU resolves the pleats, NV the inner-edge arc.
     static constexpr int NU = 64;
     static constexpr int NV = 24;
 
@@ -309,8 +279,7 @@ class curtain_screenshot_render_instance_t :
         const float foldDepth  = std::clamp(self->fold_depth, 0.0f, 0.9f);
         const float shadeDepth = std::clamp(self->shade_depth, 0.0f, 1.0f);
 
-        // Ease the folds + shading in so a closed curtain is perfectly flat and
-        // the pleating only develops once the halves start to part.
+        // Eased so a closed curtain is perfectly flat.
         const float foldP = std::sin(p * 1.5707963f);
 
         data.pass->custom_gles_subpass([&]
@@ -332,7 +301,6 @@ class curtain_screenshot_render_instance_t :
             self->program.attrib_pointer("grid", 2, 0, self->grid.data());
             self->program.uniformMatrix4f("matrix", matrix);
 
-            // Uniforms shared by both halves.
             self->program.uniform1f("u_p", p);
             self->program.uniform1f("u_foldP", foldP);
             self->program.uniform1f("u_foldDepth", foldDepth);
@@ -342,9 +310,7 @@ class curtain_screenshot_render_instance_t :
             self->program.uniform1f("u_gy", (float) g.y);
             self->program.uniform1f("u_H", (float) g.height);
 
-            // src_x0 / src_w are output-relative (the texture spans [0, W]); the
-            // left half is pinned to the left wall (origin g.x, cum 0..1) and the
-            // right half to the right wall (origin g.x+W, cum walks back to it).
+            // Each half is pinned to its outer wall; src_x0/src_w are output-relative.
             auto draw_half = [&] (int src_x0, int src_w, bool is_left)
             {
                 if (src_w <= 0)
@@ -372,7 +338,6 @@ class curtain_screenshot_render_instance_t :
                 }
             };
 
-            // Left half: snapshot columns [0, seam]; right half: [seam, W].
             draw_half(0, seam, true);
             draw_half(seam, W - seam, false);
 
@@ -390,9 +355,6 @@ inline void curtain_screenshot_node_t::gen_render_instances(
         this, push_damage, shown_on));
 }
 
-// ---------------------------------------------------------------------------
-// Per-output plugin instance.
-// ---------------------------------------------------------------------------
 class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-curtain-peek/toggle"};
@@ -412,26 +374,18 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
     enum class state_t { IDLE, OPENING, OPEN, CLOSING };
     state_t state = state_t::IDLE;
 
-    // The frozen snapshot of the screen and the node that splits it.
     wf::auxilliary_buffer_t screenshot_buf;
     std::shared_ptr<curtain_screenshot_node_t> screenshot_node;
 
-    // Grey fill drawn behind the desktop grid.
     std::shared_ptr<curtain_backdrop_node_t> backdrop;
 
-    // The desktop grid view (app-id == drawer_app_id). It is kept hidden while
-    // the curtain is closed and revealed only while it is open; cached so we can
-    // toggle it even after we have disabled (and thus hidden) its node.
+    // Cached so we can re-enable it after disabling its node.
     wayfire_view desktop_view;
 
-    // The desktop widget layer (app-id == widget_app_id). It lives on BOTTOM
-    // too, so without this it would render on top of the revealed grid. It is
-    // the exact mirror of desktop_view: visible while idle, hidden while the
-    // reveal is open.
+    // Shares BOTTOM with the grid, so it is hidden while the reveal is open.
     wayfire_view widget_view;
 
-    // No grab (capabilities = 0): while open, the revealed desktop grid must
-    // stay clickable, same rationale as wayfire-desktop-peek.
+    // No grab: the revealed grid must stay clickable.
     wf::plugin_activation_data_t activation = {
         .name = "wayfire-curtain-peek",
         .capabilities = 0,
@@ -450,8 +404,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         return ipc_stop();
     };
 
-    // Keep the desktop grid hidden until a curtain peek reveals it. Catch it as
-    // soon as it maps and hide it straight away if nothing is open.
+    // Hide the grid as soon as it maps unless a reveal is open.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
@@ -509,14 +462,11 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         output->connect(&on_view_mapped);
         output->connect(&on_view_unmapped);
 
-        // Which surfaces we are looking for. Logged because a stale app-id in
-        // wayfire.ini is silent otherwise: the reveal simply does nothing, or
-        // (worse) grabs the wrong BOTTOM-layer surface and hides it forever.
+        // Logged because a stale app-id in wayfire.ini otherwise fails silently.
         curtain_log("app ids: drawer='%s' widget='%s'",
             ((std::string) drawer_app_id_opt).c_str(),
             ((std::string) widget_app_id_opt).c_str());
 
-        // The desktop grid may already be mapped by the time we initialise.
         desktop_view = find_desktop_view();
         if (desktop_view)
         {
@@ -539,15 +489,13 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         {
             hard_reset();
         }
-        // Don't leave either BOTTOM-layer surface stuck hidden if the plugin
-        // is unloaded.
+        // Don't leave either BOTTOM-layer surface stuck hidden on unload.
         set_desktop_visible(true);
         set_widgets_visible(true);
         desktop_view = nullptr;
         widget_view = nullptr;
     }
 
-    // Entry points for the plugin-wide IPC handlers.
     bool ipc_toggle()
     {
         if (state == state_t::IDLE)
@@ -591,14 +539,8 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        // Relative (output-local) geometry: the backdrop/screenshot nodes are
-        // added under output->node_for_layer(), whose output_node_t renders its
-        // children in a coordinate system pinned to {0,0} and re-applies the
-        // output's layout offset itself (see wayfire/scene.hpp output_node_t).
-        // Using layout geometry here would double-offset every node by (x,y) on
-        // any output not at the layout origin, drawing the curtain off-screen.
-        // (capture_output() renders the GLOBAL scene and so legitimately needs
-        // layout geometry — the two coordinate spaces are genuinely different.)
+        // Relative geometry: output_node_t children are output-local (layout
+        // geometry would double-offset); capture_output() needs layout geometry.
         const auto rel = output->get_relative_geometry();
         const int W = rel.width;
         const float scale = output->handle ? output->handle->scale : 1.0f;
@@ -607,9 +549,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         const int edge = std::clamp((int) edge_px_opt, 0,
             std::max(0, std::min(seam_off, W - seam_off)));
 
-        // 1. Freeze the screen as it is right now. The desktop grid is still
-        //    hidden at this point, so the snapshot is purely the wallpaper, app
-        //    windows and panel — exactly the "curtain" we want to split.
+        // The grid is still hidden, so it is not captured.
         if (!capture_output())
         {
             curtain_log("start_open: capture failed");
@@ -617,36 +557,20 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        // 2. Reveal the (live, interactive) desktop grid. It lives on BOTTOM, so
-        //    it is naturally below the OVERLAY screenshot added in step 5.
         set_desktop_visible(true);
-
-        // 2b. The widget layer shares the BOTTOM layer with the grid and would
-        //     otherwise render on top of it. Hide it for the duration of the
-        //     reveal; hard_reset() brings it back.
         set_widgets_visible(false);
-
-        // 2a. Hand keyboard focus to the revealed grid so the user can start
-        //     typing into its search field straight away. Moving the seat off
-        //     the previously-focused toplevel also makes lumen-drawer's
-        //     foreign-toplevel watcher fire (no toplevel focused), which is
-        //     what drives its client-side search_entry.grab_focus().
+        // Unfocusing the toplevel also fires lumen-drawer's foreign-toplevel
+        // watcher, which drives its client-side search_entry.grab_focus().
         focus_desktop();
 
-        // 3. Grey backdrop behind the grid (back of the BOTTOM layer), so the
-        //    grid's transparent areas show grey rather than the now-hidden
-        //    wallpaper.
+        // Back of BOTTOM, since the wallpaper is about to be hidden.
         backdrop = std::make_shared<curtain_backdrop_node_t>(
             rel, (wf::color_t) backdrop_color_opt);
         wf::scene::add_back(output->node_for_layer(wf::scene::layer::BOTTOM),
             backdrop);
 
-        // 4. Hide the live wallpaper / windows / panel so only the grid and the
-        //    grey backdrop are visible behind the splitting snapshot. (The frozen
-        //    copy of them lives in the snapshot.)
         set_live_layers_hidden(true);
 
-        // 5. Drop the snapshot on top of everything (OVERLAY) and start closed.
         screenshot_node = std::make_shared<curtain_screenshot_node_t>(
             rel, screenshot_buf.get_texture(), scale);
         screenshot_node->seam_x      = rel.x + seam_off;
@@ -685,8 +609,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         }
 
         screenshot_node->progress = (float) p;
-        // Drive the animation: a continuous full-output repaint until the
-        // simple_animation_t settles.
         output->render->damage_whole();
     }
 
@@ -695,8 +617,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         return view && (view->get_app_id() == (std::string) drawer_app_id_opt);
     }
 
-    // Find the desktop grid (the BOTTOM-layer view whose app-id matches the
-    // configured id) on this output, if it is currently mapped.
     wayfire_view find_desktop_view()
     {
         for (auto& view : wf::collect_views_from_output(output,
@@ -710,10 +630,8 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         return nullptr;
     }
 
-    // Give keyboard focus to the desktop grid's layer surface. Layer-shell
-    // surfaces can't grab focus client-side below the shell layer, so the
-    // compositor has to do it — mirrors wayfire-default-focus. Used on reveal
-    // so the grid's search field is ready to type into immediately.
+    // A BOTTOM-layer surface can't take focus client-side, so the compositor
+    // focuses the grid to make its search field typeable at once.
     void focus_desktop()
     {
         if (!desktop_view)
@@ -735,9 +653,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             wf::keyboard_focus_reason::REFOCUS);
     }
 
-    // Show or hide the desktop grid by toggling its scene node. The view stays
-    // mapped throughout, so the GTK app keeps running; we just stop rendering it
-    // while the curtain is closed.
+    // Toggles the scene node only; the view stays mapped throughout.
     void set_desktop_visible(bool visible)
     {
         if (!desktop_view)
@@ -755,7 +671,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         return view && (view->get_app_id() == (std::string) widget_app_id_opt);
     }
 
-    // Find the desktop widget layer on this output, if it is mapped.
     wayfire_view find_widget_view()
     {
         for (auto& view : wf::collect_views_from_output(output,
@@ -783,9 +698,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         }
     }
 
-    // Hide / show the live foreground layers (wallpaper, app windows, panel).
-    // BOTTOM (the desktop grid + grey backdrop) and OVERLAY (the snapshot) are
-    // left enabled.
     void set_live_layers_hidden(bool hidden)
     {
         for (auto layer : {wf::scene::layer::BACKGROUND,
@@ -795,9 +707,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         }
     }
 
-    // Render the current scene of this output into screenshot_buf. Uses the
-    // output's layout geometry so the correct (possibly non-primary) region of
-    // the global scene is captured rather than the top-left of the layout.
+    // Layout geometry: this renders the GLOBAL scene.
     bool capture_output()
     {
         const auto rel = output->get_layout_geometry();
@@ -839,7 +749,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         }
         screenshot_buf.free();
 
-        // Bring the live layers back before touching the grid/backdrop.
         set_live_layers_hidden(false);
 
         if (backdrop)
@@ -848,9 +757,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             backdrop.reset();
         }
 
-        // Curtain closed → desktop grid goes back to hidden. Hand keyboard
-        // focus back to whatever real window should hold it now that the grid's
-        // surface is no longer visible.
         set_widgets_visible(true);
         set_desktop_visible(false);
         if (auto seat = wf::get_core().seat.get())

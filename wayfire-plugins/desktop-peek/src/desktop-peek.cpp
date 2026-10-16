@@ -32,9 +32,7 @@ namespace
 {
 constexpr const char *TRANSFORMER_NAME = "wayfire-desktop-peek-slide";
 
-// Tmp logging — writes to /tmp/wayfire-desktop-peek.log so we can correlate
-// with the Vala side's /tmp/lumen-desktop-peek.log. Both append; truncate
-// manually before a test session.
+// Debug log, append-only; truncate manually before a test session.
 inline void peek_log(const char *fmt, ...)
 {
     FILE *fp = std::fopen("/tmp/wayfire-desktop-peek.log", "a");
@@ -81,10 +79,7 @@ class wayfire_desktop_peek_t :
 
     std::vector<std::unique_ptr<tracked_t>> tracked_views;
 
-    // No CAPABILITY_GRAB_INPUT and no input grab: while peeked, the
-    // user must still be able to click lumen-desktop tiles, dismiss via the
-    // keybinding, or click empty wallpaper area to toggle the peek off again
-    // (which goes through the IPC path).
+    // No input grab: while peeked the desktop must stay clickable.
     wf::plugin_activation_data_t activation = {
         .name = "wayfire-desktop-peek",
         .capabilities = 0,
@@ -96,9 +91,7 @@ class wayfire_desktop_peek_t :
         return ipc_toggle();
     };
 
-    // dismiss is restore-only; firing it from IDLE is a no-op so it doesn't
-    // step on Escape's other consumers (search bar, expo, etc.) when nothing
-    // is peeked. Returning false in that case lets the keypress propagate.
+    // Restore-only: returns false when idle so the key propagates to other consumers.
     wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
     {
         return ipc_stop();
@@ -179,9 +172,7 @@ class wayfire_desktop_peek_t :
         return false;
     }
 
-    // pointer_interaction_t base requires the override, but with no input
-    // grab installed it is never invoked. Kept as a no-op so we still
-    // satisfy the interface contract.
+    // Required by pointer_interaction_t; never invoked without an input grab.
     void handle_pointer_button(const wlr_pointer_button_event& event) override
     {
         (void) event;
@@ -205,13 +196,12 @@ class wayfire_desktop_peek_t :
         auto views = output->wset()->get_views(
             wf::WSET_MAPPED_ONLY | wf::WSET_CURRENT_WORKSPACE | wf::WSET_SORT_STACKING);
 
-        // Corner order for round-robin assignment: TL, TR, BL, BR.
-        // {left, top} flags per slot.
+        // Round-robin corners TL, TR, BL, BR as {left, top}.
         constexpr std::array<std::pair<bool, bool>, 4> slots = {{
-            {true,  true},   // top-left
-            {false, true},   // top-right
-            {true,  false},  // bottom-left
-            {false, false},  // bottom-right
+            {true,  true},
+            {false, true},
+            {true,  false},
+            {false, false},
         }};
         size_t slot_idx = 0;
 

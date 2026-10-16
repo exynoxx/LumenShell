@@ -49,8 +49,6 @@ static struct zwlr_output_configuration_v1 *s_config = NULL;
 static int  s_apply_result = -1;   // -1 pending, 0 ok, 1 failed, 2 cancelled
 static bool s_apply_done   = false;
 
-// outputs-changed notification (headless daemon hotplug). Fired from `done`,
-// but only when the connected SET of heads changes (see compute_set_sig).
 static output_mgmt_outputs_changed_cb s_changed_cb   = NULL;
 static void                          *s_changed_data = NULL;
 static char                           s_set_sig[1024] = "";
@@ -76,10 +74,8 @@ static void resolve_current_modes(void) {
     }
 }
 
-// Signature of the currently-connected SET of heads: their connector names,
-// sorted, '|'-joined. Independent of per-head properties (position, mode,
-// enabled) so a property-only `done` — including the one our own apply
-// triggers — yields an unchanged signature and is suppressed.
+// Sorted, '|'-joined connector names: ignores per-head properties, so a
+// property-only `done` leaves it unchanged.
 static void compute_set_sig(char *out, size_t cap) {
     const char *names[OM_MAX_HEADS];
     int n = 0;
@@ -305,8 +301,6 @@ bool wlhooks_output_mgmt_available(void) { return s_manager != NULL; }
 void wlhooks_output_mgmt_register_outputs_changed(output_mgmt_outputs_changed_cb cb, void *user_data) {
     s_changed_cb   = cb;
     s_changed_data = user_data;
-    // Baseline the current set so the callback does not fire for the
-    // already-connected heads (nor for the `done` our first apply triggers).
     compute_set_sig(s_set_sig, sizeof s_set_sig);
 }
 

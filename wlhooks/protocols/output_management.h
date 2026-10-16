@@ -4,31 +4,21 @@
 #include <stdbool.h>
 #include <wayland-client.h>
 
-// In-process wlr-output-management-v1 client. Self-contained: it runs on a
-// PRIVATE wl_event_queue so our synchronous roundtrips dispatch only this
-// protocol's events and never reenter GDK's default-queue dispatch. This is a
-// parallel entry point to wlhooks_init_toplevel_with_display() and shares no
-// state with the foreign-toplevel path (it does NOT use registry.c).
-//
-// Used by lumen-settings' Display page to enumerate outputs and apply a layout
-// live, replacing the old wlr-randr CLI shell-out.
+// wlr-output-management-v1 client on a PRIVATE wl_event_queue, so its synchronous
+// roundtrips never reenter GDK's default-queue dispatch. Does not use registry.c.
 
-// Callback convention matches the register_on_window_* pattern: user_data is
-// the trailing argument, so the Vala vapi can expose a bare delegate.
+// user_data is trailing so the Vala vapi can expose a bare delegate.
 typedef void (*output_mgmt_head_cb)(int idx, const char *name, const char *description,
                                     int enabled, int x, int y, int transform, double scale,
                                     void *user_data);
 typedef void (*output_mgmt_mode_cb)(int head_idx, int width, int height, int refresh_mhz,
                                     int preferred, int is_current, void *user_data);
-// Stable identity of a head (EDID make/model/serial; any may be ""). Used to
-// key remembered display profiles independent of which connector/port is used.
+// EDID make/model/serial (any may be ""): connector-independent profile key.
 typedef void (*output_mgmt_head_id_cb)(int idx, const char *name, const char *make,
                                        const char *model, const char *serial,
                                        const char *description, void *user_data);
-// Fired from the manager `done` handler, but ONLY when the connected SET of
-// heads changes (property-only `done`s — including the one our own apply
-// triggers — are suppressed). The load-bearing guard against an
-// apply->done->apply loop for a headless daemon that re-applies on hotplug.
+// Fires only when the connected SET of heads changes; property-only `done`s (incl.
+// the one our own apply triggers) are suppressed — the apply->done->apply loop guard.
 typedef void (*output_mgmt_outputs_changed_cb)(void *user_data);
 
 // Bind the manager on `display` via a private queue and drain the initial
@@ -37,9 +27,7 @@ int  wlhooks_output_mgmt_init(struct wl_display *display);
 void wlhooks_output_mgmt_destroy(void);
 bool wlhooks_output_mgmt_available(void);
 
-// Register a callback fired when the connected SET of heads changes (hotplug).
-// Call after init; the current set is taken as the baseline so it does not fire
-// for the already-connected heads. Pass cb=NULL to unregister.
+// Call after init; the current set becomes the baseline. cb=NULL unregisters.
 void wlhooks_output_mgmt_register_outputs_changed(output_mgmt_outputs_changed_cb cb,
                                                   void *user_data);
 

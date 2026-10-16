@@ -27,8 +27,7 @@ namespace
 {
 constexpr const char *TRANSFORMER_NAME = "wayfire-panel-push-slide";
 
-// Tmp logging, mirroring the peek plugins' /tmp logs so a single tail -f can
-// follow every reveal variant. Append-only; truncate before a session.
+// Debug log, append-only; truncate manually before a test session.
 inline void push_log(const char *fmt, ...)
 {
     FILE *fp = std::fopen("/tmp/wayfire-panel-push.log", "a");
@@ -51,17 +50,8 @@ inline void push_log(const char *fmt, ...)
 }
 }
 
-// ---------------------------------------------------------------------------
-// Per-output plugin instance.
-//
-// On push, every mapped view across BACKGROUND / BOTTOM / WORKSPACE / TOP
-// (wallpaper, the lumen-drawer drawer, app windows, other layer-shell
-// surfaces) — except the panel itself (exclude_app_id) — gets a
-// view_2d_transformer_t whose translation_y animates uniformly to ±push_px.
-// This slides the WHOLE scene away from the panel's edge to free a strip the
-// (separately revealed) panel slides into. view_2d_transformer_t moves input
-// together with rendering, so the pushed scene stays interactive; no grab.
-// ---------------------------------------------------------------------------
+// Slides every view in BACKGROUND..TOP except the panel by ±push_px. The 2D
+// transformer remaps input with rendering, so the pushed scene stays interactive.
 class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-panel-push/toggle"};
@@ -90,9 +80,7 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
 
     std::vector<std::unique_ptr<tracked_t>> tracked_views;
 
-    // No CAPABILITY_GRAB_INPUT and no input grab: the pushed scene must stay
-    // fully interactive (the user keeps using their shifted windows while the
-    // panel is revealed). The transformer remaps input along with rendering.
+    // No input grab: the pushed scene must stay usable while the panel is shown.
     wf::plugin_activation_data_t activation = {
         .name = "wayfire-panel-push",
         .capabilities = 0,
@@ -111,9 +99,7 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         return ipc_stop();
     };
 
-    // A view that maps while the scene is (or is becoming) pushed — e.g. a new
-    // window or layer-shell surface — must appear already shifted, in line with
-    // everything else, instead of popping in at the un-pushed origin.
+    // A view mapping mid-push must appear already shifted, not at the origin.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
@@ -216,9 +202,6 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         return view && (view->get_app_id() == (std::string) exclude_app_id_opt);
     }
 
-    // Attach a slide transformer to a view and settle it to the current
-    // animation value. Skips the panel, unmapped views, and views already
-    // tracked.
     void track_view(wayfire_view view)
     {
         if (!view || !view->is_mapped() || is_excluded(view))
@@ -318,8 +301,6 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
             set_view_translation(*t, p);
         }
 
-        // Drive the animation: keep the output repainting until the
-        // simple_animation_t settles.
         output->render->damage_whole();
     }
 

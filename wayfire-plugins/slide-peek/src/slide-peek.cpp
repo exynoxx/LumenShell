@@ -32,9 +32,7 @@ namespace
 constexpr const char *SCREENSHOT_NODE_NAME = "wayfire-slide-peek-screenshot";
 constexpr const char *DESKTOP_TRANSFORMER_NAME = "wayfire-slide-peek-slide";
 
-// Tmp logging, mirroring the curtain-peek/desktop-peek plugins' /tmp logs so a
-// single tail -f can follow every reveal variant. Append-only; truncate before
-// a session.
+// Debug log, append-only; truncate manually before a test session.
 inline void slide_log(const char *fmt, ...)
 {
     FILE *fp = std::fopen("/tmp/wayfire-slide-peek.log", "a");
@@ -57,13 +55,8 @@ inline void slide_log(const char *fmt, ...)
 }
 }
 
-// ---------------------------------------------------------------------------
-// Slide screenshot: a full-output node, sitting on the OVERLAY layer (above
-// everything), that draws a captured snapshot of the foreground (app windows +
-// panel, the wallpaper excluded) translated vertically. As the slide opens the
-// snapshot slides off one screen edge while the live desktop grid slides in
-// from the opposite edge; the live wallpaper stays put behind them.
-// ---------------------------------------------------------------------------
+// OVERLAY node drawing the frozen foreground snapshot (wallpaper excluded),
+// translated vertically as the live grid slides in from the opposite edge.
 class slide_screenshot_node_t : public wf::scene::node_t
 {
   public:
@@ -80,8 +73,7 @@ class slide_screenshot_node_t : public wf::scene::node_t
         return "slide-peek-screenshot";
     }
 
-    // The snapshot travels a full output height past either the top or the
-    // bottom edge, so the swept band is up to one output above and one below.
+    // The snapshot can travel a full output height past either edge.
     wf::geometry_t get_bounding_box() override
     {
         return {geo.x, geo.y - geo.height, geo.width, geo.height * 3};
@@ -124,9 +116,6 @@ inline void slide_screenshot_node_t::gen_render_instances(
         this, push_damage, shown_on));
 }
 
-// ---------------------------------------------------------------------------
-// Per-output plugin instance.
-// ---------------------------------------------------------------------------
 class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-slide-peek/toggle"};
@@ -141,32 +130,22 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     enum class state_t { IDLE, OPENING, OPEN, CLOSING };
     state_t state = state_t::IDLE;
 
-    // The frozen snapshot of the foreground and the node that slides it.
     wf::auxilliary_buffer_t screenshot_buf;
     std::shared_ptr<slide_screenshot_node_t> screenshot_node;
 
-    // Output height and slide sign, recomputed per open. slide_sign = +1 when
-    // the grid enters from the top (foreground exits off the bottom), -1 when
-    // it enters from the bottom (foreground exits off the top).
+    // slide_sign = +1: grid enters from the top; -1: from the bottom.
     int H = 0;
     int slide_sign = +1;
 
-    // The desktop grid view (app-id == drawer_app_id). Kept hidden while the
-    // slide is closed and revealed only while it is open; cached so we can
-    // toggle it even after we have disabled (and thus hidden) its node.
+    // Cached so we can re-enable it after disabling its node.
     wayfire_view desktop_view;
 
-    // The desktop widget layer (app-id == widget_app_id). It lives on BOTTOM
-    // too, so without this it would render on top of the revealed grid. It is
-    // the exact mirror of desktop_view: visible while idle, hidden while the
-    // reveal is open.
+    // Shares BOTTOM with the grid, so it is hidden while the reveal is open.
     wayfire_view widget_view;
 
-    // Transformer that slides the live grid in from the offscreen edge.
     std::shared_ptr<wf::scene::view_2d_transformer_t> desktop_tr;
 
-    // No grab (capabilities = 0): while open, the revealed desktop grid must
-    // stay clickable, same rationale as wayfire-curtain-peek.
+    // No grab: the revealed grid must stay clickable.
     wf::plugin_activation_data_t activation = {
         .name = "wayfire-slide-peek",
         .capabilities = 0,
@@ -185,8 +164,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         return ipc_stop();
     };
 
-    // Keep the desktop grid hidden until a slide peek reveals it. Catch it as
-    // soon as it maps and hide it straight away if nothing is open.
+    // Hide the grid as soon as it maps unless a reveal is open.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
@@ -207,8 +185,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     {
         if (ev->view == desktop_view)
         {
-            // The grid is going away; drop our transformer reference so we do
-            // not touch a stale node.
             desktop_tr.reset();
             desktop_view = nullptr;
         }
@@ -247,14 +223,11 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         output->connect(&on_view_mapped);
         output->connect(&on_view_unmapped);
 
-        // Which surfaces we are looking for. Logged because a stale app-id in
-        // wayfire.ini is silent otherwise: the reveal simply does nothing, or
-        // (worse) grabs the wrong BOTTOM-layer surface and hides it forever.
+        // Logged because a stale app-id in wayfire.ini otherwise fails silently.
         slide_log("app ids: drawer='%s' widget='%s'",
             ((std::string) drawer_app_id_opt).c_str(),
             ((std::string) widget_app_id_opt).c_str());
 
-        // The desktop grid may already be mapped by the time we initialise.
         desktop_view = find_desktop_view();
         if (desktop_view)
         {
@@ -277,15 +250,13 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         {
             hard_reset();
         }
-        // Don't leave either BOTTOM-layer surface stuck hidden if the plugin
-        // is unloaded.
+        // Don't leave either BOTTOM-layer surface stuck hidden on unload.
         set_desktop_visible(true);
         set_widgets_visible(true);
         desktop_view = nullptr;
         widget_view = nullptr;
     }
 
-    // Entry points for the plugin-wide IPC handlers.
     bool ipc_toggle()
     {
         if (state == state_t::IDLE)
@@ -329,22 +300,14 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        // Relative (output-local) geometry: the screenshot node is added under
-        // output->node_for_layer(), whose output_node_t renders its children in
-        // a coordinate system pinned to {0,0} and re-applies the output's layout
-        // offset itself (see wayfire/scene.hpp output_node_t). Using layout
-        // geometry here would double-offset the node by (x,y) on any output not
-        // at the layout origin, sliding the snapshot off-screen. (capture_output()
-        // renders the GLOBAL scene and so legitimately needs layout geometry —
-        // the two coordinate spaces are genuinely different.)
+        // Relative geometry: output_node_t children are output-local (layout
+        // geometry would double-offset); capture_output() needs layout geometry.
         const auto rel = output->get_relative_geometry();
         H = rel.height;
         slide_sign = ((std::string) direction_opt == "bottom") ? -1 : +1;
 
-        // 1. Freeze the foreground as it is right now, with the wallpaper
-        //    excluded: disable the BACKGROUND layer for the capture so the
-        //    snapshot is purely app windows + panel over a transparent fill.
-        //    The desktop grid is still hidden here, so it is not captured.
+        // Capture without BACKGROUND so the snapshot is windows + panel over
+        // transparency (the grid is still hidden here).
         wf::scene::set_node_enabled(
             output->node_for_layer(wf::scene::layer::BACKGROUND), false);
         const bool captured = capture_output();
@@ -358,21 +321,11 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        // 2. Reveal the (live, interactive) desktop grid. It lives on BOTTOM,
-        //    so it is naturally below the OVERLAY screenshot added in step 5.
         set_desktop_visible(true);
-
-        // 2b. The widget layer shares the BOTTOM layer with the grid and would
-        //     otherwise render on top of it. Hide it for the duration of the
-        //     reveal; hard_reset() brings it back.
         set_widgets_visible(false);
-
-        // 2a. Hand keyboard focus to the revealed grid so the user can start
-        //     typing into its search field straight away.
         focus_desktop();
 
-        // 3. Attach a transformer to the live grid and park it offscreen on the
-        //    entering edge so it can slide into place.
+        // Park the live grid offscreen on the entering edge.
         if (desktop_view)
         {
             desktop_tr = std::make_shared<wf::scene::view_2d_transformer_t>(desktop_view);
@@ -384,13 +337,8 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             n->end_transform_update();
         }
 
-        // 4. Hide the live app windows / panel so only the grid and the live
-        //    wallpaper are visible behind the sliding snapshot. (The frozen copy
-        //    of the foreground lives in the snapshot; the wallpaper stays live.)
         set_live_layers_hidden(true);
 
-        // 5. Drop the snapshot on top of everything (OVERLAY) and start closed
-        //    (translate_y == 0, covering the foreground's old position).
         screenshot_node = std::make_shared<slide_screenshot_node_t>(
             rel, screenshot_buf.get_texture());
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY),
@@ -419,21 +367,17 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     {
         if (screenshot_node)
         {
-            // Foreground slides off the exiting edge.
             screenshot_node->translate_y = (float) (slide_sign * H * p);
         }
 
         if (desktop_tr && desktop_view)
         {
-            // Grid slides in from the entering edge to its resting position.
             auto n = desktop_view->get_transformed_node();
             n->begin_transform_update();
             desktop_tr->translation_y = (float) (-slide_sign * H * (1.0 - p));
             n->end_transform_update();
         }
 
-        // Drive the animation: a continuous full-output repaint until the
-        // simple_animation_t settles.
         output->render->damage_whole();
     }
 
@@ -442,8 +386,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         return view && (view->get_app_id() == (std::string) drawer_app_id_opt);
     }
 
-    // Find the desktop grid (the BOTTOM-layer view whose app-id matches the
-    // configured id) on this output, if it is currently mapped.
     wayfire_view find_desktop_view()
     {
         for (auto& view : wf::collect_views_from_output(output,
@@ -457,10 +399,8 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         return nullptr;
     }
 
-    // Give keyboard focus to the desktop grid's layer surface. Layer-shell
-    // surfaces can't grab focus client-side below the shell layer, so the
-    // compositor has to do it. Used on reveal so the grid's search field is
-    // ready to type into immediately.
+    // A BOTTOM-layer surface can't take focus client-side, so the compositor
+    // focuses the grid to make its search field typeable at once.
     void focus_desktop()
     {
         if (!desktop_view)
@@ -482,9 +422,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             wf::keyboard_focus_reason::REFOCUS);
     }
 
-    // Show or hide the desktop grid by toggling its scene node. The view stays
-    // mapped throughout, so the GTK app keeps running; we just stop rendering it
-    // while the slide is closed.
+    // Toggles the scene node only; the view stays mapped throughout.
     void set_desktop_visible(bool visible)
     {
         if (!desktop_view)
@@ -502,7 +440,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         return view && (view->get_app_id() == (std::string) widget_app_id_opt);
     }
 
-    // Find the desktop widget layer on this output, if it is mapped.
     wayfire_view find_widget_view()
     {
         for (auto& view : wf::collect_views_from_output(output,
@@ -530,9 +467,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         }
     }
 
-    // Hide / show the live foreground layers (app windows + panel). BACKGROUND
-    // (the live wallpaper) stays untouched, BOTTOM (the desktop grid) and
-    // OVERLAY (the snapshot) are left enabled.
     void set_live_layers_hidden(bool hidden)
     {
         for (auto layer : {wf::scene::layer::WORKSPACE, wf::scene::layer::TOP})
@@ -541,13 +475,10 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         }
     }
 
-    // Render the current scene of this output into screenshot_buf, with a
-    // transparent clear so areas that have no window let the live wallpaper
-    // (re-enabled by the caller) show through behind the sliding snapshot.
+    // Transparent clear so the live wallpaper shows through empty areas.
     bool capture_output()
     {
-        // Layout geometry so the correct (possibly non-primary) region of the
-        // global scene is captured rather than the top-left of the layout.
+        // Layout geometry: this renders the GLOBAL scene.
         const auto rel = output->get_layout_geometry();
         const float scale = output->handle ? output->handle->scale : 1.0f;
         if ((rel.width <= 0) || (rel.height <= 0))
@@ -587,23 +518,17 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         }
         screenshot_buf.free();
 
-        // Remove the grid transformer before re-enabling layers, so the grid
-        // snaps back to its resting position.
         if (desktop_tr && desktop_view)
         {
             desktop_view->get_transformed_node()->rem_transformer(desktop_tr);
         }
         desktop_tr.reset();
 
-        // Bring the live foreground layers back; defensively re-enable the
-        // wallpaper in case a capture left it disabled.
+        // Defensively re-enable the wallpaper in case a capture left it disabled.
         set_live_layers_hidden(false);
         wf::scene::set_node_enabled(
             output->node_for_layer(wf::scene::layer::BACKGROUND), true);
 
-        // Slide closed → desktop grid goes back to hidden. Hand keyboard focus
-        // back to whatever real window should hold it now that the grid's
-        // surface is no longer visible.
         set_widgets_visible(true);
         set_desktop_visible(false);
         if (auto seat = wf::get_core().seat.get())

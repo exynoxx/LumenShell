@@ -8,14 +8,9 @@
 
 struct wl_display *wl_display = NULL;
 
-// Init for clients that already own a wl_display (a GTK app via
-// gdk_wayland_display_get_wl_display()). Binds the foreign-toplevel slice
-// only. The caller keeps ownership of the wl_display and is responsible for
-// dispatch — GDK's internal GSource pumps events automatically.
 int wlhooks_init_toplevel_with_display(struct wl_display *external) {
     if (!external) return -1;
     wl_display = external;
-
 
     toplevel_init();
     seat_init();
@@ -37,9 +32,6 @@ void wlhooks_destroy_toplevel(void) {
 }
 
 // ---- ext-idle-notify-v1 (lumen-lockscreen idle auto-lock) ------------------
-// Minimal init on a caller-owned wl_display (GTK's): bind wl_seat + the idle
-// notifier, then let the GDK main loop dispatch idled/resumed events. Self-
-// contained — the lockscreen needs neither toplevel nor activation hooks.
 int wlhooks_idle_notify_init(struct wl_display *external) {
     if (!external) return -1;
     wl_display = external;
