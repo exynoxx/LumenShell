@@ -11,6 +11,7 @@ public class Banner : Gtk.Box {
     private Gtk.Label      body_lbl;
     private Gtk.Box        actions_row;
     private bool           has_actions = false;
+    private bool           has_default = false;
     private string[]       current_actions = {};
 
     public Banner(Notification n) {
@@ -68,11 +69,12 @@ public class Banner : Gtk.Box {
         update_from(n);
 
         // Click anywhere on the card (except on a button — buttons consume
-        // their own click first) → dismiss.
+        // their own click first) → invoke "default" if offered, else dismiss.
         var click = new Gtk.GestureClick();
         click.set_button(Gdk.BUTTON_PRIMARY);
         click.released.connect((n_press, x, y) => {
-            dismissed();
+            if (has_default) action_invoked("default");
+            else dismissed();
         });
         add_controller(click);
     }
@@ -132,12 +134,13 @@ public class Banner : Gtk.Box {
         }
 
         has_actions = false;
-        // actions[] is pairs of [key, label]. Skip the special "default"
-        // key (whole-banner click already dismisses with action).
+        has_default = false;
+        // actions[] is pairs of [key, label]. The special "default" key is
+        // the whole-banner click, not a button.
         for (int i = 0; i + 1 < actions.length; i += 2) {
             string key   = actions[i];
             string label = actions[i + 1];
-            if (key == "default") continue;
+            if (key == "default") { has_default = true; continue; }
             var btn = new Gtk.Button.with_label(label);
             btn.add_css_class("lumen-notif-action");
             btn.set_hexpand(true);
