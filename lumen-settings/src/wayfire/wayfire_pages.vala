@@ -67,8 +67,8 @@ namespace LumenSettings.Wayfire {
         IniStore store;
         Gee.HashMap<string, PluginDef> by_name;
 
-        Gtk.Stack stack;
-        Gtk.Widget? detail_child;
+        Adw.NavigationView nav;
+        Adw.NavigationPage list_page;
         Gee.HashMap<Gtk.ListBoxRow, string> row_map;
 
         Gtk.SearchBar search_bar;
@@ -90,10 +90,6 @@ namespace LumenSettings.Wayfire {
         public string title     { owned get { return "Wayfire Plugins"; } }
         public string icon_name { owned get { return "preferences-system-symbolic"; } }
 
-        // This page pins its own search bar / back button outside an inner
-        // ScrolledWindow, so it must not be wrapped in the window's scroller.
-        public bool scrolls_itself() { return true; }
-
         public WayfirePluginsPage(Gee.ArrayList<PluginDef> plugins, IniStore store) {
             this.plugins = plugins;
             this.store = store;
@@ -102,36 +98,31 @@ namespace LumenSettings.Wayfire {
         }
 
         public Gtk.Widget build() {
-            // The window already wraps this in a ScrolledWindow, so the children
-            // are plain boxes (no nested scrollbars).
-            stack = new Gtk.Stack() {
-                transition_type = Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
-                hexpand = true, vexpand = true,
-            };
             row_map = new Gee.HashMap<Gtk.ListBoxRow, string>();
             search_text = new Gee.HashMap<Gtk.ListBoxRow, string>();
             plugin_rows = new Gee.ArrayList<Gtk.ListBoxRow>();
             other_rows = new Gee.ArrayList<Gtk.ListBoxRow>();
             plugin_switches = new Gee.HashMap<string, Gtk.Switch>();
 
-            stack.add_named(build_list_view(), "list");
-            stack.set_visible_child_name("list");
+            nav = new Adw.NavigationView();
+            list_page = new Adw.NavigationPage(build_list_view(), title);
+            nav.add(list_page);
 
             // Typing anywhere in the window reveals the search bar; it stays
             // hidden while empty (Escape clears and hides it again). Key
-            // capture must hang off the toplevel — not this stack — since the
-            // stack rarely holds focus. We only bind it on the list view: on
+            // capture must hang off the toplevel — not this view — since the
+            // view rarely holds focus. We only bind it on the list view: on
             // the detail view a BindingRow needs raw key events to capture
             // shortcuts, and a toplevel capture would swallow them first.
-            stack.map.connect(update_search_capture);
-            stack.unmap.connect(() => search_bar.set_key_capture_widget(null));
-            stack.notify["visible-child-name"].connect(update_search_capture);
+            nav.map.connect(update_search_capture);
+            nav.unmap.connect(() => search_bar.set_key_capture_widget(null));
+            nav.notify["visible-page"].connect(update_search_capture);
 
             // Re-read wayfire.ini whenever this page is shown: another page
             // (the Panel page's push mode) may have toggled wayfire-panel-push
             // in [core] plugins since this page was built at startup.
-            stack.map.connect(refresh_states);
-            return stack;
+            nav.map.connect(refresh_states);
+            return nav;
         }
 
         // Reload the file and sync every plugin switch to the on-disk state,
@@ -147,9 +138,9 @@ namespace LumenSettings.Wayfire {
         }
 
         void update_search_capture() {
-            var root = stack.get_root() as Gtk.Widget;
+            var root = nav.get_root() as Gtk.Widget;
             if (root == null) return;
-            if (stack.get_mapped() && stack.visible_child_name == "list") {
+            if (nav.get_mapped() && nav.visible_page == list_page) {
                 search_bar.set_key_capture_widget(root);
             } else {
                 search_bar.set_key_capture_widget(null);
@@ -157,13 +148,9 @@ namespace LumenSettings.Wayfire {
         }
 
         Gtk.Widget build_list_view() {
-            var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-                hexpand = true, vexpand = true,
-            };
-
             // A revealer that stays collapsed until the user starts typing, so
             // nothing is shown while the search is empty. Pinned above the
-            // scroller so it stays visible no matter how far the list scrolls.
+            // page so it stays visible no matter how far the list scrolls.
             search_entry = new Gtk.SearchEntry() {
                 placeholder_text = "Search plugins",
                 hexpand = true,
@@ -174,9 +161,8 @@ namespace LumenSettings.Wayfire {
             };
             search_bar.set_child(search_entry);
             search_bar.connect_entry(search_entry);
-            outer.append(search_bar);
 
-            var page = new Adw.PreferencesPage() { vexpand = true };
+            var page = new Adw.PreferencesPage();
 
             plugin_list = new Adw.PreferencesGroup() { title = "Plugins" };
             foreach (var p in plugins) {
@@ -199,8 +185,9 @@ namespace LumenSettings.Wayfire {
                 page.add(other_list);
             }
 
-            outer.append(page);
-            return outer;
+            var view = new Adw.ToolbarView() { content = page };
+            view.add_top_bar(search_bar);
+            return view;
         }
 
         Gtk.ListBoxRow make_plugin_row(PluginDef p) {
@@ -279,42 +266,13 @@ namespace LumenSettings.Wayfire {
             SettingsPage page = by_name.has_key(name)
                 ? (SettingsPage) new PluginPage(by_name.get(name), store)
                 : (SettingsPage) new GenericSectionPage(name, store);
-            show_detail(page.title, page.build());
-        }
-
-        void show_detail(string title, Gtk.Widget body) {
-            if (detail_child != null) stack.remove(detail_child);
-            detail_child = build_detail(title, body);
-            stack.add_named(detail_child, "detail");
-            stack.set_visible_child_name("detail");
-        }
-
-        Gtk.Widget build_detail(string title, Gtk.Widget body) {
-            var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-                hexpand = true, vexpand = true,
-            };
-
-            // Header (back button + title) is pinned above the scroller so it
-            // stays in place while the plugin's options scroll beneath it.
-            var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-                margin_top = 18, margin_start = 18, margin_end = 18,
-            };
-            var back = new Gtk.Button.from_icon_name("go-previous-symbolic") {
-                valign = Gtk.Align.CENTER,
-                tooltip_text = "Back to plugins",
-            };
-            back.add_css_class("flat");
-            back.clicked.connect(() => stack.set_visible_child_name("list"));
-            header.append(back);
-
-            var lbl = new Gtk.Label(title) { xalign = 0, hexpand = true };
-            lbl.add_css_class("title-2");
-            header.append(lbl);
-
-            box.append(header);
-            body.vexpand = true;
-            box.append(body);
-            return box;
+            // The header gives the detail its back button and title.
+            var view = new Adw.ToolbarView() { content = page.build() };
+            view.add_top_bar(new Adw.HeaderBar() {
+                show_start_title_buttons = false,
+                show_end_title_buttons = false,
+            });
+            nav.push(new Adw.NavigationPage(view, page.title));
         }
 
         bool is_enabled(string name) {
