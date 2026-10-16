@@ -1,5 +1,3 @@
-using Gtk;
-
 public interface IControlModule : GLib.Object {
     public abstract string      module_id ();   // "wifi", "bluetooth", …
     public abstract Gtk.Widget  home_tile ();   // shown in the overview

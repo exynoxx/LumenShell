@@ -1,5 +1,3 @@
-using Gtk;
-
 public class SegmentedControl : Gtk.Widget {
 
     public const int CTRL_H = 34;

@@ -1,5 +1,3 @@
-using Gtk;
-
 public class ControlCenter : Gtk.Box {
 
     const int WIDTH  = 560;

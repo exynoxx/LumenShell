@@ -1,5 +1,3 @@
-using Gtk;
-
 public class WifiDetail : CcListDetail {
 
     WifiService service;

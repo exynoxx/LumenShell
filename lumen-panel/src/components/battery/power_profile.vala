@@ -1,5 +1,3 @@
-using GLib;
-
 // UNKNOWN: the backend couldn't report a value (e.g. tlp-stat needs root).
 public enum PowerProfile { UNKNOWN, PERFORMANCE, BALANCED, POWER_SAVER }
 

@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BluetoothTray : GLib.Object, ITrayApplet, IControlModule {
     BluetoothService service;
     TrayButton icon;

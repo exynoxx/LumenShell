@@ -1,5 +1,3 @@
-using GLib;
-
 // Reads sysfs directly (cheap, no subprocess); writes via brightnessctl, which
 // carries the udev permissions to touch the backlight.
 public class BrightnessService : GLib.Object {

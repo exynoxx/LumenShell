@@ -1,5 +1,3 @@
-using Gtk;
-
 public class AppPopupMenu : Gtk.Popover {
 
     weak AppEntry entry;

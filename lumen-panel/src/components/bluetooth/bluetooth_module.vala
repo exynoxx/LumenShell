@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BluetoothModule : GLib.Object {
 
     BluetoothService service;

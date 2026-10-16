@@ -1,5 +1,3 @@
-using Gtk;
-
 public class Clock : Gtk.Box, ITrayApplet {
 
     Gtk.Label label;

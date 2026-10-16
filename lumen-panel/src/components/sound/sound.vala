@@ -1,5 +1,3 @@
-using Gtk;
-
 public class SoundTray : GLib.Object, ITrayApplet, IControlModule {
     SoundService service;
     TrayButton icon;

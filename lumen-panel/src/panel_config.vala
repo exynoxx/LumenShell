@@ -1,5 +1,3 @@
-using GLib;
-
 // Read once at startup from panel.json (flat dotted keys, written by lumen-settings).
 public class PanelConfig {
     public static bool at_top = false;

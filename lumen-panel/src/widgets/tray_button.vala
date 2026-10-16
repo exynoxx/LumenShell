@@ -1,5 +1,3 @@
-using Gtk;
-
 // Passive status icon: the whole TrayBar is one click target. A Box wrapper
 // because GtkImage is final.
 public class TrayButton : Gtk.Box {

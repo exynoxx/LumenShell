@@ -1,5 +1,3 @@
-using Gtk;
-
 public class PanelWindow : Gtk.ApplicationWindow {
 
     // HIDDEN: auto-hide overlay. PUSH: like HIDDEN, but a Wayfire plugin slides the
@@ -129,12 +127,10 @@ public class PanelWindow : Gtk.ApplicationWindow {
     }
 
     // Detach the shared TrayBar (held by App) so it survives a window rebuild.
-    public TrayBar? release_tray () {
-        if (tray == null) return null;
-        var t = tray;
-        root.remove(t);
+    public void release_tray () {
+        if (tray == null) return;
+        root.remove(tray);
         tray = null;
-        return t;
     }
 
     // Resolve behavior.mode, falling back to the legacy behavior.auto-hide bool

@@ -1,5 +1,3 @@
-using GLib;
-
 public class PowerProfileService : GLib.Object {
 
     private const uint POLL_SEC = 10;

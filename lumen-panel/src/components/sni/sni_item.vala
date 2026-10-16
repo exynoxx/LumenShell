@@ -1,6 +1,3 @@
-using Gtk;
-using GLib;
-
 // We don't lean on GDBusProxy's cached properties because SNI signals icon
 // changes with its own signals rather than PropertiesChanged, so the cache
 // would go stale.
@@ -8,7 +5,6 @@ public class SniItem : Gtk.Button {
 
     const string IFACE = "org.kde.StatusNotifierItem";
 
-    public string key { get; private set; }
     string bus;
     string path;
 
@@ -20,10 +16,9 @@ public class SniItem : Gtk.Button {
     double scroll_acc_x = 0;
     double scroll_acc_y = 0;
 
-    public SniItem (string bus, string path, string key) {
+    public SniItem (string bus, string path) {
         this.bus = bus;
         this.path = path;
-        this.key = key;
 
         add_css_class("tray-icon");
         add_css_class("systray-item");
@@ -73,7 +68,7 @@ public class SniItem : Gtk.Button {
         click.released.connect((n_press, x, y) => {
             uint b = click.get_current_button();
             if (b == Gdk.BUTTON_MIDDLE)         secondary_activate();
-            else if (b == Gdk.BUTTON_SECONDARY) context(x, y);
+            else if (b == Gdk.BUTTON_SECONDARY) context();
         });
         add_controller(click);
 
@@ -103,7 +98,7 @@ public class SniItem : Gtk.Button {
         call_ignore("Scroll", new Variant("(is)", delta, orientation));
     }
 
-    void context (double x, double y) {
+    void context () {
         if (menu_path != null) {
             var m = new SniMenu(bus, menu_path);
             m.show_at(this);

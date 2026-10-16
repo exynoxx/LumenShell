@@ -1,5 +1,3 @@
-using Gtk;
-
 public class SoundModule : GLib.Object {
 
     public signal void open_requested ();

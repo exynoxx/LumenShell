@@ -1,5 +1,3 @@
-using Gtk;
-
 public class LumenProgressBar : Gtk.Widget {
 
     int _value = 0;

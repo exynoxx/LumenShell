@@ -1,5 +1,3 @@
-using GLib;
-
 // Battery state from UPower's composite DisplayDevice on the system bus; UPower
 // handles BAT0/BAT1/HID discovery and charge_* vs energy_* units.
 public class BatteryService : GLib.Object {

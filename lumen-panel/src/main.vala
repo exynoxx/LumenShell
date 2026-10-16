@@ -1,5 +1,3 @@
-using Gtk;
-
 public class App : GLib.Object {
 
     public const int ICON_ROW_HEIGHT = 60;

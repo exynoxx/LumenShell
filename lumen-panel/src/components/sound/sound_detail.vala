@@ -1,5 +1,3 @@
-using Gtk;
-
 public class SoundDetail : CcDetail {
 
     SoundService service;

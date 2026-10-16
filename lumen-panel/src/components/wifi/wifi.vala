@@ -1,5 +1,3 @@
-using Gtk;
-
 public class WifiTray : GLib.Object, ITrayApplet, IControlModule {
     WifiService service;
     TrayButton icon;

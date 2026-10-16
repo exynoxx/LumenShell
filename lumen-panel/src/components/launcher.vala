@@ -1,5 +1,3 @@
-using Gtk;
-
 #if PANEL_PEEK
 public class LauncherButton : Gtk.Button {
 

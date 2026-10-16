@@ -1,5 +1,3 @@
-using Gtk;
-
 [DBus (name = "org.lumenshell.Lock1")]
 interface LockProxy : GLib.Object {
     public abstract void Lock () throws DBusError, IOError;

@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BatteryTray : GLib.Object, ITrayApplet, IControlModule {
     BatteryService service;
     TrayButton icon;

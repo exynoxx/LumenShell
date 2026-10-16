@@ -1,19 +1,15 @@
-using GLib;
-
 // The id is the same opaque uint32 wlhooks issues, which is what
 // activate/close/minimize accept.
 public class Toplevel : GLib.Object {
     public uint   id          { get; construct; }
     public string app_id      { get; set; }
-    public string title       { get; set; }
     public bool   activated   { get; set; }
     // Output connector name ("" if unknown), for per-monitor taskbar filtering.
     public string output      { get; set; default = ""; }
 
-    public Toplevel (uint id, string app_id, string title) {
+    public Toplevel (uint id, string app_id) {
         GLib.Object(id: id);
         this.app_id    = app_id;
-        this.title     = title;
         this.activated = false;
     }
 }
@@ -62,7 +58,7 @@ public class ToplevelStore : GLib.Object {
     public List<unowned Toplevel> all ()   { return by_id.get_values(); }
 
     void on_new (uint id, string app_id, string title) {
-        var t = new Toplevel(id, app_id, title);
+        var t = new Toplevel(id, app_id);
         by_id.insert(id, t);
         added(t);
         stdout.printf("+ toplevel %u  app=%s  title=%s\n", id, app_id, title);

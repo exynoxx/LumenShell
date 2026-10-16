@@ -1,5 +1,3 @@
-using Gtk;
-
 public delegate ITrayApplet TrayAppletFactory ();
 
 public class TrayRegistry : GLib.Object {

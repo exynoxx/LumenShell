@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BluetoothDetail : CcListDetail {
 
     BluetoothService service;

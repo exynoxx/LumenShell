@@ -1,4 +1,3 @@
-using Gtk;
 using Gee;
 
 // The whole widget hides itself when there are no items so the trailing
@@ -6,7 +5,6 @@ using Gee;
 public class SysTray : Gtk.Box, ITrayApplet {
 
     Gtk.Box icons;
-    SniWatcher watcher;
     HashMap<string, SniItem> by_key = new HashMap<string, SniItem>();
 
     // The watcher is shared; each SysTray builds its own SniItems because a GTK
@@ -25,7 +23,6 @@ public class SysTray : Gtk.Box, ITrayApplet {
 
         visible = false;   // revealed once the first item registers
 
-        this.watcher = watcher;
         watcher.item_added.connect(on_item_added);
         watcher.item_removed.connect(on_item_removed);
         // Replay items registered before this widget attached.
@@ -34,7 +31,7 @@ public class SysTray : Gtk.Box, ITrayApplet {
 
     void on_item_added (string bus, string path, string key) {
         if (by_key.has_key(key)) return;
-        var item = new SniItem(bus, path, key);
+        var item = new SniItem(bus, path);
         by_key[key] = item;
         icons.append(item);
         update_visibility();

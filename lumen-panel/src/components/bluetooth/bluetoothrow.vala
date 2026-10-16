@@ -1,5 +1,3 @@
-using Gtk;
-
 // RSSI is unreliable for paired devices, so there's no signal glyph.
 public class BluetoothRow : Gtk.Widget, CcRow {
 

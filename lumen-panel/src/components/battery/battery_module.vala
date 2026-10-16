@@ -1,5 +1,3 @@
-using Gtk;
-
 public class BatteryModule : GLib.Object {
 
     BatteryService service;

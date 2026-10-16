@@ -1,5 +1,3 @@
-using GLib;
-
 // Resolved metadata for one app_id. `info` is null when no .desktop file could
 // be found; `name` then falls back to the app_id itself.
 public struct AppMetadata {

@@ -1,5 +1,3 @@
-using Gtk;
-
 // Applets with a control surface also implement IControlModule; icon-only items
 // (Clock, SysTray) implement just this.
 public interface ITrayApplet : GLib.Object {
@@ -17,7 +15,7 @@ public class TrayBar : Gtk.Box {
     Gee.ArrayList<ITrayApplet> applets = new Gee.ArrayList<ITrayApplet> ();
     Gee.ArrayList<IControlModule> modules = new Gee.ArrayList<IControlModule> ();
 
-    public signal void expanded_changed (bool expanded);
+    public signal void expanded_changed ();
 
     LogindBridge logind;
 
@@ -101,13 +99,13 @@ public class TrayBar : Gtk.Box {
         cc.show_home ();
         icon_row.can_target = false;
         reveal.set_reveal (true);
-        expanded_changed (true);
+        expanded_changed ();
     }
 
     public void collapse () {
         if (!reveal.revealed) return;
         reveal.set_reveal (false);
-        expanded_changed (false);
+        expanded_changed ();
         if (cc != null) cc.show_home ();
     }
 

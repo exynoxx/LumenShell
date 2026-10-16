@@ -1,5 +1,3 @@
-using Gtk;
-
 public class LumenTextField : Gtk.Widget {
 
     Gtk.Text entry;

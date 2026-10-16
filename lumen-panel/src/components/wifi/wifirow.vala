@@ -1,5 +1,3 @@
-using Gtk;
-
 // The enclosing card clips the rounded corners, so the row paints a full-width
 // selection fill.
 public class WifiRow : Gtk.Widget, CcRow {

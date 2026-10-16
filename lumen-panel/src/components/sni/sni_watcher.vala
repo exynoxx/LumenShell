@@ -1,4 +1,3 @@
-using GLib;
 using Gee;
 
 // Owns org.kde.StatusNotifierWatcher, or acts as a host for whoever already does
@@ -18,7 +17,6 @@ public class SniWatcher : GLib.Object {
     }
 
     HashMap<string, ItemRec> items = new HashMap<string, ItemRec>();
-    uint watcher_owner_id = 0;
     uint host_owner_id = 0;
 
     public signal void status_notifier_item_registered (string service);
@@ -100,7 +98,7 @@ public class SniWatcher : GLib.Object {
 
     [DBus (visible = false)]
     public void start () {
-        watcher_owner_id = Bus.own_name(
+        Bus.own_name(
             BusType.SESSION,
             "org.kde.StatusNotifierWatcher",
             BusNameOwnerFlags.NONE,

@@ -1,4 +1,3 @@
-using Gtk;
 using Gee;
 
 public class AppBar : Gtk.Box {
@@ -114,7 +113,7 @@ public class AppBar : Gtk.Box {
 
         entry.drag_started.connect(() => on_drag_started(entry));
         entry.drag_moved  .connect((ox) => on_drag_moved(ox));
-        entry.drag_dropped.connect((ox) => on_drag_dropped());
+        entry.drag_dropped.connect(on_drag_dropped);
     }
 
     // Stable base for the reorder math; the box itself is untouched until drop.

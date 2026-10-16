@@ -1,5 +1,3 @@
-using Gtk;
-
 public class CcSlider : Gtk.Widget {
 
     const int H  = 26;   // widget height

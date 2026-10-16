@@ -1,6 +1,3 @@
-using Gtk;
-using Gee;
-
 public class AppEntry : Gtk.Button {
 
     public const int SLOT_WIDTH  = 70;
@@ -33,7 +30,7 @@ public class AppEntry : Gtk.Button {
     // AppBar owns sibling order; the gesture only reports begin / move / drop.
     public signal void drag_started ();
     public signal void drag_moved   (double offset_x);
-    public signal void drag_dropped (double offset_x);
+    public signal void drag_dropped ();
 
     public AppEntry (string app_id, AppMetadata meta) {
         GLib.Object(app_id: app_id);
@@ -80,7 +77,7 @@ public class AppEntry : Gtk.Button {
             if (!dragging) return;
             dragging = false;
             remove_css_class("dragging");
-            drag_dropped(ox);
+            drag_dropped();
         });
         add_controller(drag);
     }
@@ -88,8 +85,6 @@ public class AppEntry : Gtk.Button {
     const double DRAG_THRESHOLD = 8.0;
 
     public bool has_open_windows () { return window_ids.size > 0; }
-
-    public bool owns_window (uint id) { return window_ids.contains(id); }
 
     public void add_window (uint id) {
         if (!window_ids.contains(id)) window_ids.add(id);

@@ -1,5 +1,3 @@
-using GLib;
-
 // An ON_DEMAND layer surface only sees keys after a click, so the global tray
 // hotkey is a Wayfire [command] binding running:
 //   dbus-send --session --dest=org.lumenshell.Panel /org/lumenshell/Panel \
@@ -9,8 +7,6 @@ public class PanelService : GLib.Object {
 
     [DBus (visible = false)]
     public weak TrayBar tray { get; private set; }
-
-    uint owner_id = 0;
 
     [DBus (visible = false)]
     public PanelService (TrayBar tray) {
@@ -23,7 +19,7 @@ public class PanelService : GLib.Object {
 
     [DBus (visible = false)]
     public void start () {
-        owner_id = Bus.own_name(
+        Bus.own_name(
             BusType.SESSION,
             "org.lumenshell.Panel",
             BusNameOwnerFlags.NONE,

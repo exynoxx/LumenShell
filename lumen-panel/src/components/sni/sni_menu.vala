@@ -1,6 +1,3 @@
-using Gtk;
-using GLib;
-
 public class SniMenu : GLib.Object {
 
     const string IFACE = "com.canonical.dbusmenu";

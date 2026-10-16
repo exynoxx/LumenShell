@@ -1,6 +1,3 @@
-using GLib;
-using Json;
-
 public class Theme : GLib.Object {
 
     // Default palette mirrors default-theme.json; load_from_file() overwrites if JSON is found.

@@ -1,5 +1,3 @@
-using Gtk;
-
 // Apple Wi-Fi glyph: a weak signal dims the outer arcs to 25% rather than
 // dropping them.
 public class WifiArc {

@@ -1,5 +1,3 @@
-using Gtk;
-
 // Single-child clip-reveal: the child is always allocated its full natural size
 // at a fixed corner, and one eased `fraction` drives the visible bloom.
 public class TrayReveal : Gtk.Widget {

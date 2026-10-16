@@ -1,5 +1,3 @@
-using Gtk;
-
 public class WifiModule : GLib.Object {
 
     WifiService service;
