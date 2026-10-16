@@ -107,13 +107,11 @@ package adds a "LumenShell" entry to the display manager's session menu.
 %{_bindir}/lumen-osdctl
 %{_bindir}/lumen-panel
 %{_bindir}/lumen-drawer
-%{_bindir}/lumen-desktop
 %{_bindir}/lumen-notifications
 %{_bindir}/lumen-session
 %{_bindir}/lumen-settings
 %{_bindir}/start-lumenshell
 %{_datadir}/lumen-panel/
-%{_datadir}/lumen-desktop/
 %{_datadir}/lumenshell/
 %{_datadir}/lumen-settings/
 %{_datadir}/applications/org.lumenshell.Settings.desktop

@@ -341,6 +341,8 @@ executable('lumen-drawer',
 )
 
 # --- lumen-desktop ---
+# Parked: source only, not built or installed. Flip to `if true` to revive.
+if false
 # Same link-order rule as lumen-panel: gtk4-layer-shell first.
 desktopwidgets_deps = [
   gtk4_layer_shell_dep,
@@ -388,6 +390,7 @@ executable('lumen-desktop',
 
 install_data('lumen-desktop/default-desktop.json',
   install_dir: get_option('datadir') / 'lumen-desktop')
+endif
 
 # --- lumen-osdctl ---
 osdctl_deps = [glib_dep, gio_dep, json_dep, wayland_dep, wlhooks_dep, m_dep]
