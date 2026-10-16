@@ -2,21 +2,8 @@ using Gtk;
 
 namespace LumenSettings {
 
-    /* Drag-to-reorder list of tray applets, each row a drag handle + label +
-     * on/off switch. Built from an ordered (id, label, enabled) set — the Panel
-     * page feeds it LumenTray.CATALOG ordered per the stored tray.order, with
-     * each switch reflecting tray.disabled. Reordering uses GTK4's
-     * DragSource/DropTarget on the rows (the idiomatic GTK4 approach); after any
-     * reorder or toggle it emits `changed` with the full current order plus the
-     * disabled subset, which the page persists to panel.json.
-     *
-     * Wrapped in a Gtk.ListBox so it drops cleanly inside an Adwaita boxed group
-     * (Adw.PreferencesGroup): the ListBox draws the row separators, this Box just carries
-     * the list. */
     public class ReorderList : Gtk.Box {
 
-        // One applet row. Holds its id and the live switch so the parent can
-        // read the full order + enabled state back out on any change.
         class Row : Gtk.ListBoxRow {
             public string id;
             public Gtk.Switch sw;
@@ -74,9 +61,7 @@ namespace LumenSettings {
             }
         }
 
-        // Wire one row as both a drag source (carries its own Row*) and a drop
-        // target (re-inserts the dragged row before/after itself). Dropping on
-        // the lower half of a row inserts after it, the upper half before.
+        // Dropping on the lower half of a row inserts after it, the upper half before.
         void attach_dnd(Row row) {
             var src = new Gtk.DragSource() {
                 actions = Gdk.DragAction.MOVE,
@@ -93,8 +78,6 @@ namespace LumenSettings {
                 var dragged = v.get_object() as Row;
                 if (dragged == null || dragged == row) return false;
                 int target = row.get_index();
-                // Inserting after when the pointer is in the lower half keeps the
-                // drop position intuitive.
                 bool after = y > row.get_height() / 2.0;
                 list.remove(dragged);
                 int idx = row.get_index();   // recompute: removal may have shifted it

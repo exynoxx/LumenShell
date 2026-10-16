@@ -64,22 +64,15 @@ namespace LumenSettings {
             content_page.title = page.title;
             restart_target = page.restart_target();
             restart_btn.visible = restart_target != null;
-            // Matters only while collapsed (narrow window), where the sidebar
-            // and the content share one pane.
+            // Only matters when collapsed (sidebar and content share a pane).
             split.show_content = true;
         }
 
         void restart_current_page() {
             if (restart_target == null) return;
             try {
-                // setsid -f fully detaches the new process so it outlives
-                // lumen-settings; the sleep lets the old surface tear down.
-                //
-                // pkill -x matches against the kernel's `comm`, which is capped
-                // at 15 chars (TASK_COMM_LEN-1), so the full name of a longer
-                // target (lumen-lockscreen=16, lumen-notifications=19) never
-                // matches and the old daemon survives — then the freshly spawned
-                // one can't own its bus name and quits. Match the truncated comm.
+                // pkill -x matches the kernel comm, capped at 15 chars; longer
+                // names never match and the old daemon keeps its bus name.
                 var comm = restart_target.length > 15
                     ? restart_target.substring(0, 15) : restart_target;
                 GLib.Process.spawn_command_line_async(

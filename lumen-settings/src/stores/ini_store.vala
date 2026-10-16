@@ -2,13 +2,8 @@ using GLib;
 
 namespace LumenSettings {
 
-    /* Section-aware INI store over GLib.KeyFile.
-     *
-     * KEEP_COMMENTS makes KeyFile preserve comments, blank lines, group order
-     * and key order across a load/save cycle; new keys land at the end of their
-     * group and new groups at EOF. The only difference from the file as written
-     * by hand is that KeyFile emits `key=value` where a human writes
-     * `key = value` — Wayfire's parser accepts both. */
+    // KEEP_COMMENTS round-trips comments and ordering; KeyFile only rewrites
+    // `key = value` as `key=value`, which Wayfire accepts.
     public class IniStore : GLib.Object {
         public string path { get; construct; }
 
@@ -17,9 +12,8 @@ namespace LumenSettings {
 
         KeyFile kf = new KeyFile();
 
-        // False when the file exists but could not be parsed even after
-        // normalisation. save() then refuses to write: KeyFile would emit only
-        // the fragment it managed to read, truncating the user's wayfire.ini.
+        // False when even the normalised file won't parse; save() then refuses,
+        // since KeyFile would write back only the fragment it read.
         bool writable = true;
 
         public IniStore(string path) {
@@ -27,11 +21,6 @@ namespace LumenSettings {
             load();
         }
 
-        // Re-read the backing file from disk, discarding the in-memory copy.
-        // Needed when more than one page mutates the SAME file (e.g. the Panel
-        // page and the Wayfire Plugins page both edit wayfire.ini's [core]
-        // plugins): each holds its own IniStore, so a writer must reload first
-        // or it clobbers the other's changes with its stale snapshot.
         public void reload() {
             load();
         }
@@ -120,10 +109,8 @@ namespace LumenSettings {
             }
         }
 
-        // KeyFile rejects three shapes the old hand-rolled parser tolerated:
-        // ';' comments, lines that are neither comment nor `key=value`, and
-        // keys appearing before the first group. Turn each into a '#' comment
-        // so the rest of the file still loads and the text survives a save.
+        // KeyFile rejects ';' comments, non-`key=value` lines and keys before the
+        // first group; '#'-comment them so the rest loads and survives a save.
         static string normalize(string content) {
             var sb = new StringBuilder();
             bool in_group = false;

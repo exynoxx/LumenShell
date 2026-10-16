@@ -2,8 +2,7 @@ using Gtk;
 
 namespace LumenSettings {
 
-    // Per-application audio row widgets, kept in an index-keyed map so the
-    // 1.5s poll can diff (add/remove/update) rather than rebuild the list.
+    // Kept in an index-keyed map so each poll diffs rows instead of rebuilding.
     private class AppRowWidgets : GLib.Object {
         public Adw.ActionRow row;
         public Gtk.Button mute_btn;
@@ -12,9 +11,6 @@ namespace LumenSettings {
         public bool       dragging = false;
     }
 
-    // Live output + input audio management page. Reuses the shared lumen-common
-    // SoundService/PactlClient backend; the input level meter is opt-in and
-    // gated on visibility so Settings never holds a capture stream open idle.
     public class SoundPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "sound"; } }
         public string title     { owned get { return "Sound"; } }
@@ -78,8 +74,6 @@ namespace LumenSettings {
             return page;
         }
 
-        // ---------------- Output ----------------
-
         Adw.PreferencesGroup build_output_group() {
             var group = new Adw.PreferencesGroup() { title = "Output" };
 
@@ -132,8 +126,6 @@ namespace LumenSettings {
             return group;
         }
 
-        // ---------------- Input ----------------
-
         Adw.PreferencesGroup build_input_group() {
             input_group = new Adw.PreferencesGroup() { title = "Input" };
 
@@ -166,11 +158,8 @@ namespace LumenSettings {
             vrow.add_suffix(slider_box(in_mute_btn, in_scale, in_label));
             input_group.add(vrow);
 
-            // Level meter only when parec is present. Opening the meter starts a
-            // real mic capture stream, which forces Bluetooth headsets from A2DP
-            // down to the HSP/HFP call profile. So it is strictly manual: the
-            // capture opens only while the user holds the Test toggle on, never
-            // just because the page is visible.
+            // Strictly manual: a mic capture stream forces Bluetooth headsets
+            // from A2DP down to the HSP/HFP call profile.
             if (service.meter_available()) {
                 level_bar = new Gtk.LevelBar.for_interval(0.0, 1.0) {
                     mode = Gtk.LevelBarMode.CONTINUOUS,
@@ -204,9 +193,7 @@ namespace LumenSettings {
                     if (level_bar != null) level_bar.value = peak;
                 });
 
-                // Safety only: if the group leaves the screen (page switched,
-                // window closed) while the meter is on, stop the capture so we
-                // never leave a Bluetooth headset stuck in the call profile.
+                // Never leave a headset stuck in the call profile off-screen.
                 input_group.unmap.connect(() => {
                     if (level_toggle != null && level_toggle.active)
                         level_toggle.active = false;
@@ -216,8 +203,6 @@ namespace LumenSettings {
             return input_group;
         }
 
-        // ---------------- Applications ----------------
-
         Adw.PreferencesGroup build_apps_group() {
             apps_group = new Adw.PreferencesGroup() { title = "Applications" };
             apps_empty_row = new Adw.ActionRow() { title = "No applications playing audio" };
@@ -226,11 +211,8 @@ namespace LumenSettings {
             return apps_group;
         }
 
-        // ---------------- Alerts (best-effort) ----------------
-        // Full GNOME "system sounds" parity is not achievable via pactl alone —
-        // PulseAudio exposes system sounds only as a transient sink-input, so we
-        // can steer it only while it is actively playing. We target the
-        // "System Sounds" stream when present and disable the row otherwise.
+        // Best-effort: system sounds are only a transient sink-input, so the
+        // row can steer them only while one is playing.
         Adw.PreferencesGroup build_alerts_group() {
             var group = new Adw.PreferencesGroup() { title = "Alerts" };
             alert_scale = make_scale(0, 100);
@@ -250,12 +232,9 @@ namespace LumenSettings {
             return group;
         }
 
-        // ---------------- Live sync ----------------
-
         void sync_ui() {
             syncing = true;
 
-            // --- Output device combo ---
             var new_sinks_sig = sink_signature(service.sinks);
             if (new_sinks_sig != sinks_sig) {
                 sinks_sig = new_sinks_sig;
@@ -264,7 +243,6 @@ namespace LumenSettings {
                 output_combo.repopulate(labels, values, service.default_sink);
             }
 
-            // --- Output volume / mute ---
             if (!out_dragging && (int) out_scale.get_value() != service.volume_percent
                 && !(allow_over && (int) out_scale.get_value() > 100)) {
                 out_scale.set_value(service.volume_percent);
@@ -273,7 +251,7 @@ namespace LumenSettings {
             set_mute_icon(out_mute_btn, service.muted,
                           "audio-volume-muted-symbolic", "audio-volume-high-symbolic");
 
-            // --- Input device combo (filter out .monitor sources) ---
+            // Filter out .monitor sources.
             string[] src_labels = {}, src_values = {};
             foreach (var s in service.sources) {
                 if (s.monitor) continue;
@@ -286,7 +264,6 @@ namespace LumenSettings {
                 input_combo.repopulate(src_labels, src_values, service.default_source);
             }
 
-            // --- Input volume / mute ---
             if (!in_dragging && (int) in_scale.get_value() != service.input_volume_percent) {
                 in_scale.set_value(service.input_volume_percent);
             }
@@ -295,10 +272,8 @@ namespace LumenSettings {
                           "microphone-sensitivity-muted-symbolic",
                           "audio-input-microphone-symbolic");
 
-            // --- Applications diff ---
             sync_app_rows();
 
-            // --- Alerts ---
             sync_alert_row();
 
             syncing = false;
@@ -374,8 +349,6 @@ namespace LumenSettings {
             }
             alert_row.sensitive = (alert_index != "");
         }
-
-        // ---------------- helpers ----------------
 
         bool is_system_sounds(string name) {
             return name.down().contains("system sounds");

@@ -15,8 +15,6 @@ namespace LumenSettings {
 
             var page = new Adw.PreferencesPage();
 
-            // Keys match the lumen-notifications theme schema (see Theme.load
-            // in lumen-notifications) so edits here take effect directly.
             var placement = new Adw.PreferencesGroup() { title = "Placement" };
             placement.add(rows.int_row("banner.margin.top",   "Margin top",   0, 200, 1, 16, "px from the top edge of the screen"));
             placement.add(rows.int_row("banner.margin.right", "Margin right", 0, 200, 1, 16, "px from the right edge of the screen"));

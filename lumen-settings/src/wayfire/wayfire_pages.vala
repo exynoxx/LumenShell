@@ -4,9 +4,6 @@ using Gee;
 
 namespace LumenSettings.Wayfire {
 
-    /* The `[core] plugins` list in wayfire.ini, as edited by the Wayfire
-     * Plugins page, the Panel page (wayfire-panel-push) and the Drawer page
-     * (curtain vs slide reveal). */
     public class PluginList {
 
         public static bool is_enabled(IniStore store, string name) {
@@ -20,9 +17,8 @@ namespace LumenSettings.Wayfire {
         // Order is preserved and duplicates dropped: Wayfire loads plugins in
         // list order, so reshuffling would silently change plugin precedence.
         public static void set_enabled(IniStore store, string name, bool on) {
-            // Three pages hold their own IniStore, all built from the same
-            // startup snapshot. Without this reload a toggle here writes back a
-            // stale list and drops whatever a sibling page enabled since.
+            // Three pages each hold an IniStore on wayfire.ini; without this
+            // reload a toggle writes back a stale list.
             store.reload();
 
             var seen = new Gee.HashSet<string>();
@@ -55,9 +51,6 @@ namespace LumenSettings.Wayfire {
             var store = new IniStore(Paths.wayfire_ini());
             var plugins = Metadata.load_dir(METADATA_DIR);
 
-            // A single sidebar entry. Individual plugin/section settings open
-            // as an in-page detail view (with a back button), not as their own
-            // sidebar entries.
             r.add(new WayfirePluginsPage(plugins, store), "Wayfire");
         }
     }
@@ -79,11 +72,8 @@ namespace LumenSettings.Wayfire {
         Gee.ArrayList<Gtk.ListBoxRow> other_rows;
         Gee.HashMap<Gtk.ListBoxRow, string> search_text;
 
-        // plugin name -> its enable switch, so we can refresh on show when the
-        // file was changed elsewhere (the Panel page enabling wayfire-panel-push).
         Gee.HashMap<string, Gtk.Switch> plugin_switches;
-        // Guards the switch's notify handler while we set state programmatically
-        // during a refresh, so a refresh doesn't trigger a redundant save.
+        // Set while refresh_states() syncs switches, so it doesn't write back.
         bool suppress_toggle = false;
 
         public string id        { owned get { return "wayfire-plugins"; } }
@@ -108,25 +98,17 @@ namespace LumenSettings.Wayfire {
             list_page = new Adw.NavigationPage(build_list_view(), title);
             nav.add(list_page);
 
-            // Typing anywhere in the window reveals the search bar; it stays
-            // hidden while empty (Escape clears and hides it again). Key
-            // capture must hang off the toplevel — not this view — since the
-            // view rarely holds focus. We only bind it on the list view: on
-            // the detail view a BindingRow needs raw key events to capture
-            // shortcuts, and a toplevel capture would swallow them first.
+            // Key capture hangs off the toplevel (this view rarely has focus),
+            // and only on the list view: it would swallow BindingRow's key grabs.
             nav.map.connect(update_search_capture);
             nav.unmap.connect(() => search_bar.set_key_capture_widget(null));
             nav.notify["visible-page"].connect(update_search_capture);
 
-            // Re-read wayfire.ini whenever this page is shown: another page
-            // (the Panel page's push mode) may have toggled wayfire-panel-push
-            // in [core] plugins since this page was built at startup.
+            // Another page may have changed [core] plugins since this was built.
             nav.map.connect(refresh_states);
             return nav;
         }
 
-        // Reload the file and sync every plugin switch to the on-disk state,
-        // without firing set_enabled (which would write a stale list back).
         void refresh_states() {
             store.reload();
             suppress_toggle = true;
@@ -148,9 +130,6 @@ namespace LumenSettings.Wayfire {
         }
 
         Gtk.Widget build_list_view() {
-            // A revealer that stays collapsed until the user starts typing, so
-            // nothing is shown while the search is empty. Pinned above the
-            // page so it stays visible no matter how far the list scrolls.
             search_entry = new Gtk.SearchEntry() {
                 placeholder_text = "Search plugins",
                 hexpand = true,
@@ -170,9 +149,6 @@ namespace LumenSettings.Wayfire {
             }
             page.add(plugin_list);
 
-            // Sections present in wayfire.ini that have no metadata (e.g.
-            // third-party plugins, per-output sections). Editable via the raw
-            // key = value editor.
             var others = new Gee.ArrayList<string>();
             foreach (var section in store.sections()) {
                 if (!by_name.has_key(section)) others.add(section);
@@ -201,8 +177,7 @@ namespace LumenSettings.Wayfire {
                 valign = Gtk.Align.CENTER,
                 active = is_enabled(p.name),
             };
-            // The switch consumes its own clicks, so toggling enable/disable
-            // does not trigger row activation (navigation).
+            // The switch consumes its own clicks, so toggling doesn't navigate.
             sw.notify["active"].connect(() => {
                 if (suppress_toggle) return;
                 set_enabled(p.name, sw.active);

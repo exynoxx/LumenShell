@@ -17,7 +17,6 @@ namespace LumenSettings {
 
             var page = new Adw.PreferencesPage();
 
-            // --- Layout ---------------------------------------------------
             var layout_grp = new Adw.PreferencesGroup() { title = "Layout" };
 
             var cur_layout  = input.get_str("xkb_layout")  ?? "us";
@@ -34,9 +33,7 @@ namespace LumenSettings {
 
             layout_row.value_changed.connect((code) => {
                 input.put("xkb_layout", code);
-                // The previous variant belongs to the old layout — drop it and
-                // refill the dropdown. repopulate() is guarded, so resetting the
-                // selection does not write a stray variant.
+                // The old variant belongs to the previous layout; reset it.
                 var v = xkb.variants_for(code);
                 variant_row.repopulate(v.names, v.codes, "");
                 input.put("xkb_variant", "");
@@ -56,7 +53,6 @@ namespace LumenSettings {
 
             page.add(layout_grp);
 
-            // --- Key repeat -----------------------------------------------
             var repeat = new Adw.PreferencesGroup() { title = "Key repeat" };
             repeat.add(input.int_row("kb_repeat_delay", "Repeat delay",
                 50, 2000, 10, 400, "ms a key is held before it repeats"));
@@ -64,7 +60,6 @@ namespace LumenSettings {
                 1, 100, 1, 40, "key repeats per second"));
             page.add(repeat);
 
-            // --- Lock keys ------------------------------------------------
             var locks = new Adw.PreferencesGroup() { title = "Lock keys" };
             locks.add(input.bool_row("kb_numlock_default_state",
                 "Num Lock on at startup", false));

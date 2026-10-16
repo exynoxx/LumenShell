@@ -3,11 +3,7 @@ using Gee;
 
 namespace LumenSettings {
 
-    /* Snapshot-drawn monitor-arrangement canvas. Draws each enabled output as a
-     * rounded rectangle scaled to fit; the user drags rectangles to reposition
-     * them (with edge snapping). Modeled on the panel's SegmentedControl /
-     * LumenProgressBar snapshot widgets. Operates directly on the page's working
-     * OutputInfo list so position edits are visible to Apply. */
+    // Edits the page's working OutputInfo list in place, so drags are what Apply sends.
     public class DisplayArranger : Gtk.Widget {
 
         const int CANVAS_H = 220;
@@ -75,8 +71,6 @@ namespace LumenSettings {
             else { min = nat = CANVAS_H; }
         }
 
-        // ---- coordinate transform -------------------------------------------
-
         void compute_transform() {
             int w = get_width(), h = get_height();
             int maxx = 0, maxy = 0;
@@ -118,8 +112,6 @@ namespace LumenSettings {
             }
             return -1;
         }
-
-        // ---- drag handlers --------------------------------------------------
 
         void on_drag_begin(double x, double y) {
             compute_transform();
@@ -171,8 +163,7 @@ namespace LumenSettings {
             }
         }
 
-        // Re-origin so the top-left of the bounding box is (0,0); resolve gross
-        // overlaps of the dragged rect by nudging it to abut.
+        // Re-origin so the top-left of the bounding box is (0,0).
         void normalize() {
             int mx = int.MAX, my = int.MAX;
             foreach (var o in outs) {
@@ -186,8 +177,6 @@ namespace LumenSettings {
                 o.pos_y -= my;
             }
         }
-
-        // ---- drawing --------------------------------------------------------
 
         public override void snapshot(Gtk.Snapshot s) {
             int w = get_width(), h = get_height();
@@ -218,7 +207,6 @@ namespace LumenSettings {
                 s.append_color(i == selected ? rect_sel : rect_bg, rect);
                 s.pop();
 
-                // label: name + resolution
                 var layout = create_pango_layout(
                     "%s\n%s".printf(o.name, o.current_mode.res_key()));
                 layout.set_alignment(Pango.Alignment.CENTER);

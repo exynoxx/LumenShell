@@ -2,12 +2,7 @@ using Gtk;
 
 namespace LumenSettings {
 
-    // Live WiFi + Bluetooth + Ethernet management page. Reuses the shared
-    // lumen-common backends (WifiService/BluetoothService) via their passive
-    // constructors so opening Settings never toggles the user's radios. The
-    // dynamic network/device lists are rebuilt on the services' state_changed
-    // signals; the `building` guard suppresses the switch handlers during the
-    // programmatic .active restore (same shape as DisplayPage).
+    // Passive service constructors: opening Settings must never toggle the radios.
     public class NetworkingPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "networking"; } }
         public string title     { owned get { return "Networking"; } }
@@ -68,8 +63,7 @@ namespace LumenSettings {
         string pending_pw_ssid = "";
 
         public Gtk.Widget build() {
-            // The network/device lists are rebuilt in place between fixed
-            // groups, so everything rides in one box to keep the order.
+            // One box, so lists rebuilt in place keep their order between groups.
             root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18);
 
             build_wifi();
@@ -77,7 +71,6 @@ namespace LumenSettings {
             build_ethernet();
             build_bluetooth();
 
-            // Live updates.
             wifi.state_changed.connect(rebuild_wifi);
             wifi.state_changed.connect(rebuild_eth);
             wifi.connect_result.connect(on_wifi_connect_result);
@@ -98,8 +91,6 @@ namespace LumenSettings {
             page.add(holder);
             return page;
         }
-
-        // ---- Wi-Fi ---------------------------------------------------------
 
         void build_wifi() {
             var group = new Adw.PreferencesGroup() { title = "Wi-Fi" };
@@ -309,8 +300,6 @@ namespace LumenSettings {
             dlg.present(root_widget());
         }
 
-        // ---- Wi-Fi details -------------------------------------------------
-
         void build_wifi_details() {
             wifi_details_group = new Adw.PreferencesGroup() { title = "Wi-Fi details" };
             wifi_ip_row   = new Adw.ActionRow() { title = "IPv4 address", use_markup = false };
@@ -320,10 +309,6 @@ namespace LumenSettings {
             wifi_sec_row  = new Adw.ActionRow() { title = "Security", use_markup = false };
             wifi_band_row = new Adw.ActionRow() { title = "Band", use_markup = false };
 
-            // Password row: the passphrase is masked by default and revealed
-            // with the eye toggle; a copy button puts it on the clipboard. The
-            // whole row is hidden for open networks (or when NM won't yield the
-            // secret), so it only appears when there's an actual password.
             wifi_pw_row = new Adw.ActionRow() { title = "Password", use_markup = false };
             wifi_pw_reveal = new Gtk.ToggleButton() {
                 icon_name = "view-reveal-symbolic",
@@ -357,8 +342,6 @@ namespace LumenSettings {
             root_box.append(wifi_details_group);
         }
 
-        // Render the passphrase masked or plain per the reveal toggle. Called on
-        // toggle and whenever a fresh secret arrives.
         void update_password_display() {
             bool show = wifi_pw_reveal.active && wifi_password != "";
             // Fixed-length mask: don't leak the passphrase length when hidden.
@@ -366,8 +349,6 @@ namespace LumenSettings {
             wifi_pw_reveal.tooltip_text = wifi_pw_reveal.active
                 ? "Hide password" : "Show password";
         }
-
-        // ---- Ethernet ------------------------------------------------------
 
         void build_ethernet() {
             var group = new Adw.PreferencesGroup() { title = "Ethernet" };
@@ -409,8 +390,6 @@ namespace LumenSettings {
             building = false;
         }
 
-        // ---- shared details fill ------------------------------------------
-
         void on_details_ready(NetDetails wifi_det, NetDetails eth_det) {
             wifi_ip_row.subtitle   = or_dash(wifi_det.ip4);
             wifi_gw_row.subtitle   = or_dash(wifi_det.gateway);
@@ -441,8 +420,6 @@ namespace LumenSettings {
             if (changed && (wifi.connected || wifi.ethernet_connected))
                 wifi.request_details();
         }
-
-        // ---- Bluetooth -----------------------------------------------------
 
         void build_bluetooth() {
             var group = new Adw.PreferencesGroup() { title = "Bluetooth" };
@@ -602,8 +579,6 @@ namespace LumenSettings {
             bt_addr_row.subtitle    = or_dash(d.mac);
             bt_paired_row.subtitle  = d.bonded ? "Bonded" : (d.paired ? "Paired" : "No");
         }
-
-        // ---- helpers -------------------------------------------------------
 
         Gtk.Widget? root_widget() {
             return root_box.get_root() as Gtk.Widget;

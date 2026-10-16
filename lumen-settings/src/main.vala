@@ -21,10 +21,7 @@ namespace LumenSettings {
                 return;
             }
 
-            // The bundled stylesheet is an unconditionally dark palette, and
-            // the Adwaita chrome it now sits in (header bars, sidebar) is
-            // styled by libadwaita rather than by us — so the two only agree
-            // if libadwaita is in dark mode.
+            // The bundled palette is dark-only; force libadwaita to match.
             Adw.StyleManager.get_default().color_scheme = Adw.ColorScheme.FORCE_DARK;
 
             Theme.load();

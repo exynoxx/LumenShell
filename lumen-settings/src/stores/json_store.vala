@@ -1,8 +1,6 @@
 using LumenCommon;
 namespace LumenSettings {
 
-    /* Tiny dotted-key JSON store. Values are stored as strings (or int64); the
-     * existing per-app loaders accept both. Reads tolerate a missing file. */
     public class JsonStore : GLib.Object {
         public string path { get; construct; }
         GLib.HashTable<string, Json.Node> values =
@@ -49,9 +47,7 @@ namespace LumenSettings {
             values.insert(key, n);
         }
 
-        /* String-array accessors (e.g. the panel's tray order/disabled lists).
-         * Non-array / missing keys read as an empty array; only string elements
-         * are kept. */
+        // Missing/non-array keys read as empty; non-string elements are dropped.
         public string[] get_string_array(string key) {
             string[] result = {};
             var n = values.lookup(key);

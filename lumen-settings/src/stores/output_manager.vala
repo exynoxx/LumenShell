@@ -4,7 +4,6 @@ using GLib;
 
 namespace LumenSettings {
 
-    /* One available mode of an output. */
     public class OutputMode : GLib.Object {
         public int    width;
         public int    height;
@@ -12,10 +11,7 @@ namespace LumenSettings {
         public bool   preferred;
         public bool   current;
 
-        // Locale-independent 3-decimal refresh string ("59.951"). Built from
-        // integer millihertz so it never picks up a locale decimal separator
-        // (da_DK etc. would otherwise yield "59,951" via %.3f). Used only for
-        // DiagLog / the refresh dropdown key now.
+        // Built from integer mHz: %.3f would emit "59,951" under da_DK etc.
         public string refresh_key() {
             int mhz = (int) Math.round(refresh * 1000);
             return "%d.%03d".printf(mhz / 1000, mhz % 1000);
@@ -28,17 +24,16 @@ namespace LumenSettings {
         public string to_wayfire_arg() {
             return "%dx%d@%d".printf(width, height, (int) Math.round(refresh * 1000));
         }
-        // Refresh in millihertz (what the protocol uses).
         public int refresh_mhz() { return (int) Math.round(refresh * 1000); }
         public string res_key() { return "%dx%d".printf(width, height); }
         public string refresh_label() { return "%.2f Hz".printf(refresh); }
     }
 
+    // Order matches wl_output.transform; values are cast straight to the protocol int.
     public enum OutputTransform {
         NORMAL, ROT_90, ROT_180, ROT_270,
         FLIPPED, FLIPPED_90, FLIPPED_180, FLIPPED_270;
 
-        // Matches the wl_output.transform integer order, which the protocol uses.
         public string to_arg() {
             switch (this) {
                 case ROT_90:      return "90";
@@ -86,7 +81,6 @@ namespace LumenSettings {
         }
     }
 
-    /* Live state of one connected output, as reported by the compositor. */
     public class OutputInfo : GLib.Object {
         public string name;          // connector, e.g. "HDMI-A-1"
         public string description;
@@ -159,15 +153,11 @@ namespace LumenSettings {
         }
     }
 
-    /* In-process wlr-output-management-v1 client (via wlhooks), replacing the
-     * old wlr-randr CLI shell-out. Binds the protocol on GTK's wl_display and
-     * applies layouts atomically with the compositor's real success/failure. */
     public class OutputManager : GLib.Object {
 
         bool initialized = false;
 
-        // Bind the protocol once on GDK's wl_display. Returns true if the
-        // compositor exposes wlr-output-management-v1.
+        // Returns true if the compositor exposes wlr-output-management-v1.
         public bool init() {
             if (initialized) return WLHooks.output_mgmt_available();
             initialized = true;
@@ -186,9 +176,7 @@ namespace LumenSettings {
 
         public bool available() { return WLHooks.output_mgmt_available(); }
 
-        // Roundtrip the private queue so any pending head/done events (e.g. a
-        // monitor hotplug) get dispatched. Cheap; safe to call on a timer — it
-        // is the same roundtrip apply_all() already does on GDK's wl_display.
+        // Roundtrips the private queue so pending hotplug events dispatch; cheap enough for a timer.
         public void pump() { WLHooks.output_mgmt_refresh(); }
 
         public Gee.ArrayList<OutputInfo> enumerate() {

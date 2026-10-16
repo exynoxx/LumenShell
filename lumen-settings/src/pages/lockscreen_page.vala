@@ -3,9 +3,6 @@ using Gtk;
 
 namespace LumenSettings {
 
-    // Lockscreen settings — writes ~/.config/lumen-shell/lockscreen.json, which
-    // lumen-lockscreen reads via its Theme loader. Restarting lumen-lockscreen
-    // re-reads the file.
     public class LockscreenPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "lockscreen"; } }
         public string title     { owned get { return "Lock Screen"; } }

@@ -2,9 +2,6 @@ using Gtk;
 
 namespace LumenSettings {
 
-    /* The page list. Metrics and hover/selection styling come from Adwaita's
-     * `navigation-sidebar` style class; the enclosing NavigationSplitView owns
-     * the column width. */
     public class Sidebar : Gtk.Box {
         public signal void page_selected(string id);
 
@@ -60,8 +57,6 @@ namespace LumenSettings {
             list.invalidate_headers();
         }
 
-        // Groups are split with a thin full-width separator, no uppercase
-        // header label.
         void update_header(Gtk.ListBoxRow row, Gtk.ListBoxRow? before) {
             var section = row.get_data<string>("section") ?? "";
             var prev    = (before != null) ? (before.get_data<string>("section") ?? "") : "__none__";

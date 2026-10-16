@@ -42,8 +42,7 @@ namespace LumenSettings {
                 return page;
             }
 
-            // The per-output group is rebuilt in place, so everything rides in
-            // one box to keep its position fixed.
+            // One box, so the per-output group rebuilt in place keeps its position.
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18);
             var holder = new Adw.PreferencesGroup();
             holder.add(box);
@@ -89,7 +88,6 @@ namespace LumenSettings {
             confirm_revealer.set_child(cb);
             box.append(confirm_revealer);
 
-            // Apply bar.
             var bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
                 halign = Gtk.Align.END, margin_top = 6,
             };
@@ -107,13 +105,8 @@ namespace LumenSettings {
 
         public override string? restart_target() { return null; }
 
-        // ---- live hotplug watch --------------------------------------------
-
-        // Re-enumerate the page when a monitor is plugged in or unplugged while
-        // the window is open. wlhooks fires `outputs_changed` only when the
-        // connected SET of heads changes — but it only fires while the private
-        // queue is dispatched, so a 1 s roundtrip drives it. Self-contained: no
-        // fd watch to contend with GDK's read of the shared wl_display.
+        // outputs_changed only fires while the private queue is dispatched, so a
+        // 1 s pump drives it; an fd watch would contend with GDK's reads.
         void start_output_watch() {
             if (watch_id != 0) return;
             WLHooks.output_mgmt_register_outputs_changed(on_outputs_changed);
@@ -131,8 +124,7 @@ namespace LumenSettings {
             Idle.add(() => { reload_pending = false; reload_outputs(); return GLib.Source.REMOVE; });
         }
 
-        // A monitor was added/removed: the live layout is now authoritative, so
-        // discard any unsaved edits and rebuild from the new set.
+        // After hotplug the live layout is authoritative: unsaved edits are dropped.
         void reload_outputs() {
             DiagLog.log("page: outputs changed — reloading display list");
             stop_countdown();
@@ -145,8 +137,6 @@ namespace LumenSettings {
             dirty = false;
             if (apply_btn != null) apply_btn.sensitive = false;
         }
-
-        // ---- controls -------------------------------------------------------
 
         void rebuild_controls() {
             building = true;
@@ -163,7 +153,6 @@ namespace LumenSettings {
                 title = Markup.escape_text(o.description != "" ? o.description : o.name),
             };
 
-            // Enabled
             var en = new Adw.SwitchRow() {
                 title = "Enabled", subtitle = "Turn this display on or off", active = o.enabled,
             };
@@ -183,7 +172,6 @@ namespace LumenSettings {
             bl.add(en);
 
             if (o.enabled && o.current_mode != null) {
-                // Resolution
                 var res_keys = o.resolutions();
                 string[] rlabels = res_keys.to_array();
                 var res_row = new ComboRow("Resolution", rlabels, rlabels,
@@ -192,7 +180,7 @@ namespace LumenSettings {
                     if (building) return;
                     var cands = o.modes_for(v);
                     if (cands.size > 0) {
-                        // keep closest refresh, default to highest
+                        // modes_for() sorts descending: highest refresh.
                         o.current_mode = cands.get(0);
                     }
                     arranger.refresh();
@@ -201,7 +189,6 @@ namespace LumenSettings {
                 });
                 bl.add(res_row);
 
-                // Refresh
                 var rmodes = o.modes_for(o.current_mode.res_key());
                 string[] flabels = new string[rmodes.size];
                 string[] fvalues = new string[rmodes.size];
@@ -220,7 +207,6 @@ namespace LumenSettings {
                 });
                 bl.add(ref_row);
 
-                // Orientation
                 string[] olabels = {
                     OutputTransform.NORMAL.label(),
                     OutputTransform.ROT_90.label(),
@@ -241,7 +227,6 @@ namespace LumenSettings {
                     mark_dirty();
                 });
                 bl.add(or_row);
-
             }
 
             controls_holder.append(bl);
@@ -258,8 +243,6 @@ namespace LumenSettings {
             dirty = true;
             if (apply_btn != null) apply_btn.sensitive = true;
         }
-
-        // ---- apply / revert -------------------------------------------------
 
         void on_apply() {
             log_working("apply requested");
@@ -315,8 +298,6 @@ namespace LumenSettings {
             if (countdown_id != 0) { Source.remove(countdown_id); countdown_id = 0; }
         }
 
-        // ---- persistence ----------------------------------------------------
-
         void persist() {
             var wf = new IniStore(Paths.wayfire_ini());
             foreach (var o in working) {
@@ -369,7 +350,6 @@ namespace LumenSettings {
                 prof.set_key(), DisplayProfileStore.path());
         }
 
-        // Snapshot the in-memory working layout to the diagnostic log.
         void log_working(string why) {
             DiagLog.log("page: working layout (%s):", why);
             foreach (var o in working) {
@@ -379,8 +359,6 @@ namespace LumenSettings {
                     o.pos_x, o.pos_y, o.transform.to_arg());
             }
         }
-
-        // ---- helpers --------------------------------------------------------
 
         static Gee.ArrayList<OutputInfo> clone_list(Gee.ArrayList<OutputInfo> src) {
             var dst = new Gee.ArrayList<OutputInfo>();

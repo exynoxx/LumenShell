@@ -1,18 +1,3 @@
-# lumen-settings — drop-in build fragment.
-#
-# To enable in the top-level build, add ONE line near the end of the
-# project root meson.build:
-#
-#   subdir('lumen-settings')
-#
-# This file references identifiers expected to be defined in the parent
-# meson.build (matches existing lumen-osd / lumen-panel blocks):
-#   glib_dep, gio_dep, gee_dep, json_dep, gtk4_dep, m_dep, vapi_dir.
-#
-# Wayfire-config panes (wcm fold) are auto-enabled when libxml-2.0 is
-# available on the build host. To force-disable, comment out the
-# `if settings_wayfire_enabled` branch below.
-
 settings_gnome = import('gnome')
 
 settings_resources = settings_gnome.compile_resources(
@@ -30,8 +15,7 @@ settings_deps = [
   gtk4_dep,
   adwaita_dep,
   m_dep,
-  # Display page binds wlr-output-management-v1 in-process via wlhooks on GTK's
-  # wl_display (mirrors the lumen-panel link set).
+  # Display page: wlr-output-management via wlhooks on GTK's wl_display.
   gtk4_wayland_dep,
   wayland_dep,
   wlhooks_dep,
@@ -84,24 +68,14 @@ settings_sources = files(
   'src/pages/sound_page.vala',
 )
 
-# Shared display-profile store (lumen-common) — the Display page saves the
-# applied layout here, keyed by the connected monitor set.
 settings_sources += display_profiles_source
-
-# Shared tray-applet catalog (lumen-common) — the Panel page's reorder list
-# builds its rows from this, the same list lumen-panel resolves config against.
 settings_sources += tray_catalog_source
 
-# Shared networking + sound backends (lumen-common), also compiled into
-# lumen-panel. The Networking and Sound pages drive these live. proc_source
-# (LumenCommon.Proc) is required by them and was not otherwise linked here.
+# proc_source is needed by the network/sound backends.
 settings_sources += proc_source
 settings_sources += network_backend_source
 settings_sources += sound_source
 
-# Shared path resolver + diagnostic log (lumen-common). Paths is the single
-# source of truth for the config filenames this app writes and the runtime
-# binaries read.
 settings_sources += paths_source
 settings_sources += diaglog_source
 

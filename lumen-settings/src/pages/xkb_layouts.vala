@@ -2,32 +2,14 @@ using Gee;
 
 namespace LumenSettings {
 
-    /* Parses the X11 xkb rules listing (`evdev.lst`) into the layout and
-     * per-layout variant tables the Keyboard page's dropdowns need.
-     *
-     * The file is sectioned by `! <section>` headers; we only care about
-     * `! layout` and `! variant`:
-     *
-     *   ! layout
-     *     us              English (US)
-     *     de              German
-     *   ! variant
-     *     dvorak          us: English (Dvorak)
-     *     nodeadkeys      de: German (no dead keys)
-     *
-     * Layout lines are `<code> <name>`; variant lines are
-     * `<varcode> <layoutcode>: <name>` — grouped here by <layoutcode>.
-     *
-     * Fail-soft: if the file is missing/unreadable, fall back to a small
-     * hard-coded layout list and no variants. */
+    // evdev.lst: `! layout` lines are `<code> <name>`, `! variant` lines are
+    // `<varcode> <layout>: <name>`. Missing file ⇒ hard-coded layouts, no variants.
     public class XkbLayouts : GLib.Object {
         const string PATH = "/usr/share/X11/xkb/rules/evdev.lst";
 
         public string[] layout_codes;
         public string[] layout_names;
 
-        // layout code -> parallel variant code/name lists (each prefixed with
-        // the synthetic ("", "Default") entry).
         Gee.HashMap<string, Gee.ArrayList<string>> var_codes
             = new Gee.HashMap<string, Gee.ArrayList<string>>();
         Gee.HashMap<string, Gee.ArrayList<string>> var_names
@@ -116,8 +98,6 @@ namespace LumenSettings {
             layout_names = lnames.to_array();
         }
 
-        // Split a line into its first whitespace-delimited token and the
-        // remainder (trimmed). Tabs and spaces both separate.
         static void split_code_rest(string line, out string code, out string rest) {
             var s = line.strip();
             int i = 0;

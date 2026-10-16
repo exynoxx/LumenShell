@@ -3,15 +3,6 @@ using Gtk;
 
 namespace LumenSettings {
 
-    /* Store-bound row builders.
-     *
-     * Every settings page follows the same shape: read a key with a fallback,
-     * build a row seeded with it, write the key back and save on change. This
-     * is that pattern, once, over the two config formats lumen-settings writes
-     * — dotted-key JSON (JsonRows) and one section of an INI file (IniRows).
-     *
-     * (The file is named for InputSection, which was the first user; it now
-     * serves every page.) */
     public abstract class SettingsRows : GLib.Object {
 
         protected abstract string? read_string(string key);
@@ -30,10 +21,8 @@ namespace LumenSettings {
             return row;
         }
 
-        // `scale` is stored units per displayed unit, for keys whose file
-        // representation differs from what the user types (idle-timeout-ms is
-        // stored in ms and shown in seconds). `dflt` is in stored units;
-        // min/max/step are in displayed units.
+        // `scale` = stored units per displayed unit (e.g. ms shown as s).
+        // `dflt` is in stored units; min/max/step in displayed units.
         public Adw.SpinRow int_row(string key, string label, double min, double max,
                                    double step, int64 dflt, string subtitle = "",
                                    int64 scale = 1) {
@@ -69,8 +58,7 @@ namespace LumenSettings {
         }
     }
 
-    /* Rows bound to dotted keys in a JSON config. Values keep their JSON type
-     * (int stays a number) — the runtime binaries' theme loaders are typed. */
+    // Values keep their JSON type: the runtime theme loaders are typed.
     public class JsonRows : SettingsRows {
         JsonStore store;
 
@@ -101,11 +89,6 @@ namespace LumenSettings {
         }
     }
 
-    /* Rows bound to one section of an INI config.
-     *
-     * Every write reloads the backing file first: several pages build stores
-     * over the SAME wayfire.ini at startup, so a stale snapshot would clobber a
-     * sibling page's edits on save. */
     public class IniRows : SettingsRows {
         protected IniStore store;
         protected string section;
@@ -167,16 +150,13 @@ namespace LumenSettings {
             return double.try_parse(s.strip(), out d) ? d : dflt;
         }
 
-        // Locale-independent "%.<precision>f" — INI decimals must use '.'
-        // regardless of LC_NUMERIC (the box may run da_DK).
+        // Locale-independent: INI decimals must use '.' even under da_DK.
         static string fmt_double(double v, int precision) {
             char[] buf = new char[double.DTOSTR_BUF_SIZE];
             return v.format(buf, "%%.%df".printf(precision));
         }
     }
 
-    /* The `[input]` section of ~/.config/wayfire.ini — Keyboard, Mouse and
-     * Touchpad all edit it. */
     public class InputSection : IniRows {
         public InputSection() {
             base(Paths.wayfire_ini(), "input");

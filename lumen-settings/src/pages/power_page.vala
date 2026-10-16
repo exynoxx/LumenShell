@@ -8,8 +8,8 @@ namespace LumenSettings {
         public string title     { owned get { return "Power"; } }
         public string icon_name { owned get { return "battery-symbolic"; } }
 
-        IniStore store;      // ~/.config/lumen-shell/power.ini  (read by lumen-panel)
-        IniStore wf;         // ~/.config/wayfire.ini            (Wayfire idle plugin)
+        IniStore store;      // power.ini (read by lumen-lockscreen)
+        IniStore wf;         // wayfire.ini (idle plugin)
 
         public Gtk.Widget build() {
             store = new IniStore(Paths.power_ini());
@@ -51,8 +51,7 @@ namespace LumenSettings {
             return page;
         }
 
-        // power.ini is read fresh by lumen-panel on each sleep event; Wayfire
-        // [idle] changes apply on next login. No restart needed.
+        // power.ini is re-read on each sleep event; [idle] applies on next login.
         public override string? restart_target() { return null; }
     }
 }

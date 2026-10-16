@@ -44,9 +44,7 @@ namespace LumenSettings {
             return sb.str;
         }
 
-        // Only the colors style.css actually references — libadwaita owns the
-        // rest of the chrome. Any extra key in the user's theme.json is still
-        // emitted as an @define-color by load().
+        // Only the colors style.css references; extra theme.json keys still get emitted.
         static void seed_defaults() {
             palette = new GLib.HashTable<string, string>(str_hash, str_equal);
             palette.insert("settings_window_background", "rgba(26,29,39,1)");

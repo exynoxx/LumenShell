@@ -3,11 +3,6 @@ using Gee;
 
 namespace LumenSettings.Wayfire {
 
-    /* Fallback editor for a wayfire.ini section that has no plugin metadata
-     * (e.g. third-party plugins or per-output sections like [output:eDP-1]).
-     * Every key already in the section is shown as a free-form key = value
-     * row, and new keys can be added. This guarantees that *every* section in
-     * wayfire.ini is editable, not just the ones we ship metadata for. */
     public class GenericSectionPage : GLib.Object, SettingsPage {
         string section;
         IniStore store;

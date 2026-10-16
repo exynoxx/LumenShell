@@ -29,16 +29,8 @@ namespace LumenSettings {
             group.add(rows.int_row("grid.margin", "Page margin", 0, 400, 1, 130, "px of empty space around the grid, on every edge"));
             page.add(group);
 
-            // The app drawer is always placed on every connected monitor: the
-            // curtain/slide peek is per-output, so a grid must exist on each
-            // output for a peek there to reveal anything. (No toggle — a missing
-            // grid on the peeked monitor would just show the grey backdrop.)
-
 #if WITH_WAYFIRE_CONFIG
-            // App-drawer reveal: pick curtain (doors) vs slide-down and the
-            // slide's direction. The two reveals are mutually
-            // exclusive — enabling one disables the other in wayfire.ini's
-            // [core] plugins list, so only one is ever loaded at a time.
+            // Curtain and slide are mutually exclusive in [core] plugins.
             wf_store   = new IniStore(Paths.wayfire_ini());
             slide_rows = new IniRows(Paths.wayfire_ini(), SLIDE_SECTION);
 

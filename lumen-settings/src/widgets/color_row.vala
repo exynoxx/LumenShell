@@ -5,9 +5,7 @@ namespace LumenSettings {
     /* Emits value_changed with #rrggbbaa. */
     public class ColorRow : Adw.ActionRow {
         Gtk.ColorDialogButton button;
-        // Set while set_color_hex() writes the swatch, so a programmatic
-        // correction (e.g. the Panel page re-applying its own opacity) doesn't
-        // echo back out as a user edit.
+        // Suppresses value_changed while set_color_hex() writes the swatch.
         bool syncing = false;
 
         public signal void value_changed(string hex);
@@ -20,9 +18,8 @@ namespace LumenSettings {
                 with_alpha = true,
             });
             button.rgba = parse_or_white(initial_hex);
-            // Read through get_rgba(): gtk4.vapi declares the `rgba` property in
-            // a shape valac compiles to an out-parameter call, which does not
-            // match the C getter.
+            // Use get_rgba(): the vapi's `rgba` property compiles to an
+            // out-param call that doesn't match the C getter.
             button.notify["rgba"].connect(() => {
                 var picked = button.get_rgba();
                 if (!syncing && picked != null) value_changed(to_hex(picked));

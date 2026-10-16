@@ -21,19 +21,15 @@ namespace LumenSettings {
         // the push reveal must free exactly that many pixels.
         const int PANEL_HEIGHT_PX = 60;
 
-        // The tray-toggle hotkey is a Wayfire [command] binding: pressing the key
-        // runs a one-shot dbus-send that calls the panel's ToggleTray method (see
-        // lumen-panel/src/panel_service.vala). binding_/command_ share this suffix
-        // so we can find and rewrite our own entry without touching the user's
-        // other command bindings.
+        // Suffix of our binding_/command_ pair in [command], so we only ever
+        // rewrite our own entry.
         const string TRAY_CMD_NAME = "lumen_tray";
         const string TRAY_DBUS_CMD =
             "dbus-send --session --dest=org.lumenshell.Panel "
             + "/org/lumenshell/Panel org.lumenshell.Panel1.ToggleTray";
 #endif
 
-        // Panel color is a shared RGB; normal mode ("at all times") and auto-hide
-        // mode each layer their own opacity (alpha) on top of it.
+        // Normal and auto-hide backgrounds share one RGB; only the opacity differs.
         Gdk.RGBA panel_rgba;
         int panel_opacity;
         int autohide_opacity;
@@ -87,8 +83,7 @@ namespace LumenSettings {
                 panel_rgba.green = picked.green;
                 panel_rgba.blue  = picked.blue;
                 write_panel_colors();
-                // Force the swatch to show the color at the configured opacity,
-                // not whatever alpha the picker dialog returned.
+                // Show the configured opacity, not the alpha the picker returned.
                 panel_color_row.set_color_hex(panel_bg_hex());
             });
             colors.add(panel_color_row);
@@ -145,9 +140,7 @@ namespace LumenSettings {
                 "Pin an app button to the left edge that opens the app drawer (peek)"));
 
 #if WITH_WAYFIRE_CONFIG
-            // Global shortcut to open/close the tray (Control Center). Stored as a
-            // Wayfire [command] keybinding; Wayfire picks up the wayfire.ini edit
-            // live, so no panel restart is needed. Right-click the button clears it.
+            // Wayfire picks up [command] edits live; no panel restart needed.
             var tray_key_initial = wf_store.get_value("command", "binding_" + TRAY_CMD_NAME) ?? "";
             var tray_key_row = new BindingRow("Toggle tray shortcut", tray_key_initial,
                 "global key that opens or closes the tray; right-click to clear");
@@ -200,8 +193,6 @@ namespace LumenSettings {
             tray_row.sensitive = multi_initial;
             multi_group.add(tray_row);
 
-            // The two per-monitor options are meaningless without a panel on
-            // every monitor, so they follow the master switch.
             multi_row.notify["active"].connect(() => {
                 var v = multi_row.active;
                 per_row.sensitive = v;
@@ -221,11 +212,6 @@ namespace LumenSettings {
 
         public override string? restart_target() { return "lumen-panel"; }
 
-        // Build the "Tray applets" group: a drag-to-reorder list of every
-        // catalog applet, ordered by the stored tray.order (catalog order for
-        // any id not listed), each switch reflecting tray.disabled. Edits are
-        // written straight to panel.json's tray.order/tray.disabled arrays; the
-        // header Restart applies them (restart_target() is already lumen-panel).
         Adw.PreferencesGroup build_tray_group() {
             var stored_order = store.get_string_array("tray.order");
             var disabled_set = new Gee.HashSet<string>();
@@ -233,9 +219,8 @@ namespace LumenSettings {
                 disabled_set.add(id);
             }
 
-            // Resolve display order: stored ids first (catalog ids only), then any
-            // catalog id not yet listed appended in catalog order — same upgrade-
-            // safe rule the panel uses, so the UI matches what the panel renders.
+            // Same rule as lumen-panel: stored catalog ids first, then unlisted
+            // catalog ids in catalog order.
             var ordered = new Gee.ArrayList<string>();
             foreach (var id in stored_order) {
                 if (catalog_has(id) && !ordered.contains(id)) ordered.add(id);
@@ -288,7 +273,7 @@ namespace LumenSettings {
 #if WITH_WAYFIRE_CONFIG
         // Mirror the push plugin's edge + distance to the panel position/height.
         void sync_push_options() {
-            wf_store.reload();   // pick up any [core] plugins edits from the Wayfire page
+            wf_store.reload();
             var pos = store.get_string("position") ?? "bottom";
             var h   = "%d".printf(PANEL_HEIGHT_PX);
             wf_store.set_value(PUSH_SECTION, "direction", pos);
@@ -296,11 +281,9 @@ namespace LumenSettings {
             wf_store.save();
         }
 
-        // Write (or clear) the tray-toggle hotkey in wayfire.ini's [command]
-        // section. An empty binding removes both keys so a cleared shortcut
-        // doesn't leave a dangling command behind.
+        // An empty binding removes both keys so no dangling command is left.
         void set_tray_binding(string binding) {
-            wf_store.reload();   // don't clobber other [command]/[core] edits
+            wf_store.reload();
             if (binding.strip() == "") {
                 wf_store.remove_key("command", "binding_" + TRAY_CMD_NAME);
                 wf_store.remove_key("command", "command_" + TRAY_CMD_NAME);
@@ -318,7 +301,6 @@ namespace LumenSettings {
             theme.save();
         }
 
-        // Both backdrops share the panel RGB; only the opacity (alpha) differs.
         string panel_bg_hex()  { return hex_at_opacity(panel_opacity); }
         string autohide_hex()  { return hex_at_opacity(autohide_opacity); }
 

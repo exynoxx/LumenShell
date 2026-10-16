@@ -1,11 +1,8 @@
 namespace LumenSettings {
 
-    // A real Adw.ComboRow (not sealed). Adw renders a Gtk.StringList model
-    // natively, so we drop the hand-wired Gtk.DropDown suffix entirely.
     public class ComboRow : Adw.ComboRow {
         string[] values;
-        // Guards programmatic model rebuilds (repopulate) so the resulting
-        // `selected` change does not fire value_changed and write a stray value.
+        // Set during repopulate() so the reset selection doesn't emit value_changed.
         bool updating = false;
         public signal void value_changed(string val);
 
@@ -16,14 +13,11 @@ namespace LumenSettings {
             this.subtitle = subtitle ?? "";
             this.values = values;
 
-            // Build by append rather than `new Gtk.StringList(labels)`: that
-            // constructor expects a NULL-terminated array, but a dynamically
-            // built `string[]` (e.g. Gee `to_array()`) is not terminated and
-            // GTK walks off the end. Appending uses the array length safely.
+            // Not `new Gtk.StringList(labels)`: it expects NULL termination,
+            // which a dynamically built string[] lacks, so GTK reads past the end.
             var sl = new Gtk.StringList(null);
             foreach (var l in labels) sl.append(l);
             model = sl;
-
 
             selected = index_of(initial_value);
 
@@ -33,9 +27,6 @@ namespace LumenSettings {
             });
         }
 
-        // Swap the dropdown's contents (used by dependent dropdowns, e.g. the
-        // keyboard variant list when the layout changes). Guarded so the reset
-        // selection does not emit value_changed.
         public void repopulate(string[] labels, string[] values, string? selected_value) {
             updating = true;
             this.values = values;

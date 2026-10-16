@@ -1,8 +1,4 @@
-/* lumen-settings. @define-color values come from Theme.generate_root_css().
-
-   Rows, groups and the sidebar are styled by libadwaita (Adw.PreferencesGroup,
-   Adw.ActionRow, the `navigation-sidebar` class); only what libadwaita does not
-   cover belongs here. */
+/* @define-color values come from Theme.generate_root_css(). */
 
 window.lumen-settings,
 window.lumen-settings decoration {

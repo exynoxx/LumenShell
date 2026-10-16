@@ -8,9 +8,7 @@ namespace LumenSettings {
         public abstract string icon_name   { owned get; }
         public abstract Gtk.Widget build();
 
-        // Executable to relaunch when the header's Restart button is pressed,
-        // or null for pages that have nothing to restart. The window kills the
-        // running process and respawns it so config changes take effect.
+        // Binary the Restart button kills and respawns, or null for none.
         public virtual string? restart_target() { return null; }
     }
 }
