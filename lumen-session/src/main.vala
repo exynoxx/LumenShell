@@ -103,12 +103,15 @@ namespace LumenSession {
         WLHooks.output_mgmt_refresh();
 
         var current_keys = new GenericArray<string>();
-        var conn_for = new HashTable<string, string>(str_hash, str_equal);
+        var conns = new GenericArray<string>();
         WLHooks.output_mgmt_for_each_head_identity((idx, name, make, model, serial, desc) => {
-            var id = DisplayProfileStore.identity_for(make, model, serial, desc, name);
-            current_keys.add(id);
-            conn_for.set(id, name);
+            current_keys.add(DisplayProfileStore.identity_for(make, model, serial, desc, name));
+            conns.add(name);
         });
+        DisplayProfileStore.disambiguate(current_keys, conns);
+        var conn_for = new HashTable<string, string>(str_hash, str_equal);
+        for (int i = 0; i < current_keys.length; i++)
+            conn_for.set(current_keys.get(i), conns.get(i));
 
         if (current_keys.length == 0) return;   // nothing connected yet
 
@@ -125,11 +128,15 @@ namespace LumenSession {
         }
 
         int enable_count = 0;
+        // Configuring one head twice is a protocol error that drops the connection.
+        var configured = new GenericSet<string>(str_hash, str_equal);
         for (int i = 0; i < current_keys.length; i++) {
             var id = current_keys.get(i);
             var conn = conn_for.get(id);
             var st = prof.states.get(id);
             if (st == null) continue;            // connected head not in profile: leave as-is
+            if (conn in configured) continue;
+            configured.add(conn);
             if (st.enabled && st.width > 0 && st.height > 0) {
                 WLHooks.output_mgmt_config_enable(conn, st.width, st.height,
                     st.refresh_mhz, st.x, st.y, st.transform);

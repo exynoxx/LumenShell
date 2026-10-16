@@ -47,6 +47,18 @@ public class DisplayProfileStore {
         return "conn:%s".printf(connector.strip());
     }
 
+    // Identical serial-less monitors share one identity_for(). Suffix
+    // "@<connector>" onto the colliding ones only, so a lone monitor keeps the
+    // ID its saved profiles already use. ids[i] belongs to connectors[i].
+    public static void disambiguate(GenericArray<string> ids, GenericArray<string> connectors) {
+        var count = new HashTable<string, int>(str_hash, str_equal);
+        for (int i = 0; i < ids.length; i++)
+            count.set(ids.get(i), count.get(ids.get(i)) + 1);
+        for (int i = 0; i < ids.length; i++)
+            if (count.get(ids.get(i)) > 1)
+                ids.set(i, "%s@%s".printf(ids.get(i), connectors.get(i).strip()));
+    }
+
     public static string set_key_for(GenericArray<string> keys) {
         var p = new DisplayProfile();
         for (int i = 0; i < keys.length; i++) p.outputs.add(keys.get(i));

@@ -445,6 +445,12 @@ executable('lumen-session',
 
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
+test('display-identity', executable('test-display-identity',
+  files('tests/display_identity.vala') + display_profiles_source + paths_source,
+  c_args: lumen_datadir_c_args,
+  dependencies: [glib_dep, gio_dep, json_dep],
+))
+
 
 # --- lumen-polkit-agent ---
 # The polkit vapis ship with Vala; only the -devel .pc files are a build prereq.

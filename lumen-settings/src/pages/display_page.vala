@@ -319,10 +319,19 @@ namespace LumenSettings {
                 ident.set(name, DisplayProfileStore.identity_for(make, model, serial, desc, name));
             });
 
-            var prof = new DisplayProfile();
+            var ids = new GenericArray<string>();
+            var names = new GenericArray<string>();
             foreach (var o in working) {
-                var id = ident.has_key(o.name) ? ident.get(o.name)
-                       : DisplayProfileStore.identity_for("", "", "", o.description, o.name);
+                ids.add(ident.has_key(o.name) ? ident.get(o.name)
+                        : DisplayProfileStore.identity_for("", "", "", o.description, o.name));
+                names.add(o.name);
+            }
+            DisplayProfileStore.disambiguate(ids, names);
+
+            var prof = new DisplayProfile();
+            int n = 0;
+            foreach (var o in working) {
+                var id = ids.get(n++);
                 prof.outputs.add(id);
                 var s = new DisplayOutputState();
                 s.enabled = o.enabled && o.current_mode != null;

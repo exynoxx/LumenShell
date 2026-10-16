@@ -127,6 +127,15 @@ public class DisplayCtl {
                 DisplayProfileStore.identity_for(make, model, serial, desc, name);
         });
 
+        var ids = new GenericArray<string>();
+        var names = new GenericArray<string>();
+        for (int i = 0; i < heads.length; i++) {
+            ids.add(heads.get(i).identity);
+            names.add(heads.get(i).name);
+        }
+        DisplayProfileStore.disambiguate(ids, names);
+        for (int i = 0; i < heads.length; i++) heads.get(i).identity = ids.get(i);
+
         for (int i = 0; i < heads.length; i++) {
             var h = heads.get(i);
             WLHooks.output_mgmt_for_each_mode(h.idx, (hidx, w, ht, mhz, preferred, current) => {
