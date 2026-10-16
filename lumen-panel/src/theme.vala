@@ -15,7 +15,7 @@ public class Theme : GLib.Object {
         palette.insert("app_active_underline",  "rgba(0,44,230,1)");
         // Auto-hide backdrop: same color as the panel by default, but its own
         // alpha (settings keeps the RGB synced to panel.background).
-        palette.insert("panel_autohide_background", "rgba(26,29,39,0.5)");
+        palette.insert("panel_autohide_background", "rgba(17,20,31,0.5)");
     }
 
     static string key_to_var (string json_key) {
