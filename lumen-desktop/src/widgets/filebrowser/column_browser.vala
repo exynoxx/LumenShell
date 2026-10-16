@@ -132,10 +132,10 @@ namespace LumenDesktop {
             var col = columns.nth_data(index);
             if (col == null) return;
             GLib.Idle.add(() => {
-                Gtk.Allocation alloc;
-                col.get_allocation(out alloc);
-                double x = alloc.x;
-                double w = alloc.width;
+                Graphene.Rect b;
+                if (!col.compute_bounds(col.get_parent(), out b)) return GLib.Source.REMOVE;
+                double x = b.origin.x;
+                double w = b.size.width;
                 if (x < adj.value) adj.value = x;
                 else if (x + w > adj.value + adj.page_size) adj.value = x + w - adj.page_size;
                 return GLib.Source.REMOVE;

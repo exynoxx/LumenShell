@@ -42,7 +42,7 @@ public class BatteryService : GLib.Object {
         if (ac_online)                return "wired";
         if (raw_status == "charging") return "charging";
         if (raw_status == "discharging" || raw_status.contains ("full"))
-            return percent >= 70 ? "high" : percent >= 30 ? "mid" : "low";
+            return percent >= 70 ? "high" : percent > 30 ? "mid" : "low";
         return "nobattery";
     }
 

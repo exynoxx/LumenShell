@@ -68,7 +68,7 @@ public class BatteryModule : GLib.Object {
         var raw = service.raw_status;
         int pct = service.percent;
         bar.set_progress (pct);
-        bar.fill_color = pct >= 30
+        bar.fill_color = pct > 30
             ? Utils.rgba (0.13f, 0.76f, 0.34f, 1f)
             : pct >= 10
                 ? Utils.rgba (0.90f, 0.62f, 0.06f, 1f)

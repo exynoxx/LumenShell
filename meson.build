@@ -304,6 +304,8 @@ drawer_deps = [
 
 drawer_vala_args = [
   '--vapidir=' + vapi_dir,
+  # Binds PatternSpec.match_string to the non-deprecated GLib ≥ 2.70 symbol.
+  '--target-glib=auto',
   '--pkg=gtk4',
   '--pkg=gtk4-layer-shell-0',
   '--pkg=gtk4-wayland',
@@ -443,14 +445,14 @@ executable('lumen-session',
   install: true,
 )
 
-# --- lumen-settings (drop-in fragment) ---
-subdir('lumen-settings')
 test('display-identity', executable('test-display-identity',
   files('tests/display_identity.vala') + display_profiles_source + paths_source,
   c_args: lumen_datadir_c_args,
   dependencies: [glib_dep, gio_dep, json_dep],
 ))
 
+# --- lumen-settings (drop-in fragment) ---
+subdir('lumen-settings')
 
 # --- lumen-polkit-agent ---
 # The polkit vapis ship with Vala; only the -devel .pc files are a build prereq.

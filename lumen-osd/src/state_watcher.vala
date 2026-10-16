@@ -98,10 +98,12 @@ public class StateWatcher : Object {
 
     private static int read_int(string path) {
         string contents = "";
-        if (FileUtils.get_contents(path, out contents)) {
-            int n = 0;
-            if (int.try_parse(contents.strip(), out n)) return n;
-        }
+        try {
+            if (FileUtils.get_contents(path, out contents)) {
+                int n = 0;
+                if (int.try_parse(contents.strip(), out n)) return n;
+            }
+        } catch (FileError e) {}  // LED vanished (e.g. USB keyboard unplugged)
         return -1;
     }
 }
