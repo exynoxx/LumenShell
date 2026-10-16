@@ -66,7 +66,7 @@ public class SearchResults : Gtk.Box {
         return true;
     }
 
-    public bool launch_first() {
-        return launch_at(0);
+    public void launch_first() {
+        launch_at(0);
     }
 }

@@ -1,5 +1,4 @@
 public const int ICON_SIZE = 96;
-public const int TILE_LABEL_FONT_PT = 11;
 
 public class AppTile : Gtk.Button {
 

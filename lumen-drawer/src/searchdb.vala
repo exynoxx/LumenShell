@@ -1,5 +1,3 @@
-using GLib;
-
 public class SearchDb {
     public bool active;
     public int size;

@@ -1,5 +1,3 @@
-using Gtk;
-
 private const string DRAWER_CSS = """
     window.lumen-drawer-root {
         background: transparent;

@@ -187,10 +187,6 @@ namespace LumenDesktop {
             s.push_fill(outline(w, h), Gsk.FillRule.WINDING);
         }
 
-        public override void push_content_clip(Gtk.Snapshot s, int w, int h, float[] frame) {
-            s.push_rounded_clip(opening(w, h, frame));
-        }
-
         // The tab minus its slant (so a glyph never straddles the sloped edge),
         // inset by half the corner radius so the tab's curves don't clip glyphs.
         public override Cairo.RectangleInt chrome_rect(int w, int h, float border) {

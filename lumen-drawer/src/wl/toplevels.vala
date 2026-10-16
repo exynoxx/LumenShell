@@ -14,24 +14,23 @@ public class DrawerToplevels : GLib.Object {
         get { return _instance ?? (_instance = new DrawerToplevels()); }
     }
 
-    public bool bind() {
+    public void bind() {
         var gdk = Gdk.Display.get_default();
         if (!(gdk is Gdk.Wayland.Display)) {
             GLib.stderr.printf("DrawerToplevels: not running on Wayland\n");
-            return false;
+            return;
         }
         unowned Wl.Display wl = ((Gdk.Wayland.Display) gdk).get_wl_display();
 
         int rc = WLHooks.init_toplevel_with_display(wl);
         if (rc != 0) {
             GLib.stderr.printf("DrawerToplevels: init_toplevel_with_display failed (%d)\n", rc);
-            return false;
+            return;
         }
 
         WLHooks.register_on_window_new(on_new);
         WLHooks.register_on_window_rm(on_rm);
         WLHooks.register_on_window_focus(on_focus);
-        return true;
     }
 
     private void on_new(uint id, string app_id, string title) {

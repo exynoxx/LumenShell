@@ -36,9 +36,8 @@ namespace LumenDesktop {
         private int layout_width = int.MIN;
         private int natural_text_w = -1;
 
-        public FileRow(FsEntry? entry = null) {
+        public FileRow() {
             hexpand = true;
-            this.entry = entry;
         }
 
         private void invalidate_layout() {
