@@ -118,7 +118,6 @@ public class AppBar : Gtk.Box {
             if (!entry.is_pinned && !entry.has_open_windows())
                 remove_entry(entry);
         });
-        entry.unpin_and_removable.connect(() => remove_entry(entry));
 
         entry.drag_started.connect(() => on_drag_started(entry));
         entry.drag_moved  .connect((ox) => on_drag_moved(ox));

@@ -33,7 +33,6 @@ public class AppEntry : Gtk.Button {
     AppPopupMenu? popup = null;
 
     public signal void pin_toggled ();
-    public signal void unpin_and_removable ();
 
     // Drag-to-reorder: AppBar owns sibling order, so the gesture only reports
     // begin / move / drop and lets AppBar compute the reordering.
@@ -145,10 +144,6 @@ public class AppEntry : Gtk.Button {
         window_ids.remove_at(i);
         if (cycle_idx >= window_ids.size) cycle_idx = 0;
         queue_draw();
-
-        if (!is_pinned && window_ids.size == 0) {
-            unpin_and_removable();
-        }
     }
 
     public void mark_focused (uint id) {
