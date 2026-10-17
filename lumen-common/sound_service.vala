@@ -25,6 +25,7 @@ public class SoundService : GLib.Object {
     private bool        poll_in_flight = false;
     private bool        poll_again     = false;
     private string      last_signature = "";
+    private string[]?   known_sinks    = null;   // null until the first pass seeds it
 
     private LumenCommon.LineWatcher watcher = new LumenCommon.LineWatcher();
     private uint poll_timer  = 0;
@@ -119,6 +120,19 @@ public class SoundService : GLib.Object {
                 // Mid-drag results may predate the drag; the next pass catches up.
                 if (volume_out.busy || volume_in.busy) return Source.REMOVE;
                 string old_source = default_source;
+
+                // A Bluetooth sink that just appeared becomes the output, like
+                // PipeWire's switch-on-connect. The first pass only seeds.
+                string[] ids = {};
+                foreach (var x in new_sinks) {
+                    ids += x.id;
+                    if (known_sinks != null && x.id.has_prefix("bluez_")
+                        && !(x.id in known_sinks) && x.id != new_sink) {
+                        pactl.set_default_sink(x.id);
+                        new_sink = x.id;
+                    }
+                }
+                known_sinks = ids;
 
                 default_sink   = new_sink;
                 sinks          = new_sinks;
