@@ -6,6 +6,9 @@ namespace LumenSettings {
         Gtk.Button button;
         string current;
         bool grabbing = false;
+        // Modifiers held during a grab with no other key yet; releasing one
+        // commits a modifier-only binding such as "<super>".
+        string[] pending_mods = {};
         Gtk.EventControllerKey key_ctl;
 
         public BindingRow(string title, string initial, string subtitle = "") {
@@ -19,6 +22,7 @@ namespace LumenSettings {
 
             key_ctl = new Gtk.EventControllerKey();
             key_ctl.key_pressed.connect(on_key_pressed);
+            key_ctl.key_released.connect(on_key_released);
             button.add_controller(key_ctl);
 
             var rclick = new Gtk.GestureClick() { button = Gdk.BUTTON_SECONDARY };
@@ -32,6 +36,7 @@ namespace LumenSettings {
 
         void start_grab() {
             grabbing = true;
+            pending_mods = {};
             button.label = "Press a key...";
             button.grab_focus();
         }
@@ -43,7 +48,12 @@ namespace LumenSettings {
                 button.label = display_for(current);
                 return true;
             }
-            if (is_modifier_only(keyval)) return true;
+            if (is_modifier_only(keyval)) {
+                string? m = modifier_token(keyval);
+                if (m != null && !(m in pending_mods)) pending_mods += m;
+                return true;
+            }
+            pending_mods = {};
 
             var sb = new StringBuilder();
             if ((state & Gdk.ModifierType.SHIFT_MASK)   != 0) sb.append("<shift> ");
@@ -65,6 +75,29 @@ namespace LumenSettings {
             button.label = display_for(current);
             value_changed(current);
             return true;
+        }
+
+        void on_key_released(uint keyval, uint keycode, Gdk.ModifierType state) {
+            if (!grabbing || pending_mods.length == 0 || !is_modifier_only(keyval)) return;
+            // Canonical order, matching the key-press path.
+            var sb = new StringBuilder();
+            foreach (var m in new string[] { "<shift>", "<ctrl>", "<alt>", "<super>", "<meta>" }) {
+                if (m in pending_mods) sb.append(m).append(" ");
+            }
+            pending_mods = {};
+            current = sb.str.strip();
+            grabbing = false;
+            button.label = display_for(current);
+            value_changed(current);
+        }
+
+        static string? modifier_token(uint keyval) {
+            if (keyval == Gdk.Key.Shift_L   || keyval == Gdk.Key.Shift_R)   return "<shift>";
+            if (keyval == Gdk.Key.Control_L || keyval == Gdk.Key.Control_R) return "<ctrl>";
+            if (keyval == Gdk.Key.Alt_L     || keyval == Gdk.Key.Alt_R)     return "<alt>";
+            if (keyval == Gdk.Key.Super_L   || keyval == Gdk.Key.Super_R)   return "<super>";
+            if (keyval == Gdk.Key.Meta_L    || keyval == Gdk.Key.Meta_R)    return "<meta>";
+            return null;
         }
 
         static bool is_modifier_only(uint keyval) {
