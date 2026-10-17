@@ -221,6 +221,14 @@ public class PanelWindow : Gtk.ApplicationWindow {
         collapse_timeout_id = 0;
     }
 
+    // The surface shrinks back a frame AFTER the collapse animation's last tick, so the
+    // region must be recomputed on the real resize — at the bottom the strip's y is
+    // derived from the height, and a stale (expanded) height puts it off-surface.
+    public override void size_allocate (int width, int height, int baseline) {
+        base.size_allocate(width, height, baseline);
+        update_input_region();
+    }
+
     void update_input_region () {
         var gdk_surface = get_surface();
         if (gdk_surface == null) return;
