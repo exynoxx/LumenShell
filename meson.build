@@ -644,6 +644,7 @@ install_data(
 if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \
    or get_option('with_slide_peek') \
+   or get_option('with_zoom_peek') \
    or get_option('with_panel_push') \
    or get_option('with_startup_zoom') \
    or get_option('with_night_light')
@@ -660,6 +661,10 @@ endif
 
 if get_option('with_slide_peek')
   subdir('wayfire-plugins/slide-peek')
+endif
+
+if get_option('with_zoom_peek')
+  subdir('wayfire-plugins/zoom-peek')
 endif
 
 if get_option('with_panel_push')

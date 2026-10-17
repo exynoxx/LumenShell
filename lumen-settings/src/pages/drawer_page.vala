@@ -14,6 +14,7 @@ namespace LumenSettings {
         IniRows  slide_rows;
         const string CURTAIN_PLUGIN = "wayfire-curtain-peek";
         const string SLIDE_PLUGIN   = "wayfire-slide-peek";
+        const string ZOOM_PLUGIN    = "wayfire-zoom-peek";
         const string SLIDE_SECTION  = "wayfire-slide-peek";
 #endif
 
@@ -29,22 +30,23 @@ namespace LumenSettings {
             page.add(group);
 
 #if WITH_WAYFIRE_CONFIG
-            // Curtain and slide are mutually exclusive in [core] plugins.
+            // Curtain, slide and zoom are mutually exclusive in [core] plugins.
             wf_store   = new IniStore(Paths.wayfire_ini());
             slide_rows = new IniRows(Paths.wayfire_ini(), SLIDE_SECTION);
 
             var reveal = new Adw.PreferencesGroup() { title = "App drawer reveal" };
 
-            string[] style_labels = { "Curtain (doors)", "Slide-down" };
-            string[] style_values = { "curtain", "slide" };
+            string[] style_labels = { "Curtain (doors)", "Slide-down", "Zoom" };
+            string[] style_values = { "curtain", "slide", "zoom" };
             var style_initial =
+                Wayfire.PluginList.is_enabled(wf_store, ZOOM_PLUGIN)  ? "zoom"  :
                 Wayfire.PluginList.is_enabled(wf_store, SLIDE_PLUGIN) ? "slide" : "curtain";
             var style_row = new ComboRow("Reveal style", style_labels, style_values, style_initial,
                 "animation used to reveal the app drawer");
             style_row.value_changed.connect((v) => {
-                bool slide = (v == "slide");
-                Wayfire.PluginList.set_enabled(wf_store, SLIDE_PLUGIN,   slide);
-                Wayfire.PluginList.set_enabled(wf_store, CURTAIN_PLUGIN, !slide);
+                Wayfire.PluginList.set_enabled(wf_store, SLIDE_PLUGIN,   v == "slide");
+                Wayfire.PluginList.set_enabled(wf_store, ZOOM_PLUGIN,    v == "zoom");
+                Wayfire.PluginList.set_enabled(wf_store, CURTAIN_PLUGIN, v == "curtain");
             });
             reveal.add(style_row);
 

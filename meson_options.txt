@@ -27,6 +27,13 @@ option(
 )
 
 option(
+  'with_zoom_peek',
+  type: 'boolean',
+  value: true,
+  description: 'Build the wayfire-zoom-peek Wayfire plugin (Launchpad-style: the desktop grid zooms in from above while the desktop blurs; needs Wayfire 0.10 dev headers).',
+)
+
+option(
   'with_panel_push',
   type: 'boolean',
   value: true,

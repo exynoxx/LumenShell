@@ -90,6 +90,7 @@ package adds a "LumenShell" entry to the display manager's session menu.
     -Dwith_desktop_peek=%{plugins} \
     -Dwith_curtain_peek=%{plugins} \
     -Dwith_slide_peek=%{plugins} \
+    -Dwith_zoom_peek=%{plugins} \
     -Dwith_panel_push=%{plugins} \
     -Dwith_startup_zoom=%{plugins} \
     -Dwith_night_light=%{plugins} \

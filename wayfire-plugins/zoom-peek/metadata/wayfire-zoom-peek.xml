@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<wayfire>
+  <plugin name="wayfire-zoom-peek">
+    <_short>Zoom Peek</_short>
+    <_long>Launchpad-style reveal: the lumen-drawer grid zooms down from above to its normal size while the frozen desktop behind it fades into a blur. The panel stays live on top.</_long>
+    <category>Desktop</category>
+    <option name="toggle" type="activator">
+      <_short>Toggle zoom</_short>
+      <default>&lt;super&gt; KEY_S</default>
+    </option>
+    <option name="dismiss" type="activator">
+      <_short>Dismiss zoom</_short>
+      <_long>Optional secondary binding that only closes the reveal. Unset by default so it does not conflict with other plugins that consume Escape.</_long>
+      <default></default>
+    </option>
+    <option name="duration" type="animation">
+      <_short>Animation duration</_short>
+      <default>400ms circle</default>
+    </option>
+    <option name="close_duration" type="animation">
+      <_short>Close animation duration</_short>
+      <_long>Length and easing of the zoom back out when the drawer closes. Separate from the open animation so the two can ease differently.</_long>
+      <default>400ms sigmoid</default>
+    </option>
+    <option name="initial_scale" type="double">
+      <_short>Initial zoom</_short>
+      <_long>Scale the grid starts at before it zooms back to normal size.</_long>
+      <default>3.0</default>
+      <min>1.0</min>
+      <max>20.0</max>
+      <precision>0.1</precision>
+    </option>
+    <option name="blur_levels" type="int">
+      <_short>Blur strength</_short>
+      <_long>Number of halving steps in the background blur; each one roughly doubles the blur radius.</_long>
+      <default>5</default>
+      <min>1</min>
+      <max>8</max>
+    </option>
+    <option name="dim" type="double">
+      <_short>Background dim</_short>
+      <_long>Opacity of the black layer over the blurred background, so grid labels stay legible.</_long>
+      <default>0.25</default>
+      <min>0.0</min>
+      <max>1.0</max>
+      <precision>0.05</precision>
+    </option>
+    <option name="drawer_app_id" type="string">
+      <_short>Desktop grid app-id</_short>
+      <_long>App-id (layer-shell namespace) of the desktop grid surface. It is kept hidden while the reveal is closed.</_long>
+      <default>lumen-drawer</default>
+    </option>
+  </plugin>
+</wayfire>

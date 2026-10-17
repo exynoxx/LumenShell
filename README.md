@@ -70,6 +70,7 @@ C++ `shared_module`s, each gated by a Meson option. IPC verbs are exposed throug
 - **`wayfire-desktop-peek`** — slides workspace windows toward the corners to peek the desktop (Win+D).
 - **`wayfire-curtain-peek`** — freezes a screenshot and splits it apart like curtains to reveal the live desktop grid (Win+S).
 - **`wayfire-slide-peek`** — slides the foreground off one edge while the desktop grid slides in from the opposite edge.
+- **`wayfire-zoom-peek`** — Launchpad-style: the desktop grid zooms down from above while the desktop behind it blurs.
 - **`wayfire-startup-zoom`** — one-shot zoom-from-center of all initial views on boot.
 - **`wayfire-default-focus`** — keeps keyboard focus on a designated layer-shell surface when no toplevel is focused.
 
@@ -110,7 +111,7 @@ sudo meson install -C build
 
 Useful options:
 
-- `-Dwith_desktop_peek=false` — skip a C++ Wayfire plugin if you don't have Wayfire dev headers. The same applies to `with_curtain_peek`, `with_slide_peek` and `with_startup_zoom`.
+- `-Dwith_desktop_peek=false` — skip a C++ Wayfire plugin if you don't have Wayfire dev headers. The same applies to `with_curtain_peek`, `with_slide_peek`, `with_zoom_peek` and `with_startup_zoom`.
 - `-Dwith_panel_peek=false` — build a standalone panel with no Wayfire coupling.
 - `-Dwith_lockscreen=disabled` — skip the lock screen (otherwise built automatically when `gtk4-session-lock` + `pam` are available).
 - `--prefix=$HOME/.local` — install to your home instead of the system.
