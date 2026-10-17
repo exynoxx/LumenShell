@@ -164,7 +164,7 @@ namespace LumenSettings.Wayfire {
 
             var tails = collect_dynamic_tails(opt);
             foreach (var tail in tails) {
-                list.add(make_dynamic_row(opt, tail));
+                list.add(make_dynamic_row(opt, tail, list));
             }
 
             var add_button = new Gtk.Button.from_icon_name("list-add-symbolic") {
@@ -179,7 +179,7 @@ namespace LumenSettings.Wayfire {
                     store.set_value(plugin.name, e.prefix + next, "");
                 }
                 store.save();
-                list.add(make_dynamic_row(opt, next));
+                list.add(make_dynamic_row(opt, next, list));
             });
 
             var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 4);
@@ -188,8 +188,22 @@ namespace LumenSettings.Wayfire {
             return outer;
         }
 
-        Gtk.Widget make_dynamic_row(OptionDef opt, string tail) {
+        Gtk.Widget make_dynamic_row(OptionDef opt, string tail, Adw.PreferencesGroup list) {
             var ar = new Adw.ActionRow() { title = tail, use_markup = false };
+            var remove_button = new Gtk.Button.from_icon_name("user-trash-symbolic") {
+                valign = Gtk.Align.CENTER,
+                tooltip_text = "Remove",
+            };
+            remove_button.add_css_class("flat");
+            remove_button.clicked.connect(() => {
+                store.reload();
+                foreach (var e in opt.entries) {
+                    store.remove_key(plugin.name, e.prefix + tail);
+                }
+                store.save();
+                list.remove(ar);
+            });
+            ar.add_prefix(remove_button);
             var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) { valign = Gtk.Align.CENTER };
             foreach (var e in opt.entries) {
                 var key = e.prefix + tail;
@@ -231,32 +245,37 @@ namespace LumenSettings.Wayfire {
             }
         }
 
+        // A tail belongs to this list only if every entry's key exists: lists
+        // share prefixes (all [command] lists use command_), so matching any
+        // one prefix would show every command in every list.
         Gee.ArrayList<string> collect_dynamic_tails(OptionDef opt) {
-            var seen = new Gee.HashSet<string>();
             var ordered = new Gee.ArrayList<string>();
+            if (opt.entries.size == 0) return ordered;
             var keys = store.keys_in(plugin.name);
+            var first = opt.entries.get(0).prefix;
             foreach (var k in keys) {
+                if (first == "" || !k.has_prefix(first)) continue;
+                var tail = k.substring(first.length);
+                bool all = true;
                 foreach (var e in opt.entries) {
-                    if (e.prefix != "" && k.has_prefix(e.prefix)) {
-                        var tail = k.substring(e.prefix.length);
-                        if (!seen.contains(tail)) {
-                            seen.add(tail);
-                            ordered.add(tail);
-                        }
-                        break;
-                    }
+                    if (!keys.contains(e.prefix + tail)) { all = false; break; }
                 }
+                if (all && !ordered.contains(tail)) ordered.add(tail);
             }
             return ordered;
         }
 
+        // Unique across the whole section, since sibling lists share prefixes.
         string next_tail(OptionDef opt) {
-            var existing = collect_dynamic_tails(opt);
-            for (int i = 1; i < 1000; i++) {
+            var keys = store.keys_in(plugin.name);
+            for (int i = 1; ; i++) {
                 var cand = "%d".printf(i);
-                if (!existing.contains(cand)) return cand;
+                bool taken = false;
+                foreach (var k in keys) {
+                    if (k.has_suffix("_" + cand)) { taken = true; break; }
+                }
+                if (!taken) return cand;
             }
-            return "new";
         }
 
         static bool parse_bool(string s) {
