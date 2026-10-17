@@ -52,7 +52,7 @@ namespace LumenSettings {
         // Connection tracking so details are (re)fetched only on a real change.
         string last_wifi_conn = "";
         bool   last_eth_conn  = false;
-        string last_bt_conn   = "";
+        string details_mac    = "";   // device shown in "Device details"
 
         // The SSID whose password dialog is open, so the single connect_result
         // handler can re-prompt on BAD_PASSWORD keyed on the right network.
@@ -501,7 +501,7 @@ namespace LumenSettings {
 
         Adw.ActionRow make_bt_row(BtDevice d) {
             string sub;
-            if      (d.connected) sub = "Connected";
+            if      (d.connected) sub = d.battery >= 0 ? "Connected · %d%%".printf(d.battery) : "Connected";
             else if (d.paired)    sub = "Paired";
             else                  sub = "Available";
 
@@ -552,27 +552,29 @@ namespace LumenSettings {
             });
             dlg.present(root_widget());
 
-            if (d.connected) bt.request_device_details(d.mac);
-        }
-
-        void update_bt_tracking() {
-            if (bt.connected_name != last_bt_conn) {
-                last_bt_conn = bt.connected_name;
-                if (bt.connected) {
-                    var mac = connected_mac();
-                    if (mac != "") bt.request_device_details(mac);
-                }
+            if (d.connected) {
+                details_mac = d.mac;
+                bt.request_device_details(d.mac);
             }
-            bt_details_group.visible = bt.connected;
         }
 
-        string connected_mac() {
-            foreach (var d in bt.devices)
-                if (d.connected) return d.mac;
-            return "";
+        // Re-read on every state change so battery stays live; keeps the clicked
+        // device while it is still connected, else falls back to the first one.
+        void update_bt_tracking() {
+            string first = "";
+            bool still = false;
+            foreach (var d in bt.devices) {
+                if (!d.connected) continue;
+                if (first == "") first = d.mac;
+                if (d.mac == details_mac) still = true;
+            }
+            if (!still) details_mac = first;
+            if (details_mac != "") bt.request_device_details(details_mac);
+            bt_details_group.visible = details_mac != "";
         }
 
         void on_bt_details_ready(BtDeviceDetails d) {
+            if (d.mac != details_mac) return;   // stale reply for a previous device
             bt_name_row.subtitle    = or_dash(d.name);
             bt_type_row.subtitle    = or_dash(d.dev_icon);
             bt_battery_row.subtitle = d.battery >= 0 ? "%d%%".printf(d.battery) : "—";
