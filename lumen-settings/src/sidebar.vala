@@ -38,6 +38,13 @@ namespace LumenSettings {
             if (first != null) list.select_row(first);
         }
 
+        public void select_id(string id) {
+            for (var row = list.get_row_at_index(0); row != null;
+                 row = row.get_next_sibling() as Gtk.ListBoxRow) {
+                if (row.get_data<string>("page-id") == id) { list.select_row(row); return; }
+            }
+        }
+
         void rebuild() {
             for (uint i = 0; i < registry.size; i++) {
                 var page = registry.get_at(i);

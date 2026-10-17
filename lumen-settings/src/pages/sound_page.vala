@@ -92,6 +92,14 @@ namespace LumenSettings {
             });
             group.add(output_combo);
 
+            var bt_link = new Adw.ActionRow() {
+                title = "Bluetooth Devices", subtitle = "pair and connect headphones or speakers",
+                activatable = true, action_name = "win.show-page",
+                action_target = new Variant.string("networking:bluetooth"),
+            };
+            bt_link.add_suffix(new Gtk.Image.from_icon_name("go-next-symbolic"));
+            group.add(bt_link);
+
             out_scale = make_scale(0, allow_over ? 150 : 100);
             track_drag(out_scale, (v) => { out_dragging = v; });
             out_scale.value_changed.connect(() => {

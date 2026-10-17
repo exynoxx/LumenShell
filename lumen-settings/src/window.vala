@@ -51,6 +51,20 @@ namespace LumenSettings {
 
             sidebar.page_selected.connect(show_page);
             sidebar.select_first();
+
+            // Cross-page links: target "<page-id>" or "<page-id>:<anchor>".
+            var show_action = new SimpleAction("show-page", VariantType.STRING);
+            show_action.activate.connect((param) => {
+                var parts = param.get_string().split(":", 2);
+                sidebar.select_id(parts[0]);
+                var page = registry.lookup(parts[0]);
+                if (page != null && parts.length > 1) {
+                    string anchor = parts[1];
+                    // After the stack switch, so the focus scroll has an allocation.
+                    Idle.add(() => { page.reveal(anchor); return Source.REMOVE; });
+                }
+            });
+            add_action(show_action);
         }
 
         void show_page(string id) {

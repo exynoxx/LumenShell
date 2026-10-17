@@ -421,6 +421,11 @@ namespace LumenSettings {
                 wifi.request_details();
         }
 
+        public void reveal(string anchor) {
+            // Focusing scrolls the PreferencesPage viewport to it.
+            if (anchor == "bluetooth") bt_switch.grab_focus();
+        }
+
         void build_bluetooth() {
             var group = new Adw.PreferencesGroup() { title = "Bluetooth" };
 
