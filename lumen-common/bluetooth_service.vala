@@ -20,6 +20,7 @@ public class BluetoothService : GLib.Object {
     private bool        poll_in_flight  = false;
     private bool        scan_in_flight  = false;
     private bool        refresh_pending = false;
+    private string      devices_sig     = "";
 
     public BluetoothService() {
         // Re-apply the remembered power state (beats BlueZ AutoEnable at boot).
@@ -140,16 +141,27 @@ public class BluetoothService : GLib.Object {
             var pw   = btctl.query_powered();
             var devs = btctl.fetch_devices();
             var conn = first_connected(devs);
+            var sig  = signature(devs);
             GLib.Idle.add(() => {
                 poll_in_flight = false;
                 bool changed = false;
                 if (pw   != powered)        { powered = pw;          changed = true; }
                 if (conn != connected_name) { connected_name = conn; changed = true; }
+                // Battery and discovery updates arrive without a power/connection change.
+                if (sig  != devices_sig)    { devices_sig = sig;     changed = true; }
                 devices = devs;
                 if (changed) state_changed();
                 return Source.REMOVE;
             });
         });
+    }
+
+    private static string signature(BtDevice[] devs) {
+        var b = new StringBuilder();
+        foreach (var d in devs)
+            b.append_printf("%s\t%s\t%s\t%s\t%d|", d.mac, d.name, d.paired.to_string(),
+                            d.connected.to_string(), d.battery);
+        return b.str;
     }
 
     private static string first_connected(BtDevice[] devs) {

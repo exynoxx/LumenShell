@@ -6,6 +6,7 @@ public class BtDevice : GLib.Object {
     public string dev_icon;   // bluez "Icon" property — audio-card, input-mouse, phone, …
     public bool   paired;
     public bool   connected;
+    public int    battery = -1;   // percent; -1 when the device doesn't report it
 
     public BtDevice(string mac, string name, string dev_icon, bool paired, bool connected) {
         this.mac       = mac;
@@ -131,8 +132,10 @@ public class BtctlClient : GLib.Object {
 
         for (size_t i = 0; i < objects.n_children(); i++) {
             var d = parse_device(objects.get_child_value(i).get_child_value(1));
-            if (d != null)
-                result += new BtDevice(d.mac, d.name, d.dev_icon, d.paired, d.connected);
+            if (d == null) continue;
+            var dev = new BtDevice(d.mac, d.name, d.dev_icon, d.paired, d.connected);
+            dev.battery = d.battery;
+            result += dev;
         }
         return result;
     }

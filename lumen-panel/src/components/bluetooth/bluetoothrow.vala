@@ -4,10 +4,13 @@ public class BluetoothRow : Gtk.Widget, CcRow {
     public const int ROW_H = 44;
     const int PAD    = 16;
     const int NAME_X = PAD + 28;
+    const int BATT_W = 20;   // battery glyph body, nub excluded
+    const int BATT_H = 10;
 
     public string mac       { get; private set; }
     public string dev_name  { get; private set; }
     public bool   is_paired { get; private set; }
+    public int    battery   { get; private set; }
 
     public string key { get { return mac; } }
 
@@ -42,6 +45,7 @@ public class BluetoothRow : Gtk.Widget, CcRow {
         this.mac           = dev.mac;
         this.dev_name      = dev.name;
         this.is_paired     = dev.paired;
+        this.battery       = dev.battery;
         this._is_connected = dev.connected;
         this.glyph         = glyph_for (dev.dev_icon);
 
@@ -74,6 +78,23 @@ public class BluetoothRow : Gtk.Widget, CcRow {
         }
     }
 
+    // Outline + nub + a fill proportional to the level.
+    void draw_battery (Gtk.Snapshot s, float x, float y) {
+        var rr = Gsk.RoundedRect ();
+        rr.init_from_rect ({ { x, y }, { BATT_W, BATT_H } }, 2.5f);
+        float[] widths = { 1, 1, 1, 1 };
+        Gdk.RGBA[] colors = { dim_fg, dim_fg, dim_fg, dim_fg };
+        s.append_border (rr, widths, colors);
+        Utils.fill_rounded (s, x + BATT_W + 0.5f, y + 3, 1.5f, BATT_H - 6, 0.75f, dim_fg);
+
+        float inner = (BATT_W - 4) * int.min (battery, 100) / 100f;
+        if (inner > 0)
+            Utils.fill_rounded (s, x + 2, y + 2, inner, BATT_H - 4, 1,
+                                battery <= 20 ? low_fg : CcStyle.label);
+    }
+
+    static Gdk.RGBA low_fg = Utils.rgba (1.0f, 0.271f, 0.227f, 1f);   // #FF453A
+
     public override Gtk.SizeRequestMode get_request_mode () {
         return Gtk.SizeRequestMode.CONSTANT_SIZE;
     }
@@ -100,13 +121,27 @@ public class BluetoothRow : Gtk.Widget, CcRow {
         Utils.draw_layout (s, glyph_layout, PAD, (h - gh) / 2,
                            _is_connected ? CcStyle.label : dim_fg);
 
+        // Battery sits right after the name, so the name ellipsizes around it.
+        Pango.Layout? batt = null;
+        int bw = 0, bh = 0;
+        if (_is_connected && battery >= 0) {
+            batt = Utils.text_layout (this, "%d%%".printf (battery), 13);
+            batt.get_pixel_size (out bw, out bh);
+        }
+
         var layout = Utils.text_layout (this, dev_name, 15, Pango.Weight.MEDIUM);
-        layout.set_width ((w - NAME_X - (PAD + 24)) * Pango.SCALE);
+        int batt_total = batt != null ? 8 + BATT_W + 2 + 4 + bw : 0;
+        layout.set_width ((w - NAME_X - (PAD + 24) - batt_total) * Pango.SCALE);
         layout.set_ellipsize (Pango.EllipsizeMode.END);
         int tw, th;
         layout.get_pixel_size (out tw, out th);
         Utils.draw_layout (s, layout, NAME_X, (h - th) / 2,
                            (_is_connected || is_paired) ? CcStyle.label : dim_fg);
+        if (batt != null) {
+            int bx = NAME_X + tw + 8;
+            draw_battery (s, bx, (h - BATT_H) / 2);
+            Utils.draw_layout (s, batt, bx + BATT_W + 2 + 4, (h - bh) / 2, dim_fg);
+        }
 
         if (_is_connected) {
             var check = Utils.text_layout (this, "✓", 15, Pango.Weight.BOLD);
