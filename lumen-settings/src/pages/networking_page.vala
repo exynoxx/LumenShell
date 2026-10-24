@@ -54,6 +54,10 @@ namespace LumenSettings {
         bool   last_eth_conn  = false;
         string details_mac    = "";   // device shown in "Device details"
 
+        // What the device lists last rendered; null forces the first build.
+        string? wifi_shown = null;
+        string? bt_shown   = null;
+
         // The SSID whose password dialog is open, so the single connect_result
         // handler can re-prompt on BAD_PASSWORD keyed on the right network.
         string pending_pw_ssid = "";
@@ -125,6 +129,23 @@ namespace LumenSettings {
             wifi_spinner.visible  = wifi.scanning;
             if (wifi.scanning) wifi_spinner.start(); else wifi_spinner.stop();
 
+            // Skip the row rebuild when nothing a row renders changed, so a poll
+            // doesn't tear rows down mid-click. Strength counts only by its icon bucket.
+            var key = new StringBuilder("%s|%s|%s".printf(wifi.enabled.to_string(),
+                                        wifi.connected_ssid, wifi.connecting_ssid));
+            foreach (var net in sorted_nets())
+                key.append_printf("|%s\t%s\t%s\t%s", net.ssid, signal_icon(net),
+                                  net.security, net.is_saved.to_string());
+            if (key.str != wifi_shown) {
+                wifi_shown = key.str;
+                rebuild_wifi_list();
+            }
+
+            update_conn_tracking();
+            building = false;
+        }
+
+        void rebuild_wifi_list() {
             clear_box(wifi_list_holder);
             if (wifi.enabled) {
                 var bl = new Adw.PreferencesGroup();
@@ -142,9 +163,6 @@ namespace LumenSettings {
             } else {
                 wifi_list_holder.visible = false;
             }
-
-            update_conn_tracking();
-            building = false;
         }
 
         WifiNet[] sorted_nets() {
@@ -473,15 +491,22 @@ namespace LumenSettings {
             bt_spinner.visible  = bt.scanning;
             if (bt.scanning) bt_spinner.start(); else bt_spinner.stop();
 
-            clear_box(bt_list_holder);
-            if (bt.powered) {
-                var bl = new Adw.PreferencesGroup();
-                foreach (var d in sorted_devices())
-                    bl.add(make_bt_row(d));
-                bt_list_holder.append(bl);
-                bt_list_holder.visible = true;
-            } else {
-                bt_list_holder.visible = false;
+            var key = new StringBuilder(bt.powered.to_string());
+            foreach (var d in sorted_devices())
+                key.append_printf("|%s\t%s\t%s\t%s\t%s\t%d", d.mac, d.name, d.dev_icon,
+                                  d.paired.to_string(), d.connected.to_string(), d.battery);
+            if (key.str != bt_shown) {
+                bt_shown = key.str;
+                clear_box(bt_list_holder);
+                if (bt.powered) {
+                    var bl = new Adw.PreferencesGroup();
+                    foreach (var d in sorted_devices())
+                        bl.add(make_bt_row(d));
+                    bt_list_holder.append(bl);
+                    bt_list_holder.visible = true;
+                } else {
+                    bt_list_holder.visible = false;
+                }
             }
 
             update_bt_tracking();

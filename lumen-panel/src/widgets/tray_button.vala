@@ -3,6 +3,7 @@
 public class TrayButton : Gtk.Box {
 
     Gtk.Image image;
+    string?   current = null;
 
     public TrayButton (string icon_resource_name) {
         GLib.Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
@@ -16,7 +17,11 @@ public class TrayButton : Gtk.Box {
         set_icon_from_resource (icon_resource_name);
     }
 
+    // Services re-emit state_changed for unrelated fields; reloading the SVG
+    // would re-parse, re-rasterise and queue_resize every time.
     public void set_icon_from_resource (string name) {
+        if (name == current) return;
+        current = name;
         image.set_from_resource ("/dev/lumen/panel/icons/" + name + ".svg");
     }
 }

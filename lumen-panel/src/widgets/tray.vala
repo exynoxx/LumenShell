@@ -19,11 +19,14 @@ public class TrayBar : Gtk.Box {
 
     LogindBridge logind;
     BrightnessService brightness;
+    // Theme is installed before any TrayBar exists and never reloaded.
+    Gdk.RGBA bg_color;
 
     public TrayBar (LogindBridge logind, BrightnessService brightness) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.logind = logind;
         this.brightness = brightness;
+        bg_color = Theme.color ("tray.background", "rgba(17,20,31,0.97)");
         add_css_class ("tray-bar");
         halign = Gtk.Align.END;
         valign = PanelConfig.at_top ? Gtk.Align.START : Gtk.Align.END;
@@ -143,8 +146,7 @@ public class TrayBar : Gtk.Box {
             float x = full_w - bw;
             float y = PanelConfig.at_top ? 0.0f : full_h - bh;
 
-            Utils.fill_rounded (s, x, y, bw, bh, BOX_RADIUS,
-                                Theme.color ("tray.background", "rgba(17,20,31,0.97)"));
+            Utils.fill_rounded (s, x, y, bw, bh, BOX_RADIUS, bg_color);
         }
         base.snapshot (s);
     }

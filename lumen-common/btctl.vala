@@ -67,8 +67,28 @@ public class BtctlClient : GLib.Object {
         foreach (var iface in new string[]{ ADAPTER_IFACE, DEVICE_IFACE, BATTERY_IFACE }) {
             conn.signal_subscribe(BLUEZ, PROPS_IFACE, "PropertiesChanged", null, iface,
                                   DBusSignalFlags.NONE,
-                                  (c, s, path, i, sig, parameters) => { changed(); });
+                                  (c, s, path, i, sig, parameters) => {
+                if (!only_noise(parameters)) changed();
+            });
         }
+    }
+
+    // Keys nothing displays; a nearby device's RSSI ticks would otherwise
+    // trigger a full GetManagedObjects pass every few seconds during a scan.
+    const string[] NOISE_KEYS = { "RSSI", "ManufacturerData", "ServiceData", "TxPower" };
+
+    // PropertiesChanged is (s interface, a{sv} changed, as invalidated).
+    static bool only_noise(Variant parameters) {
+        var changed_props = parameters.get_child_value(1);
+        for (size_t i = 0; i < changed_props.n_children(); i++) {
+            var key = changed_props.get_child_value(i).get_child_value(0).get_string();
+            if (!(key in NOISE_KEYS)) return false;
+        }
+        var invalidated = parameters.get_child_value(2);
+        for (size_t i = 0; i < invalidated.n_children(); i++) {
+            if (!(invalidated.get_child_value(i).get_string() in NOISE_KEYS)) return false;
+        }
+        return true;
     }
 
     // ---- reads (DBus) -------------------------------------------------------
@@ -97,7 +117,7 @@ public class BtctlClient : GLib.Object {
 
     // `ifaces` is one object's a{sa{sv}}; null when it isn't a device.
     static BtDeviceDetails? parse_device(Variant ifaces) {
-        var props = ifaces.lookup_value(DEVICE_IFACE, new VariantType("a{sv}"));
+        var props = ifaces.lookup_value(DEVICE_IFACE, VariantType.VARDICT);
         if (props == null) return null;
 
         var d = new BtDeviceDetails();
@@ -109,7 +129,7 @@ public class BtctlClient : GLib.Object {
         d.connected    = bool_prop(props, "Connected");
 
         // Battery level lives on a sibling interface of the same object.
-        var batt = ifaces.lookup_value(BATTERY_IFACE, new VariantType("a{sv}"));
+        var batt = ifaces.lookup_value(BATTERY_IFACE, VariantType.VARDICT);
         if (batt != null) {
             var pct = batt.lookup_value("Percentage", VariantType.BYTE);
             if (pct != null) d.battery = pct.get_byte();
@@ -119,25 +139,22 @@ public class BtctlClient : GLib.Object {
         return d;
     }
 
-    public bool query_powered() {
-        var objects = managed_objects();
-        if (objects == null) return false;
-
-        for (size_t i = 0; i < objects.n_children(); i++) {
-            var ifaces = objects.get_child_value(i).get_child_value(1);
-            var props  = ifaces.lookup_value(ADAPTER_IFACE, new VariantType("a{sv}"));
-            if (props != null) return bool_prop(props, "Powered");
-        }
-        return false;
-    }
-
-    public BtDevice[] fetch_devices() {
+    // One GetManagedObjects pass for both the adapter's power and the device list.
+    public BtDevice[] fetch_state(out bool powered) {
+        powered = false;
         BtDevice[] result = {};
         var objects = managed_objects();
         if (objects == null) return result;
 
+        bool seen_adapter = false;
         for (size_t i = 0; i < objects.n_children(); i++) {
-            var d = parse_device(objects.get_child_value(i).get_child_value(1));
+            var ifaces = objects.get_child_value(i).get_child_value(1);
+            var adapter = ifaces.lookup_value(ADAPTER_IFACE, VariantType.VARDICT);
+            if (adapter != null && !seen_adapter) {
+                seen_adapter = true;
+                powered = bool_prop(adapter, "Powered");
+            }
+            var d = parse_device(ifaces);
             if (d == null) continue;
             var dev = new BtDevice(d.mac, d.name, d.dev_icon, d.paired, d.connected);
             dev.battery = d.battery;

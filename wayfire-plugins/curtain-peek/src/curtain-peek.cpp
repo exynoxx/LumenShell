@@ -205,6 +205,14 @@ inline std::vector<float> curtain_build_grid(int nu, int nv)
     return g;
 }
 
+// Owned by the per-output plugin instance, which outlives every node it creates,
+// so the shader compiles once per output instead of on every open.
+struct curtain_gl_t
+{
+    OpenGL::program_t program;
+    bool ready = false;
+};
+
 class curtain_screenshot_node_t : public wf::scene::node_t
 {
   public:
@@ -218,19 +226,11 @@ class curtain_screenshot_node_t : public wf::scene::node_t
     float fold_depth  = 0.4f;      // strip-width modulation amplitude (0..1)
     float shade_depth = 0.5f;      // peak fold shadow opacity (0..1)
 
-    // Built lazily on first render: the only point with a guaranteed GL context.
-    OpenGL::program_t  program;
-    bool               gl_ready = false;
-    std::vector<float> grid;
+    curtain_gl_t& gl;
 
-    curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t) :
-        wf::scene::node_t(false), geo(g), tex(t)
+    curtain_screenshot_node_t(wf::geometry_t g, wlr_texture *t, curtain_gl_t& gl) :
+        wf::scene::node_t(false), geo(g), tex(t), gl(gl)
     {}
-
-    ~curtain_screenshot_node_t() override
-    {
-        wf::gles::run_in_context_if_gles([&] { program.free_resources(); });
-    }
 
     std::string stringify() const override
     {
@@ -279,33 +279,36 @@ class curtain_screenshot_render_instance_t :
         // Eased so a closed curtain is perfectly flat.
         const float foldP = std::sin(p * 1.5707963f);
 
+        static const std::vector<float> grid = curtain_build_grid(NU, NV);
+        auto& program = self->gl.program;
+
         data.pass->custom_gles_subpass([&]
         {
-            if (!self->gl_ready)
+            // Lazy: the subpass is the only point with a guaranteed GL context.
+            if (!self->gl.ready)
             {
-                self->program.compile(curtain_vert_source, curtain_frag_source);
-                self->grid     = curtain_build_grid(NU, NV);
-                self->gl_ready = true;
+                program.compile(curtain_vert_source, curtain_frag_source);
+                self->gl.ready = true;
             }
 
             const auto matrix =
                 wf::gles::render_target_orthographic_projection(data.target);
-            const int n_verts = (int) (self->grid.size() / 2);
+            const int n_verts = (int) (grid.size() / 2);
 
             wf::gles_texture_t gtex{self->tex};
-            self->program.use(wf::TEXTURE_TYPE_RGBA);
-            self->program.set_active_texture(gtex);
-            self->program.attrib_pointer("grid", 2, 0, self->grid.data());
-            self->program.uniformMatrix4f("matrix", matrix);
+            program.use(wf::TEXTURE_TYPE_RGBA);
+            program.set_active_texture(gtex);
+            program.attrib_pointer("grid", 2, 0, grid.data());
+            program.uniformMatrix4f("matrix", matrix);
 
-            self->program.uniform1f("u_p", p);
-            self->program.uniform1f("u_foldP", foldP);
-            self->program.uniform1f("u_foldDepth", foldDepth);
-            self->program.uniform1f("u_folds", (float) folds);
-            self->program.uniform1f("u_shade", shadeDepth);
-            self->program.uniform1f("u_W", (float) W);
-            self->program.uniform1f("u_gy", (float) g.y);
-            self->program.uniform1f("u_H", (float) g.height);
+            program.uniform1f("u_p", p);
+            program.uniform1f("u_foldP", foldP);
+            program.uniform1f("u_foldDepth", foldDepth);
+            program.uniform1f("u_folds", (float) folds);
+            program.uniform1f("u_shade", shadeDepth);
+            program.uniform1f("u_W", (float) W);
+            program.uniform1f("u_gy", (float) g.y);
+            program.uniform1f("u_H", (float) g.height);
 
             // Each half is pinned to its outer wall; src_x0/src_w are output-relative.
             auto draw_half = [&] (int src_x0, int src_w, bool is_left)
@@ -319,13 +322,13 @@ class curtain_screenshot_render_instance_t :
                 const float flare = std::min((float) src_w * 0.22f,
                     (float) src_w - gathered);
 
-                self->program.uniform1f("u_src_x0", (float) src_x0);
-                self->program.uniform1f("u_src_w", (float) src_w);
-                self->program.uniform1f("u_gathered", gathered);
-                self->program.uniform1f("u_flare", flare);
-                self->program.uniform1f("u_origin",
+                program.uniform1f("u_src_x0", (float) src_x0);
+                program.uniform1f("u_src_w", (float) src_w);
+                program.uniform1f("u_gathered", gathered);
+                program.uniform1f("u_flare", flare);
+                program.uniform1f("u_origin",
                     is_left ? (float) g.x : (float) (g.x + W));
-                self->program.uniform1f("u_cum_base", is_left ? 0.0f : 1.0f);
+                program.uniform1f("u_cum_base", is_left ? 0.0f : 1.0f);
 
                 for (const auto& box : data.damage)
                 {
@@ -338,7 +341,7 @@ class curtain_screenshot_render_instance_t :
             draw_half(0, seam, true);
             draw_half(seam, W - seam, false);
 
-            self->program.deactivate();
+            program.deactivate();
             GL_CALL(glDisable(GL_SCISSOR_TEST));
         });
     }
@@ -373,6 +376,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
     wf::auxilliary_buffer_t screenshot_buf;
     std::shared_ptr<curtain_screenshot_node_t> screenshot_node;
+    curtain_gl_t gl;
 
     std::shared_ptr<curtain_backdrop_node_t> backdrop;
 
@@ -493,6 +497,8 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         set_widgets_visible(true);
         desktop_view = nullptr;
         widget_view = nullptr;
+        // hard_reset() above already dropped the node that referenced it.
+        wf::gles::run_in_context_if_gles([&] { gl.program.free_resources(); });
     }
 
     bool ipc_toggle()
@@ -570,7 +576,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         set_live_layers_hidden(true);
 
         screenshot_node = std::make_shared<curtain_screenshot_node_t>(
-            rel, screenshot_buf.get_texture());
+            rel, screenshot_buf.get_texture(), gl);
         screenshot_node->seam_x      = rel.x + seam_off;
         screenshot_node->edge_px     = edge;
         screenshot_node->progress    = 0.0f;

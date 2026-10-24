@@ -9,6 +9,8 @@ public class BluetoothDetail : CcListDetail {
     Gtk.Button action_btn;
 
     BtDevice[] shown = {};
+    // Everything the rows render; a scan toggling `scanning` leaves it as is.
+    string shown_key = "";
 
     public BluetoothDetail (BluetoothService service) {
         base ("Bluetooth", "cc-bluetooth-detail");
@@ -97,6 +99,13 @@ public class BluetoothDetail : CcListDetail {
     }
 
     void rebuild_rows () {
+        var key = new StringBuilder ();
+        foreach (var d in service.devices)
+            key.append_printf ("|%s\t%s\t%s\t%s\t%s\t%d", d.mac, d.name, d.dev_icon,
+                               d.paired.to_string (), d.connected.to_string (), d.battery);
+        if (key.str == shown_key) return;
+        shown_key = key.str;
+
         Gtk.Widget? w;
         while ((w = list_card.get_first_child ()) != null) list_card.remove (w);
         rows.clear ();

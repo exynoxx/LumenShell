@@ -107,7 +107,11 @@ namespace LumenDesktop {
                 return;
             }
 
-            foreach (var entry in entries) store.append(entry);
+            // One splice = one items-changed, instead of one per entry.
+            // The store starts empty and load() runs once, so nothing to remove.
+            GLib.Object[] items = {};
+            foreach (var entry in entries) items += entry;
+            store.splice(0, 0, items);
         }
 
         private void show_placeholder(string text) {

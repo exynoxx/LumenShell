@@ -44,7 +44,8 @@ public class Pill : Gtk.Box {
     }
 
     public void show_slider(string icon_name, double fraction, string text) {
-        icon.set_from_icon_name(icon_name);
+        // GTK4 drops and re-looks-up the icon even for the same name.
+        if (icon.icon_name != icon_name) icon.set_from_icon_name(icon_name);
         progress.fraction = fraction;
         progress.set_visible(true);
         label.set_text(text);
@@ -52,7 +53,7 @@ public class Pill : Gtk.Box {
     }
 
     public void show_chip(string icon_name, string text) {
-        icon.set_from_icon_name(icon_name);
+        if (icon.icon_name != icon_name) icon.set_from_icon_name(icon_name);
         progress.set_visible(false);
         label.set_text(text);
         label.set_visible(true);

@@ -183,6 +183,7 @@ public class CcToggleRow : Gtk.Box {
     Gtk.Label  subtitle_lbl;
     string on_icon;
     string off_icon;
+    string shown_icon;
     bool _on = false;
 
     // compact: half-width tile — no chevron, ellipsized subtitle.
@@ -195,6 +196,7 @@ public class CcToggleRow : Gtk.Box {
         toggle_btn = new Gtk.Button () { valign = Gtk.Align.CENTER };
         toggle_btn.add_css_class ("cc-toggle");
         toggle_img = new Gtk.Image () { pixel_size = 20 };
+        shown_icon = off_icon;
         toggle_img.set_from_resource (CcStyle.icon (off_icon));
         toggle_btn.set_child (toggle_img);
         toggle_btn.clicked.connect (() => toggled (!_on));
@@ -236,7 +238,10 @@ public class CcToggleRow : Gtk.Box {
         _on = on;
         if (on) toggle_btn.add_css_class ("on");
         else    toggle_btn.remove_css_class ("on");
-        toggle_img.set_from_resource (CcStyle.icon (on ? on_icon : off_icon));
+        var icon = on ? on_icon : off_icon;
+        if (icon == shown_icon) return;
+        shown_icon = icon;
+        toggle_img.set_from_resource (CcStyle.icon (icon));
     }
 
     public void set_subtitle (string s) {

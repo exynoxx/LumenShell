@@ -3,6 +3,10 @@ public class OsdWindow : Gtk.Window {
     public Pill     pill;
     public Selector selector;
 
+    // Set while the picker has the surface centred; the themed anchors only
+    // need re-applying then (Theme.position never changes at runtime).
+    private bool centred = false;
+
     public OsdWindow(Gtk.Application app) {
         Object(application: app);
 
@@ -28,7 +32,10 @@ public class OsdWindow : Gtk.Window {
     }
 
     public void show_pill_view() {
-        apply_position();
+        if (centred) {
+            apply_position();
+            centred = false;
+        }
         if (get_child() != pill) set_child(pill);
     }
 
@@ -50,6 +57,7 @@ public class OsdWindow : Gtk.Window {
 
     // Unanchored on every edge ⇒ gtk4-layer-shell centers the surface.
     private void center_position() {
+        centred = true;
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP,    false);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.BOTTOM, false);
         GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.LEFT,   false);

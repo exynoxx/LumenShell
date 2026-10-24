@@ -5,6 +5,7 @@ public class BatteryModule : GLib.Object {
 
     Gtk.Box   root;
     Gtk.Image icon_img;
+    string?   shown_icon = null;
     Gtk.Label status_lbl;
     Gtk.Label pct_lbl;
     LumenProgressBar bar;
@@ -61,7 +62,11 @@ public class BatteryModule : GLib.Object {
     public Gtk.Widget tile () { return root; }
 
     void refresh () {
-        icon_img.set_from_resource (CcStyle.icon (service.icon_name ()));
+        var icon = service.icon_name ();
+        if (icon != shown_icon) {
+            shown_icon = icon;
+            icon_img.set_from_resource (CcStyle.icon (icon));
+        }
 
         pct_lbl.label = "%d%%".printf (service.percent);
 

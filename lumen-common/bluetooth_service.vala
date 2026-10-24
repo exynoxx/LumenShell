@@ -117,8 +117,8 @@ public class BluetoothService : GLib.Object {
 
         new GLib.Thread<void>("bt-scan", () => {
             if (rescan) btctl.scan(SCAN_SECS);
-            var new_powered = btctl.query_powered();
-            var new_devs    = btctl.fetch_devices();
+            bool new_powered;
+            var new_devs    = btctl.fetch_state(out new_powered);
             GLib.Idle.add(() => {
                 powered        = new_powered;
                 devices        = new_devs;
@@ -142,8 +142,8 @@ public class BluetoothService : GLib.Object {
         if (poll_in_flight) return;
         poll_in_flight = true;
         new GLib.Thread<void>("bt-poll", () => {
-            var pw   = btctl.query_powered();
-            var devs = btctl.fetch_devices();
+            bool pw;
+            var devs = btctl.fetch_state(out pw);
             var conn = first_connected(devs);
             var sig  = signature(devs);
             GLib.Idle.add(() => {

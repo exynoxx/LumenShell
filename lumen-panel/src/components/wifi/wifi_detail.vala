@@ -17,6 +17,9 @@ public class WifiDetail : CcListDetail {
     Gtk.Label        status_label;
 
     WifiNet[] sorted_nets = {};
+    // Everything the rows render; state_changed also fires for scan/connecting/
+    // ethernet flips that leave the list untouched.
+    string shown = "";
 
     // Sticky per-SSID failure, so a background rescan doesn't wipe the message.
     string error_ssid = "";
@@ -270,6 +273,12 @@ public class WifiDetail : CcListDetail {
     }
 
     void rebuild_rows () {
+        var key = new StringBuilder (service.connected_ssid);
+        foreach (var n in service.nets)
+            key.append_printf ("|%s\t%d\t%s\t%s", n.ssid, n.signal, n.security, n.is_saved.to_string ());
+        if (key.str == shown) return;
+        shown = key.str;
+
         Gtk.Widget? w;
         while ((w = conn_card.get_first_child ()) != null)   conn_card.remove (w);
         while ((w = saved_card.get_first_child ()) != null)  saved_card.remove (w);

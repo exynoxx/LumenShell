@@ -10,6 +10,9 @@ public class Banner : Gtk.Box {
     private Gtk.Box        actions_row;
     private bool           has_default = false;
     private string[]       current_actions = {};
+    // What the icon was last resolved from (themed name, or file path + mtime);
+    // null forces the next set_icon() to resolve.
+    private string?        current_icon_key = null;
 
     public Banner(Notification n) {
         Object(orientation: Gtk.Orientation.VERTICAL, spacing: Theme.spacing);
@@ -96,6 +99,7 @@ public class Banner : Gtk.Box {
                       : n.app_icon;
         if (src == null || (!) src == "") {
             icon_img.set_visible(false);
+            current_icon_key = "";
             return;
         }
         icon_img.set_visible(true);
@@ -104,16 +108,33 @@ public class Banner : Gtk.Box {
         if (s.has_prefix("/"))            file_path = s;
         else if (s.has_prefix("file://")) file_path = s.substring(7);
 
-        if (file_path != null) {
-            if (FileUtils.test((!) file_path, FileTest.EXISTS)) {
-                icon_img.set_from_file((!) file_path);
-            } else {
-                warning("lumen-notifications: icon file missing: %s", (!) file_path);
-                icon_img.set_from_icon_name("dialog-information");
-            }
-        } else {
+        if (file_path == null) {
+            // A themed name: same name, same icon.
+            if (current_icon_key == s) return;
             icon_img.set_from_icon_name(s);
+            current_icon_key = s;
+            return;
         }
+
+        // Apps rewrite one path with new art (album covers), so the mtime is
+        // part of the key — a stat is cheap next to the decode it skips.
+        string key;
+        try {
+            var info = File.new_for_path((!) file_path).query_info(
+                FileAttribute.TIME_MODIFIED + "," + FileAttribute.TIME_MODIFIED_USEC,
+                FileQueryInfoFlags.NONE);
+            key = (!) file_path
+                + "\n" + info.get_attribute_uint64(FileAttribute.TIME_MODIFIED).to_string()
+                + "." + info.get_attribute_uint32(FileAttribute.TIME_MODIFIED_USEC).to_string();
+        } catch (Error e) {
+            warning("lumen-notifications: icon file missing: %s", (!) file_path);
+            icon_img.set_from_icon_name("dialog-information");
+            current_icon_key = null;  // retry if the file appears later
+            return;
+        }
+        if (current_icon_key == key) return;
+        icon_img.set_from_file((!) file_path);
+        current_icon_key = key;
     }
 
     private void rebuild_actions(string[] actions) {

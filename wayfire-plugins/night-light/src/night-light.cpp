@@ -65,6 +65,14 @@ void main() { gl_FragColor = u_tint; }
 )";
 }
 
+// Owned by the per-output plugin instance, which outlives every node it creates,
+// so the shader compiles once per output instead of on every toggle-on.
+struct night_tint_gl_t
+{
+    OpenGL::program_t program;
+    bool ready = false;
+};
+
 // Full-output tint quad on the OVERLAY layer.
 class night_tint_node_t : public wf::scene::node_t
 {
@@ -72,17 +80,11 @@ class night_tint_node_t : public wf::scene::node_t
     wf::geometry_t geo;             // output-relative full geometry
     float tint[3] = {1.0f, 1.0f, 1.0f}; // current (animated) RGB multiplier
 
-    OpenGL::program_t program;
-    bool gl_ready = false;
+    night_tint_gl_t& gl;
 
-    night_tint_node_t(wf::geometry_t g) :
-        wf::scene::node_t(false), geo(g)
+    night_tint_node_t(wf::geometry_t g, night_tint_gl_t& gl) :
+        wf::scene::node_t(false), geo(g), gl(gl)
     {}
-
-    ~night_tint_node_t() override
-    {
-        wf::gles::run_in_context_if_gles([&] { program.free_resources(); });
-    }
 
     std::string stringify() const override
     {
@@ -116,21 +118,24 @@ class night_tint_render_instance_t :
         const float x1 = (float) (g.x + g.width), y1 = (float) (g.y + g.height);
         const float verts[12] = {x0, y0, x1, y0, x1, y1, x0, y0, x1, y1, x0, y1};
 
+        auto& program = self->gl.program;
+
         data.pass->custom_gles_subpass([&]
         {
-            if (!self->gl_ready)
+            // Lazy: the subpass is the only point with a guaranteed GL context.
+            if (!self->gl.ready)
             {
-                self->program.compile(tint_vert_source, tint_frag_source);
-                self->gl_ready = true;
+                program.compile(tint_vert_source, tint_frag_source);
+                self->gl.ready = true;
             }
 
             const auto matrix =
                 wf::gles::render_target_orthographic_projection(data.target);
-            self->program.use(wf::TEXTURE_TYPE_RGBA);
-            self->program.uniformMatrix4f("matrix", matrix);
-            self->program.uniform4f("u_tint",
+            program.use(wf::TEXTURE_TYPE_RGBA);
+            program.uniformMatrix4f("matrix", matrix);
+            program.uniform4f("u_tint",
                 glm::vec4(self->tint[0], self->tint[1], self->tint[2], 1.0f));
-            self->program.attrib_pointer("pos", 2, 0, verts);
+            program.attrib_pointer("pos", 2, 0, verts);
 
             // MULTIPLY (out = dst * src): whites go amber without dimming, unlike
             // a source-over veil.
@@ -145,7 +150,7 @@ class night_tint_render_instance_t :
             // Restore the subpass default blend for later draws in this pass.
             GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
             GL_CALL(glDisable(GL_SCISSOR_TEST));
-            self->program.deactivate();
+            program.deactivate();
         });
     }
 };
@@ -170,6 +175,7 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
     state_t state = state_t::OFF;
 
     std::shared_ptr<night_tint_node_t> node;
+    night_tint_gl_t gl;
     float warm[3] = {1.0f, 1.0f, 1.0f}; // target tint for the current temperature
 
     wf::effect_hook_t on_frame = [this] ()
@@ -210,6 +216,9 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
         {
             teardown();
         }
+
+        // teardown() above already dropped the node that referenced it.
+        wf::gles::run_in_context_if_gles([&] { gl.program.free_resources(); });
     }
 
     bool ipc_start()
@@ -252,7 +261,7 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
   private:
     void setup()
     {
-        node = std::make_shared<night_tint_node_t>(output->get_relative_geometry());
+        node = std::make_shared<night_tint_node_t>(output->get_relative_geometry(), gl);
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY), node);
         hook();
     }

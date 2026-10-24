@@ -5,6 +5,7 @@ public class SoundModule : GLib.Object {
     SoundService service;
     Gtk.Box   root;
     Gtk.Image mute_img;
+    bool      shown_muted = false;
     CcSlider  slider;
     Gtk.Label device_lbl;
     bool      suppress = false;
@@ -71,7 +72,10 @@ public class SoundModule : GLib.Object {
         suppress = true;
         slider.set_value (service.volume_percent);
         suppress = false;
-        mute_img.set_from_resource (CcStyle.icon (service.muted ? "sound-mute" : "sound-max"));
+        if (service.muted != shown_muted) {
+            shown_muted = service.muted;
+            mute_img.set_from_resource (CcStyle.icon (shown_muted ? "sound-mute" : "sound-max"));
+        }
         device_lbl.label = active_sink_name ();
     }
 

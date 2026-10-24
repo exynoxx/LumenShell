@@ -5,6 +5,13 @@ namespace LumenDesktop {
         public string display_name  { get; construct; }
         public bool is_dir          { get; construct; }
         public GLib.Icon? icon      { get; construct; }
+        // Built once here, not per comparison: the sort calls its comparator
+        // n·log n times. Compare with strcmp(), as the GLib docs prescribe.
+        public string collate_key   { get; private set; }
+
+        construct {
+            collate_key = display_name.collate_key_for_filename(-1);
+        }
 
         public FsEntry(GLib.File file, string display_name, bool is_dir, GLib.Icon? icon) {
             Object(file: file, display_name: display_name, is_dir: is_dir, icon: icon);
@@ -38,15 +45,15 @@ namespace LumenDesktop {
 
                     var name = info.get_display_name() ?? info.get_name();
                     bool is_dir = info.get_file_type() == GLib.FileType.DIRECTORY;
-                    result.append(new FsEntry(
+                    // prepend, not append (O(n) per call): the sort below fixes the order.
+                    result.prepend(new FsEntry(
                         dir.get_child(info.get_name()), name, is_dir, info.get_icon()));
                 }
             }
 
             result.sort((a, b) => {
                 if (a.is_dir != b.is_dir) return a.is_dir ? -1 : 1;
-                return a.display_name.collate_key_for_filename(-1)
-                        .collate(b.display_name.collate_key_for_filename(-1));
+                return strcmp(a.collate_key, b.collate_key);
             });
             return result;
         }
