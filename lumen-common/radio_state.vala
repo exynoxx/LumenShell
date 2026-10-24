@@ -4,7 +4,6 @@ using GLib;
 // so a fresh install enforces nothing and follows the system default.
 public class RadioState {
 
-    static bool   loaded         = false;
     static bool?  wifi_enabled   = null;
     static bool?  bt_enabled     = null;
 
@@ -12,10 +11,12 @@ public class RadioState {
         return LumenCommon.Paths.radio_state_json();
     }
 
+    // Re-read every call (cheap, rare): lumen-settings writes the same file from
+    // another process, so a cached copy would re-apply a stale state on resume.
     // Fail-soft: a missing or unparseable file leaves both values null.
     static void ensure_loaded () {
-        if (loaded) return;
-        loaded = true;
+        wifi_enabled = null;
+        bt_enabled   = null;
 
         var p = path();
         if (!FileUtils.test(p, FileTest.EXISTS)) return;

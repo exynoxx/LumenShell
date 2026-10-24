@@ -29,6 +29,10 @@ public class BluetoothService : GLib.Object {
         if (saved != null) apply_power(saved);
         else               poll_state();
         watch_bluez();
+        btctl.adapter_added.connect(() => {
+            var s = RadioState.get_bluetooth();
+            if (s != null) apply_power(s);
+        });
     }
 
     // Does NOT re-apply the saved power state, so merely constructing it (e.g. the

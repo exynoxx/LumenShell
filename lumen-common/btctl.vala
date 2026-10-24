@@ -32,6 +32,9 @@ public class BtDeviceDetails : GLib.Object {
 public class BtctlClient : GLib.Object {
 
     public signal void changed();
+    // A controller (re)appeared — boot race, bluetoothd restart, or the USB
+    // re-init on resume — and BlueZ AutoEnable may have powered it on.
+    public signal void adapter_added();
 
     const string BLUEZ         = "org.bluez";
     const string OBJMGR_IFACE  = "org.freedesktop.DBus.ObjectManager";
@@ -55,6 +58,9 @@ public class BtctlClient : GLib.Object {
         objmgr.g_signal.connect((sender, signal_name, parameters) => {
             if (signal_name == "InterfacesAdded" || signal_name == "InterfacesRemoved")
                 changed();
+            if (signal_name == "InterfacesAdded"
+                && parameters.get_child_value(1).lookup_value(ADAPTER_IFACE, null) != null)
+                adapter_added();
         });
 
         var conn = objmgr.get_connection();
