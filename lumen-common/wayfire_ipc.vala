@@ -10,6 +10,12 @@ namespace LumenCommon {
             if (p != null && p != "") return p;
             p = GLib.Environment.get_variable("WAYFIRE_SOCKET");
             if (p != null && p != "") return p;
+            // Restarted outside Wayfire's process tree (systemd-run, a terminal):
+            // the env var is gone, but the ipc plugin's socket name is predictable.
+            var wl = GLib.Environment.get_variable("WAYLAND_DISPLAY") ?? "wayland-0";
+            p = GLib.Path.build_filename(GLib.Environment.get_user_runtime_dir(),
+                                         "wayfire-" + wl + "-.socket");
+            if (GLib.FileUtils.test(p, GLib.FileTest.EXISTS)) return p;
             return null;
         }
 
