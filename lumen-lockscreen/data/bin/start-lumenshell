@@ -11,7 +11,7 @@ export XDG_SESSION_TYPE=wayland
 
 # Pin NGL — Vulkan misbehaves on some host GPUs. Inherited by every autostarted
 # GTK binary; export GSK_RENDERER beforehand to override.
-export GSK_RENDERER="${GSK_RENDERER:-ngl}"
+export GSK_RENDERER="${GSK_RENDERER:-gl}"
 
 # --- 2. Optional pre-start hooks --------------------------------------------
 if [ -d /etc/lumenshell/pre-start.d ]; then

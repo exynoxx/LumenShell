@@ -683,5 +683,5 @@ endif
 # GSK_RENDERER mirrors start-lumenshell so dev runs match the real session.
 devenv = environment()
 devenv.set('LUMEN_THEME_FILE', meson.project_source_root() / 'default-theme.json')
-devenv.set('GSK_RENDERER', 'ngl')
+devenv.set('GSK_RENDERER', 'gl')
 meson.add_devenv(devenv)
