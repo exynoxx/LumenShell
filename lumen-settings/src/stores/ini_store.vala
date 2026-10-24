@@ -23,9 +23,15 @@ namespace LumenSettings {
             load();
         }
 
+        // Wayfire's parser treats an unescaped `#` anywhere as a comment, so a
+        // colour like #242424FF must be stored as \#242424FF. KeyFile readers
+        // of our own INIs would choke on the escape, hence wayfire.ini only.
+        bool wayfire_escapes { get { return path == LumenCommon.Paths.wayfire_ini(); } }
+
         public string? get_value(string section, string key) {
             try {
-                return kf.get_value(section, key);
+                var v = kf.get_value(section, key);
+                return wayfire_escapes ? v.replace("\\#", "#") : v;
             } catch (KeyFileError e) {
                 return null;
             }
@@ -48,7 +54,8 @@ namespace LumenSettings {
         }
 
         public void set_value(string section, string key, string value) {
-            kf.set_value(section, key, value);
+            kf.set_value(section, key,
+                         wayfire_escapes ? value.replace("\\#", "#").replace("#", "\\#") : value);
         }
 
         public void remove_key(string section, string key) {

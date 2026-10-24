@@ -105,7 +105,7 @@ namespace LumenSettings.Wayfire {
                                             digits_for(prec), opt.long_label);
             row.use_markup = false;
             row.notify["value"].connect(() => {
-                put(opt.name, "%g".printf(row.value));
+                put(opt.name, row.value.format(new char[double.DTOSTR_BUF_SIZE], "%g"));
             });
             return row;
         }
