@@ -330,10 +330,23 @@ class curtain_screenshot_render_instance_t :
                     is_left ? (float) g.x : (float) (g.x + W));
                 program.uniform1f("u_cum_base", is_left ? 0.0f : 1.0f);
 
+                // Mirrors the vertex shader: band_w peaks at v = 1 and the band
+                // spans [origin, origin +/- band_w], so damage outside it (e.g.
+                // the drawer while fully open) costs no draw.
+                const float max_bw = (float) src_w * (1.0f - p) +
+                    (gathered + flare * foldP) * p;
+                const float hx0 = is_left ? (float) g.x : (float) (g.x + W) - max_bw;
+                const float hx1 = is_left ? (float) g.x + max_bw : (float) (g.x + W);
+
                 for (const auto& box : data.damage)
                 {
-                    wf::gles::render_target_logic_scissor(data.target,
-                        wlr_box_from_pixman_box(box));
+                    const auto b = wlr_box_from_pixman_box(box);
+                    if ((b.x >= hx1 + 1.0f) || (b.x + b.width <= hx0 - 1.0f))
+                    {
+                        continue;
+                    }
+
+                    wf::gles::render_target_logic_scissor(data.target, b);
                     GL_CALL(glDrawArrays(GL_TRIANGLES, 0, n_verts));
                 }
             };

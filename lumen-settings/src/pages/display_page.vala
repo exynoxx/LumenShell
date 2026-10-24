@@ -95,7 +95,12 @@ namespace LumenSettings {
             box.append(bar);
 
             rebuild_controls();
-            start_output_watch();
+            WLHooks.output_mgmt_register_outputs_changed(on_outputs_changed);
+            // The pump is a blocking roundtrip, so it runs only while the page is
+            // shown; a hotplug while hidden still surfaces on the first tick after
+            // map, since outputs_changed compares against the registered baseline.
+            page.map.connect(start_output_watch);
+            page.unmap.connect(stop_output_watch);
             return page;
         }
 
@@ -103,11 +108,14 @@ namespace LumenSettings {
         // 1 s pump drives it; an fd watch would contend with GDK's reads.
         void start_output_watch() {
             if (watch_id != 0) return;
-            WLHooks.output_mgmt_register_outputs_changed(on_outputs_changed);
             watch_id = Timeout.add_seconds(1, () => {
                 WLHooks.output_mgmt_refresh();
                 return GLib.Source.CONTINUE;
             });
+        }
+
+        void stop_output_watch() {
+            if (watch_id != 0) { Source.remove(watch_id); watch_id = 0; }
         }
 
         void on_outputs_changed() {

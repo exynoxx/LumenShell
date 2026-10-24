@@ -188,7 +188,8 @@ public class NmcliClient : GLib.Object {
         band     = "";
 
         string? out_str = LumenCommon.Proc.run_capture(new string[]{
-            "nmcli", "-t", "-f", "IN-USE,FREQ,SECURITY", "device", "wifi", "list"
+            "nmcli", "-t", "-f", "IN-USE,FREQ,SECURITY", "device", "wifi", "list",
+            "--rescan", "no"
         });
         if (out_str == null) return;
 
@@ -318,9 +319,12 @@ public class NmcliClient : GLib.Object {
         LumenCommon.Proc.spawn_detached(new string[] { "nmcli", "connection", "delete", "id", ssid });
     }
 
-    public WifiNet[] fetch_nets() {
+    // `list` defaults to `--rescan auto`, a radio scan once the cache is >30 s
+    // old; only an explicit rescan may trigger one.
+    public WifiNet[] fetch_nets(bool rescan = false) {
         string? out_str = LumenCommon.Proc.run_capture(new string[]{
-            "nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"
+            "nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list",
+            "--rescan", rescan ? "auto" : "no"
         });
         if (out_str == null) return {};
 

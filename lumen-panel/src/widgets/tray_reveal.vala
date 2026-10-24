@@ -45,6 +45,8 @@ public class TrayReveal : Gtk.Widget {
         anim_from = _fraction;
         anim_to   = reveal ? 1.0 : 0.0;
         anim_start_us = 0;
+        // Re-map before the bloom (also when re-expanding mid-collapse).
+        if (reveal && _child != null) _child.set_child_visible (true);
         if (tick_id == 0) tick_id = add_tick_callback (on_tick);
         // Grow the surface to full size in ONE step on expand; on collapse it shrinks
         // only once the animation settles (on_tick).
@@ -57,6 +59,8 @@ public class TrayReveal : Gtk.Widget {
         if (t >= 1.0) {
             set_fraction (anim_to);
             tick_id = 0;
+            // Unmap when collapsed, so hidden CC widgets stop polling and drawing.
+            if (anim_to == 0.0 && _child != null) _child.set_child_visible (false);
             // tick_id is 0 now, so on collapse surface_full flips false: shrink once.
             queue_resize ();
             animation_done ();

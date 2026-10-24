@@ -31,8 +31,21 @@ public class WifiService : GLib.Object {
     private bool        poll_again     = false;
     private bool        scan_in_flight = false;
 
-    // Skips the periodic poll (not explicit calls) while set.
-    public bool paused = false;
+    // Skips the periodic poll and monitor-driven polls (not explicit calls) while
+    // set; a monitor event seen meanwhile polls once on unpause.
+    private bool _paused = false;
+    private bool dirty   = false;
+    public bool paused {
+        get { return _paused; }
+        set {
+            _paused = value;
+            if (!value && dirty) {
+                dirty = false;
+                nmcli.invalidate_devices();
+                poll_connection();
+            }
+        }
+    }
 
     public WifiService() {
         // Re-apply the remembered radio state; null ⇒ never toggled ⇒ just poll.
@@ -52,6 +65,7 @@ public class WifiService : GLib.Object {
     // Any `nmcli monitor` line triggers a poll; the text is never parsed.
     private void init_watch() {
         watcher.line.connect(() => {
+            if (paused) { dirty = true; return; }
             if (event_timer != 0) GLib.Source.remove(event_timer);
             event_timer = GLib.Timeout.add(EVENT_DEBOUNCE_MS, () => {
                 event_timer = 0;
@@ -141,7 +155,7 @@ public class WifiService : GLib.Object {
         new GLib.Thread<void>("wifi-scan", () => {
             bool new_enabled = nmcli.query_enabled();
             if (rescan && new_enabled) nmcli.rescan();
-            var new_nets = new_enabled ? nmcli.fetch_nets() : new WifiNet[0];
+            var new_nets = new_enabled ? nmcli.fetch_nets(rescan) : new WifiNet[0];
             var new_conn = nmcli.query_connected();
             var new_eth  = nmcli.query_ethernet_connected();
             var new_ethdev = nmcli.get_ethernet_device();

@@ -54,7 +54,7 @@ namespace LumenSettings {
         bool        alert_dragging = false;
 
         public Gtk.Widget build() {
-            service   = new SoundService();
+            service   = new SoundService(true);
             app_rows  = new GLib.HashTable<string, AppRowWidgets>(str_hash, str_equal);
             // No config key: the sink's own volume is the remembered state.
             int raw_volume = pactl.query_volume_percent(150);

@@ -3,7 +3,7 @@ public class Clock : Gtk.Box, ITrayApplet {
     Gtk.Label label;
     uint      timer = 0;
 
-    public Clock () {
+    public Clock (LogindBridge logind) {
         GLib.Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
         add_css_class("clock");
 
@@ -14,21 +14,33 @@ public class Clock : Gtk.Box, ITrayApplet {
         label.add_css_class("clock-label");
         append(label);
 
-        realize.connect(schedule);
+        // GLib timeouts pause during suspend, so resync on resume. Connected only
+        // while realized: the bridge is shared and outlives this applet.
+        ulong sleep_id = 0;
+        realize.connect(() => {
+            sleep_id = logind.prepare_for_sleep.connect(on_sleep);
+            schedule();
+        });
         unrealize.connect(() => {
+            SignalHandler.disconnect(logind, sleep_id);
             if (timer != 0) GLib.Source.remove(timer);
             timer = 0;
         });
     }
 
-    // Ticks on minute boundaries, capped at 10 s: GLib timeouts pause during
-    // suspend, so this bounds staleness after resume.
+    void on_sleep (bool starting) {
+        if (starting || timer == 0) return;
+        GLib.Source.remove(timer);
+        label.label = format_now();
+        schedule();
+    }
+
+    // Ticks on minute boundaries.
     void schedule () {
         uint ms = 1000;
         if (!shows_seconds(PanelConfig.clock_format)) {
             var now = new DateTime.now_local();
             ms = (uint) (60000 - now.get_second() * 1000 - now.get_microsecond() / 1000);
-            ms = uint.min(ms, 10000);
         }
         timer = GLib.Timeout.add(ms + 5, () => {
             timer = 0;

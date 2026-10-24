@@ -30,17 +30,32 @@ public class Backends {
             new string[]{ "pactl", "get-%s-volume".printf(what), target }) ?? "");
     }
 
+    // The OSD value is computed from the pre-change read rather than re-queried:
+    // raise is get + set + unmute (muted is then known false), lower is
+    // get + set + get-mute. Mirrors raise_arg/lower_arg exactly.
+    private static State volume_raise(string what, string target, int step) {
+        int cur = current_percent(what, target);
+        set_sync(new string[]{ "pactl", "set-%s-volume".printf(what), target, raise_arg(cur, step) });
+        set_sync(new string[]{ "pactl", "set-%s-mute".printf(what), target, "0" });
+        int now = cur + step <= 100 ? cur + step : int.max(cur, 100);
+        return State() { value = clamp_unit(now), muted = false };
+    }
+
+    private static State volume_lower(string what, string target, int step) {
+        int cur = current_percent(what, target);
+        set_sync(new string[]{ "pactl", "set-%s-volume".printf(what), target, lower_arg(cur, step) });
+        int now = cur > 100 ? 100 - step : cur - step;
+        string? mute = LumenCommon.Proc.run_capture(
+            new string[]{ "pactl", "get-%s-mute".printf(what), target });
+        return State() { value = clamp_unit(now), muted = (mute ?? "").down().contains("yes") };
+    }
+
     public static State output_volume_raise(int step) {
-        int cur = current_percent("sink", "@DEFAULT_SINK@");
-        set_sync(new string[]{ "pactl", "set-sink-volume", "@DEFAULT_SINK@", raise_arg(cur, step) });
-        set_sync(new string[]{ "pactl", "set-sink-mute", "@DEFAULT_SINK@", "0" });
-        return query_sink();
+        return volume_raise("sink", "@DEFAULT_SINK@", step);
     }
 
     public static State output_volume_lower(int step) {
-        int cur = current_percent("sink", "@DEFAULT_SINK@");
-        set_sync(new string[]{ "pactl", "set-sink-volume", "@DEFAULT_SINK@", lower_arg(cur, step) });
-        return query_sink();
+        return volume_lower("sink", "@DEFAULT_SINK@", step);
     }
 
     public static State output_volume_mute_toggle() {
@@ -60,16 +75,11 @@ public class Backends {
     }
 
     public static State input_volume_raise(int step) {
-        int cur = current_percent("source", "@DEFAULT_SOURCE@");
-        set_sync(new string[]{ "pactl", "set-source-volume", "@DEFAULT_SOURCE@", raise_arg(cur, step) });
-        set_sync(new string[]{ "pactl", "set-source-mute", "@DEFAULT_SOURCE@", "0" });
-        return query_source();
+        return volume_raise("source", "@DEFAULT_SOURCE@", step);
     }
 
     public static State input_volume_lower(int step) {
-        int cur = current_percent("source", "@DEFAULT_SOURCE@");
-        set_sync(new string[]{ "pactl", "set-source-volume", "@DEFAULT_SOURCE@", lower_arg(cur, step) });
-        return query_source();
+        return volume_lower("source", "@DEFAULT_SOURCE@", step);
     }
 
     public static State input_volume_mute_toggle() {
@@ -89,7 +99,11 @@ public class Backends {
     }
 
     private static double parse_percent(string text) {
-        return double.max(0, double.min(1.0, raw_percent(text) / 100.0));
+        return clamp_unit(raw_percent(text));
+    }
+
+    private static double clamp_unit(int percent) {
+        return double.max(0, double.min(1.0, percent / 100.0));
     }
 
     // First "NN%" in pactl output, unclamped (over-amplified sinks read > 100).
@@ -103,27 +117,25 @@ public class Backends {
         return 0;
     }
 
+    // `brightnessctl -m set` prints the post-change CSV line itself, so one
+    // spawn both sets and reports.
     public static State brightness_raise(int step) {
-        set_sync(new string[]{ "brightnessctl", "set", "%d%%+".printf(step) });
-        return query_brightness(null);
+        return set_brightness(null, "%d%%+".printf(step));
     }
     public static State brightness_lower(int step) {
-        set_sync(new string[]{ "brightnessctl", "set", "%d%%-".printf(step) });
-        return query_brightness(null);
+        return set_brightness(null, "%d%%-".printf(step));
     }
     public static State kbd_brightness_raise(int step) {
-        set_sync(new string[]{ "brightnessctl", "--device=*::kbd_backlight", "set", "%d%%+".printf(step) });
-        return query_brightness("*::kbd_backlight");
+        return set_brightness("*::kbd_backlight", "%d%%+".printf(step));
     }
     public static State kbd_brightness_lower(int step) {
-        set_sync(new string[]{ "brightnessctl", "--device=*::kbd_backlight", "set", "%d%%-".printf(step) });
-        return query_brightness("*::kbd_backlight");
+        return set_brightness("*::kbd_backlight", "%d%%-".printf(step));
     }
 
-    private static State query_brightness(string? device) {
+    private static State set_brightness(string? device, string value) {
         string[] argv = (device == null)
-            ? new string[]{ "brightnessctl", "-m" }
-            : new string[]{ "brightnessctl", "--device=" + (!) device, "-m" };
+            ? new string[]{ "brightnessctl", "-m", "set", value }
+            : new string[]{ "brightnessctl", "--device=" + (!) device, "-m", "set", value };
         string? raw = LumenCommon.Proc.run_capture(argv);
         // Format: name,class,current,pct,max  (pct includes %)
         var parts = (raw ?? "").strip().split(",");

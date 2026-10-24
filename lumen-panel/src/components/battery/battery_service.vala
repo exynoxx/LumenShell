@@ -7,10 +7,8 @@ public class BatteryService : GLib.Object {
     const string DEV_PATH  = "/org/freedesktop/UPower/devices/DisplayDevice";
     const string DEV_IFACE = "org.freedesktop.UPower.Device";
 
-    // Safety net for a UPower build that never emits PropertiesChanged.
-    const uint RESYNC_SEC = 30;
-
     public signal void state_changed ();
+    public signal void ac_changed ();
 
     // "charging" / "discharging" / "full" / "" (unknown, incl. no battery).
     public string raw_status = "";
@@ -28,13 +26,11 @@ public class BatteryService : GLib.Object {
             return;
         }
 
-        device.g_properties_changed.connect (() => refresh.begin ());
-        root.g_properties_changed.connect (() => refresh.begin ());
-        GLib.Timeout.add_seconds (RESYNC_SEC, () => {
-            refresh.begin ();
-            return Source.CONTINUE;
-        });
-        refresh.begin ();
+        // NONE flags: the sync constructor loads, and GLib keeps updating, the
+        // property cache, so reads are local.
+        device.g_properties_changed.connect (refresh);
+        root.g_properties_changed.connect (refresh);
+        refresh ();
     }
 
     // The icon ladder, shared by the tray button and the Control Center tile.
@@ -46,21 +42,30 @@ public class BatteryService : GLib.Object {
         return "nobattery";
     }
 
-    async void refresh () {
-        var dev = yield get_all (device, DEV_IFACE);
-        var up  = yield get_all (root, BUS);
-        if (dev == null || up == null) return;
+    void refresh () {
+        var st  = cached (device, "State", VariantType.UINT32);
+        var pv  = cached (device, "Percentage", VariantType.DOUBLE);
+        var onb = cached (root, "OnBattery", VariantType.BOOLEAN);
+        // No owner (UPower not running) leaves the cache empty: keep the last state.
+        if (st == null && pv == null && onb == null) return;
 
-        string status = state_name (lookup_uint (dev, "State"));
-        int    pct     = int.min (100, int.max (0, (int) Math.round (lookup_double (dev, "Percentage"))));
-        bool   on_ac   = !lookup_bool (up, "OnBattery");
+        string status = state_name (st != null ? st.get_uint32 () : 0);
+        int    pct     = int.min (100, int.max (0, (int) Math.round (pv != null ? pv.get_double () : 0.0)));
+        bool   on_ac   = !(onb != null && onb.get_boolean ());
 
         if (status == raw_status && pct == percent && on_ac == ac_online) return;
 
+        bool ac_flip = on_ac != ac_online;
         raw_status = status;
         percent    = pct;
         ac_online  = on_ac;
         state_changed ();
+        if (ac_flip) ac_changed ();
+    }
+
+    static Variant? cached (DBusProxy p, string key, VariantType type) {
+        var v = p.get_cached_property (key);
+        return (v != null && v.is_of_type (type)) ? v : null;
     }
 
     // UpDeviceState. PENDING_CHARGE/PENDING_DISCHARGE mean "plugged but idle" /
@@ -82,31 +87,5 @@ public class BatteryService : GLib.Object {
         } catch (Error e) {
             return null;
         }
-    }
-
-    async VariantDict? get_all (DBusProxy p, string iface) {
-        try {
-            var reply = yield p.call ("org.freedesktop.DBus.Properties.GetAll",
-                                      new Variant ("(s)", iface),
-                                      DBusCallFlags.NONE, 2000, null);
-            return new VariantDict (reply.get_child_value (0));
-        } catch (Error e) {
-            return null;
-        }
-    }
-
-    static double lookup_double (VariantDict d, string key) {
-        var v = d.lookup_value (key, VariantType.DOUBLE);
-        return (v != null) ? v.get_double () : 0.0;
-    }
-
-    static uint32 lookup_uint (VariantDict d, string key) {
-        var v = d.lookup_value (key, VariantType.UINT32);
-        return (v != null) ? v.get_uint32 () : 0;
-    }
-
-    static bool lookup_bool (VariantDict d, string key) {
-        var v = d.lookup_value (key, VariantType.BOOLEAN);
-        return (v != null) && v.get_boolean ();
     }
 }

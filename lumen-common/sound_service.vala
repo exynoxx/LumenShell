@@ -22,6 +22,8 @@ public class SoundService : GLib.Object {
     private const uint EVENT_DEBOUNCE_MS = 150;
 
     private PactlClient pactl          = new PactlClient();
+    // Sources, sink inputs and input volume are only queried when set.
+    private bool        track_streams;
     private bool        poll_in_flight = false;
     private bool        poll_again     = false;
     // `pactl info` is only re-read when this is set: every default change
@@ -46,7 +48,8 @@ public class SoundService : GLib.Object {
     // Skips the periodic poll (not explicit refresh() calls) while set.
     public bool paused = false;
 
-    public SoundService() {
+    public SoundService(bool track_streams = false) {
+        this.track_streams = track_streams;
         volume_out = new LumenCommon.Coalescer((v) => pactl.set_volume(v));
         volume_in  = new LumenCommon.Coalescer((v) => pactl.set_input_volume(v));
 
@@ -92,9 +95,10 @@ public class SoundService : GLib.Object {
         if (line.contains(" on server") || line.contains(" on card #"))
             need_info = true;
         if (paused) return;
-        if (!(line.contains(" on sink #") || line.contains(" on sink-input #")
-              || line.contains(" on source #") || line.contains(" on server")
-              || line.contains(" on card #")))
+        if (!(line.contains(" on sink #") || line.contains(" on server")
+              || line.contains(" on card #")
+              || (track_streams && (line.contains(" on sink-input #")
+                                    || line.contains(" on source #")))))
             return;
         if (event_timer != 0) GLib.Source.remove(event_timer);
         event_timer = GLib.Timeout.add(EVENT_DEBOUNCE_MS, () => {
@@ -114,7 +118,7 @@ public class SoundService : GLib.Object {
         need_info = false;
 
         new GLib.Thread<void>("sound-poll", () => {
-            var st = pactl.query_state(want_info);
+            var st = pactl.query_state(want_info, track_streams);
             var new_sink        = st.default_sink;
             var new_sinks       = st.sinks;
             var new_volume      = st.volume_percent;

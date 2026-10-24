@@ -50,6 +50,7 @@ public class App : GLib.Object {
         battery_service       = new BatteryService();
         power_profile_service = new PowerProfileService();
         brightness_service    = new BrightnessService();
+        battery_service.ac_changed.connect(power_profile_service.refresh);
 
         // Each factory builds a fresh applet so one id can be realized on several panels.
         registry = new TrayRegistry();
@@ -58,7 +59,7 @@ public class App : GLib.Object {
         registry.register("bluetooth", () => new BluetoothTray(bluetooth_service));
         registry.register("battery",   () => new BatteryTray(battery_service, power_profile_service));
         registry.register("sound",     () => new SoundTray(sound_service));
-        registry.register("clock",     () => new Clock());
+        registry.register("clock",     () => new Clock(logind));
         registry.register("exit",      () => new ExitTray(logind));
 
         // Bind foreign-toplevel before building any AppBar so replay happens

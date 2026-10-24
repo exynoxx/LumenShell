@@ -26,12 +26,12 @@ public class BluetoothService : GLib.Object {
         // Re-apply the remembered power state (beats BlueZ AutoEnable at boot).
         // Null ⇒ never toggled.
         var saved = RadioState.get_bluetooth();
-        if (saved != null) apply_power(saved);
+        if (saved != null) restore_power(saved);
         else               poll_state();
         watch_bluez();
         btctl.adapter_added.connect(() => {
             var s = RadioState.get_bluetooth();
-            if (s != null) apply_power(s);
+            if (s != null) restore_power(s);
         });
     }
 
@@ -69,6 +69,20 @@ public class BluetoothService : GLib.Object {
             GLib.Idle.add(() => {
                 // Powering on also runs a discovery scan.
                 refresh_scan(on);
+                return Source.REMOVE;
+            });
+        });
+    }
+
+    // Start/resume path: no spawn when the adapter already matches, and no
+    // discovery scan — nobody is looking at a device list.
+    private void restore_power(bool on) {
+        new GLib.Thread<void>("bt-restore", () => {
+            bool pw;
+            btctl.fetch_state(out pw);
+            if (pw != on) btctl.set_powered(on);
+            GLib.Idle.add(() => {
+                poll_state();
                 return Source.REMOVE;
             });
         });

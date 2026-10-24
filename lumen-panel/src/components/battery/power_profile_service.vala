@@ -1,8 +1,5 @@
 public class PowerProfileService : GLib.Object {
 
-    // TLP only; PPD is event-driven off its PropertiesChanged.
-    private const uint POLL_SEC = 10;
-
     public signal void state_changed();
 
     public PowerBackend  backend   { get; private set; default = PowerBackend.NONE; }
@@ -17,14 +14,14 @@ public class PowerProfileService : GLib.Object {
         available = client.available(backend);
         requery();
 
-        if (backend == PowerBackend.PPD) {
+        if (backend == PowerBackend.PPD)
             client.changed.connect(requery);
-        } else if (backend == PowerBackend.TLP) {
-            GLib.Timeout.add_seconds(POLL_SEC, () => {
-                requery();
-                return Source.CONTINUE;
-            });
-        }
+    }
+
+    // TLP has no change signal; main.vala calls this when AC state flips (TLP's
+    // profile follows AC). PPD is event-driven off its PropertiesChanged.
+    public void refresh() {
+        if (backend == PowerBackend.TLP) requery();
     }
 
     // Optimistic: show the choice immediately so the selector doesn't bounce back,

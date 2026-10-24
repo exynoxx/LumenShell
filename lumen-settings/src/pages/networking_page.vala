@@ -82,15 +82,16 @@ namespace LumenSettings {
             rebuild_eth();
             rebuild_bt();
 
-            wifi.refresh_scan(true);
-            bt.refresh_scan(true);
-
             var holder = new Adw.PreferencesGroup();
             holder.add(root_box);
             var page = new Adw.PreferencesPage();
             // Pages are built eagerly; poll only while this one is on screen.
             wifi.paused = true;
-            page.map.connect(() => { wifi.paused = false; });
+            page.map.connect(() => {
+                wifi.paused = false;
+                wifi.refresh_scan(true);
+                bt.refresh_scan(true);
+            });
             page.unmap.connect(() => { wifi.paused = true; });
             page.add(holder);
             return page;

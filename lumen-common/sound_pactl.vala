@@ -60,21 +60,22 @@ public class PactlClient : GLib.Object {
     private string? cached_sink   = null;
     private string  cached_source = "";
 
-    // `pactl list` every pass; `pactl info` (only for the defaults) when
-    // want_info or nothing is cached yet. Text output, not `-f json`: pactl's
+    // `pactl list` every pass (`pactl list sinks` unless `streams`, leaving
+    // sources/sink inputs and input volume empty); `pactl info` (only for the
+    // defaults) when want_info or nothing is cached yet. Text output, not `-f json`: pactl's
     // JSON writer drops non-ASCII strings as "(null)". Falls back to the
     // per-field get-*/wpctl queries only when the default device isn't in the
     // list (no server, or a race with a hotplug).
-    public PactlState query_state(bool want_info) {
+    public PactlState query_state(bool want_info, bool streams) {
         if (want_info || cached_sink == null) read_defaults();
         var st = new PactlState();
-        var list = run_pactl_sync({ "list" });
+        var list = streams ? run_pactl_sync({ "list" }) : run_pactl_sync({ "list", "sinks" });
         bool sink_found, source_found;
         parse_list(list, st, out sink_found, out source_found);
 
         // A cached default missing from the list means we missed a change;
         // re-read it rather than pay for the get-* fallback below.
-        if (!want_info && !(sink_found && source_found)) {
+        if (!want_info && !(sink_found && (source_found || !streams))) {
             read_defaults();
             parse_list(list, st, out sink_found, out source_found);
         }
@@ -83,7 +84,7 @@ public class PactlClient : GLib.Object {
             st.volume_percent = query_volume_percent();
             st.muted          = query_muted();
         }
-        if (!source_found) {
+        if (streams && !source_found) {
             st.input_volume_percent = query_input_volume_percent();
             st.input_muted          = query_input_muted();
         }
