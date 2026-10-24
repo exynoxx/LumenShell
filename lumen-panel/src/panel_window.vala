@@ -18,7 +18,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
     int64 slide_start_us = 0;
     uint slide_tick_id = 0;
     uint collapse_timeout_id = 0;
-    uint resize_tick_id = 0;
     ulong expanded_handler = 0;     // on the shared tray; dropped in release_tray()
     Cairo.Region? last_region = null;
 
@@ -105,13 +104,9 @@ public class PanelWindow : Gtk.ApplicationWindow {
         ((Gtk.Widget) this).add_controller(esc);
 
         this.map.connect(update_input_region);
-        if (tray != null) {
-            // Track the animation so the input region follows the growing tray bbox.
-            expanded_handler = tray.expanded_changed.connect(() => {
-                update_input_region();
-                start_resize_tracking();
-            });
-        }
+        // The tray's bbox only changes when the surface resizes (TrayReveal grows in one
+        // step and shrinks once after the animation), which size_allocate catches.
+        if (tray != null) expanded_handler = tray.expanded_changed.connect(update_input_region);
 
         // contains-pointer on the WINDOW, not the tray: Motion.leave on TrayBar
         // misfires during the reveal animation.
@@ -192,19 +187,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
         });
     }
 
-    void start_resize_tracking () {
-        if (tray == null) return;
-        if (resize_tick_id != 0) return;
-        resize_tick_id = ((Gtk.Widget) this).add_tick_callback((widget, clock) => {
-            update_input_region();
-            if (!tray.is_animating()) {
-                resize_tick_id = 0;
-                return GLib.Source.REMOVE;
-            }
-            return GLib.Source.CONTINUE;
-        });
-    }
-
     void schedule_collapse () {
         if (collapse_timeout_id != 0) return;
         collapse_timeout_id = GLib.Timeout.add(App.COLLAPSE_DELAY_MS, () => {
@@ -276,8 +258,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         apply_input_region(gdk_surface, region);
     }
 
-    // Only push on change: per-frame resize tracking would otherwise send identical
-    // set_input_region() roundtrips every frame.
+    // Only push on change: the slide tick and repeated allocations would otherwise send
+    // identical set_input_region() roundtrips.
     void apply_input_region (Gdk.Surface gdk_surface, Cairo.Region region) {
         if (last_region != null && last_region.equal(region)) return;
         last_region = region.copy();

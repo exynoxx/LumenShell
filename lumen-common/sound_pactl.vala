@@ -54,25 +54,65 @@ public class PactlClient : GLib.Object {
     // Our parec meter's stream name, so query_state() can skip it.
     public const string METER_STREAM_NAME = "lumen-settings-meter";
 
-    // Two spawns (`pactl info` + `pactl list`) per pass. Text output, not
-    // `-f json`: pactl's JSON writer drops non-ASCII strings as "(null)".
-    // Falls back to the per-field get-*/wpctl queries only when the default
-    // device isn't in the list (no server, or a race with a hotplug).
-    public PactlState query_state() {
+    // Last `pactl info` defaults; null = unknown, so the next pass re-reads.
+    // Only touched from query_state(), which SoundService runs on one worker
+    // at a time (poll_in_flight), so no lock.
+    private string? cached_sink   = null;
+    private string  cached_source = "";
+
+    // `pactl list` every pass; `pactl info` (only for the defaults) when
+    // want_info or nothing is cached yet. Text output, not `-f json`: pactl's
+    // JSON writer drops non-ASCII strings as "(null)". Falls back to the
+    // per-field get-*/wpctl queries only when the default device isn't in the
+    // list (no server, or a race with a hotplug).
+    public PactlState query_state(bool want_info) {
+        if (want_info || cached_sink == null) read_defaults();
         var st = new PactlState();
+        var list = run_pactl_sync({ "list" });
+        bool sink_found, source_found;
+        parse_list(list, st, out sink_found, out source_found);
+
+        // A cached default missing from the list means we missed a change;
+        // re-read it rather than pay for the get-* fallback below.
+        if (!want_info && !(sink_found && source_found)) {
+            read_defaults();
+            parse_list(list, st, out sink_found, out source_found);
+        }
+
+        if (!sink_found) {
+            st.volume_percent = query_volume_percent();
+            st.muted          = query_muted();
+        }
+        if (!source_found) {
+            st.input_volume_percent = query_input_volume_percent();
+            st.input_muted          = query_input_muted();
+        }
+        return st;
+    }
+
+    // No "Default Sink:" line (server down, spawn failed) leaves the cache null.
+    private void read_defaults() {
+        cached_sink   = null;
+        cached_source = "";
         foreach (var line in run_pactl_sync({ "info" }).split("\n")) {
             var l = line.strip();
             if (l.has_prefix("Default Sink:"))
-                st.default_sink = l.substring("Default Sink:".length).strip();
+                cached_sink = l.substring("Default Sink:".length).strip();
             else if (l.has_prefix("Default Source:"))
-                st.default_source = l.substring("Default Source:".length).strip();
+                cached_source = l.substring("Default Source:".length).strip();
         }
+    }
 
+    private void parse_list(string list, PactlState st,
+                            out bool sink_found, out bool source_found) {
+        st.default_sink   = cached_sink ?? "";
+        st.default_source = cached_source;
         SinkInfo[]   sinks   = {};
         SourceInfo[] sources = {};
         StreamInfo[] inputs  = {};
-        bool sink_found = false, source_found = false;
-        foreach (var block in list_sections(run_pactl_sync({ "list" }))) {
+        sink_found = false;
+        source_found = false;
+        foreach (var block in list_sections(list)) {
             string id, desc;
             int vol;
             bool mute;
@@ -103,16 +143,6 @@ public class PactlClient : GLib.Object {
         st.sinks       = sinks;
         st.sources     = sources;
         st.sink_inputs = inputs;
-
-        if (!sink_found) {
-            st.volume_percent = query_volume_percent();
-            st.muted          = query_muted();
-        }
-        if (!source_found) {
-            st.input_volume_percent = query_input_volume_percent();
-            st.input_muted          = query_input_muted();
-        }
-        return st;
     }
 
     // `pactl list` → top-level blocks, each starting at its unindented "Kind #N" header.

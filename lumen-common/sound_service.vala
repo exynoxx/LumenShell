@@ -24,6 +24,9 @@ public class SoundService : GLib.Object {
     private PactlClient pactl          = new PactlClient();
     private bool        poll_in_flight = false;
     private bool        poll_again     = false;
+    // `pactl info` is only re-read when this is set: every default change
+    // emits a server event, and card events can move the default too.
+    private bool        need_info      = true;
     private string      last_signature = "";
     private string[]?   known_sinks    = null;   // null until the first pass seeds it
 
@@ -60,6 +63,7 @@ public class SoundService : GLib.Object {
         if (watcher.running) return;
         if (watcher.start({ "pactl", "subscribe" })) {
             stop_poll();
+            need_info = true;   // events may have been missed while it was down
             refresh();
         } else {
             start_poll();
@@ -82,7 +86,11 @@ public class SoundService : GLib.Object {
 
     // Client and source-output events are ignored: refresh() spawns pactl
     // clients and the input meter is a source-output, so they would loop.
+    // need_info is set before the paused check so the refresh on unpause
+    // still re-reads defaults changed meanwhile.
     private void on_event(string line) {
+        if (line.contains(" on server") || line.contains(" on card #"))
+            need_info = true;
         if (paused) return;
         if (!(line.contains(" on sink #") || line.contains(" on sink-input #")
               || line.contains(" on source #") || line.contains(" on server")
@@ -96,14 +104,17 @@ public class SoundService : GLib.Object {
         });
     }
 
-    // Two blocking pactl spawns per pass, hence the worker thread. Calls made
-    // mid-pass re-run once it finishes.
+    // Blocking pactl spawns, hence the worker thread. Calls made mid-pass
+    // re-run once it finishes. Without the event watcher nothing would set
+    // need_info, so the fallback poll always re-reads the defaults.
     public void refresh() {
         if (poll_in_flight) { poll_again = true; return; }
         poll_in_flight = true;
+        bool want_info = need_info || !watcher.running;
+        need_info = false;
 
         new GLib.Thread<void>("sound-poll", () => {
-            var st = pactl.query_state();
+            var st = pactl.query_state(want_info);
             var new_sink        = st.default_sink;
             var new_sinks       = st.sinks;
             var new_volume      = st.volume_percent;
@@ -129,6 +140,7 @@ public class SoundService : GLib.Object {
                     if (known_sinks != null && x.id.has_prefix("bluez_")
                         && !(x.id in known_sinks) && x.id != new_sink) {
                         pactl.set_default_sink(x.id);
+                        need_info = true;
                         new_sink = x.id;
                     }
                 }
@@ -179,6 +191,7 @@ public class SoundService : GLib.Object {
     public void change_default_sink(string sink_id) {
         if (sink_id == "") return;
         pactl.set_default_sink(sink_id);
+        need_info = true;
         default_sink = sink_id;
         state_changed();
     }
@@ -205,6 +218,7 @@ public class SoundService : GLib.Object {
     public void change_default_source(string source_id) {
         if (source_id == "") return;
         pactl.set_default_source(source_id);
+        need_info = true;
         default_source = source_id;
         if (meter_running) respawn_meter();
         state_changed();

@@ -11,6 +11,7 @@ public class SniItem : Gtk.Button {
     Gtk.Image image;
     DBusProxy? proxy = null;
     ulong signal_handler = 0;
+    uint refresh_timer = 0;
     bool released = false;
     string? menu_path = null;
     string  status = "Active";
@@ -52,7 +53,14 @@ public class SniItem : Gtk.Button {
                 case "NewStatus":
                 case "NewToolTip":
                 case "NewTitle":
-                    refresh.begin();
+                    // Apps fire these in bursts (icon + tooltip + status), and each
+                    // GetAll re-sends every pixmap; collapse a burst into one refresh.
+                    if (refresh_timer == 0)
+                        refresh_timer = Timeout.add(20, () => {
+                            refresh_timer = 0;
+                            refresh.begin();
+                            return Source.REMOVE;
+                        });
                     break;
             }
         });
@@ -67,6 +75,8 @@ public class SniItem : Gtk.Button {
         released = true;
         if (proxy != null && signal_handler != 0) SignalHandler.disconnect(proxy, signal_handler);
         signal_handler = 0;
+        if (refresh_timer != 0) Source.remove(refresh_timer);
+        refresh_timer = 0;
         proxy = null;
     }
 
@@ -202,21 +212,23 @@ public class SniItem : Gtk.Button {
         var arr = props.lookup_value(prop_name, new VariantType("a(iiay)"));
         if (arr == null) return null;
 
-        Gdk.Texture? best = null;
-        int best_w = -1;
+        Variant? best = null;
+        int best_w = -1, best_h = -1;
         size_t n = arr.n_children();
         for (size_t i = 0; i < n; i++) {
             var entry = arr.get_child_value(i);
             int w = entry.get_child_value(0).get_int32();
             int h = entry.get_child_value(1).get_int32();
             if (w <= 0 || h <= 0 || w <= best_w) continue;
-            var data = entry.get_child_value(2).get_data_as_bytes();
-            if (data.get_size() < (size_t) (w * h * 4)) continue;
-            best = new Gdk.MemoryTexture(
-                w, h, Gdk.MemoryFormat.A8R8G8B8, data, w * 4);
+            if (entry.get_child_value(2).get_size() < (size_t) (w * h * 4)) continue;
+            best = entry;
             best_w = w;
+            best_h = h;
         }
-        return best;
+        if (best == null) return null;
+        // Only the winner becomes a texture.
+        return new Gdk.MemoryTexture(best_w, best_h, Gdk.MemoryFormat.A8R8G8B8,
+                                     best.get_child_value(2).get_data_as_bytes(), best_w * 4);
     }
 
     static string? lookup_string (VariantDict props, string key) {
