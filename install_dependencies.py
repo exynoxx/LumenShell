@@ -53,6 +53,8 @@ def install_ubuntu():
         'libgtk4-layer-shell-dev',
         # lumen-settings' Wayfire plugin pages parse the metadata XML.
         'libxml2-dev',
+        # lumen-settings' shortcut recorder names keys via libevdev.
+        'libevdev-dev',
         'wayfire',
         # C++ Wayfire plugins: headers + wlroots, plus glm which the Wayfire
         # headers #include but wayfire.pc does not list.
@@ -96,6 +98,8 @@ def install_fedora():
         'gtk4-layer-shell-devel',
         # lumen-settings' Wayfire plugin pages parse the metadata XML.
         'libxml2-devel',
+        # lumen-settings' shortcut recorder names keys via libevdev.
+        'libevdev-devel',
         'wayfire',
         # C++ Wayfire plugins: headers + wlroots, plus glm which the Wayfire
         # headers #include but wayfire.pc does not list.
@@ -136,6 +140,8 @@ def install_arch():
         'gtk4-layer-shell',
         # lumen-settings' Wayfire plugin pages parse the metadata XML.
         'libxml2',
+        # lumen-settings' shortcut recorder names keys via libevdev.
+        'libevdev',
         # Arch's `wayfire` ships the headers; the C++ plugins also need wlroots
         # and glm (the Wayfire headers #include glm but wayfire.pc omits it).
         'wayfire',

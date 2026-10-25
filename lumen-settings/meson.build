@@ -15,6 +15,8 @@ settings_deps = [
   gtk4_dep,
   adwaita_dep,
   m_dep,
+  # BindingRow names keys by evdev code, the names Wayfire bindings parse.
+  dependency('libevdev'),
   # Display page: wlr-output-management via wlhooks on GTK's wl_display.
   gtk4_wayland_dep,
   wayland_dep,

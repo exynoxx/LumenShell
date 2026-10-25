@@ -62,11 +62,16 @@ namespace LumenSettings {
             if ((state & Gdk.ModifierType.SUPER_MASK)   != 0) sb.append("<super> ");
             if ((state & Gdk.ModifierType.META_MASK)    != 0) sb.append("<meta> ");
 
-            string? name = Gdk.keyval_name(keyval);
-            if (name == null || name == "") name = "Unknown";
-            string token = name.up();
-            if (!token.has_prefix("KEY_") && !token.has_prefix("BTN_")) {
-                token = "KEY_" + token;
+            // Wayfire matches evdev codes, not keysyms: PrtSc is keysym Print
+            // but evdev KEY_SYSRQ, so name the hardware key (xkb keycode - 8).
+            string? token = Evdev.event_code_get_name(Evdev.EV_KEY, keycode - 8);
+            if (token == null) {
+                string? name = Gdk.keyval_name(keyval);
+                if (name == null || name == "") name = "Unknown";
+                token = name.up();
+                if (!token.has_prefix("KEY_") && !token.has_prefix("BTN_")) {
+                    token = "KEY_" + token;
+                }
             }
 
             sb.append(token);
