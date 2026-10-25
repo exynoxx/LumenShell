@@ -24,7 +24,7 @@ namespace LumenSettings {
         // rewrite our own entry.
         const string TRAY_CMD_NAME = "lumen_tray";
         const string TRAY_DBUS_CMD =
-            "dbus-send --session --dest=org.lumenshell.Panel "
+            "dbus-send --session --type=method_call --dest=org.lumenshell.Panel "
             + "/org/lumenshell/Panel org.lumenshell.Panel1.ToggleTray";
 #endif
 

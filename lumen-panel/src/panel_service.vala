@@ -1,6 +1,7 @@
 // An ON_DEMAND layer surface only sees keys after a click, so the global tray
 // hotkey is a Wayfire [command] binding running:
-//   dbus-send --session --dest=org.lumenshell.Panel /org/lumenshell/Panel \
+//   dbus-send --session --type=method_call --dest=org.lumenshell.Panel \
+//             /org/lumenshell/Panel \
 //             org.lumenshell.Panel1.ToggleTray
 [DBus (name = "org.lumenshell.Panel1")]
 public class PanelService : GLib.Object {
