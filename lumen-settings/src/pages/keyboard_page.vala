@@ -65,7 +65,103 @@ namespace LumenSettings {
                 "Caps Lock on at startup", false));
             page.add(locks);
 
+            page.add(build_shortcuts());
+
             return page;
+        }
+
+        // Wayfire [command] binding_<tail> / command_<tail> pairs.
+        IniStore wf;
+        Adw.PreferencesGroup shortcuts;
+
+        Adw.PreferencesGroup build_shortcuts() {
+            wf = new IniStore(LumenCommon.Paths.wayfire_ini());
+            shortcuts = new Adw.PreferencesGroup() {
+                title = "Shortcuts",
+                description = "Run a command on a key combo (Wayfire command plugin)",
+            };
+
+            var add = new Gtk.Button.with_label("Add shortcut") { valign = Gtk.Align.CENTER };
+            add.add_css_class("flat");
+            add.clicked.connect(() => {
+                wf.reload();
+                var tail = next_tail();
+                wf.set_value("command", "binding_" + tail, "");
+                wf.set_value("command", "command_" + tail, "");
+                wf.save();
+                var row = shortcut_row(tail);
+                shortcuts.add(row);
+                row.expanded = true;
+            });
+            shortcuts.set_header_suffix(add);
+
+            var keys = wf.keys_in("command");
+            foreach (var k in keys) {
+                if (!k.has_prefix("binding_")) continue;
+                var tail = k.substring("binding_".length);
+                if (keys.contains("command_" + tail)) shortcuts.add(shortcut_row(tail));
+            }
+            return shortcuts;
+        }
+
+        Adw.ExpanderRow shortcut_row(string tail) {
+            var bkey = "binding_" + tail, ckey = "command_" + tail;
+            var cmd = wf.get_value("command", ckey) ?? "";
+            var bind = wf.get_value("command", bkey) ?? "";
+
+            var exp = new Adw.ExpanderRow() {
+                title = cmd != "" ? cmd : "New shortcut",
+                subtitle = bind != "" ? bind : "Unset",
+                use_markup = false,
+            };
+
+            var cmd_row = new Adw.EntryRow() { title = "Command", text = cmd, use_markup = false };
+            cmd_row.changed.connect(() => {
+                put(ckey, cmd_row.text);
+                exp.title = cmd_row.text != "" ? cmd_row.text : "New shortcut";
+            });
+            exp.add_row(cmd_row);
+
+            var bind_row = new BindingRow("Binding", bind);
+            bind_row.value_changed.connect((v) => {
+                put(bkey, v);
+                exp.subtitle = v != "" ? v : "Unset";
+            });
+            exp.add_row(bind_row);
+
+            var del = new Gtk.Button.from_icon_name("user-trash-symbolic") {
+                valign = Gtk.Align.CENTER, tooltip_text = "Remove shortcut",
+            };
+            del.add_css_class("flat");
+            del.clicked.connect(() => {
+                wf.reload();
+                wf.remove_key("command", bkey);
+                wf.remove_key("command", ckey);
+                wf.save();
+                shortcuts.remove(exp);
+            });
+            exp.add_suffix(del);
+            return exp;
+        }
+
+        // Other pages write wayfire.ini too; never save a stale snapshot.
+        void put(string key, string value) {
+            wf.reload();
+            wf.set_value("command", key, value);
+            wf.save();
+        }
+
+        // Unique across [command]: the repeatable/always/release lists share the tail space.
+        string next_tail() {
+            var keys = wf.keys_in("command");
+            for (int i = 1; ; i++) {
+                var cand = "%d".printf(i);
+                bool taken = false;
+                foreach (var k in keys) {
+                    if (k.has_suffix("_" + cand)) { taken = true; break; }
+                }
+                if (!taken) return cand;
+            }
         }
     }
 }
