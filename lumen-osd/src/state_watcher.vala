@@ -9,6 +9,9 @@ public class StateWatcher : Object {
     private string? kbd_path    = null;
     private int     kbd_max     = 0;
     private int     kbd_last    = -1;
+    // A field, not a closure capture: g_io_add_watch has no destroy-notify,
+    // so a captured local is freed under the watch and it spins on NULL.
+    private IOChannel? kbd_hw_ch = null;
 
     private string? screen_path = null;
     private int     screen_max  = 0;
@@ -41,11 +44,11 @@ public class StateWatcher : Object {
         string hw_path = Path.get_dirname((!) kbd_path) + "/brightness_hw_changed";
         if (!FileUtils.test(hw_path, FileTest.EXISTS)) return;
         try {
-            var ch = new IOChannel.file(hw_path, "r");
-            ch.set_encoding(null);
-            read_channel_int(ch);
-            ch.add_watch(IOCondition.PRI | IOCondition.ERR, () => {
-                int now = read_channel_int(ch);
+            kbd_hw_ch = new IOChannel.file(hw_path, "r");
+            kbd_hw_ch.set_encoding(null);
+            read_channel_int(kbd_hw_ch);
+            kbd_hw_ch.add_watch(IOCondition.PRI | IOCondition.ERR, () => {
+                int now = read_channel_int(kbd_hw_ch);
                 if (now >= 0 && kbd_max > 0)
                     present_slider("kbd-brightness", (double) now / kbd_max);
                 return Source.CONTINUE;
