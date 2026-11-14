@@ -2,7 +2,7 @@ project('lumen-corner', ['c', 'vala'], version: '0.1')
 
 # gtk4-layer-shell MUST come before gtk4 in the link line or
 # gtk_layer_init_for_window() silently no-ops.
-executable('lumen-corner', 'main.vala',
+executable('lumen-corner', 'main.vala', 'ring.vala', 'style.vala',
   dependencies: [
     dependency('gtk4-layer-shell-0'),
     dependency('gtk4'),
