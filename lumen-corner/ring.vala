@@ -1,4 +1,4 @@
-// A quarter ring anchored at the widget's bottom-left corner, one sector per app.
+// A quarter ring anchored at the widget's bottom-left corner, one sector per slot.
 public class Ring : Gtk.Widget {
     const int CLOSE_MARGIN = 24;
     const double ANIMATION_SPEED = 6.0;  // progress per second
@@ -7,14 +7,14 @@ public class Ring : Gtk.Widget {
     public bool is_open { get; private set; default = false; }
     public signal void app_chosen(AppInfo app);
 
-    AppInfo[] apps;
+    AppInfo?[] apps;
     Style style;
     double progress = 0;
     int hovered = -1;
     uint tick_id = 0;
     int64 last_frame_us = 0;
 
-    public Ring(AppInfo[] apps, Style style) {
+    public Ring(AppInfo?[] apps, Style style) {
         this.apps = apps;
         this.style = style;
         set_size_request(style.outer_radius, style.outer_radius);
@@ -28,7 +28,7 @@ public class Ring : Gtk.Widget {
         var click = new Gtk.GestureClick();
         click.released.connect((n, x, y) => {
             int i = sector_at(x, y);
-            if (i < 0) return;
+            if (i < 0 || apps[i] == null) return;
             app_chosen(apps[i]);
             set_open(false);
         });
@@ -66,6 +66,7 @@ public class Ring : Gtk.Widget {
             return;
         }
         int sector = sector_at(x, y);
+        if (sector >= 0 && apps[sector] == null) sector = -1;
         if (sector != hovered) {
             hovered = sector;
             queue_draw();
@@ -127,6 +128,7 @@ public class Ring : Gtk.Widget {
         int size = style.icon_size;
         double mid_radius = (style.outer_radius + style.inner_radius) / 2.0;
         for (int i = 0; i < apps.length; i++) {
+            if (apps[i] == null) continue;
             double angle = sector_angle() * (i + 0.5);
             float x = (float)(Math.cos(angle) * mid_radius - size / 2.0);
             float y = (float)(get_height() - Math.sin(angle) * mid_radius - size / 2.0);

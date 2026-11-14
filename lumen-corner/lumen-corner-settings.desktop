@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Lumen Corner Settings
+Comment=Configure the hot-corner launcher
+Exec=lumen-corner-settings
+Icon=preferences-desktop
+Categories=Settings;
