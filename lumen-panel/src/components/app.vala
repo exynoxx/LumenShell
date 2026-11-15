@@ -248,7 +248,6 @@ public class AppEntry : Gtk.Button {
     const int TINT_BAR_H   = 3;
     const int TINT_SAMPLE  = 16;       // px the icon is rendered at for averaging
 
-    const int   COLUMN_INSET  = 8;
     const int   COLUMN_RADIUS = 12;
     const float COLUMN_ALPHA  = 0.65f;
     const int   SPLIT_INSET   = 8;
@@ -572,7 +571,7 @@ public class AppEntry : Gtk.Button {
     void draw_active_column (Gtk.Snapshot s) {
         float h = get_height();
         var area = Graphene.Rect();
-        area.init(COLUMN_INSET, 0, get_width() - 2 * COLUMN_INSET, h);
+        area.init(0, 0, get_width(), h);
         var clear = tint_color(); clear.alpha = 0f;
         var glow  = tint_color(); glow.alpha = COLUMN_ALPHA;
         var from = Graphene.Point();
