@@ -93,8 +93,10 @@ The user picked **A**.
 - Layer-shell surface, layer `OVERLAY`, anchored `TOP`, horizontally centred,
   top margin ~20% of output height, on the focused output (the output under
   the pointer is fine).
-- `KeyboardMode.EXCLUSIVE` while shown. The bar must take keys straight away;
-  `ON_DEMAND` only delivers keys after a click. Hidden = unmapped.
+- `KeyboardMode.ON_DEMAND`. Wayfire focuses an ON_DEMAND surface on the TOP/OVERLAY
+  layer when it maps (`layer-shell.cpp`: `keyboard_interactive >= 1 && layer >= TOP`),
+  so the bar takes keys straight away, and focus can still leave: losing focus
+  dismisses, like Esc. Hidden = unmapped.
 - **Collapsed:** one flat pill, ~680 px wide, ~56 px tall, magnifier glyph +
   `Gtk.Text`, corner radius = half the height, no border, a soft shadow.
 - **Expanded** (query non-empty): the same surface grows downward to at most
@@ -252,7 +254,7 @@ scalar colour keys). A missing file means defaults.
 - Up to ~50k files, incremental re-scoring; larger is a v1 limit.
 - tinysparql behind a meson feature option (`with_search`, `auto`), like the lockscreen.
 - Resident daemon + `--toggle` via GApplication uniqueness, not a new DBus interface.
-- `KeyboardMode.EXCLUSIVE` while shown; no click-outside dismiss in v1.
+- `KeyboardMode.ON_DEMAND`; unfocus (e.g. clicking another window) dismisses.
 - File list refreshed on open (if stale >60 s), not via a live `TrackerNotifier`.
 - Recency from `RecentManager`, not LocalSearch access times.
 - No lumen-settings page in v1.

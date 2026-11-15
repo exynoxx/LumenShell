@@ -37,13 +37,16 @@ namespace LumenSearch {
         uint debounce_id;
         int generation;
         Cancellable? content_cancel;
+        int64 unfocused_us = 0;
 
         public SearchWindow(Gtk.Application app) {
             GLib.Object(application: app);
             GtkLayerShell.init_for_window(this);
             GtkLayerShell.set_namespace(this, "lumen-search");
             GtkLayerShell.set_layer(this, GtkLayerShell.Layer.OVERLAY);
-            GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.EXCLUSIVE);
+            // ON_DEMAND, not EXCLUSIVE: Wayfire still focuses an OVERLAY surface on map,
+            // but lets focus leave, which is what dismisses on unfocus below.
+            GtkLayerShell.set_keyboard_mode(this, GtkLayerShell.KeyboardMode.ON_DEMAND);
             GtkLayerShell.set_anchor(this, GtkLayerShell.Edge.TOP, true);
             decorated = false;
             resizable = false;
@@ -89,6 +92,9 @@ namespace LumenSearch {
             keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             keys.key_pressed.connect(on_key);
             ((Gtk.Widget) this).add_controller(keys);
+            notify["is-active"].connect(() => {
+                if (visible && !is_active) { dismiss(); unfocused_us = get_monotonic_time(); }
+            });
 
             load_apps();
             app_monitor.changed.connect(load_apps);
@@ -97,6 +103,9 @@ namespace LumenSearch {
 
         public void toggle() {
             if (visible) { dismiss(); return; }
+            // Clicking the panel's search button unfocuses (and dismisses) us on press, then
+            // toggles on release; treat that as the "hide" it was meant to be.
+            if (get_monotonic_time() - unfocused_us < 500000) return;
             place();
             present();
             entry.grab_focus();
