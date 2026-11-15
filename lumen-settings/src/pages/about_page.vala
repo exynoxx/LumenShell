@@ -11,7 +11,7 @@ namespace LumenSettings {
     // subprocess probes (lspci, wayfire --version) run once on a thread.
     public class AboutPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "about"; } }
-        public string title     { owned get { return "About"; } }
+        public string title     { owned get { return "System"; } }
         public string icon_name { owned get { return "lumen-settings-about"; } }
 
         HashTable<string, Adw.ActionRow> rows = new HashTable<string, Adw.ActionRow>(str_hash, str_equal);
@@ -30,16 +30,14 @@ namespace LumenSettings {
                 logo_name != "" && theme.has_icon(logo_name) ? logo_name : "computer") {
                 pixel_size = 128,
             });
-            var heading = new Gtk.Label(os["PRETTY_NAME"] ?? os["NAME"] ?? "Linux") {
-                selectable = true,
-            };
+            var heading = new Gtk.Label(os["PRETTY_NAME"] ?? os["NAME"] ?? "Linux");
             heading.add_css_class("lumen-about-title");
             head.append(heading);
             var head_group = new Adw.PreferencesGroup();
             head_group.add(head);
             page.add(head_group);
 
-            var sys = new Adw.PreferencesGroup() { title = "System" };
+            var sys = new Adw.PreferencesGroup() { title = "Software" };
             foreach (var k in new string[] { "OS", "Kernel", "Host", "Hostname", "Uptime" })
                 sys.add(make_row(k));
             page.add(sys);
