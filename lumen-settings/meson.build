@@ -60,6 +60,7 @@ settings_sources = files(
   'src/pages/osd_page.vala',
   'src/pages/notifications_page.vala',
   'src/pages/lockscreen_page.vala',
+  'src/pages/search_page.vala',
   'src/pages/about_page.vala',
   'src/pages/input_common.vala',
   'src/pages/xkb_layouts.vala',
