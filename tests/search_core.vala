@@ -38,7 +38,6 @@ int main() {
     var junk = file_item("invoice.json", "/home/u/.cache/foo", "application/json", false, true);
     var r = new Ranker(); r.set_items({ junk, pdf });
     var res = r.search(Query.parse("invoice"));
-    assert(res.files[0].item == pdf || res.top.item == pdf);
     assert(res.top.item == pdf);
     var exact_junk = file_item("invpdf", "/home/u/.cache", "text/plain", false, true);
     r.set_items({ exact_junk, pdf });
@@ -54,5 +53,13 @@ int main() {
     r.search(Query.parse("inv"));
     assert(r.search(Query.parse("invo")).top.item == pdf);
     assert(r.search(Query.parse("invo")).files[0].item == junk);
+    var j2 = file_item("abc", "/home/u/.cache", "text/plain", false, true);
+    var n1 = file_item("a-big-cat.txt", "/home/u/Documents", "text/plain");
+    var n2 = file_item("a_b_c_notes.txt", "/home/u/Documents", "text/plain");
+    var n3 = file_item("axbxcx.txt", "/home/u/Documents", "text/plain");
+    r.set_items({ j2, n1, n2, n3 });
+    var jr = r.search(Query.parse("abc"));
+    assert(jr.files.length >= 2 && jr.files[jr.files.length - 1].item == j2);
+    assert(jr.top == null || jr.top.item != j2);
     return 0;
 }
