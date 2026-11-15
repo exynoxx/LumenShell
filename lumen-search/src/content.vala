@@ -24,10 +24,11 @@ namespace LumenSearch {
 
         static string markup(string snip) {
             // escape_text turns the control-char markers into &#x2;/&#x3; entities.
+            string one_line = snip;
             try {
-                snip = new Regex("\\s+").replace(snip, -1, 0, " ");
+                one_line = new Regex("\\s+").replace(snip, -1, 0, " ");
             } catch (RegexError e) {}
-            return Markup.escape_text(snip).replace("&#x2;", "<b>").replace("&#x3;", "</b>");
+            return Markup.escape_text(one_line).replace("&#x2;", "<b>").replace("&#x3;", "</b>");
         }
 
         public async Hit[] run(Query q, Cancellable? c) throws GLib.Error {
