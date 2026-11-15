@@ -54,7 +54,8 @@ public class App : GLib.Object {
 
         // Each factory builds a fresh applet so one id can be realized on several panels.
         registry = new TrayRegistry();
-        registry.register("search",    () => new SearchTray());
+        if (Environment.find_program_in_path("lumen-search") != null)
+            registry.register("search",    () => new SearchTray());
         registry.register("systray",   () => new SysTray(sni_watcher));
         registry.register("wifi",      () => new WifiTray(wifi_service));
         registry.register("bluetooth", () => new BluetoothTray(bluetooth_service));

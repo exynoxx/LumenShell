@@ -9,7 +9,9 @@ namespace LumenSearch {
         public static bool is_junk(string path, string home) {
             if (under(path, home + "/go/pkg") || under(path, home + "/.local/share/Trash"))
                 return true;
-            foreach (var seg in path.split("/")) {
+            // Scan only below $HOME so a home under e.g. /x/build/ isn't junk.
+            var rel = path.has_prefix(home + "/") ? path.substring(home.length + 1) : path;
+            foreach (var seg in rel.split("/")) {
                 if (seg.has_prefix(".")) return true;
                 foreach (var j in JUNK_SEGMENTS) {
                     if (seg == j) return true;

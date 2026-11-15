@@ -164,10 +164,17 @@ namespace LumenSearch {
             last_raw = q.raw;
             last_filter = sig;
             last_cands = cands;
-            return build(hits);
+            return build(hits, q);
         }
 
-        static Results build(owned Hit[] hits) {
+        // A lone weak match must not become Top Hit; type-only queries have no terms and no floor.
+        static double min_top_score(Query q) {
+            int chars = 0;
+            foreach (var t in q.terms) chars += t.char_count();
+            return 20.0 * chars;
+        }
+
+        static Results build(owned Hit[] hits, Query q) {
             var res = new Results();
             Hit[] apps = {};
             Hit[] files = {};
@@ -186,7 +193,8 @@ namespace LumenSearch {
                 if (best == null || compare_hits(h, best) < 0) { second = best; best = h; }
                 else if (second == null || compare_hits(h, second) < 0) second = h;
             }
-            if (best != null && (second == null || best.score >= 1.2 * second.score && best.score > second.score)) {
+            if (best != null && (second == null || best.score >= 1.2 * second.score && best.score > second.score)
+                && best.score >= min_top_score(q)) {
                 res.top = best;
                 best_is_app = best.item.kind == ItemKind.APP;
             }

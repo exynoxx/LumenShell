@@ -483,7 +483,7 @@ if get_option('with_search').allowed() and tinysparql_dep.found()
   )
 
   executable('lumen-search',
-    search_sources + search_core_source + paths_source + theme_json_source + proc_source,
+    search_sources + search_core_source + paths_source + theme_json_source,
     vala_args: [
       '--vapidir=' + vapi_dir,
       '--pkg=gtk4',

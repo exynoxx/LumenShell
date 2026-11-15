@@ -28,7 +28,14 @@ namespace LumenSearch {
             try {
                 one_line = new Regex("\\s+").replace(snip, -1, 0, " ");
             } catch (RegexError e) {}
-            return Markup.escape_text(one_line).replace("&#x2;", "<b>").replace("&#x3;", "</b>");
+            var esc = Markup.escape_text(one_line);
+            var marked = esc.replace("&#x2;", "<b>").replace("&#x3;", "</b>");
+            try {
+                Pango.parse_markup(marked, -1, 0, null, null, null);
+            } catch (GLib.Error e) {
+                return esc.replace("&#x2;", "").replace("&#x3;", "");
+            }
+            return marked;
         }
 
         public async Hit[] run(Query q, Cancellable? c) throws GLib.Error {

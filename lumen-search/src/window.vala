@@ -18,6 +18,7 @@ namespace LumenSearch {
     public class SearchWindow : Gtk.Window {
         const int64 REFRESH_AGE_US = 60 * TimeSpan.SECOND;
 
+        AppInfoMonitor app_monitor = AppInfoMonitor.get();
         Gtk.Text entry;
         Gtk.Revealer revealer;
         Gtk.ListBox list;
@@ -90,7 +91,7 @@ namespace LumenSearch {
             ((Gtk.Widget) this).add_controller(keys);
 
             load_apps();
-            AppInfoMonitor.get().changed.connect(load_apps);
+            app_monitor.changed.connect(load_apps);
             refresh_files();
         }
 
@@ -107,11 +108,10 @@ namespace LumenSearch {
             set_visible(false);
         }
 
-        // ponytail: GDK has no global pointer position on Wayland, so this is the first monitor.
+        // Monitor left unset so the compositor picks the focused output; margin uses the first monitor's height.
         void place() {
             var mon = (Gdk.Monitor?) get_display().get_monitors().get_item(0);
             if (mon == null) return;
-            GtkLayerShell.set_monitor(this, mon);
             GtkLayerShell.set_margin(this, GtkLayerShell.Edge.TOP, mon.geometry.height / 5);
         }
 
@@ -279,7 +279,7 @@ namespace LumenSearch {
                     var bus = Bus.get.end(r);
                     bus.call.begin("org.freedesktop.FileManager1", "/org/freedesktop/FileManager1",
                         "org.freedesktop.FileManager1", "ShowItems",
-                        new Variant("(ass)", new string[] { uri }, ""),
+                        new Variant("(^ass)", new string[] { uri }, ""),
                         null, DBusCallFlags.NONE, -1, null);
                 } catch (GLib.Error e) {
                     warning("file manager unavailable");
