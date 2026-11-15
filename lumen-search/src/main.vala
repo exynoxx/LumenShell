@@ -1,7 +1,9 @@
 namespace LumenSearch {
     public class SearchApp : Gtk.Application {
         public SearchApp() {
-            GLib.Object(application_id: "org.lumenshell.Search", flags: ApplicationFlags.NON_UNIQUE);
+            GLib.Object(application_id: "org.lumenshell.Search", flags: ApplicationFlags.HANDLES_COMMAND_LINE);
+            add_main_option("toggle", 0, OptionFlags.NONE, OptionArg.NONE,
+                "Show or hide the search window", null);
             add_main_option("query", 0, OptionFlags.NONE, OptionArg.STRING,
                 "Run a headless query and print the sections", "TEXT");
         }
@@ -10,6 +12,21 @@ namespace LumenSearch {
             string? text = null;
             if (!opts.lookup("query", "s", out text)) return -1;
             run_query(text);
+            return 0;
+        }
+
+        SearchWindow? window;
+
+        // Primary instance only: the daemon starts hidden and stays resident.
+        protected override void startup() {
+            base.startup();
+            SearchConfig.load();
+            window = new SearchWindow(this);
+            hold();
+        }
+
+        protected override int command_line(ApplicationCommandLine cmd) {
+            if (cmd.get_options_dict().contains("toggle")) window.toggle();
             return 0;
         }
 
@@ -57,7 +74,7 @@ namespace LumenSearch {
             });
             var cs = new ContentSearch();
             cs.run.begin(q, null, (o, r) => {
-                try { contents = cs.run.end(r); } catch (GLib.Error e) { warning("content search: %s", e.message); }
+                try { contents = cs.run.end(r); } catch (GLib.Error e) { warning("content search failed"); }
                 if (--pending == 0) loop.quit();
             });
             loop.run();

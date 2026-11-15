@@ -39,8 +39,9 @@ namespace LumenSearch {
                 var root = parser.get_root();
                 if (root != null && root.get_node_type() == Json.NodeType.OBJECT) {
                     var o = root.get_object();
-                    if (o.has_member("search.boost-dirs")) {
-                        o.get_array_member("search.boost-dirs").foreach_element((a, i, n) => {
+                    var bd = o.get_member("search.boost-dirs");
+                    if (bd != null && bd.get_node_type() == Json.NodeType.ARRAY) {
+                        bd.get_array().foreach_element((a, i, n) => {
                             if (n.get_value_type() == typeof(string)) dirs += expand(n.get_string());
                         });
                     }

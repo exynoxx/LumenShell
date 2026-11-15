@@ -476,6 +476,8 @@ if get_option('with_search').allowed() and tinysparql_dep.found()
     'lumen-search/src/config.vala',
     'lumen-search/src/index.vala',
     'lumen-search/src/content.vala',
+    'lumen-search/src/result_row.vala',
+    'lumen-search/src/window.vala',
     'lumen-search/src/main.vala',
   )
 
@@ -484,6 +486,7 @@ if get_option('with_search').allowed() and tinysparql_dep.found()
     vala_args: [
       '--vapidir=' + vapi_dir,
       '--pkg=gtk4',
+      '--pkg=gtk4-layer-shell-0',
       '--pkg=json-glib-1.0',
       '--pkg=tinysparql-3.0',
       '--pkg=gio-unix-2.0',
@@ -491,7 +494,7 @@ if get_option('with_search').allowed() and tinysparql_dep.found()
       '--pkg=gio-2.0',
     ],
     c_args: lumen_datadir_c_args,
-    # gtk4-layer-shell MUST precede gtk4/wayland (Task 5 uses it).
+    # gtk4-layer-shell MUST precede gtk4/wayland.
     dependencies: [gtk4_layer_shell_dep, gtk4_dep, wayland_dep, glib_dep, gio_dep, gio_unix_dep, json_dep, tinysparql_dep, m_dep],
     link_args: ['-Wl,--no-as-needed'],
     install: true,
