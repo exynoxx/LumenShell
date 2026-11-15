@@ -80,7 +80,9 @@ public class BluetoothService : GLib.Object {
         new GLib.Thread<void>("bt-restore", () => {
             bool pw;
             btctl.fetch_state(out pw);
-            if (pw != on) btctl.set_powered(on);
+            // Off is always re-applied: an adapter read as unpowered at boot can
+            // still be switched on a moment later by BlueZ AutoEnable.
+            if (pw != on || !on) btctl.set_powered(on);
             GLib.Idle.add(() => {
                 poll_state();
                 return Source.REMOVE;

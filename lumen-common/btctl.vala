@@ -186,13 +186,16 @@ public class BtctlClient : GLib.Object {
         });
     }
 
-    // Blocking. rfkill unblock first, otherwise `power on` fails with off-blocked.
+    // Blocking. Off is an rfkill soft-block (as GNOME does): systemd-rfkill
+    // persists it across reboots and BlueZ AutoEnable can't power past it, which
+    // a plain `power off` loses at boot. On unblocks first, or `power on` fails
+    // with off-blocked.
     public void set_powered(bool on) {
         if (on) {
             LumenCommon.Proc.run_capture(new string[] { "rfkill", "unblock", "bluetooth" });
             LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "power", "on" });
         } else {
-            LumenCommon.Proc.run_capture(new string[] { "bluetoothctl", "power", "off" });
+            LumenCommon.Proc.run_capture(new string[] { "rfkill", "block", "bluetooth" });
         }
     }
 
