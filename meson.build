@@ -460,6 +460,7 @@ search_core_source = files(
   'lumen-search/src/types.vala',
   'lumen-search/src/junk.vala',
   'lumen-search/src/query.vala',
+  'lumen-search/src/rank.vala',
 )
 
 test('search-core', executable('test-search-core',

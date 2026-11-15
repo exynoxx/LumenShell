@@ -1,5 +1,12 @@
 using LumenSearch;
 
+Item file_item(string name, string dir, string mime, bool boosted = false, bool junk = false) {
+    var i = new Item();
+    i.kind = ItemKind.FILE; i.name = name; i.dir = dir; i.mime = mime;
+    i.uri = "file://" + dir + "/" + name; i.boosted = boosted; i.junk = junk;
+    return i;
+}
+
 int main() {
     int s1, s2; int[] p;
     assert(Fuzzy.match("invpdf", "invoice-2025.pdf", out s1, out p));
@@ -27,5 +34,25 @@ int main() {
     assert(Junk.is_junk("/home/u/go/pkg/mod/x.go", h));
     assert(Junk.is_junk("/home/u/src/app/node_modules/a/b.js", h));
     assert(!Junk.is_junk("/home/u/Documents/invoice-2025.pdf", h));
+    var pdf  = file_item("invoice-2025.pdf", "/home/u/Documents", "application/pdf", true);
+    var junk = file_item("invoice.json", "/home/u/.cache/foo", "application/json", false, true);
+    var r = new Ranker(); r.set_items({ junk, pdf });
+    var res = r.search(Query.parse("invoice"));
+    assert(res.files[0].item == pdf || res.top.item == pdf);
+    assert(res.top.item == pdf);
+    var exact_junk = file_item("invpdf", "/home/u/.cache", "text/plain", false, true);
+    r.set_items({ exact_junk, pdf });
+    assert(r.search(Query.parse("invpdf")).top.item == pdf);
+    r.set_items({ pdf, junk });
+    var t = r.search(Query.parse("pdf"));
+    assert(t.top.item == pdf && t.files.length == 0 && t.apps.length == 0);
+    var tax = file_item("invoice.pdf", "/home/u/Documents/Tax", "application/pdf", true);
+    r.set_items({ tax });
+    var d = r.search(Query.parse("tax inv")).top;
+    assert(d.dir_pos.length == 3 && d.name_pos.length == 3);
+    r.set_items({ pdf, junk });
+    r.search(Query.parse("inv"));
+    assert(r.search(Query.parse("invo")).top.item == pdf);
+    assert(r.search(Query.parse("invo")).files[0].item == junk);
     return 0;
 }
