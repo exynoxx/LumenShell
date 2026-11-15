@@ -455,7 +455,12 @@ test('display-identity', executable('test-display-identity',
   dependencies: [glib_dep, gio_dep, json_dep],
 ))
 
-search_core_source = files('lumen-search/src/fuzzy.vala')
+search_core_source = files(
+  'lumen-search/src/fuzzy.vala',
+  'lumen-search/src/types.vala',
+  'lumen-search/src/junk.vala',
+  'lumen-search/src/query.vala',
+)
 
 test('search-core', executable('test-search-core',
   files('tests/search_core.vala') + search_core_source,
