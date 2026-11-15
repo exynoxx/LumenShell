@@ -144,6 +144,10 @@ button.app-entry {
 button.app-entry:hover {
     background: @app_hover;
 }
+/* chip/lift hover styles draw their own hover in AppEntry.snapshot(). */
+button.app-entry.hover-custom:hover:not(.dragging) {
+    background: transparent;
+}
 button.app-entry.dragging {
     background: @app_hover;
     border-radius: 8px;

@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class PanelPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "panel"; } }
         public string title     { owned get { return "Panel"; } }
-        public string icon_name { owned get { return "preferences-system-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-panel"; } }
 
         JsonStore store;
         JsonStore theme;
@@ -156,17 +156,23 @@ namespace LumenSettings {
             });
             behavior_group.add(autohide_opacity_row);
 
-            string[] active_labels = { "Underline", "Ring", "Sunshine", "Glass (navy)", "Circle (glass)" };
-            string[] active_values = { "underline", "ring", "sunshine", "glass", "circle" };
+            string[] hover_labels = { "Flat", "Chip", "Lift" };
+            string[] hover_values = { "flat", "chip", "lift" };
+            behavior_group.add(store_rows.combo_row("app.hover-style", "App hover style",
+                hover_labels, hover_values, "flat",
+                "how an app button reacts to the pointer: a full square, a rounded chip, or the icon lifting"));
+
+            string[] active_labels = { "Underline", "Pill", "Tint", "Caret", "App column", "Split bar", "Sunshine", "Glass (navy)", "Circle (glass)" };
+            string[] active_values = { "underline", "pill", "tint", "caret", "column", "split", "sunshine", "glass", "circle" };
             behavior_group.add(store_rows.combo_row("app.active-indicator", "Active app indicator",
                 active_labels, active_values, "underline",
-                "how the focused app is marked: an accent bar, a ring, sunshine rays, a navy glass disc, or a faint glass circle"));
+                "how the focused app is marked: an accent bar, a short pill, a tile in the icon's colour, a caret, a glow column in the icon's colour, a bar split per window, sunshine rays, a navy glass disc, or a faint glass circle"));
 
-            string[] ind_labels = { "Bottom shade", "Dot", "Corner brackets", "Glass (squared)", "Glass (rounded)", "None" };
-            string[] ind_values = { "shade", "dot", "corners", "glass", "round", "none" };
+            string[] ind_labels = { "Bottom shade", "Dot", "Window ticks", "Pip", "Ember", "Segment bar", "Dim closed apps", "Glass (squared)", "Glass (rounded)", "None" };
+            string[] ind_values = { "shade", "dot", "ticks", "pip", "ember", "segments", "dim-closed", "glass", "round", "none" };
             behavior_group.add(store_rows.combo_row("app.open-indicator", "Open app indicator",
                 ind_labels, ind_values, "shade",
-                "how a running app is marked apart from a pinned, closed one"));
+                "how a running app is marked apart from a pinned, closed one; window ticks and the segment bar show one mark per window; dim closed apps marks nothing and fades pinned, closed apps instead"));
 
             page.add(behavior_group);
 
@@ -218,14 +224,16 @@ namespace LumenSettings {
                 disabled_set.add(id);
             }
 
-            // Same rule as lumen-panel: stored catalog ids first, then unlisted
-            // catalog ids in catalog order.
             var ordered = new Gee.ArrayList<string>();
             foreach (var id in stored_order) {
                 if (catalog_has(id) && !ordered.contains(id)) ordered.add(id);
             }
+            // Same rule as the panel: a missing id slots in after its catalog predecessor.
+            int at = 0;
             foreach (var info in LumenTray.CATALOG) {
-                if (!ordered.contains(info.id)) ordered.add(info.id);
+                int i = ordered.index_of(info.id);
+                if (i < 0) ordered.insert(at, info.id); else at = i;
+                at++;
             }
 
             string[] ids = {};

@@ -2,11 +2,14 @@
 public class PanelConfig {
     public static bool at_top = false;
 
-    public enum OpenIndicator { SHADE, DOT, CORNERS, GLASS, ROUND, NONE }
+    public enum OpenIndicator { SHADE, DOT, TICKS, PIP, EMBER, SEGMENTS, DIM_CLOSED, GLASS, ROUND, NONE }
     public static OpenIndicator open_indicator = OpenIndicator.SHADE;
 
-    public enum ActiveIndicator { UNDERLINE, RING, SUNSHINE, GLASS, CIRCLE }
+    public enum ActiveIndicator { UNDERLINE, PILL, TINT, CARET, COLUMN, SPLIT, SUNSHINE, GLASS, CIRCLE }
     public static ActiveIndicator active_indicator = ActiveIndicator.UNDERLINE;
+
+    public enum HoverStyle { FLAT, CHIP, LIFT }
+    public static HoverStyle hover_style = HoverStyle.FLAT;
 
     // per_monitor_apps: each panel's taskbar shows only its own monitor's windows.
     public static bool multi_monitor = false;
@@ -35,6 +38,7 @@ public class PanelConfig {
         at_top            = vals.get_string_member_with_default("position", "") == "top";
         open_indicator    = parse_indicator(vals.get_string_member_with_default("app.open-indicator", ""));
         active_indicator  = parse_active_indicator(vals.get_string_member_with_default("app.active-indicator", ""));
+        hover_style       = parse_hover_style(vals.get_string_member_with_default("app.hover-style", ""));
         multi_monitor     = vals.get_boolean_member_with_default("behavior.multi-monitor", false);
         per_monitor_apps  = vals.get_boolean_member_with_default("behavior.per-monitor-apps", false);
         tray_all_monitors = vals.get_boolean_member_with_default("behavior.tray-all-monitors", false);
@@ -92,8 +96,12 @@ public class PanelConfig {
     public static string[] tray_enabled_order () {
         var order = new Gee.ArrayList<string>();
         foreach (var id in tray_order) order.add(id);
+        // A missing id goes right after its catalog predecessor, not at the end.
+        int at = 0;
         foreach (var info in LumenTray.CATALOG) {
-            if (!order.contains(info.id)) order.add(info.id);
+            int i = order.index_of(info.id);
+            if (i < 0) order.insert(at, info.id); else at = i;
+            at++;
         }
 
         string[] result = {};
@@ -115,7 +123,11 @@ public class PanelConfig {
     static OpenIndicator parse_indicator (string? s) {
         switch (s) {
             case "dot":     return OpenIndicator.DOT;
-            case "corners": return OpenIndicator.CORNERS;
+            case "ticks":   return OpenIndicator.TICKS;
+            case "pip":     return OpenIndicator.PIP;
+            case "ember":   return OpenIndicator.EMBER;
+            case "segments":   return OpenIndicator.SEGMENTS;
+            case "dim-closed": return OpenIndicator.DIM_CLOSED;
             case "glass":   return OpenIndicator.GLASS;
             case "round":   return OpenIndicator.ROUND;
             case "none":    return OpenIndicator.NONE;
@@ -125,12 +137,24 @@ public class PanelConfig {
 
     static ActiveIndicator parse_active_indicator (string? s) {
         switch (s) {
-            case "ring":      return ActiveIndicator.RING;
+            case "pill":      return ActiveIndicator.PILL;
+            case "tint":      return ActiveIndicator.TINT;
+            case "caret":     return ActiveIndicator.CARET;
+            case "column":    return ActiveIndicator.COLUMN;
+            case "split":     return ActiveIndicator.SPLIT;
             case "sunshine":  return ActiveIndicator.SUNSHINE;
             case "glass":     return ActiveIndicator.GLASS;
             case "circle":    return ActiveIndicator.CIRCLE;
             case "underline": return ActiveIndicator.UNDERLINE;
             default:          return ActiveIndicator.UNDERLINE;
+        }
+    }
+
+    static HoverStyle parse_hover_style (string? s) {
+        switch (s) {
+            case "chip": return HoverStyle.CHIP;
+            case "lift": return HoverStyle.LIFT;
+            default:     return HoverStyle.FLAT;
         }
     }
 }
