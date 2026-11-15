@@ -468,6 +468,36 @@ test('search-core', executable('test-search-core',
   dependencies: [glib_dep, gio_dep],
 ))
 
+# --- lumen-search ---
+tinysparql_dep = dependency('tinysparql-3.0', required: get_option('with_search'))
+
+if get_option('with_search').allowed() and tinysparql_dep.found()
+  search_sources = files(
+    'lumen-search/src/config.vala',
+    'lumen-search/src/index.vala',
+    'lumen-search/src/content.vala',
+    'lumen-search/src/main.vala',
+  )
+
+  executable('lumen-search',
+    search_sources + search_core_source + paths_source + theme_json_source + proc_source,
+    vala_args: [
+      '--vapidir=' + vapi_dir,
+      '--pkg=gtk4',
+      '--pkg=json-glib-1.0',
+      '--pkg=tinysparql-3.0',
+      '--pkg=gio-unix-2.0',
+      '--pkg=glib-2.0',
+      '--pkg=gio-2.0',
+    ],
+    c_args: lumen_datadir_c_args,
+    # gtk4-layer-shell MUST precede gtk4/wayland (Task 5 uses it).
+    dependencies: [gtk4_layer_shell_dep, gtk4_dep, wayland_dep, glib_dep, gio_dep, gio_unix_dep, json_dep, tinysparql_dep, m_dep],
+    link_args: ['-Wl,--no-as-needed'],
+    install: true,
+  )
+endif
+
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
 
