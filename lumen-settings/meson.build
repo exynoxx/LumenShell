@@ -68,6 +68,7 @@ settings_sources = files(
   'src/pages/touchpad_page.vala',
   'src/pages/networking_page.vala',
   'src/pages/sound_page.vala',
+  'src/pages/users_page.vala',
 )
 
 settings_sources += display_profiles_source
@@ -80,6 +81,7 @@ settings_sources += sound_source
 
 settings_sources += paths_source
 settings_sources += diaglog_source
+settings_sources += accounts_source
 
 libxml_settings_dep = dependency('libxml-2.0', required: false)
 settings_wayfire_enabled = libxml_settings_dep.found()
