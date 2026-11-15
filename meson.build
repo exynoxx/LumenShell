@@ -455,6 +455,13 @@ test('display-identity', executable('test-display-identity',
   dependencies: [glib_dep, gio_dep, json_dep],
 ))
 
+search_core_source = files('lumen-search/src/fuzzy.vala')
+
+test('search-core', executable('test-search-core',
+  files('tests/search_core.vala') + search_core_source,
+  dependencies: [glib_dep, gio_dep],
+))
+
 # --- lumen-settings (drop-in fragment) ---
 subdir('lumen-settings')
 
