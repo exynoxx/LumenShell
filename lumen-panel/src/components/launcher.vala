@@ -1,7 +1,7 @@
 #if PANEL_PEEK
 public class LauncherButton : Gtk.Button {
 
-    public const int ICON_SIZE = 32;
+    public const int ICON_SIZE = 40;
 
     public LauncherButton () {
         add_css_class("launcher-button");

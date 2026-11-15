@@ -3,7 +3,7 @@ public class AppEntry : Gtk.Button {
     public const int SLOT_WIDTH  = 70;
     public const int SLOT_HEIGHT = 60;
     public const int UNDERLINE_H = 4;
-    public const int ICON_SIZE   = 32;
+    public const int ICON_SIZE   = 40;
 
     public string app_id { get; construct; }
     public string display_name { get; private set; }
@@ -701,7 +701,7 @@ public class AppEntry : Gtk.Button {
     void draw_active_sunshine (Gtk.Snapshot s) {
         float cx = get_width() / 2f, cy = get_height() / 2f;
         float r_in  = ICON_SIZE / 2f + 3f;
-        float r_out = ICON_SIZE / 2f + 12f;
+        float r_out = float.min(ICON_SIZE / 2f + 12f, cy - 1f);   // clamp: panel is 60 px tall
         double step = 2.0 * Math.PI / SUNSHINE_RAYS;
         double half = step * 0.28;   // angular half-width of each ray's base
         var pb = new Gsk.PathBuilder();
