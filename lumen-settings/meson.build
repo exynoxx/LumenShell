@@ -98,7 +98,7 @@ endif
 executable('lumen-settings',
   settings_sources + settings_resources,
   vala_args: settings_vala_args,
-  c_args: lumen_datadir_c_args,
+  c_args: lumen_datadir_c_args + ['-DLUMEN_VERSION="' + meson.project_version() + '"'],
   dependencies: settings_deps,
   install: true,
 )
