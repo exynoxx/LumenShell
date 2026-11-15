@@ -24,6 +24,9 @@ namespace LumenSearch {
 
         static string markup(string snip) {
             // escape_text turns the control-char markers into &#x2;/&#x3; entities.
+            try {
+                snip = new Regex("\\s+").replace(snip, -1, 0, " ");
+            } catch (RegexError e) {}
             return Markup.escape_text(snip).replace("&#x2;", "<b>").replace("&#x3;", "</b>");
         }
 

@@ -68,6 +68,29 @@ namespace LumenSearch {
             dst = l.data;
         }
 
+        // Best single path segment (below $HOME when under it); positions are byte offsets in dir.
+        static bool match_dir(string term, string dir, out int score, out int[] pos) {
+            score = 0; pos = {};
+            int start = 0;
+            string home = Environment.get_home_dir();
+            if (dir == home) return false;
+            if (dir.has_prefix(home + "/")) start = home.length;
+            bool found = false;
+            while (start < dir.length) {
+                if (dir[start] == '/') { start++; continue; }
+                int end = dir.index_of_char('/', start);
+                if (end < 0) end = dir.length;
+                int s; int[] p;
+                if (Fuzzy.match(term, dir.substring(start, end - start), out s, out p) && (!found || s > score)) {
+                    found = true; score = s;
+                    pos = p;
+                    for (int i = 0; i < pos.length; i++) pos[i] += start;
+                }
+                start = end;
+            }
+            return found;
+        }
+
         // Every term must match name (x1), dir (x0.5) or app extra (x0.7).
         static Hit? score_item(Item it, Query q) {
             if (it.kind == ItemKind.APP) {
@@ -86,7 +109,7 @@ namespace LumenSearch {
                     continue;
                 }
                 if (it.kind != ItemKind.APP) {
-                    if (it.dir != "" && Fuzzy.match(term, it.dir, out s, out p)) {
+                    if (match_dir(term, it.dir, out s, out p)) {
                         sum += s * 0.5;
                         add_pos(ref dpos, p);
                         continue;
