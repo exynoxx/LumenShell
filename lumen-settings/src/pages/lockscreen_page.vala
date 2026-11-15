@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class LockscreenPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "lockscreen"; } }
         public string title     { owned get { return "Lock Screen"; } }
-        public string icon_name { owned get { return "system-lock-screen-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-lockscreen"; } }
 
         JsonRows rows;
 

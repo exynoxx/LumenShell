@@ -3,7 +3,7 @@ namespace LumenSettings {
     public class MousePage : GLib.Object, SettingsPage {
         public string id        { owned get { return "mouse"; } }
         public string title     { owned get { return "Mouse"; } }
-        public string icon_name { owned get { return "input-mouse-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-mouse"; } }
 
         InputSection input;
 

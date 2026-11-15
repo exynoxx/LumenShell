@@ -5,8 +5,8 @@ namespace LumenTray {
 
     // Canonical default order.
     public const AppletInfo[] CATALOG = {
-        { "search",    "Search" },
         { "systray",   "System tray" },
+        { "search",    "Search" },
         { "wifi",      "Wi-Fi" },
         { "bluetooth", "Bluetooth" },
         { "battery",   "Battery" },

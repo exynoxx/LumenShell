@@ -25,6 +25,9 @@ namespace LumenSettings {
 
             Theme.load();
             install_css();
+            // Sidebar icons ship in the gresource so the user's icon theme can't swap or drop them.
+            Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+                .add_resource_path("/org/lumenshell/settings/icons");
             register_pages();
 
             window = new SettingsWindow(this, registry);

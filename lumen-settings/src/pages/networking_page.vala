@@ -4,7 +4,7 @@ namespace LumenSettings {
     public class NetworkingPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "networking"; } }
         public string title     { owned get { return "Networking"; } }
-        public string icon_name { owned get { return "network-wireless-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-networking"; } }
 
         WifiService      wifi = new WifiService.passive();
         BluetoothService bt   = new BluetoothService.passive();

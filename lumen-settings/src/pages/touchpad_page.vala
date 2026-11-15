@@ -3,7 +3,7 @@ namespace LumenSettings {
     public class TouchpadPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "touchpad"; } }
         public string title     { owned get { return "Touchpad"; } }
-        public string icon_name { owned get { return "input-touchpad-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-touchpad"; } }
 
         InputSection input;
 

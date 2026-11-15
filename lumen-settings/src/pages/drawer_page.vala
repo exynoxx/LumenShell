@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class DrawerPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "drawer"; } }
         public string title     { owned get { return "Drawer"; } }
-        public string icon_name { owned get { return "view-grid-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-drawer"; } }
 
         IniRows rows;
 

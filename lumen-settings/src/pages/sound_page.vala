@@ -12,7 +12,7 @@ namespace LumenSettings {
     public class SoundPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "sound"; } }
         public string title     { owned get { return "Sound"; } }
-        public string icon_name { owned get { return "audio-volume-high-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-sound"; } }
 
         // Sets a captured bool field; used to wire scale drag tracking.
         private delegate void SetBool(bool v);

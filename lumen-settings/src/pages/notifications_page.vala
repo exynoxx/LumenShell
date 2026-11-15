@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class NotificationsPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "notifications"; } }
         public string title     { owned get { return "Notifications"; } }
-        public string icon_name { owned get { return "preferences-system-notifications-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-notifications"; } }
 
         JsonRows rows;
 

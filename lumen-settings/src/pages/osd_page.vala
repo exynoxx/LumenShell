@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class OsdPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "osd"; } }
         public string title     { owned get { return "OSD"; } }
-        public string icon_name { owned get { return "preferences-desktop-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-osd"; } }
 
         JsonRows rows;
 

@@ -76,7 +76,7 @@ namespace LumenSettings.Wayfire {
 
         public string id        { owned get { return "wayfire-plugins"; } }
         public string title     { owned get { return "Wayfire Plugins"; } }
-        public string icon_name { owned get { return "preferences-system-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-wayfire"; } }
 
         public WayfirePluginsPage(Gee.ArrayList<PluginDef> plugins, IniStore store) {
             this.plugins = plugins;

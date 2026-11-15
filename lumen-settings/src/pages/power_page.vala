@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class PowerPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "power"; } }
         public string title     { owned get { return "Power"; } }
-        public string icon_name { owned get { return "battery-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-power"; } }
 
         IniStore store;      // power.ini (read by lumen-lockscreen)
         IniStore wf;         // wayfire.ini (idle plugin)

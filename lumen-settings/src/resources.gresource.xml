@@ -3,4 +3,21 @@
   <gresource prefix="/org/lumenshell/settings">
     <file compressed="true">res/style.css</file>
   </gresource>
+  <gresource prefix="/org/lumenshell/settings/icons/scalable/apps">
+    <file alias="lumen-settings-wallpaper.svg">res/icons/lumen-settings-wallpaper.svg</file>
+    <file alias="lumen-settings-display.svg">res/icons/lumen-settings-display.svg</file>
+    <file alias="lumen-settings-panel.svg">res/icons/lumen-settings-panel.svg</file>
+    <file alias="lumen-settings-drawer.svg">res/icons/lumen-settings-drawer.svg</file>
+    <file alias="lumen-settings-power.svg">res/icons/lumen-settings-power.svg</file>
+    <file alias="lumen-settings-osd.svg">res/icons/lumen-settings-osd.svg</file>
+    <file alias="lumen-settings-notifications.svg">res/icons/lumen-settings-notifications.svg</file>
+    <file alias="lumen-settings-lockscreen.svg">res/icons/lumen-settings-lockscreen.svg</file>
+    <file alias="lumen-settings-keyboard.svg">res/icons/lumen-settings-keyboard.svg</file>
+    <file alias="lumen-settings-mouse.svg">res/icons/lumen-settings-mouse.svg</file>
+    <file alias="lumen-settings-touchpad.svg">res/icons/lumen-settings-touchpad.svg</file>
+    <file alias="lumen-settings-networking.svg">res/icons/lumen-settings-networking.svg</file>
+    <file alias="lumen-settings-sound.svg">res/icons/lumen-settings-sound.svg</file>
+    <file alias="lumen-settings-wayfire.svg">res/icons/lumen-settings-wayfire.svg</file>
+    <file alias="lumen-settings-about.svg">res/icons/lumen-settings-about.svg</file>
+  </gresource>
 </gresources>

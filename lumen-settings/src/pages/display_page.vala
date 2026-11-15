@@ -5,7 +5,7 @@ namespace LumenSettings {
     public class DisplayPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "display"; } }
         public string title     { owned get { return "Display"; } }
-        public string icon_name { owned get { return "video-display-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-display"; } }
 
         OutputManager wlr = new OutputManager();
         Gee.ArrayList<OutputInfo> baseline = new Gee.ArrayList<OutputInfo>();

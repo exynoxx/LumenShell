@@ -3,7 +3,7 @@ namespace LumenSettings {
     public class KeyboardPage : GLib.Object, SettingsPage {
         public string id        { owned get { return "keyboard"; } }
         public string title     { owned get { return "Keyboard"; } }
-        public string icon_name { owned get { return "input-keyboard-symbolic"; } }
+        public string icon_name { owned get { return "lumen-settings-keyboard"; } }
 
         InputSection input;
         XkbLayouts xkb;
