@@ -60,6 +60,7 @@ namespace LumenSettings {
             registry.add(new NotificationsPage(), "LumenShell");
             registry.add(new LockscreenPage(),    "LumenShell");
             registry.add(new SearchPage(),        "LumenShell");
+            registry.add(new UsersPage(),         "LumenShell");
             registry.add(new DisplayPage(),       "Input");
             registry.add(new KeyboardPage(),      "Input");
             registry.add(new MousePage(),         "Input");

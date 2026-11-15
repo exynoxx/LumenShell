@@ -72,6 +72,37 @@ public class AccountsClient : GLib.Object {
         return info;
     }
 
+    // Live (uncached) user record with properties loaded; null if Accounts
+    // is unavailable. lumen-settings reads AccountType / Language from it.
+    public static DBusProxy? current_user_proxy() {
+        var path = current_user_path();
+        if (path == "") return null;
+        try {
+            return new DBusProxy.for_bus_sync(
+                BusType.SYSTEM, DBusProxyFlags.NONE, null,
+                SERVICE, path, USR_IFACE, null);
+        } catch (Error e) {
+            warning("accounts: user proxy: %s", e.message);
+            return null;
+        }
+    }
+
+    // Own-user writes (polkit change-own-user-data: no prompt for the
+    // active local session). Throw so the caller can show the failure.
+    public static void set_real_name(string name) throws Error  { call_user("SetRealName", name); }
+    public static void set_icon_file(string path) throws Error  { call_user("SetIconFile", path); }
+    public static void set_language(string locale) throws Error { call_user("SetLanguage", locale); }
+
+    static void call_user(string method, string arg) throws Error {
+        var path = current_user_path();
+        if (path == "") throw new IOError.NOT_FOUND("AccountsService is unavailable");
+        var usr = new DBusProxy.for_bus_sync(
+            BusType.SYSTEM, DBusProxyFlags.DO_NOT_LOAD_PROPERTIES, null,
+            SERVICE, path, USR_IFACE, null);
+        usr.call_sync(method, new Variant("(s)", arg), DBusCallFlags.NONE, 5000, null);
+        cached = null;   // load_current_user() must see the new value
+    }
+
     // So login managers preselect this session next time. polkit allows
     // own-user writes for the active local session without a prompt.
     public static void set_current_session(string session_id) {

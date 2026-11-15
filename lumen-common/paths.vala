@@ -37,6 +37,13 @@ namespace LumenCommon {
             return Environment.get_user_config_dir() + "/wf-shell.ini";
         }
 
+        // Regional formats (LC_TIME, ...) for the Users page. environment.d is
+        // what reaches the session: GDM imports the systemd user environment,
+        // while profile.d (and so Fedora's ~/.i18n) is never sourced.
+        public static string formats_env_conf() {
+            return Environment.get_user_config_dir() + "/environment.d/90-lumen-formats.conf";
+        }
+
         public static void ensure_dir() {
             if (DirUtils.create_with_parents(config_dir(), 0755) != 0)
                 warning("lumen: could not create %s", config_dir());
