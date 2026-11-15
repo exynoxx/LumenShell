@@ -13,41 +13,13 @@
 #include <wayfire/scene.hpp>
 #include <wayfire/scene-operations.hpp>
 #include "ipc_wrapper.hpp"
+#include "log.hpp"
+#include "transformed_views.hpp"
 
-#include <memory>
-#include <vector>
 #include <algorithm>
 #include <string>
-#include <cstdio>
-#include <cstdarg>
-#include <ctime>
 
-namespace
-{
-constexpr const char *TRANSFORMER_NAME = "wayfire-panel-push-slide";
-
-// Debug log, append-only; truncate manually before a test session.
-inline void push_log(const char *fmt, ...)
-{
-    FILE *fp = std::fopen("/tmp/wayfire-panel-push.log", "a");
-    if (!fp)
-    {
-        return;
-    }
-
-    timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    std::fprintf(fp, "[%ld.%03ld] ", (long) ts.tv_sec, (long) (ts.tv_nsec / 1000000));
-
-    va_list ap;
-    va_start(ap, fmt);
-    std::vfprintf(fp, fmt, ap);
-    va_end(ap);
-
-    std::fputc('\n', fp);
-    std::fclose(fp);
-}
-}
+#define push_log(...) lumen::file_log("/tmp/wayfire-panel-push.log", __VA_ARGS__)
 
 // Slides every view in BACKGROUND..TOP except the panel by ±push_px. The 2D
 // transformer remaps input with rendering, so the pushed scene stays interactive.
@@ -70,14 +42,7 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
     int push_px = 60;
     int push_sign = +1;
 
-    struct tracked_t
-    {
-        wayfire_view view;
-        std::shared_ptr<wf::scene::view_2d_transformer_t> tr;
-        wf::signal::connection_t<wf::view_unmapped_signal> on_unmap;
-    };
-
-    std::vector<std::unique_ptr<tracked_t>> tracked_views;
+    lumen::transformed_views_t tracked_views{"wayfire-panel-push-slide"};
 
     // No input grab: the pushed scene must stay usable while the panel is shown.
     wf::plugin_activation_data_t activation = {
@@ -133,8 +98,7 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
                 output->render->rem_effect(&on_frame);
             } else if (state == state_t::IN)
             {
-                apply_progress(0.0);
-                hard_reset();
+                hard_reset(); // removes the transformers outright
             }
         }
     };
@@ -209,29 +173,13 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         {
             return;
         }
-        for (auto& t : tracked_views)
+        if (auto *t = tracked_views.add(view))
         {
-            if (t->view == view)
-            {
-                return;
-            }
+            auto n = view->get_transformed_node();
+            n->begin_transform_update();
+            t->tr->translation_y = offset((double) anim);
+            n->end_transform_update();
         }
-
-        auto t = std::make_unique<tracked_t>();
-        t->view = view;
-        t->tr = std::make_shared<wf::scene::view_2d_transformer_t>(view);
-        view->get_transformed_node()->add_transformer(
-            t->tr, wf::TRANSFORMER_2D, TRANSFORMER_NAME);
-
-        wayfire_view captured = view;
-        t->on_unmap = [this, captured] (wf::view_unmapped_signal*)
-        {
-            drop_view(captured);
-        };
-        view->connect(&t->on_unmap);
-
-        set_view_translation(*t, (double) anim);
-        tracked_views.push_back(std::move(t));
     }
 
     bool start_push()
@@ -258,9 +206,9 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         }
 
         push_log("start_push: %zu tracked views, push_px=%d sign=%d",
-            tracked_views.size(), push_px, push_sign);
+            tracked_views.entries.size(), push_px, push_sign);
 
-        if (tracked_views.empty())
+        if (tracked_views.entries.empty())
         {
             output->deactivate_plugin(&activation);
             return false;
@@ -290,55 +238,19 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         anim.animate((double) anim, 0.0);
     }
 
-    void set_view_translation(tracked_t& t, double p)
+    float offset(double p) const
     {
-        if (!t.tr || !t.view)
-        {
-            return;
-        }
-        auto n = t.view->get_transformed_node();
-        n->begin_transform_update();
-        t.tr->translation_y = (float) (push_sign * push_px * p);
-        n->end_transform_update();
+        return (float) (push_sign * push_px * p);
     }
 
+    // end_transform_update() damages each moved view; no damage_whole() needed.
     void apply_progress(double p)
     {
-        for (auto& t : tracked_views)
-        {
-            set_view_translation(*t, p);
-        }
-
-        output->render->damage_whole();
-    }
-
-    void drop_view(wayfire_view view)
-    {
-        auto it = std::find_if(tracked_views.begin(), tracked_views.end(),
-            [&] (auto& t) { return t->view == view; });
-        if (it == tracked_views.end())
-        {
-            return;
-        }
-
-        if ((*it)->tr && view)
-        {
-            view->get_transformed_node()->rem_transformer((*it)->tr);
-        }
-
-        tracked_views.erase(it);
+        tracked_views.update_all([&] (auto& t) { t.tr->translation_y = offset(p); });
     }
 
     void hard_reset()
     {
-        for (auto& t : tracked_views)
-        {
-            if (t->tr && t->view)
-            {
-                t->view->get_transformed_node()->rem_transformer(t->tr);
-            }
-            t->on_unmap.disconnect();
-        }
         tracked_views.clear();
 
         if (state != state_t::IDLE)

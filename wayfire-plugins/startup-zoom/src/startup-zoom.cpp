@@ -13,14 +13,9 @@
 
 #include <wayland-server-core.h>
 
-#include <memory>
-#include <vector>
-#include <algorithm>
+#include "transformed_views.hpp"
 
-namespace
-{
-constexpr const char *TRANSFORMER_NAME = "wayfire-startup-zoom-tr";
-}
+#include <algorithm>
 
 class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 {
@@ -33,14 +28,7 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
     enum class state_t { PENDING, RUNNING, DONE };
     state_t state = state_t::PENDING;
 
-    struct tracked_t
-    {
-        wayfire_view view;
-        std::shared_ptr<wf::scene::view_2d_transformer_t> tr;
-        wf::signal::connection_t<wf::view_unmapped_signal> on_unmap;
-    };
-
-    std::vector<std::unique_ptr<tracked_t>> tracked;
+    lumen::transformed_views_t tracked{"wayfire-startup-zoom-tr"};
 
     // Gives up if no view maps within grace_ms, so we never sit armed forever.
     wl_event_source *grace_timer = nullptr;
@@ -107,34 +95,17 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
             output->render->rem_effect(&on_frame);
         }
 
-        clear_transformers();
+        tracked.clear();
         state = state_t::DONE;
     }
 
   private:
     void track_view(wayfire_view view)
     {
-        if (std::any_of(tracked.begin(), tracked.end(),
-            [&] (auto& t) { return t->view == view; }))
+        if (!tracked.add(view))
         {
             return;
         }
-
-        auto t = std::make_unique<tracked_t>();
-        t->view = view;
-        t->tr   = std::make_shared<wf::scene::view_2d_transformer_t>(view);
-
-        auto tnode = view->get_transformed_node();
-        tnode->add_transformer(t->tr, wf::TRANSFORMER_2D, TRANSFORMER_NAME);
-
-        wayfire_view captured = view;
-        t->on_unmap = [this, captured] (wf::view_unmapped_signal*)
-        {
-            drop_view(captured);
-        };
-        view->connect(&t->on_unmap);
-
-        tracked.push_back(std::move(t));
 
         // Apply the in-flight progress immediately so a late-mapping view
         // doesn't pop in at full size mid-animation.
@@ -168,25 +139,20 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
         const double ocx = geo.x + geo.width  / 2.0;
         const double ocy = geo.y + geo.height / 2.0;
 
-        for (auto& t : tracked)
+        tracked.update_all([&] (auto& t)
         {
-            if (!t->tr || !t->view)
-            {
-                continue;
-            }
-
             // Use the surface-root node bounding box so this works for both
             // toplevel views and layer-shell surfaces (panel, desktop drawer).
-            auto root = t->view->get_surface_root_node();
+            auto root = t.view->get_surface_root_node();
             if (!root)
             {
-                continue;
+                return;
             }
 
             auto wgeo = root->get_bounding_box();
             if ((wgeo.width <= 0) || (wgeo.height <= 0))
             {
-                continue;
+                return;
             }
 
             const double vcx = wgeo.x + wgeo.width  / 2.0;
@@ -194,46 +160,11 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 
             // The transformer scales about the view centre; translate by (1 - s)
             // toward the output centre so the zoom is centred on the output.
-            auto tnode = t->view->get_transformed_node();
-            tnode->begin_transform_update();
-            t->tr->scale_x       = (float) s;
-            t->tr->scale_y       = (float) s;
-            t->tr->translation_x = (float) ((1.0 - s) * (ocx - vcx));
-            t->tr->translation_y = (float) ((1.0 - s) * (ocy - vcy));
-            tnode->end_transform_update();
-        }
-    }
-
-    void drop_view(wayfire_view view)
-    {
-        auto it = std::find_if(tracked.begin(), tracked.end(),
-            [&] (auto& t) { return t->view == view; });
-        if (it == tracked.end())
-        {
-            return;
-        }
-
-        if ((*it)->tr && view)
-        {
-            auto tnode = view->get_transformed_node();
-            tnode->rem_transformer((*it)->tr);
-        }
-        (*it)->on_unmap.disconnect();
-        tracked.erase(it);
-    }
-
-    void clear_transformers()
-    {
-        for (auto& t : tracked)
-        {
-            if (t->tr && t->view)
-            {
-                auto tnode = t->view->get_transformed_node();
-                tnode->rem_transformer(t->tr);
-            }
-            t->on_unmap.disconnect();
-        }
-        tracked.clear();
+            t.tr->scale_x       = (float) s;
+            t.tr->scale_y       = (float) s;
+            t.tr->translation_x = (float) ((1.0 - s) * (ocx - vcx));
+            t.tr->translation_y = (float) ((1.0 - s) * (ocy - vcy));
+        });
     }
 
     void finish()
@@ -248,7 +179,7 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
             output->render->rem_effect(&on_frame);
         }
 
-        clear_transformers();
+        tracked.clear();
         on_view_mapped.disconnect();
 
         if (grace_timer)

@@ -73,17 +73,19 @@ struct night_tint_gl_t
     bool ready = false;
 };
 
-// Full-output tint quad on the OVERLAY layer.
+// Full-output tint quad at the FRONT of the scene root, above every layer: move's
+// drag node also lives at the root front (not in OVERLAY), so a tint inside the
+// output's layers would leave a dragged window untinted.
 class night_tint_node_t : public wf::scene::node_t
 {
   public:
-    wf::geometry_t geo;             // output-relative full geometry
+    wf::output_t *output;
     float tint[3] = {1.0f, 1.0f, 1.0f}; // current (animated) RGB multiplier
 
     night_tint_gl_t& gl;
 
-    night_tint_node_t(wf::geometry_t g, night_tint_gl_t& gl) :
-        wf::scene::node_t(false), geo(g), gl(gl)
+    night_tint_node_t(wf::output_t *o, night_tint_gl_t& gl) :
+        wf::scene::node_t(false), output(o), gl(gl)
     {}
 
     std::string stringify() const override
@@ -91,9 +93,11 @@ class night_tint_node_t : public wf::scene::node_t
         return "night-light-tint";
     }
 
+    // Root children are in layout (global) coordinates; read live so an output
+    // move/resize is followed.
     wf::geometry_t get_bounding_box() override
     {
-        return geo;
+        return output->get_layout_geometry();
     }
 
     void gen_render_instances(std::vector<wf::scene::render_instance_uptr>& instances,
@@ -108,7 +112,7 @@ class night_tint_render_instance_t :
 
     void render(const wf::scene::render_instruction_t& data) override
     {
-        const auto g = self->geo;
+        const auto g = self->get_bounding_box();
         if ((g.width <= 0) || (g.height <= 0))
         {
             return;
@@ -159,6 +163,11 @@ inline void night_tint_node_t::gen_render_instances(
     std::vector<wf::scene::render_instance_uptr>& instances,
     wf::scene::damage_callback push_damage, wf::output_t *shown_on)
 {
+    if (shown_on != output)
+    {
+        return;
+    }
+
     instances.push_back(std::make_unique<night_tint_render_instance_t>(
         this, push_damage, shown_on));
 }
@@ -261,10 +270,35 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
   private:
     void setup()
     {
-        node = std::make_shared<night_tint_node_t>(output->get_relative_geometry(), gl);
-        wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY), node);
+        node = std::make_shared<night_tint_node_t>(output, gl);
+        wf::scene::add_front(wf::get_core().scene(), node);
+        wf::get_core().scene()->connect(&on_root_update);
         hook();
     }
+
+    // Anything later added to the root front (a drag starting) lands above the
+    // tint; re-raise it. Only when a non-tint node is in front, so the per-output
+    // tint nodes don't ping-pong each other.
+    wf::signal::connection_t<wf::scene::root_node_update_signal> on_root_update =
+        [this] (wf::scene::root_node_update_signal*)
+    {
+        for (auto& child : wf::get_core().scene()->get_children())
+        {
+            if (child == node)
+            {
+                return;
+            }
+
+            if (!dynamic_cast<night_tint_node_t*>(child.get()))
+            {
+                break;
+            }
+        }
+
+        // One reorder + one update: readd_front (remove + add = two updates)
+        // re-entered this handler with the node detached and added it twice.
+        wf::scene::raise_to_front(node);
+    };
 
     // on_frame is hooked only while a fade animates.
     bool hooked = false;
@@ -290,6 +324,7 @@ class wayfire_night_light_t : public wf::per_output_plugin_instance_t
     void teardown()
     {
         unhook();
+        on_root_update.disconnect();
         if (node)
         {
             wf::scene::remove_child(node);

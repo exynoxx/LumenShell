@@ -1,10 +1,7 @@
-#include <wayfire/per-output-plugin.hpp>
 #include <wayfire/plugin.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/core.hpp>
 #include <wayfire/view.hpp>
-#include <wayfire/toplevel-view.hpp>
-#include <wayfire/view-helpers.hpp>
 #include <wayfire/render-manager.hpp>
 #include <wayfire/render.hpp>
 #include <wayfire/opengl.hpp>
@@ -15,42 +12,17 @@
 #include <wayfire/scene.hpp>
 #include <wayfire/scene-render.hpp>
 #include <wayfire/scene-operations.hpp>
-#include "ipc_wrapper.hpp"
-#include <wayfire/seat.hpp>
 #include <wayfire/region.hpp>
+#include "ipc_wrapper.hpp"
+#include "log.hpp"
+#include "peek_helpers.hpp"
 
 #include <memory>
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
-#include <cstdarg>
-#include <ctime>
 
-namespace
-{
-// Debug log, append-only; truncate manually before a test session.
-inline void curtain_log(const char *fmt, ...)
-{
-    FILE *fp = std::fopen("/tmp/wayfire-curtain-peek.log", "a");
-    if (!fp)
-    {
-        return;
-    }
-
-    timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    std::fprintf(fp, "[%ld.%03ld] ", (long) ts.tv_sec, (long) (ts.tv_nsec / 1000000));
-
-    va_list ap;
-    va_start(ap, fmt);
-    std::vfprintf(fp, fmt, ap);
-    va_end(ap);
-
-    std::fputc('\n', fp);
-    std::fclose(fp);
-}
-}
+#define curtain_log(...) lumen::file_log("/tmp/wayfire-curtain-peek.log", __VA_ARGS__)
 
 // Static solid fill behind the desktop grid, showing through its transparent areas.
 class curtain_backdrop_node_t : public wf::scene::node_t
@@ -210,6 +182,7 @@ inline std::vector<float> curtain_build_grid(int nu, int nv)
 struct curtain_gl_t
 {
     OpenGL::program_t program;
+    GLuint grid_vbo = 0;    // the static (u, v) grid, uploaded once
     bool ready = false;
 };
 
@@ -279,7 +252,6 @@ class curtain_screenshot_render_instance_t :
         // Eased so a closed curtain is perfectly flat.
         const float foldP = std::sin(p * 1.5707963f);
 
-        static const std::vector<float> grid = curtain_build_grid(NU, NV);
         auto& program = self->gl.program;
 
         data.pass->custom_gles_subpass([&]
@@ -288,17 +260,27 @@ class curtain_screenshot_render_instance_t :
             if (!self->gl.ready)
             {
                 program.compile(curtain_vert_source, curtain_frag_source);
+                const auto grid = curtain_build_grid(NU, NV);
+                GL_CALL(glGenBuffers(1, &self->gl.grid_vbo));
+                GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, self->gl.grid_vbo));
+                GL_CALL(glBufferData(GL_ARRAY_BUFFER, grid.size() * sizeof(float),
+                    grid.data(), GL_STATIC_DRAW));
+                GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
                 self->gl.ready = true;
             }
 
             const auto matrix =
                 wf::gles::render_target_orthographic_projection(data.target);
-            const int n_verts = (int) (grid.size() / 2);
+            const int n_verts = NU * NV * 6;
 
             wf::gles_texture_t gtex{self->tex};
             program.use(wf::TEXTURE_TYPE_RGBA);
             program.set_active_texture(gtex);
-            program.attrib_pointer("grid", 2, 0, grid.data());
+            // With a VBO bound the pointer is a buffer offset. The attrib keeps
+            // the buffer, so unbind at once: Wayfire's own draws use client arrays.
+            GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, self->gl.grid_vbo));
+            program.attrib_pointer("grid", 2, 0, nullptr);
+            GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
             program.uniformMatrix4f("matrix", matrix);
 
             program.uniform1f("u_p", p);
@@ -422,7 +404,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (!is_desktop_view(ev->view))
+        if (!ev->view || (ev->view->get_app_id() != (std::string) drawer_app_id_opt))
         {
             return;
         }
@@ -483,7 +465,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             ((std::string) drawer_app_id_opt).c_str(),
             ((std::string) widget_app_id_opt).c_str());
 
-        desktop_view = find_desktop_view();
+        desktop_view = lumen::find_bottom_view(output, drawer_app_id_opt);
         if (desktop_view)
         {
             set_desktop_visible(false);
@@ -491,7 +473,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
         curtain_log("found on init: drawer=%s widget=%s",
             desktop_view ? "yes" : "no",
-            find_widget_view() ? "yes" : "no");
+            lumen::find_bottom_view(output, widget_app_id_opt) ? "yes" : "no");
     }
 
     void fini() override
@@ -505,13 +487,22 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         {
             hard_reset();
         }
-        // Don't leave either BOTTOM-layer surface stuck hidden on unload.
+        // The drawer is hidden while idle; balance that hide so it isn't left
+        // stuck hidden on unload. The widget is already shown again (it is only
+        // hidden while open, and hard_reset() re-shows it).
         set_desktop_visible(true);
-        set_widgets_visible(true);
         desktop_view = nullptr;
         widget_view = nullptr;
         // hard_reset() above already dropped the node that referenced it.
-        wf::gles::run_in_context_if_gles([&] { gl.program.free_resources(); });
+        wf::gles::run_in_context_if_gles([&]
+        {
+            gl.program.free_resources();
+            if (gl.grid_vbo)
+            {
+                GL_CALL(glDeleteBuffers(1, &gl.grid_vbo));
+                gl.grid_vbo = 0;
+            }
+        });
     }
 
     bool ipc_toggle()
@@ -567,7 +558,8 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             std::max(0, std::min(seam_off, W - seam_off)));
 
         // The grid is still hidden, so it is not captured.
-        if (!capture_output())
+        // Opaque black clear: lumen::capture_output frees the buffer on failure.
+        if (!lumen::capture_output(output, screenshot_buf, 1.0f))
         {
             curtain_log("start_open: capture failed");
             output->deactivate_plugin(&activation);
@@ -578,7 +570,11 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         set_widgets_visible(false);
         // Unfocusing the toplevel also fires lumen-drawer's foreign-toplevel
         // watcher, which drives its client-side search_entry.grab_focus().
-        focus_desktop();
+        if (!desktop_view)
+        {
+            desktop_view = lumen::find_bottom_view(output, drawer_app_id_opt);
+        }
+        lumen::focus_view(desktop_view);
 
         // Back of BOTTOM, since the wallpaper is about to be hidden.
         backdrop = std::make_shared<curtain_backdrop_node_t>(
@@ -636,90 +632,15 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         output->render->damage_whole();
     }
 
-    bool is_desktop_view(wayfire_view view) const
-    {
-        return view && (view->get_app_id() == (std::string) drawer_app_id_opt);
-    }
-
-    wayfire_view find_desktop_view()
-    {
-        for (auto& view : wf::collect_views_from_output(output,
-            {wf::scene::layer::BOTTOM}))
-        {
-            if (view && view->is_mapped() && is_desktop_view(view))
-            {
-                return view;
-            }
-        }
-        return nullptr;
-    }
-
-    // A BOTTOM-layer surface can't take focus client-side, so the compositor
-    // focuses the grid to make its search field typeable at once.
-    void focus_desktop()
-    {
-        if (!desktop_view)
-        {
-            desktop_view = find_desktop_view();
-        }
-        if (!desktop_view)
-        {
-            return;
-        }
-
-        auto seat = wf::get_core().seat.get();
-        if (!seat)
-        {
-            return;
-        }
-
-        seat->set_active_node(desktop_view->get_surface_root_node(),
-            wf::keyboard_focus_reason::REFOCUS);
-    }
-
-    // Toggles the scene node only; the view stays mapped throughout.
+    // set_node_enabled is a counter: every hide needs exactly one show.
     void set_desktop_visible(bool visible)
     {
-        if (!desktop_view)
-        {
-            desktop_view = find_desktop_view();
-        }
-        if (desktop_view)
-        {
-            wf::scene::set_node_enabled(desktop_view->get_root_node(), visible);
-        }
-    }
-
-    bool is_widget_view(wayfire_view view) const
-    {
-        return view && (view->get_app_id() == (std::string) widget_app_id_opt);
-    }
-
-    wayfire_view find_widget_view()
-    {
-        for (auto& view : wf::collect_views_from_output(output,
-            {wf::scene::layer::BOTTOM}))
-        {
-            if (view && view->is_mapped() && is_widget_view(view))
-            {
-                return view;
-            }
-        }
-
-        return nullptr;
+        lumen::set_view_visible(desktop_view, output, drawer_app_id_opt, visible);
     }
 
     void set_widgets_visible(bool visible)
     {
-        if (!widget_view)
-        {
-            widget_view = find_widget_view();
-        }
-
-        if (widget_view)
-        {
-            wf::scene::set_node_enabled(widget_view->get_root_node(), visible);
-        }
+        lumen::set_view_visible(widget_view, output, widget_app_id_opt, visible);
     }
 
     void set_live_layers_hidden(bool hidden)
@@ -729,39 +650,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         {
             wf::scene::set_node_enabled(output->node_for_layer(layer), !hidden);
         }
-    }
-
-    // Layout geometry: this renders the GLOBAL scene.
-    bool capture_output()
-    {
-        const auto rel = output->get_layout_geometry();
-        const float scale = output->handle ? output->handle->scale : 1.0f;
-        if ((rel.width <= 0) || (rel.height <= 0))
-        {
-            return false;
-        }
-
-        screenshot_buf.allocate({rel.width, rel.height}, scale);
-
-        std::vector<wf::scene::render_instance_uptr> instances;
-        wf::get_core().scene()->gen_render_instances(instances,
-            [] (const wf::region_t&) {}, output);
-
-        wf::render_target_t target{screenshot_buf};
-        target.geometry     = rel;
-        target.scale        = scale;
-        target.wl_transform = WL_OUTPUT_TRANSFORM_NORMAL;
-
-        wf::render_pass_params_t params;
-        params.instances        = &instances;
-        params.target           = target;
-        params.damage           = wf::region_t{rel};
-        params.background_color = {0.0, 0.0, 0.0, 1.0};
-        params.reference_output = output;
-        params.flags            = wf::RPASS_CLEAR_BACKGROUND;
-        wf::render_pass_t::run(params);
-
-        return screenshot_buf.get_texture() != nullptr;
     }
 
     void hard_reset()
@@ -781,7 +669,12 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
             backdrop.reset();
         }
 
-        set_widgets_visible(true);
+        // Show only the view start_open() hid: looking one up here would show
+        // a widget that mapped mid-peek (never hidden) and unbalance its counter.
+        if (widget_view)
+        {
+            set_widgets_visible(true);
+        }
         set_desktop_visible(false);
         if (auto seat = wf::get_core().seat.get())
         {

@@ -1,57 +1,23 @@
-#include <wayfire/per-output-plugin.hpp>
-#include <wayfire/plugin.hpp>
-#include <wayfire/output.hpp>
-#include <wayfire/core.hpp>
-#include <wayfire/view.hpp>
-#include <wayfire/toplevel-view.hpp>
-#include <wayfire/view-helpers.hpp>
 #include <wayfire/view-transform.hpp>
 #include <wayfire/render-manager.hpp>
-#include <wayfire/render.hpp>
 #include <wayfire/option-wrapper.hpp>
 #include <wayfire/config/types.hpp>
 #include <wayfire/util/duration.hpp>
 #include <wayfire/signal-definitions.hpp>
-#include <wayfire/scene.hpp>
-#include <wayfire/scene-render.hpp>
 #include <wayfire/scene-operations.hpp>
 #include "ipc_wrapper.hpp"
-#include <wayfire/seat.hpp>
-#include <wayfire/region.hpp>
+#include "log.hpp"
+#include "peek_helpers.hpp"
 
 #include <memory>
 #include <vector>
-#include <algorithm>
 #include <cmath>
-#include <cstdio>
-#include <cstdarg>
-#include <ctime>
+
+#define slide_log(...) lumen::file_log("/tmp/wayfire-slide-peek.log", __VA_ARGS__)
 
 namespace
 {
 constexpr const char *DESKTOP_TRANSFORMER_NAME = "wayfire-slide-peek-slide";
-
-// Debug log, append-only; truncate manually before a test session.
-inline void slide_log(const char *fmt, ...)
-{
-    FILE *fp = std::fopen("/tmp/wayfire-slide-peek.log", "a");
-    if (!fp)
-    {
-        return;
-    }
-
-    timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    std::fprintf(fp, "[%ld.%03ld] ", (long) ts.tv_sec, (long) (ts.tv_nsec / 1000000));
-
-    va_list ap;
-    va_start(ap, fmt);
-    std::vfprintf(fp, fmt, ap);
-    va_end(ap);
-
-    std::fputc('\n', fp);
-    std::fclose(fp);
-}
 }
 
 // OVERLAY node drawing the frozen foreground snapshot (wallpaper excluded),
@@ -101,9 +67,8 @@ class slide_screenshot_render_instance_t :
         const auto g   = self->geo;
         const int  dy  = (int) std::lround(self->translate_y);
 
-        wf::geometry_t geo  = {g.x, g.y + dy, g.width, g.height};
-        wf::geometry_t clip = {g.x, g.y + dy, g.width, g.height};
-        data.pass->add_texture(tex, data.target, geo, data.damage & clip);
+        wf::geometry_t geo = {g.x, g.y + dy, g.width, g.height};
+        data.pass->add_texture(tex, data.target, geo, data.damage & geo);
     }
 };
 
@@ -167,7 +132,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (!is_desktop_view(ev->view))
+        if (!ev->view || (ev->view->get_app_id() != (std::string) drawer_app_id_opt))
         {
             return;
         }
@@ -229,7 +194,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
             ((std::string) drawer_app_id_opt).c_str(),
             ((std::string) widget_app_id_opt).c_str());
 
-        desktop_view = find_desktop_view();
+        desktop_view = lumen::find_bottom_view(output, drawer_app_id_opt);
         if (desktop_view)
         {
             set_desktop_visible(false);
@@ -237,7 +202,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 
         slide_log("found on init: drawer=%s widget=%s",
             desktop_view ? "yes" : "no",
-            find_widget_view() ? "yes" : "no");
+            lumen::find_bottom_view(output, widget_app_id_opt) ? "yes" : "no");
     }
 
     void fini() override
@@ -251,9 +216,9 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         {
             hard_reset();
         }
-        // Don't leave either BOTTOM-layer surface stuck hidden on unload.
+        // Don't leave the grid stuck hidden on unload. (hard_reset already
+        // re-showed the widgets; set_node_enabled counts, so no second show.)
         set_desktop_visible(true);
-        set_widgets_visible(true);
         desktop_view = nullptr;
         widget_view = nullptr;
     }
@@ -311,7 +276,8 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         // transparency (the grid is still hidden here).
         wf::scene::set_node_enabled(
             output->node_for_layer(wf::scene::layer::BACKGROUND), false);
-        const bool captured = capture_output();
+        // Transparent clear so the live wallpaper shows through empty areas.
+        const bool captured = lumen::capture_output(output, screenshot_buf, 0.0f);
         wf::scene::set_node_enabled(
             output->node_for_layer(wf::scene::layer::BACKGROUND), true);
 
@@ -324,7 +290,11 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 
         set_desktop_visible(true);
         set_widgets_visible(false);
-        focus_desktop();
+        if (!desktop_view)
+        {
+            desktop_view = lumen::find_bottom_view(output, drawer_app_id_opt);
+        }
+        lumen::focus_view(desktop_view);
 
         // Park the live grid offscreen on the entering edge.
         if (desktop_view)
@@ -389,90 +359,14 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         output->render->damage_whole();
     }
 
-    bool is_desktop_view(wayfire_view view) const
-    {
-        return view && (view->get_app_id() == (std::string) drawer_app_id_opt);
-    }
-
-    wayfire_view find_desktop_view()
-    {
-        for (auto& view : wf::collect_views_from_output(output,
-            {wf::scene::layer::BOTTOM}))
-        {
-            if (view && view->is_mapped() && is_desktop_view(view))
-            {
-                return view;
-            }
-        }
-        return nullptr;
-    }
-
-    // A BOTTOM-layer surface can't take focus client-side, so the compositor
-    // focuses the grid to make its search field typeable at once.
-    void focus_desktop()
-    {
-        if (!desktop_view)
-        {
-            desktop_view = find_desktop_view();
-        }
-        if (!desktop_view)
-        {
-            return;
-        }
-
-        auto seat = wf::get_core().seat.get();
-        if (!seat)
-        {
-            return;
-        }
-
-        seat->set_active_node(desktop_view->get_surface_root_node(),
-            wf::keyboard_focus_reason::REFOCUS);
-    }
-
-    // Toggles the scene node only; the view stays mapped throughout.
     void set_desktop_visible(bool visible)
     {
-        if (!desktop_view)
-        {
-            desktop_view = find_desktop_view();
-        }
-        if (desktop_view)
-        {
-            wf::scene::set_node_enabled(desktop_view->get_root_node(), visible);
-        }
-    }
-
-    bool is_widget_view(wayfire_view view) const
-    {
-        return view && (view->get_app_id() == (std::string) widget_app_id_opt);
-    }
-
-    wayfire_view find_widget_view()
-    {
-        for (auto& view : wf::collect_views_from_output(output,
-            {wf::scene::layer::BOTTOM}))
-        {
-            if (view && view->is_mapped() && is_widget_view(view))
-            {
-                return view;
-            }
-        }
-
-        return nullptr;
+        lumen::set_view_visible(desktop_view, output, drawer_app_id_opt, visible);
     }
 
     void set_widgets_visible(bool visible)
     {
-        if (!widget_view)
-        {
-            widget_view = find_widget_view();
-        }
-
-        if (widget_view)
-        {
-            wf::scene::set_node_enabled(widget_view->get_root_node(), visible);
-        }
+        lumen::set_view_visible(widget_view, output, widget_app_id_opt, visible);
     }
 
     void set_live_layers_hidden(bool hidden)
@@ -481,40 +375,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         {
             wf::scene::set_node_enabled(output->node_for_layer(layer), !hidden);
         }
-    }
-
-    // Transparent clear so the live wallpaper shows through empty areas.
-    bool capture_output()
-    {
-        // Layout geometry: this renders the GLOBAL scene.
-        const auto rel = output->get_layout_geometry();
-        const float scale = output->handle ? output->handle->scale : 1.0f;
-        if ((rel.width <= 0) || (rel.height <= 0))
-        {
-            return false;
-        }
-
-        screenshot_buf.allocate({rel.width, rel.height}, scale);
-
-        std::vector<wf::scene::render_instance_uptr> instances;
-        wf::get_core().scene()->gen_render_instances(instances,
-            [] (const wf::region_t&) {}, output);
-
-        wf::render_target_t target{screenshot_buf};
-        target.geometry     = rel;
-        target.scale        = scale;
-        target.wl_transform = WL_OUTPUT_TRANSFORM_NORMAL;
-
-        wf::render_pass_params_t params;
-        params.instances        = &instances;
-        params.target           = target;
-        params.damage           = wf::region_t{rel};
-        params.background_color = {0.0, 0.0, 0.0, 0.0};
-        params.reference_output = output;
-        params.flags            = wf::RPASS_CLEAR_BACKGROUND;
-        wf::render_pass_t::run(params);
-
-        return screenshot_buf.get_texture() != nullptr;
     }
 
     void hard_reset()
@@ -532,10 +392,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         }
         desktop_tr.reset();
 
-        // Defensively re-enable the wallpaper in case a capture left it disabled.
         set_live_layers_hidden(false);
-        wf::scene::set_node_enabled(
-            output->node_for_layer(wf::scene::layer::BACKGROUND), true);
 
         set_widgets_visible(true);
         set_desktop_visible(false);

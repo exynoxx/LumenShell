@@ -1,57 +1,24 @@
-#include <wayfire/per-output-plugin.hpp>
-#include <wayfire/plugin.hpp>
-#include <wayfire/output.hpp>
-#include <wayfire/core.hpp>
-#include <wayfire/view.hpp>
-#include <wayfire/toplevel-view.hpp>
-#include <wayfire/view-helpers.hpp>
 #include <wayfire/view-transform.hpp>
 #include <wayfire/render-manager.hpp>
-#include <wayfire/render.hpp>
 #include <wayfire/option-wrapper.hpp>
 #include <wayfire/config/types.hpp>
 #include <wayfire/util/duration.hpp>
 #include <wayfire/signal-definitions.hpp>
-#include <wayfire/scene.hpp>
-#include <wayfire/scene-render.hpp>
 #include <wayfire/scene-operations.hpp>
 #include "ipc_wrapper.hpp"
-#include <wayfire/seat.hpp>
-#include <wayfire/region.hpp>
+#include "log.hpp"
+#include "peek_helpers.hpp"
 
 #include <memory>
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
-#include <cstdarg>
-#include <ctime>
+
+#define zoom_log(...) lumen::file_log("/tmp/wayfire-zoom-peek.log", __VA_ARGS__)
 
 namespace
 {
 constexpr const char *DRAWER_TRANSFORMER_NAME = "wayfire-zoom-peek-zoom";
-
-// Debug log, append-only; truncate manually before a test session.
-inline void zoom_log(const char *fmt, ...)
-{
-    FILE *fp = std::fopen("/tmp/wayfire-zoom-peek.log", "a");
-    if (!fp)
-    {
-        return;
-    }
-
-    timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    std::fprintf(fp, "[%ld.%03ld] ", (long) ts.tv_sec, (long) (ts.tv_nsec / 1000000));
-
-    va_list ap;
-    va_start(ap, fmt);
-    std::vfprintf(fp, fmt, ap);
-    va_end(ap);
-
-    std::fputc('\n', fp);
-    std::fclose(fp);
-}
 
 inline double smoothstep(double a, double b, double x)
 {
@@ -184,7 +151,7 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (!is_drawer_view(ev->view))
+        if (!ev->view || (ev->view->get_app_id() != (std::string) drawer_app_id_opt))
         {
             return;
         }
@@ -236,7 +203,7 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
         output->connect(&on_view_mapped);
         output->connect(&on_view_unmapped);
 
-        drawer_view = find_drawer_view();
+        drawer_view = lumen::find_bottom_view(output, drawer_app_id_opt);
         if (drawer_view)
         {
             set_drawer_visible(false);
@@ -320,7 +287,11 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
             output->node_for_layer(wf::scene::layer::WORKSPACE), false);
 
         set_drawer_visible(true);
-        focus_drawer();
+        if (!drawer_view)
+        {
+            drawer_view = lumen::find_bottom_view(output, drawer_app_id_opt);
+        }
+        lumen::focus_view(drawer_view);
 
         if (drawer_view)
         {
@@ -382,67 +353,15 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
         output->render->damage_whole();
     }
 
-    bool is_drawer_view(wayfire_view view) const
-    {
-        return view && (view->get_app_id() == (std::string) drawer_app_id_opt);
-    }
-
-    wayfire_view find_drawer_view()
-    {
-        for (auto& view : wf::collect_views_from_output(output,
-            {wf::scene::layer::BOTTOM}))
-        {
-            if (view && view->is_mapped() && is_drawer_view(view))
-            {
-                return view;
-            }
-        }
-        return nullptr;
-    }
-
-    // A BOTTOM-layer surface can't take focus client-side, so the compositor
-    // focuses the grid to make its search field typeable at once.
-    void focus_drawer()
-    {
-        if (!drawer_view)
-        {
-            drawer_view = find_drawer_view();
-        }
-        auto seat = wf::get_core().seat.get();
-        if (drawer_view && seat)
-        {
-            seat->set_active_node(drawer_view->get_surface_root_node(),
-                wf::keyboard_focus_reason::REFOCUS);
-        }
-    }
-
-    // Toggles the scene node only; the view stays mapped throughout.
     void set_drawer_visible(bool visible)
     {
-        if (!drawer_view)
-        {
-            drawer_view = find_drawer_view();
-        }
-        if (drawer_view)
-        {
-            wf::scene::set_node_enabled(drawer_view->get_root_node(), visible);
-        }
+        lumen::set_view_visible(drawer_view, output, drawer_app_id_opt, visible);
     }
 
     // Wallpaper + windows only: BOTTOM/TOP/OVERLAY (drawer, panel, OSD) are
     // left out so the live panel isn't doubled by a frozen, blurred copy.
     bool capture_output()
     {
-        // Layout geometry: this renders the GLOBAL scene.
-        const auto rel = output->get_layout_geometry();
-        const float scale = output->handle ? output->handle->scale : 1.0f;
-        if ((rel.width <= 0) || (rel.height <= 0))
-        {
-            return false;
-        }
-
-        screenshot_buf.allocate({rel.width, rel.height}, scale);
-
         const wf::scene::layer skipped[] = {wf::scene::layer::BOTTOM,
             wf::scene::layer::TOP, wf::scene::layer::OVERLAY};
         for (auto l : skipped)
@@ -450,31 +369,14 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
             wf::scene::set_node_enabled(output->node_for_layer(l), false);
         }
 
-        std::vector<wf::scene::render_instance_uptr> instances;
-        wf::get_core().scene()->gen_render_instances(instances,
-            [] (const wf::region_t&) {}, output);
+        const bool ok = lumen::capture_output(output, screenshot_buf, 1.0f);
 
-        wf::render_target_t target{screenshot_buf};
-        target.geometry     = rel;
-        target.scale        = scale;
-        target.wl_transform = WL_OUTPUT_TRANSFORM_NORMAL;
-
-        wf::render_pass_params_t params;
-        params.instances        = &instances;
-        params.target           = target;
-        params.damage           = wf::region_t{rel};
-        params.background_color = {0.0, 0.0, 0.0, 1.0};
-        params.reference_output = output;
-        params.flags            = wf::RPASS_CLEAR_BACKGROUND;
-        wf::render_pass_t::run(params);
-
-        instances.clear();
         for (auto l : skipped)
         {
             wf::scene::set_node_enabled(output->node_for_layer(l), true);
         }
 
-        return screenshot_buf.get_texture() != nullptr;
+        return ok;
     }
 
     // Blurred once per open, not per frame: bilinear blits halve the snapshot

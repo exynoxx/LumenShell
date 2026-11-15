@@ -12,42 +12,14 @@
 #include <wayfire/scene-operations.hpp>
 #include <wayfire/scene.hpp>
 #include "ipc_wrapper.hpp"
+#include "log.hpp"
+#include "transformed_views.hpp"
 
-#include <memory>
-#include <vector>
 #include <algorithm>
 #include <array>
 #include <utility>
-#include <cstdio>
-#include <cstdarg>
-#include <ctime>
 
-namespace
-{
-constexpr const char *TRANSFORMER_NAME = "wayfire-desktop-peek-slide";
-
-// Debug log, append-only; truncate manually before a test session.
-inline void peek_log(const char *fmt, ...)
-{
-    FILE *fp = std::fopen("/tmp/wayfire-desktop-peek.log", "a");
-    if (!fp)
-    {
-        return;
-    }
-
-    timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    std::fprintf(fp, "[%ld.%03ld] ", (long) ts.tv_sec, (long) (ts.tv_nsec / 1000000));
-
-    va_list ap;
-    va_start(ap, fmt);
-    std::vfprintf(fp, fmt, ap);
-    va_end(ap);
-
-    std::fputc('\n', fp);
-    std::fclose(fp);
-}
-}
+#define peek_log(...) lumen::file_log("/tmp/wayfire-desktop-peek.log", __VA_ARGS__)
 
 class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
 {
@@ -61,15 +33,7 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
     enum class state_t { IDLE, OUT, PEEKED, IN };
     state_t state = state_t::IDLE;
 
-    struct tracked_t
-    {
-        wayfire_toplevel_view view;
-        std::shared_ptr<wf::scene::view_2d_transformer_t> tr;
-        double dx = 0, dy = 0;
-        wf::signal::connection_t<wf::view_unmapped_signal> on_unmap;
-    };
-
-    std::vector<std::unique_ptr<tracked_t>> tracked_views;
+    lumen::transformed_views_t tracked_views{"wayfire-desktop-peek-slide"};
 
     // No input grab: while peeked the desktop must stay clickable.
     wf::plugin_activation_data_t activation = {
@@ -104,8 +68,7 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
                 output->render->rem_effect(&on_frame);
             } else if (state == state_t::IN)
             {
-                apply_progress(0.0);
-                hard_reset();
+                hard_reset(); // removes the transformers outright
             }
         }
     };
@@ -114,6 +77,13 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
     void init() override
     {
         peek_log("per-output init on output=%p", (void *) output);
+        tracked_views.on_empty = [this]
+        {
+            if (state != state_t::IDLE)
+            {
+                hard_reset();
+            }
+        };
         output->add_activator(toggle_opt, &on_toggle);
         output->add_activator(dismiss_opt, &on_dismiss);
     }
@@ -206,35 +176,26 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
                 continue;
             }
 
+            auto *t = tracked_views.add(view);
+            if (!t)
+            {
+                continue;
+            }
+
             const auto [left, top] = slots[slot_idx % slots.size()];
             ++slot_idx;
 
             const double target_x = left ? (peek - wgeo.width) : (W - peek);
             const double target_y = top  ? (peek - wgeo.height) : (H - peek);
 
-            auto t = std::make_unique<tracked_t>();
-            t->view = view;
             t->dx = target_x - wgeo.x;
             t->dy = target_y - wgeo.y;
-            t->tr = std::make_shared<wf::scene::view_2d_transformer_t>(view);
-
-            auto tnode = view->get_transformed_node();
-            tnode->add_transformer(t->tr, wf::TRANSFORMER_2D, TRANSFORMER_NAME);
-
-            wayfire_toplevel_view captured = view;
-            t->on_unmap = [this, captured] (wf::view_unmapped_signal*)
-            {
-                drop_view(captured);
-            };
-            view->connect(&t->on_unmap);
-
-            tracked_views.push_back(std::move(t));
         }
 
         peek_log("start_peek: %zu tracked views, output %dx%d, peek_px=%d",
-            tracked_views.size(), W, H, peek);
+            tracked_views.entries.size(), W, H, peek);
 
-        if (tracked_views.empty())
+        if (tracked_views.entries.empty())
         {
             output->deactivate_plugin(&activation);
             return false;
@@ -266,55 +227,15 @@ class wayfire_desktop_peek_t : public wf::per_output_plugin_instance_t
 
     void apply_progress(double p)
     {
-        for (auto& t : tracked_views)
+        tracked_views.update_all([p] (auto& t)
         {
-            if (!t->tr)
-            {
-                continue;
-            }
-
-            auto tnode = t->view->get_transformed_node();
-            tnode->begin_transform_update();
-            t->tr->translation_x = (float) (t->dx * p);
-            t->tr->translation_y = (float) (t->dy * p);
-            tnode->end_transform_update();
-        }
-    }
-
-    void drop_view(wayfire_toplevel_view view)
-    {
-        auto it = std::find_if(tracked_views.begin(), tracked_views.end(),
-            [&] (auto& t) { return t->view == view; });
-        if (it == tracked_views.end())
-        {
-            return;
-        }
-
-        if ((*it)->tr && view)
-        {
-            auto tnode = view->get_transformed_node();
-            tnode->rem_transformer((*it)->tr);
-        }
-
-        tracked_views.erase(it);
-
-        if (tracked_views.empty() && (state != state_t::IDLE))
-        {
-            hard_reset();
-        }
+            t.tr->translation_x = (float) (t.dx * p);
+            t.tr->translation_y = (float) (t.dy * p);
+        });
     }
 
     void hard_reset()
     {
-        for (auto& t : tracked_views)
-        {
-            if (t->tr && t->view)
-            {
-                auto tnode = t->view->get_transformed_node();
-                tnode->rem_transformer(t->tr);
-            }
-            t->on_unmap.disconnect();
-        }
         tracked_views.clear();
 
         if (state != state_t::IDLE)
