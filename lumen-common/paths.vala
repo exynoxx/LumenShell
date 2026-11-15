@@ -19,6 +19,7 @@ namespace LumenCommon {
         public static string drawer_ini()            { return config_dir() + "/drawer.ini"; }
         public static string desktop_json()          { return config_dir() + "/desktop.json"; }
         public static string osd_json()              { return config_dir() + "/osd.json"; }
+        public static string search_json()           { return config_dir() + "/search.json"; }
         public static string notifications_json()    { return config_dir() + "/notifications.json"; }
         public static string wallpaper_ini()         { return config_dir() + "/wallpaper.ini"; }
         public static string lockscreen_json()       { return config_dir() + "/lockscreen.json"; }

@@ -62,6 +62,13 @@ option(
 )
 
 option(
+  'with_search',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build lumen-search (Spotlight-style search daemon; needs tinysparql-3.0 at build time). Auto: built only when present.',
+)
+
+option(
   'with_polkit_agent',
   type: 'feature',
   value: 'auto',
