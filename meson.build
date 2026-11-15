@@ -208,6 +208,7 @@ panel_sources = files(
   'lumen-panel/src/widgets/segmented_control.vala',
   'lumen-panel/src/components/control_center/control_module.vala',
   'lumen-panel/src/components/control_center/control_center.vala',
+  'lumen-panel/src/components/search/search.vala',
   'lumen-panel/src/components/clock/clock.vala',
   'lumen-panel/src/components/exit/exit.vala',
   'lumen-panel/src/components/app.vala',

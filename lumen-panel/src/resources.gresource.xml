@@ -23,6 +23,7 @@
     <file alias="nowifi.svg">res/nowifi.svg</file>
     <file alias="reboot.svg">res/reboot.svg</file>
     <file alias="shutdown.svg">res/shutdown.svg</file>
+    <file alias="search.svg">res/search.svg</file>
     <file alias="sound-max.svg">res/sound-max.svg</file>
     <file alias="sound-mute.svg">res/sound-mute.svg</file>
     <file alias="suspend.svg">res/suspend.svg</file>

@@ -50,7 +50,7 @@ public class TrayBar : Gtk.Box {
         motion.motion.connect ((x, y) => {
             bool over_sni = false;
             for (var w = icon_row.pick (x, y, Gtk.PickFlags.DEFAULT); w != null && w != icon_row; w = w.get_parent ())
-                if (w.has_css_class ("systray")) { over_sni = true; break; }
+                if (w.has_css_class ("systray") || w.has_css_class ("tray-search")) { over_sni = true; break; }
             if (over_sni) icon_row.remove_css_class ("row-hover");
             else icon_row.add_css_class ("row-hover");
         });
