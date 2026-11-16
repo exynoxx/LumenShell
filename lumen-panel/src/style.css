@@ -78,6 +78,13 @@ button.systray-item {
 button.systray-item:hover {
     background: @tray_icon_hover;
 }
+/* Search magnifier: its own disc like the SNI icons (TrayBar drops row-hover over it). */
+.tray-search {
+    transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tray-search:hover {
+    background: @tray_icon_hover;
+}
 /* Divider between the app-tray and the predefined system trays. */
 .tray-app-sep {
     background: rgba(255, 255, 255, 0.18);

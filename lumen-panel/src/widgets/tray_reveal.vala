@@ -22,7 +22,8 @@ public class TrayReveal : Gtk.Widget {
     public TrayReveal (bool anchor_top) {
         this.anchor_top = anchor_top;
         overflow = Gtk.Overflow.HIDDEN;
-        halign = Gtk.Align.END;
+        // FILL: when the icon row is wider than the CC, the CC stretches to the box.
+        halign = Gtk.Align.FILL;
         valign = anchor_top ? Gtk.Align.START : Gtk.Align.END;
     }
 
@@ -106,10 +107,11 @@ public class TrayReveal : Gtk.Widget {
         _child.measure (Gtk.Orientation.VERTICAL,   -1, out ch_min, out ch_nat, out ib, out nb);
 
         // Never re-laid-out, so it can't judder; snapshot() does the visible reveal.
-        int x = width - cw_nat;
+        int cw = int.max (cw_nat, width);
+        int x = width - cw;
         int y = anchor_top ? 0 : height - ch_nat;
         var t = new Gsk.Transform ().translate ({ (float) x, (float) y });
-        _child.allocate (cw_nat, ch_nat, baseline, t);
+        _child.allocate (cw, ch_nat, baseline, t);
     }
 
     // Scale-from-corner bloom with a faster opacity fade; the child scales as one
