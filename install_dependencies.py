@@ -59,8 +59,22 @@ def install_ubuntu():
         # C++ Wayfire plugins: headers + wlroots, plus glm which the Wayfire
         # headers #include but wayfire.pc does not list.
         'wayfire-dev',
+        # Ubuntu/Debian version the wlroots dev package; the unversioned name
+        # is the fallback. Whichever apt doesn't know is skipped below.
+        'libwlroots-0.19-dev',
         'libwlroots-dev',
         'libglm-dev',
+        # lumen-search (tinysparql-3.0) + the LocalSearch file index it reads.
+        'libtinysparql-dev',
+        'localsearch',
+        # Runtime tools the panel/osdctl/settings shell out to.
+        'pulseaudio-utils',   # pactl
+        'brightnessctl',
+        'bluez',              # bluetoothctl
+        'network-manager',    # nmcli
+        'pkexec',
+        'pciutils',           # lspci (Settings > System)
+        'libpam-gnome-keyring',
         'xdg-desktop-portal',
         'xdg-desktop-portal-gtk',
         'xdg-desktop-portal-wlr',
@@ -74,8 +88,16 @@ def install_ubuntu():
         'libpolkit-gobject-1-dev',
     ]
 
-    cmd = ['apt-get', 'install', '-y'] + packages
-    return run_command(cmd)
+    # apt-get aborts the WHOLE install on one unknown name, so drop the names
+    # this release doesn't have instead of installing nothing.
+    run_command(['apt-get', 'update'])
+    known = [p for p in packages
+             if subprocess.run(['apt-cache', 'show', p], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL).returncode == 0]
+    skipped = [p for p in packages if p not in known]
+    if skipped:
+        print(f"Not available on this release, skipped: {' '.join(skipped)}")
+    return run_command(['apt-get', 'install', '-y'] + known)
 
 def install_fedora():
     print("Installing dependencies for Fedora...")
