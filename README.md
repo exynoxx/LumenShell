@@ -7,6 +7,12 @@ LumenShell is a ChromeOS-inspired desktop shell for Wayland. It uses Wayfire as 
 <table align="center">
   <tr>
     <td colspan="2" align="center">
+      <img src="docs/shots/desktop.png" width="760"><br>
+      <sub>desktop - lumen-settings, panel and tray</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
       <img src="docs/shots/drawer.png" width="760"><br>
       <sub>app drawer - revealed</sub>
     </td>
