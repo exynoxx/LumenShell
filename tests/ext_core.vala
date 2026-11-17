@@ -57,9 +57,15 @@ void test_tray_order () {
     assert (got == "clock,myext");
 }
 
+void test_shape () {
+    var r = Lumen.ShapedSurface.bands (Gsk.Path.parse ("M0 320 L320 0 L640 320 Z"), 640, 320, 4);
+    assert (r.contains_point (320, 300) && !r.contains_point (10, 10));
+}
+
 int main () {
     try { test_manifest (); } catch (GLib.Error e) { error (e.message); }
     test_registry ();
     test_tray_order ();
+    test_shape ();
     return 0;
 }

@@ -697,6 +697,10 @@ install_data(
   'lumen-lockscreen/data/wayfire/lumenshell.ini.d/autostart.ini',
   install_dir: get_option('datadir') / 'lumenshell' / 'wayfire.ini.d',
 )
+# Example extensions, documented in docs/extensions/README.md.
+install_subdir('data/examples/extensions',
+  install_dir: get_option('datadir') / 'lumenshell' / 'examples',
+)
 
 # --- wayfire-plugins/* ---
 # C++ is only enabled when a plugin is, so the Vala tree builds without it.
