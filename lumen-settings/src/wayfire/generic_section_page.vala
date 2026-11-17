@@ -51,9 +51,7 @@ namespace LumenSettings.Wayfire {
                 if (save_id != 0) Source.remove(save_id);
                 save_id = Timeout.add(500, () => {
                     save_id = 0;
-                    store.reload();
-                    store.set_value(section, key, entry.text);
-                    store.save();
+                    store.put(section, key, entry.text);
                     return Source.REMOVE;
                 });
             });
@@ -65,9 +63,7 @@ namespace LumenSettings.Wayfire {
             del.add_css_class("flat");
             del.clicked.connect(() => {
                 if (save_id != 0) { Source.remove(save_id); save_id = 0; }
-                store.reload();
-                store.remove_key(section, key);
-                store.save();
+                store.edit(() => store.remove_key(section, key));
                 list.remove(ar);
             });
 
@@ -97,10 +93,12 @@ namespace LumenSettings.Wayfire {
             add.clicked.connect(() => {
                 var key = key_entry.text.strip();
                 if (key == "") return;
-                store.reload();
-                if (store.get_value(section, key) != null) return;
-                store.set_value(section, key, val_entry.text);
-                store.save();
+                bool exists = false;
+                store.edit(() => {
+                    exists = store.get_value(section, key) != null;
+                    if (!exists) store.set_value(section, key, val_entry.text);
+                });
+                if (exists) return;
                 list.add(make_kv_row(key));
                 key_entry.text = "";
                 val_entry.text = "";

@@ -117,59 +117,47 @@ public class SoundService : GLib.Object {
         bool want_info = need_info || !watcher.running;
         need_info = false;
 
-        new GLib.Thread<void>("sound-poll", () => {
-            var st = pactl.query_state(want_info, track_streams);
-            var new_sink        = st.default_sink;
-            var new_sinks       = st.sinks;
-            var new_volume      = st.volume_percent;
-            var new_muted       = st.muted;
-            var new_source      = st.default_source;
-            var new_sources     = st.sources;
-            var new_in_volume   = st.input_volume_percent;
-            var new_in_muted    = st.input_muted;
-            var new_sink_inputs = st.sink_inputs;
+        PactlState? st = null;
+        LumenCommon.Proc.off_main("sound-poll", () => { st = pactl.query_state(want_info, track_streams); }, () => {
+            var new_sink = st.default_sink;
+            poll_in_flight = false;
+            if (poll_again) { poll_again = false; refresh(); }
+            // Mid-drag results may predate the drag; the next pass catches up.
+            if (volume_out.busy || volume_in.busy) return;
+            string old_source = default_source;
 
-            GLib.Idle.add(() => {
-                poll_in_flight = false;
-                if (poll_again) { poll_again = false; refresh(); }
-                // Mid-drag results may predate the drag; the next pass catches up.
-                if (volume_out.busy || volume_in.busy) return Source.REMOVE;
-                string old_source = default_source;
-
-                // A Bluetooth sink that just appeared becomes the output, like
-                // PipeWire's switch-on-connect. The first pass only seeds.
-                string[] ids = {};
-                foreach (var x in new_sinks) {
-                    ids += x.id;
-                    if (known_sinks != null && x.id.has_prefix("bluez_")
-                        && !(x.id in known_sinks) && x.id != new_sink) {
-                        pactl.set_default_sink(x.id);
-                        need_info = true;
-                        new_sink = x.id;
-                    }
+            // A Bluetooth sink that just appeared becomes the output, like
+            // PipeWire's switch-on-connect. The first pass only seeds.
+            string[] ids = {};
+            foreach (var x in st.sinks) {
+                ids += x.id;
+                if (known_sinks != null && x.id.has_prefix("bluez_")
+                    && !(x.id in known_sinks) && x.id != new_sink) {
+                    pactl.set_default_sink(x.id);
+                    need_info = true;
+                    new_sink = x.id;
                 }
-                known_sinks = ids;
+            }
+            known_sinks = ids;
 
-                default_sink   = new_sink;
-                sinks          = new_sinks;
-                volume_percent = new_volume;
-                muted          = new_muted;
+            default_sink   = new_sink;
+            sinks          = st.sinks;
+            volume_percent = st.volume_percent;
+            muted          = st.muted;
 
-                default_source       = new_source;
-                sources              = new_sources;
-                input_volume_percent = new_in_volume;
-                input_muted          = new_in_muted;
-                sink_inputs          = new_sink_inputs;
+            default_source       = st.default_source;
+            sources              = st.sources;
+            input_volume_percent = st.input_volume_percent;
+            input_muted          = st.input_muted;
+            sink_inputs          = st.sink_inputs;
 
-                if (meter_running && default_source != old_source)
-                    respawn_meter();
+            if (meter_running && default_source != old_source)
+                respawn_meter();
 
-                string sig = signature();
-                if (sig == last_signature) return Source.REMOVE;
-                last_signature = sig;
-                state_changed();
-                return Source.REMOVE;
-            });
+            string sig = signature();
+            if (sig == last_signature) return;
+            last_signature = sig;
+            state_changed();
         });
     }
 

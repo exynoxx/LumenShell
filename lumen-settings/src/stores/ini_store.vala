@@ -23,6 +23,20 @@ namespace LumenSettings {
             load();
         }
 
+        public delegate void EditFunc();
+
+        // Reload → f → save. Several pages hold their own IniStore on the same
+        // file, so a write must never save back a stale snapshot.
+        public void edit(EditFunc f) {
+            load();
+            f();
+            save();
+        }
+
+        public void put(string section, string key, string value) {
+            edit(() => set_value(section, key, value));
+        }
+
         // Wayfire's parser treats an unescaped `#` anywhere as a comment, so a
         // colour like #242424FF must be stored as \#242424FF. KeyFile readers
         // of our own INIs would choke on the escape, hence wayfire.ini only.

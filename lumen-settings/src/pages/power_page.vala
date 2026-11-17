@@ -42,10 +42,7 @@ namespace LumenSettings {
             };
             dpms_row.notify["value"].connect(() => {
                 int secs = (int) dpms_row.value;
-                // Other pages write wayfire.ini too; never save a stale snapshot.
-                wf.reload();
-                wf.set_value("idle", "dpms_timeout", secs.to_string());
-                wf.save();
+                wf.put("idle", "dpms_timeout", secs.to_string());
 #if WITH_WAYFIRE_CONFIG
                 // dpms_timeout is ignored unless the idle plugin is loaded.
                 if (secs > 0) Wayfire.PluginList.set_enabled(wf, "idle", true);

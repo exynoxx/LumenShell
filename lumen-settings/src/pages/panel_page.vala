@@ -54,9 +54,7 @@ namespace LumenSettings {
             // Keep the push plugin's edge aligned with the panel position.
             position_row.value_changed.connect((v) => {
                 if (current_mode() != "push") return;
-                wf_store.reload();
-                wf_store.set_value(PUSH_SECTION, "direction", v);
-                wf_store.save();
+                wf_store.put(PUSH_SECTION, "direction", v);
             });
 #endif
             layout.add(position_row);
@@ -280,25 +278,23 @@ namespace LumenSettings {
 #if WITH_WAYFIRE_CONFIG
         // Mirror the push plugin's edge + distance to the panel position/height.
         void sync_push_options() {
-            wf_store.reload();
-            var pos = store.get_string("position") ?? "bottom";
-            var h   = "%d".printf(PANEL_HEIGHT_PX);
-            wf_store.set_value(PUSH_SECTION, "direction", pos);
-            wf_store.set_value(PUSH_SECTION, "push_px", h);
-            wf_store.save();
+            wf_store.edit(() => {
+                wf_store.set_value(PUSH_SECTION, "direction", store.get_string("position") ?? "bottom");
+                wf_store.set_value(PUSH_SECTION, "push_px", "%d".printf(PANEL_HEIGHT_PX));
+            });
         }
 
         // An empty binding removes both keys so no dangling command is left.
         void set_tray_binding(string binding) {
-            wf_store.reload();
-            if (binding.strip() == "") {
-                wf_store.remove_key("command", "binding_" + TRAY_CMD_NAME);
-                wf_store.remove_key("command", "command_" + TRAY_CMD_NAME);
-            } else {
-                wf_store.set_value("command", "binding_" + TRAY_CMD_NAME, binding);
-                wf_store.set_value("command", "command_" + TRAY_CMD_NAME, TRAY_DBUS_CMD);
-            }
-            wf_store.save();
+            wf_store.edit(() => {
+                if (binding.strip() == "") {
+                    wf_store.remove_key("command", "binding_" + TRAY_CMD_NAME);
+                    wf_store.remove_key("command", "command_" + TRAY_CMD_NAME);
+                } else {
+                    wf_store.set_value("command", "binding_" + TRAY_CMD_NAME, binding);
+                    wf_store.set_value("command", "command_" + TRAY_CMD_NAME, TRAY_DBUS_CMD);
+                }
+            });
         }
 #endif
 

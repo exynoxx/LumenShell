@@ -64,30 +64,20 @@ public class BluetoothService : GLib.Object {
     private void apply_power(bool on) {
         powered = on;
         state_changed();
-        new GLib.Thread<void>("bt-power", () => {
-            btctl.set_powered(on);
-            GLib.Idle.add(() => {
-                // Powering on also runs a discovery scan.
-                refresh_scan(on);
-                return Source.REMOVE;
-            });
-        });
+        // Powering on also runs a discovery scan.
+        LumenCommon.Proc.off_main("bt-power", () => btctl.set_powered(on), () => refresh_scan(on));
     }
 
     // Start/resume path: no spawn when the adapter already matches, and no
     // discovery scan — nobody is looking at a device list.
     private void restore_power(bool on) {
-        new GLib.Thread<void>("bt-restore", () => {
+        LumenCommon.Proc.off_main("bt-restore", () => {
             bool pw;
             btctl.fetch_state(out pw);
             // Off is always re-applied: an adapter read as unpowered at boot can
             // still be switched on a moment later by BlueZ AutoEnable.
             if (pw != on || !on) btctl.set_powered(on);
-            GLib.Idle.add(() => {
-                poll_state();
-                return Source.REMOVE;
-            });
-        });
+        }, () => poll_state());
     }
 
     public void connect_device(string mac) {
@@ -101,13 +91,7 @@ public class BluetoothService : GLib.Object {
     }
 
     public void pair_device(string mac) {
-        new GLib.Thread<void>("bt-pair", () => {
-            btctl.pair(mac);
-            GLib.Idle.add(() => {
-                refresh_scan(false);
-                return Source.REMOVE;
-            });
-        });
+        LumenCommon.Proc.off_main("bt-pair", () => btctl.pair(mac), () => refresh_scan(false));
     }
 
     public void remove_device(string mac) {
@@ -116,13 +100,8 @@ public class BluetoothService : GLib.Object {
     }
 
     public void request_device_details(string mac) {
-        new GLib.Thread<void>("bt-details", () => {
-            var d = btctl.device_details(mac);
-            GLib.Idle.add(() => {
-                device_details_ready(d);
-                return Source.REMOVE;
-            });
-        });
+        BtDeviceDetails? d = null;
+        LumenCommon.Proc.off_main("bt-details", () => { d = btctl.device_details(mac); }, () => device_details_ready(d));
     }
 
     public void refresh_scan(bool rescan = false) {
@@ -131,19 +110,18 @@ public class BluetoothService : GLib.Object {
         scanning       = true;
         state_changed();
 
-        new GLib.Thread<void>("bt-scan", () => {
+        bool new_powered = false;
+        BtDevice[] new_devs = {};
+        LumenCommon.Proc.off_main("bt-scan", () => {
             if (rescan) btctl.scan(SCAN_SECS);
-            bool new_powered;
-            var new_devs    = btctl.fetch_state(out new_powered);
-            GLib.Idle.add(() => {
-                powered        = new_powered;
-                devices        = new_devs;
-                connected_name = first_connected(new_devs);
-                scanning       = false;
-                scan_in_flight = false;
-                state_changed();
-                return Source.REMOVE;
-            });
+            new_devs = btctl.fetch_state(out new_powered);
+        }, () => {
+            powered        = new_powered;
+            devices        = new_devs;
+            connected_name = first_connected(new_devs);
+            scanning       = false;
+            scan_in_flight = false;
+            state_changed();
         });
     }
 
@@ -157,22 +135,19 @@ public class BluetoothService : GLib.Object {
     private void poll_state() {
         if (poll_in_flight) return;
         poll_in_flight = true;
-        new GLib.Thread<void>("bt-poll", () => {
-            bool pw;
-            var devs = btctl.fetch_state(out pw);
+        bool pw = false;
+        BtDevice[] devs = {};
+        LumenCommon.Proc.off_main("bt-poll", () => { devs = btctl.fetch_state(out pw); }, () => {
+            poll_in_flight = false;
+            bool changed = false;
             var conn = first_connected(devs);
             var sig  = signature(devs);
-            GLib.Idle.add(() => {
-                poll_in_flight = false;
-                bool changed = false;
-                if (pw   != powered)        { powered = pw;          changed = true; }
-                if (conn != connected_name) { connected_name = conn; changed = true; }
-                // Battery and discovery updates arrive without a power/connection change.
-                if (sig  != devices_sig)    { devices_sig = sig;     changed = true; }
-                devices = devs;
-                if (changed) state_changed();
-                return Source.REMOVE;
-            });
+            if (pw   != powered)        { powered = pw;          changed = true; }
+            if (conn != connected_name) { connected_name = conn; changed = true; }
+            // Battery and discovery updates arrive without a power/connection change.
+            if (sig  != devices_sig)    { devices_sig = sig;     changed = true; }
+            devices = devs;
+            if (changed) state_changed();
         });
     }
 

@@ -102,9 +102,7 @@ namespace LumenSettings {
         }
 
         public void put(string key, string value) {
-            store.reload();
-            store.set_value(section, key, value);
-            store.save();
+            store.put(section, key, value);
         }
 
         public Adw.SpinRow double_row(string key, string label, double min, double max,

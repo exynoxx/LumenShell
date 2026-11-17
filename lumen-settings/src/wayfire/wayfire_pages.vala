@@ -15,30 +15,22 @@ namespace LumenSettings.Wayfire {
         // Order is preserved and duplicates dropped: Wayfire loads plugins in
         // list order, so reshuffling would silently change plugin precedence.
         public static void set_enabled(IniStore store, string name, bool on) {
-            // Three pages each hold an IniStore on wayfire.ini; without this
-            // reload a toggle writes back a stale list.
-            store.reload();
+            store.edit(() => {
+                var seen = new Gee.HashSet<string>();
+                var ordered = new Gee.ArrayList<string>();
+                foreach (var tok in (store.get_value("core", "plugins") ?? "").split(" ")) {
+                    var t = tok.strip();
+                    if (t != "" && seen.add(t)) ordered.add(t);
+                }
 
-            var seen = new Gee.HashSet<string>();
-            var ordered = new Gee.ArrayList<string>();
-            foreach (var tok in (store.get_value("core", "plugins") ?? "").split(" ")) {
-                var t = tok.strip();
-                if (t != "" && seen.add(t)) ordered.add(t);
-            }
+                if (on) {
+                    if (!seen.contains(name)) ordered.add(name);
+                } else {
+                    ordered.remove(name);
+                }
 
-            if (on) {
-                if (!seen.contains(name)) ordered.add(name);
-            } else {
-                ordered.remove(name);
-            }
-
-            var sb = new StringBuilder();
-            for (int i = 0; i < ordered.size; i++) {
-                if (i > 0) sb.append_c(' ');
-                sb.append(ordered.get(i));
-            }
-            store.set_value("core", "plugins", sb.str);
-            store.save();
+                store.set_value("core", "plugins", string.joinv(" ", ordered.to_array()));
+            });
         }
     }
 

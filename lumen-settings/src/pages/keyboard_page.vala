@@ -84,11 +84,12 @@ namespace LumenSettings {
             var add = new Gtk.Button.with_label("Add shortcut") { valign = Gtk.Align.CENTER };
             add.add_css_class("flat");
             add.clicked.connect(() => {
-                wf.reload();
-                var tail = next_tail();
-                wf.set_value("command", "binding_" + tail, "");
-                wf.set_value("command", "command_" + tail, "");
-                wf.save();
+                string tail = "";
+                wf.edit(() => {
+                    tail = next_tail();
+                    wf.set_value("command", "binding_" + tail, "");
+                    wf.set_value("command", "command_" + tail, "");
+                });
                 var row = shortcut_row(tail);
                 shortcuts.add(row);
                 row.expanded = true;
@@ -134,21 +135,18 @@ namespace LumenSettings {
             };
             del.add_css_class("flat");
             del.clicked.connect(() => {
-                wf.reload();
-                wf.remove_key("command", bkey);
-                wf.remove_key("command", ckey);
-                wf.save();
+                wf.edit(() => {
+                    wf.remove_key("command", bkey);
+                    wf.remove_key("command", ckey);
+                });
                 shortcuts.remove(exp);
             });
             exp.add_suffix(del);
             return exp;
         }
 
-        // Other pages write wayfire.ini too; never save a stale snapshot.
         void put(string key, string value) {
-            wf.reload();
-            wf.set_value("command", key, value);
-            wf.save();
+            wf.put("command", key, value);
         }
 
         // Unique across [command]: the repeatable/always/release lists share the tail space.

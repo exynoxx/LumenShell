@@ -9,6 +9,17 @@ namespace LumenCommon {
     private extern const int SIGTERM;
 
     public class Proc {
+        public delegate void Job();
+
+        // `work` on a worker thread, then `done` on the main loop. Results
+        // travel in locals both closures capture.
+        public static void off_main(string name, owned Job work, owned Job done) {
+            new Thread<void>(name, () => {
+                work();
+                Idle.add(() => { done(); return Source.REMOVE; });
+            });
+        }
+
         // null only on spawn failure; a nonzero exit still returns stdout.
         // `env`: "KEY=VALUE" overrides on top of the inherited environment.
         public static string? run_capture(string[] argv, string[]? env = null) {

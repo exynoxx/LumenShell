@@ -15,11 +15,8 @@ namespace LumenSettings.Wayfire {
             this._id = "wayfire-" + plugin.name;
         }
 
-        // Other pages write wayfire.ini too; never save a stale snapshot.
         void put(string key, string value) {
-            store.reload();
-            store.set_value(plugin.name, key, value);
-            store.save();
+            store.put(plugin.name, key, value);
         }
 
         public Gtk.Widget build() {
@@ -173,12 +170,11 @@ namespace LumenSettings.Wayfire {
             };
             add_button.add_css_class("flat");
             add_button.clicked.connect(() => {
-                store.reload();
-                var next = next_tail(opt);
-                foreach (var e in opt.entries) {
-                    store.set_value(plugin.name, e.prefix + next, "");
-                }
-                store.save();
+                string next = "";
+                store.edit(() => {
+                    next = next_tail(opt);
+                    foreach (var e in opt.entries) store.set_value(plugin.name, e.prefix + next, "");
+                });
                 list.add(make_dynamic_row(opt, next, list));
             });
 
@@ -196,11 +192,9 @@ namespace LumenSettings.Wayfire {
             };
             remove_button.add_css_class("flat");
             remove_button.clicked.connect(() => {
-                store.reload();
-                foreach (var e in opt.entries) {
-                    store.remove_key(plugin.name, e.prefix + tail);
-                }
-                store.save();
+                store.edit(() => {
+                    foreach (var e in opt.entries) store.remove_key(plugin.name, e.prefix + tail);
+                });
                 list.remove(ar);
             });
             ar.add_prefix(remove_button);
