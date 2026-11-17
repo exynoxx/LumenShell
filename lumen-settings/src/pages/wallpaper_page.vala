@@ -217,7 +217,7 @@ namespace LumenSettings {
                 var dlg = new Gtk.FileDialog() { title = "Add a gallery folder", modal = true };
                 dlg.select_folder.begin((Gtk.Window) folders_group.get_root(), null, (obj, res) => {
                     try {
-                        var p = dlg.select_folder.end(res)?.get_path();
+                        var p = dlg.select_folder.end(res).get_path();
                         var cur = gallery_folders();
                         if (p == null || p in cur) return;
                         cur += p;
@@ -234,7 +234,7 @@ namespace LumenSettings {
             dlg.initial_folder = File.new_for_path(folder);
             dlg.select_folder.begin((Gtk.Window) button.get_root(), null, (obj, res) => {
                 try {
-                    var p = dlg.select_folder.end(res)?.get_path();
+                    var p = dlg.select_folder.end(res).get_path();
                     if (p == null) return;
                     folder = p;
                     button.label = Path.get_basename(p);

@@ -73,8 +73,8 @@ namespace LumenSettings {
 
             var drop = new Gtk.DropTarget(typeof(Row), Gdk.DragAction.MOVE);
             drop.drop.connect((v, x, y) => {
-                var dragged = v.get_object() as Row;
-                if (dragged == null || dragged == row) return false;
+                var dragged = (Row) v.get_object();
+                if (dragged == row) return false;
                 bool after = y > row.get_height() / 2.0;
                 list.remove(dragged);
                 int idx = row.get_index();   // recompute: removal may have shifted it

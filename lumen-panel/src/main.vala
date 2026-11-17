@@ -14,7 +14,6 @@ public class App : GLib.Object {
     TrayBar tray;                            // the primary panel's tray area
     PanelService panel_service;              // session-bus ToggleTray (global hotkey)
     SniWatcher sni_watcher;                  // SNI registry singleton, shared by every SysTray
-    TrayRegistry registry;                   // id → applet factory
     LogindBridge logind;
 
     // One instance each, shared by every panel's applets — see activate().
@@ -26,9 +25,9 @@ public class App : GLib.Object {
     BrightnessService   brightness_service;     // polls sysfs only while a slider is mapped
 
     GLib.GenericArray<PanelWindow> windows = new GLib.GenericArray<PanelWindow>();
-    bool hotplug_wired = false;
 
     public void activate (Gtk.Application app) {
+        if (this.app != null) return;        // second launch of the unique app: already running
         this.app = app;
 
         PanelConfig.load();
@@ -52,18 +51,6 @@ public class App : GLib.Object {
         brightness_service    = new BrightnessService();
         battery_service.ac_changed.connect(power_profile_service.refresh);
 
-        // Each factory builds a fresh applet so one id can be realized on several panels.
-        registry = new TrayRegistry();
-        if (Environment.find_program_in_path("lumen-search") != null)
-            registry.register("search",    () => new SearchTray());
-        registry.register("systray",   () => new SysTray(sni_watcher));
-        registry.register("wifi",      () => new WifiTray(wifi_service));
-        registry.register("bluetooth", () => new BluetoothTray(bluetooth_service));
-        registry.register("battery",   () => new BatteryTray(battery_service, power_profile_service));
-        registry.register("sound",     () => new SoundTray(sound_service));
-        registry.register("clock",     () => new Clock(logind));
-        registry.register("exit",      () => new ExitTray(logind));
-
         // Bind foreign-toplevel before building any AppBar so replay happens
         // synchronously when each AppBar subscribes inside its constructor.
         ToplevelStore.instance.bind();
@@ -77,17 +64,27 @@ public class App : GLib.Object {
 
         build_windows();
 
-        if (PanelConfig.multi_monitor && !hotplug_wired) {
+        if (PanelConfig.multi_monitor) {
             var monitors = Gdk.Display.get_default().get_monitors();
             monitors.items_changed.connect((pos, removed, added) => rebuild_windows());
-            hotplug_wired = true;
         }
     }
 
     TrayBar make_tray () {
         var t = new TrayBar(logind, brightness_service);
+        // A fresh applet per call so one id can be realized on several panels.
         foreach (var id in PanelConfig.tray_enabled_order()) {
-            var applet = registry.create(id);
+            ITrayApplet? applet = null;
+            switch (id) {
+                case "search":    if (Environment.find_program_in_path("lumen-search") != null) applet = new SearchTray(); break;
+                case "systray":   applet = new SysTray(sni_watcher); break;
+                case "wifi":      applet = new WifiTray(wifi_service); break;
+                case "bluetooth": applet = new BluetoothTray(bluetooth_service); break;
+                case "battery":   applet = new BatteryTray(battery_service, power_profile_service); break;
+                case "sound":     applet = new SoundTray(sound_service); break;
+                case "clock":     applet = new Clock(logind); break;
+                case "exit":      applet = new ExitTray(logind); break;
+            }
             if (applet != null) t.add(applet);
         }
         return t;

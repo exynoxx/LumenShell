@@ -33,14 +33,11 @@ namespace LumenSettings {
                 null,
                 (obj, res) => {
                     try {
-                        var f = dlg.open.end(res);
-                        if (f != null) {
-                            var p = f.get_path();
-                            if (p != null) {
-                                current_path = p;
-                                button.set_label(display_label(p));
-                                value_changed(p);
-                            }
+                        var p = dlg.open.end(res).get_path();
+                        if (p != null) {
+                            current_path = p;
+                            button.set_label(display_label(p));
+                            value_changed(p);
                         }
                     } catch (Error e) { /* cancel */ }
                 }

@@ -41,13 +41,13 @@ public class BannerStack : Gtk.Box {
     }
 
     public Banner? get_banner(uint32 id) {
-        return by_id.contains(id) ? by_id.get(id) : null;
+        return by_id.get(id);
     }
 
     /** Safe to call on an unknown id (no-op). */
     public void dismiss_banner(uint32 id) {
-        if (!by_id.contains(id)) return;
         var b = by_id.get(id);
+        if (b == null) return;
         // Take out of the active map immediately so cascade/dismiss can't
         // double-fire on it.
         by_id.remove(id);

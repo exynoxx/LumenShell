@@ -46,9 +46,7 @@ public class BatteryModule : GLib.Object {
 
         if (pps.backend != PowerBackend.NONE) {
             seg = new SegmentedControl ();
-            seg.segment_selected.connect ((i) => {
-                if (i >= 0 && i < pps.available.length) pps.select (pps.available[i]);
-            });
+            seg.segment_selected.connect ((i) => pps.select (pps.available[i]));
             root.append (seg);
             pps.state_changed.connect (refresh_profile);
         }
@@ -93,7 +91,7 @@ public class BatteryModule : GLib.Object {
     }
 
     void refresh_profile () {
-        if (seg == null || pps.backend == PowerBackend.NONE) return;
+        if (seg == null) return;
         string[] labels = {};
         int selected = -1;
         for (int i = 0; i < pps.available.length; i++) {

@@ -67,7 +67,6 @@ public class BrightnessService : GLib.Object {
 
     // Never drives the panel fully dark from the slider — clamp the low end to 1%.
     public void set_level (int pct) {
-        if (!available) return;
         pct = pct.clamp (1, 100);
         percent = pct;
         writer.push (pct);
@@ -76,7 +75,7 @@ public class BrightnessService : GLib.Object {
     int read_int (string path) {
         string contents;
         try {
-            if (!FileUtils.get_contents (path, out contents)) return 0;
+            FileUtils.get_contents (path, out contents);
         } catch (Error e) {
             return 0;
         }

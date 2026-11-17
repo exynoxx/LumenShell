@@ -130,13 +130,13 @@ namespace LumenSettings {
         void reload_outputs() {
             DiagLog.log("page: outputs changed — reloading display list");
             stop_countdown();
-            if (confirm_revealer != null) confirm_revealer.reveal_child = false;
+            confirm_revealer.reveal_child = false;
             baseline = wlr.enumerate();
             working  = clone_list(baseline);
             sel = working.size > 0 ? 0 : -1;
             arranger.set_outputs(working);
             rebuild_controls();
-            if (apply_btn != null) apply_btn.sensitive = false;
+            apply_btn.sensitive = false;
         }
 
         void rebuild_controls() {
@@ -241,7 +241,7 @@ namespace LumenSettings {
         }
 
         void mark_dirty() {
-            if (apply_btn != null) apply_btn.sensitive = true;
+            apply_btn.sensitive = true;
         }
 
         void on_apply() {

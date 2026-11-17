@@ -148,7 +148,6 @@ public class AppEntry : Gtk.Button {
 
     void on_primary_click () {
         if (has_open_windows()) {
-            if (cycle_idx >= window_ids.size) cycle_idx = 0;
             var id = window_ids[cycle_idx];
             cycle_idx = (cycle_idx + 1) % window_ids.size;
             ToplevelStore.instance.activate(id);
@@ -184,7 +183,6 @@ public class AppEntry : Gtk.Button {
     // has_gicon gates the fallback: lookup_by_gicon never fails, it silently
     // yields "image-missing".
     void load_icon () {
-        tint_done = false;
         GLib.Icon? gicon = (info != null) ? info.get_icon() : null;
         var theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
         if (gicon != null && (!(gicon is GLib.ThemedIcon) || theme.has_gicon(gicon))) {

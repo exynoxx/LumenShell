@@ -99,8 +99,8 @@ public class Picker : Object {
         commit();
     }
 
+    // Callers only reach commit()/cancel() while _active.
     private void commit() {
-        if (!_active) return;
         // The trailing "abort" tile dismisses without applying anything.
         if (index == ABORT_INDEX) { cancel(); return; }
         _active    = false;
@@ -118,7 +118,6 @@ public class Picker : Object {
     }
 
     private void cancel() {
-        if (!_active) return;
         _active = false;
         cancel_dismiss();
         window.release_keyboard();

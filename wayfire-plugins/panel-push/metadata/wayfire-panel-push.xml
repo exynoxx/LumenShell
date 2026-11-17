@@ -4,16 +4,6 @@
     <_short>Panel Push</_short>
     <_long>Slide the whole scene (wallpaper + windows) away from one screen edge by a fixed amount to free a strip for a push-reveal panel. Driven over IPC by lumen-panel's "push" mode; the panel slides in as the scene slides away.</_long>
     <category>Desktop</category>
-    <option name="toggle" type="activator">
-      <_short>Toggle push</_short>
-      <_long>Optional keybinding that toggles the push directly, for debugging. lumen-panel normally drives this over IPC.</_long>
-      <default></default>
-    </option>
-    <option name="dismiss" type="activator">
-      <_short>Dismiss push</_short>
-      <_long>Optional secondary binding that only restores the pushed scene. Unset by default so it does not conflict with other consumers of Escape.</_long>
-      <default></default>
-    </option>
     <option name="duration" type="animation">
       <_short>Animation duration</_short>
       <default>250ms circle</default>

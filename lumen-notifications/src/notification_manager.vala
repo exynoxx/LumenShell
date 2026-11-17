@@ -18,11 +18,9 @@ public class NotificationManager : Object {
                          string[] actions,
                          string? image_path,
                          int expire_timeout) {
-        Notification n;
-        bool is_replace = false;
-        if (replaces_id != 0 && store.contains(replaces_id)) {
-            n = store.get(replaces_id);
-            is_replace = true;
+        Notification? n = store.get(replaces_id);   // ids start at 1, so 0 never matches
+        bool is_replace = n != null;
+        if (is_replace) {
             cancel_expire(n);
         } else {
             n = new Notification(next_id++);
@@ -44,15 +42,11 @@ public class NotificationManager : Object {
     }
 
     public void close(uint32 id, uint32 reason) {
-        if (!store.contains(id)) return;
         var n = store.get(id);
+        if (n == null) return;
         cancel_expire(n);
         store.remove(id);
         notification_closed(id, reason);
-    }
-
-    public bool has(uint32 id) {
-        return store.contains(id);
     }
 
     private void arm_expire(Notification n) {
@@ -61,13 +55,10 @@ public class NotificationManager : Object {
         else if (n.expire_timeout == 0) return;   // never expires
         else                            ms = n.expire_timeout;
 
-        uint32 id = n.id;
+        // close() and a replace both cancel this timer, so it only fires while n is stored.
         n.expire_source = Timeout.add(ms, () => {
-            if (store.contains(id)) {
-                var nn = store.get(id);
-                nn.expire_source = 0;
-                close(id, REASON_EXPIRED);
-            }
+            n.expire_source = 0;
+            close(n.id, REASON_EXPIRED);
             return Source.REMOVE;
         });
     }

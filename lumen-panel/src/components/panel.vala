@@ -57,7 +57,6 @@ public class AppBar : Gtk.Box {
         var entry = get_or_create(t.app_id);
         entry.add_window(t.id);
         entries_by_window[t.id] = entry;
-        entry.queue_draw();
     }
 
     // A window moved between monitors (or its output was just resolved): add or
@@ -131,7 +130,6 @@ public class AppBar : Gtk.Box {
     }
 
     void on_drag_moved (double offset_x) {
-        if (dragged == null) return;
         int n = drag_order.size;
         int delta = (int) Math.round(offset_x / SLOT_PITCH);
         int t = (drag_base_index + delta).clamp(0, n - 1);
@@ -156,7 +154,6 @@ public class AppBar : Gtk.Box {
     }
 
     void on_drag_dropped () {
-        if (dragged == null) return;
 
         // Build the committed order: dragged removed, reinserted at target.
         var target_order = new ArrayList<AppEntry>();

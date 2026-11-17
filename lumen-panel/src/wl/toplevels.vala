@@ -30,25 +30,24 @@ public class ToplevelStore : GLib.Object {
     }
 
     // Bind once, after Gdk.Display is available (i.e. inside Application.activate).
-    public bool bind () {
+    public void bind () {
         var gdk = Gdk.Display.get_default();
         if (!(gdk is Gdk.Wayland.Display)) {
             stderr.printf("ToplevelStore: not running on Wayland\n");
-            return false;
+            return;
         }
         unowned Wl.Display wl = ((Gdk.Wayland.Display) gdk).get_wl_display();
 
         int rc = WLHooks.init_toplevel_with_display(wl);
         if (rc != 0) {
             stderr.printf("ToplevelStore: wlhooks_init_toplevel_with_display failed\n");
-            return false;
+            return;
         }
 
         WLHooks.register_on_window_new   (on_new);
         WLHooks.register_on_window_rm    (on_rm);
         WLHooks.register_on_window_focus (on_focus);
         WLHooks.register_on_window_output_changed (on_output);
-        return true;
     }
 
     public void activate (uint id) { WLHooks.toplevel_activate_by_id(id); }

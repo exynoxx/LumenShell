@@ -37,8 +37,6 @@ namespace LumenSettings {
         Gtk.Button  in_mute_btn;
         Gtk.Scale   in_scale;
         Gtk.Label   in_label;
-        Gtk.LevelBar? level_bar = null;
-        Gtk.ToggleButton? level_toggle = null;
         bool        in_dragging = false;
         string      sources_sig = "";
 
@@ -177,13 +175,13 @@ namespace LumenSettings {
             // Strictly manual: a mic capture stream forces Bluetooth headsets
             // from A2DP down to the HSP/HFP call profile.
             if (service.meter_available()) {
-                level_bar = new Gtk.LevelBar.for_interval(0.0, 1.0) {
+                var level_bar = new Gtk.LevelBar.for_interval(0.0, 1.0) {
                     mode = Gtk.LevelBarMode.CONTINUOUS,
                     hexpand = false,
                     width_request = 160,
                     valign = Gtk.Align.CENTER,
                 };
-                level_toggle = new Gtk.ToggleButton.with_label("Test") {
+                var level_toggle = new Gtk.ToggleButton.with_label("Test") {
                     valign = Gtk.Align.CENTER,
                 };
                 level_toggle.add_css_class("flat");
@@ -206,12 +204,12 @@ namespace LumenSettings {
                 input_group.add(lrow);
 
                 service.input_peak_changed.connect((peak) => {
-                    if (level_bar != null) level_bar.value = peak;
+                    level_bar.value = peak;
                 });
 
                 // Never leave a headset stuck in the call profile off-screen.
                 input_group.unmap.connect(() => {
-                    if (level_toggle != null && level_toggle.active)
+                    if (level_toggle.active)
                         level_toggle.active = false;
                 });
             }

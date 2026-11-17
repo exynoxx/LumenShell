@@ -40,10 +40,6 @@ namespace LumenSettings {
 
         void load() {
             string content;
-            if (!FileUtils.test(PATH, FileTest.EXISTS)) {
-                load_fallback();
-                return;
-            }
             try {
                 FileUtils.get_contents(PATH, out content);
             } catch (Error e) {

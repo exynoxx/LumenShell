@@ -180,7 +180,6 @@ panel_sources = files(
   'lumen-panel/src/widgets/tray_button.vala',
   'lumen-panel/src/widgets/tray.vala',
   'lumen-panel/src/widgets/tray_reveal.vala',
-  'lumen-panel/src/widgets/tray_registry.vala',
   'lumen-panel/src/widgets/wifi_arc.vala',
   'lumen-panel/src/widgets/cc_slider.vala',
   'lumen-panel/src/widgets/progress_bar.vala',

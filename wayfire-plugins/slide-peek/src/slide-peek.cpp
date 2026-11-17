@@ -56,11 +56,7 @@ class slide_screenshot_render_instance_t :
 
     void render(const wf::scene::render_instruction_t& data) override
     {
-        if (!self->tex)
-        {
-            return;
-        }
-
+        // tex is non-null: the node is only built after lumen::capture_output() succeeded.
         wf::texture_t tex;
         tex.texture = self->tex;
 
@@ -83,7 +79,6 @@ inline void slide_screenshot_node_t::gen_render_instances(
 class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-slide-peek/toggle"};
-    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-slide-peek/dismiss"};
     wf::option_wrapper_t<std::string> drawer_app_id_opt{"wayfire-slide-peek/drawer_app_id"};
     wf::option_wrapper_t<std::string> widget_app_id_opt{"wayfire-slide-peek/widget_app_id"};
     wf::option_wrapper_t<std::string> direction_opt{"wayfire-slide-peek/direction"};
@@ -121,18 +116,11 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
         return ipc_toggle();
     };
 
-    // Restore-only; a no-op from IDLE so it doesn't steal Escape from other
-    // consumers when nothing is open.
-    wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
-    {
-        return ipc_stop();
-    };
-
     // Hide the grid as soon as it maps unless a reveal is open.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (!ev->view || (ev->view->get_app_id() != (std::string) drawer_app_id_opt))
+        if ((ev->view->get_app_id() != (std::string) drawer_app_id_opt))
         {
             return;
         }
@@ -185,7 +173,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     {
         slide_log("per-output init on output=%p", (void *) output);
         output->add_activator(toggle_opt, &on_toggle);
-        output->add_activator(dismiss_opt, &on_dismiss);
         output->connect(&on_view_mapped);
         output->connect(&on_view_unmapped);
 
@@ -209,7 +196,6 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
     {
         slide_log("per-output fini on output=%p state=%d", (void *) output, (int) state);
         output->rem_binding(&on_toggle);
-        output->rem_binding(&on_dismiss);
         on_view_mapped.disconnect();
         on_view_unmapped.disconnect();
         if (state != state_t::IDLE)
@@ -343,10 +329,7 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 
     void apply_progress(double p)
     {
-        if (screenshot_node)
-        {
-            screenshot_node->translate_y = (float) (slide_sign * H * p);
-        }
+        screenshot_node->translate_y = (float) (slide_sign * H * p);
 
         if (desktop_tr && desktop_view)
         {
@@ -394,7 +377,12 @@ class wayfire_slide_peek_t : public wf::per_output_plugin_instance_t
 
         set_live_layers_hidden(false);
 
-        set_widgets_visible(true);
+        // Show only the view start_open() hid: looking one up here would show
+        // a widget that mapped mid-peek (never hidden) and unbalance its counter.
+        if (widget_view)
+        {
+            set_widgets_visible(true);
+        }
         set_desktop_visible(false);
         if (auto seat = wf::get_core().seat.get())
         {

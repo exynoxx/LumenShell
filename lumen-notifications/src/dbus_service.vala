@@ -32,9 +32,7 @@ public class NotificationsService : Object {
     }
 
     public void close_notification(uint32 id) throws DBusError, IOError {
-        if (manager.has(id)) {
-            manager.close(id, REASON_CLOSED);
-        }
+        manager.close(id, REASON_CLOSED);
     }
 
     public string[] get_capabilities() throws DBusError, IOError {

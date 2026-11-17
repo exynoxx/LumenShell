@@ -16,7 +16,6 @@
 #include "log.hpp"
 #include "transformed_views.hpp"
 
-#include <algorithm>
 #include <string>
 
 #define push_log(...) lumen::file_log("/tmp/wayfire-panel-push.log", __VA_ARGS__)
@@ -25,8 +24,6 @@
 // transformer remaps input with rendering, so the pushed scene stays interactive.
 class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
 {
-    wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-panel-push/toggle"};
-    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-panel-push/dismiss"};
     wf::option_wrapper_t<int> push_px_opt{"wayfire-panel-push/push_px"};
     wf::option_wrapper_t<std::string> direction_opt{"wayfire-panel-push/direction"};
     wf::option_wrapper_t<std::string> exclude_app_id_opt{"wayfire-panel-push/exclude_app_id"};
@@ -39,7 +36,7 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
 
     // push distance (px) and sign (+1 = down, panel at top; -1 = up, bottom),
     // recomputed per push.
-    int push_px = 60;
+    int push_px = 0;
     int push_sign = +1;
 
     lumen::transformed_views_t tracked_views{"wayfire-panel-push-slide"};
@@ -51,27 +48,11 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
         .cancel = [this] { hard_reset(); },
     };
 
-    wf::activator_callback on_toggle = [this] (const wf::activator_data_t&)
-    {
-        return ipc_toggle();
-    };
-
-    // Restore-only; a no-op from IDLE so it doesn't steal Escape from other
-    // consumers when nothing is pushed.
-    wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
-    {
-        return ipc_stop();
-    };
-
     // A view mapping mid-push must appear already shifted, not at the origin.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
         if ((state != state_t::OUT) && (state != state_t::PUSHED))
-        {
-            return;
-        }
-        if (!ev->view)
         {
             return;
         }
@@ -107,16 +88,12 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
     void init() override
     {
         push_log("per-output init on output=%p", (void *) output);
-        output->add_activator(toggle_opt, &on_toggle);
-        output->add_activator(dismiss_opt, &on_dismiss);
         output->connect(&on_view_mapped);
     }
 
     void fini() override
     {
         push_log("per-output fini on output=%p state=%d", (void *) output, (int) state);
-        output->rem_binding(&on_toggle);
-        output->rem_binding(&on_dismiss);
         on_view_mapped.disconnect();
         if (state != state_t::IDLE)
         {
@@ -191,8 +168,7 @@ class wayfire_panel_push_t : public wf::per_output_plugin_instance_t
             return false;
         }
 
-        tracked_views.clear();
-        push_px = std::clamp((int) push_px_opt, 0, 400);
+        push_px = push_px_opt;
         push_sign = ((std::string) direction_opt == "bottom") ? -1 : +1;
 
         for (auto& view : wf::collect_views_from_output(output, {

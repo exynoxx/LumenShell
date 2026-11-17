@@ -51,7 +51,8 @@ static bool s_apply_done   = false;
 
 static output_mgmt_outputs_changed_cb s_changed_cb   = NULL;
 static void                          *s_changed_data = NULL;
-static char                           s_set_sig[1024] = "";
+// Set when a head is added or finishes; property-only `done`s leave it clear.
+static bool                           s_set_dirty    = false;
 
 // ---- lookup helpers --------------------------------------------------------
 
@@ -71,31 +72,6 @@ static void resolve_current_modes(void) {
         for (int m = 0; m < h->mode_count; m++) {
             if (h->modes[m].proxy == h->current_mode_proxy) { h->current_mode_idx = m; break; }
         }
-    }
-}
-
-// Sorted, '|'-joined connector names: ignores per-head properties, so a
-// property-only `done` leaves it unchanged.
-static void compute_set_sig(char *out, size_t cap) {
-    const char *names[OM_MAX_HEADS];
-    int n = 0;
-    for (int i = 0; i < s_head_count; i++) {
-        if (s_heads[i].finished) continue;
-        names[n++] = s_heads[i].name;
-    }
-    for (int i = 1; i < n; i++) {                 // insertion sort (n is tiny)
-        const char *key = names[i];
-        int j = i - 1;
-        while (j >= 0 && strcmp(names[j], key) > 0) { names[j + 1] = names[j]; j--; }
-        names[j + 1] = key;
-    }
-    size_t len = 0;
-    if (cap) out[0] = '\0';
-    for (int i = 0; i < n && len + 1 < cap; i++) {
-        int w = snprintf(out + len, cap - len, "%s%s", i ? "|" : "", names[i]);
-        if (w < 0) break;
-        len += (size_t) w;
-        if (len >= cap) { out[cap - 1] = '\0'; break; }
     }
 }
 
@@ -159,6 +135,7 @@ static void head_scale(void *data, struct zwlr_output_head_v1 *h, wl_fixed_t sca
 static void head_finished(void *data, struct zwlr_output_head_v1 *h) {
     om_head_t *hd = data;
     hd->finished = true;
+    s_set_dirty = true;
     zwlr_output_head_v1_destroy(h);
     hd->proxy = NULL;               // don't let teardown re-destroy this proxy
     for (int m = 0; m < hd->mode_count; m++) {   // slot may be reused by mgr_head
@@ -211,6 +188,7 @@ static void mgr_head(void *data, struct zwlr_output_manager_v1 *mgr, struct zwlr
     hd->proxy = h;
     hd->scale = 1.0;
     hd->current_mode_idx = -1;
+    s_set_dirty = true;
     zwlr_output_head_v1_add_listener(h, &head_listener, hd);
 }
 static void mgr_done(void *data, struct zwlr_output_manager_v1 *mgr, uint32_t serial) {
@@ -218,14 +196,8 @@ static void mgr_done(void *data, struct zwlr_output_manager_v1 *mgr, uint32_t se
     s_serial = serial; s_have_serial = true;
     resolve_current_modes();
 
-    if (s_changed_cb) {
-        char sig[sizeof s_set_sig];
-        compute_set_sig(sig, sizeof sig);
-        if (strcmp(sig, s_set_sig) != 0) {
-            snprintf(s_set_sig, sizeof s_set_sig, "%s", sig);
-            s_changed_cb(s_changed_data);
-        }
-    }
+    if (s_set_dirty && s_changed_cb) s_changed_cb(s_changed_data);
+    s_set_dirty = false;
 }
 static void mgr_finished(void *data, struct zwlr_output_manager_v1 *mgr) {
     (void) data;
@@ -301,7 +273,7 @@ bool wlhooks_output_mgmt_available(void) { return s_manager != NULL; }
 void wlhooks_output_mgmt_register_outputs_changed(output_mgmt_outputs_changed_cb cb, void *user_data) {
     s_changed_cb   = cb;
     s_changed_data = user_data;
-    compute_set_sig(s_set_sig, sizeof s_set_sig);
+    s_set_dirty    = false;
 }
 
 int wlhooks_output_mgmt_get_fd(void) {
@@ -399,23 +371,4 @@ int wlhooks_output_mgmt_config_apply(void) {
     zwlr_output_configuration_v1_destroy(s_config);
     s_config = NULL;
     return (r < 0) ? 1 : r;   // treat an interrupted wait as failure
-}
-
-void wlhooks_output_mgmt_destroy(void) {
-    if (s_config) { zwlr_output_configuration_v1_destroy(s_config); s_config = NULL; }
-    for (int i = 0; i < s_head_count; i++) {
-        om_head_t *h = &s_heads[i];
-        for (int m = 0; m < h->mode_count; m++)
-            if (h->modes[m].proxy) zwlr_output_mode_v1_destroy(h->modes[m].proxy);
-        if (h->proxy && !h->finished) zwlr_output_head_v1_destroy(h->proxy);
-    }
-    s_head_count = 0;
-    if (s_manager)  { zwlr_output_manager_v1_destroy(s_manager); s_manager = NULL; }
-    if (s_registry) { wl_registry_destroy(s_registry); s_registry = NULL; }
-    if (s_queue)    { wl_event_queue_destroy(s_queue); s_queue = NULL; }
-    s_display = NULL;
-    s_have_serial = false;
-    s_changed_cb = NULL;
-    s_changed_data = NULL;
-    s_set_sig[0] = '\0';
 }

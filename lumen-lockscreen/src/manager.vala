@@ -148,17 +148,11 @@ public class LockManager : GLib.Object {
         DiagLog.log("locked: compositor granted lock; building surfaces");
         idle.disarm();   // already locked — don't let idle re-fire
 
-        var display = Gdk.Display.get_default();
-        if (display == null) {
-            warning("lumen-lockscreen: no default display");
-            return;
-        }
-
         reconcile_monitors();
 
         // Track hotplug while locked: the protocol requires a surface per
         // output, so a newly-attached monitor needs a lock window immediately.
-        monitors_handler = display.get_monitors().items_changed.connect(
+        monitors_handler = Gdk.Display.get_default().get_monitors().items_changed.connect(
             (pos, removed, added) => reconcile_monitors());
 
         focus_primary();
@@ -201,9 +195,8 @@ public class LockManager : GLib.Object {
     // Does NOT destroy the windows: gtk4-session-lock owns lock surfaces, and the
     // GtkApplication keeps them alive until the library destroys them.
     private void release_bookkeeping() {
-        var display = Gdk.Display.get_default();
-        if (display != null && monitors_handler != 0) {
-            SignalHandler.disconnect(display.get_monitors(), monitors_handler);
+        if (monitors_handler != 0) {
+            SignalHandler.disconnect(Gdk.Display.get_default().get_monitors(), monitors_handler);
             monitors_handler = 0;
         }
         windows.remove_all();
@@ -223,7 +216,7 @@ public class LockManager : GLib.Object {
     private void try_auth(string password) {
         if (authenticating) return;
         var primary = current_primary();
-        if (primary == null || primary.password == null) return;
+        if (primary == null) return;   // the primary window always has a password field
 
         authenticating = true;
         primary.password.set_busy(true);
@@ -249,7 +242,7 @@ public class LockManager : GLib.Object {
     private void on_auth_fail() {
         failures++;
         var primary = current_primary();
-        if (primary == null || primary.password == null) return;
+        if (primary == null) return;   // the primary window always has a password field
 
         primary.password.clear();
         primary.password.set_error("Incorrect password");
@@ -262,7 +255,7 @@ public class LockManager : GLib.Object {
                 backoff_id = 0;
                 failures = 0;
                 var p = current_primary();
-                if (p != null && p.password != null) {
+                if (p != null) {
                     p.password.clear_status();
                     p.password.set_input_enabled(true);
                 }
@@ -305,7 +298,7 @@ public class LockManager : GLib.Object {
         // Assign to the output BEFORE present() so gtk4-session-lock makes it a
         // lock surface on that monitor.
         instance.assign_window_to_monitor(win, mon);
-        if (is_primary && win.password != null) {
+        if (is_primary) {
             win.password.submitted.connect((pw) => try_auth(pw));
             // A replacement primary (old one unplugged) inherits the lockout.
             if (backoff_id != 0) {
@@ -326,7 +319,7 @@ public class LockManager : GLib.Object {
 
     private void focus_primary() {
         var primary = current_primary();
-        if (primary != null && primary.password != null)
+        if (primary != null)
             primary.password.focus_entry();
     }
 }

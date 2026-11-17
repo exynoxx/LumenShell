@@ -3,7 +3,6 @@ public class NotifApp : Gtk.Application {
     private LayerWindow          window;
     private NotificationManager  manager;
     private NotificationsService service;
-    private bool                 activated = false;
     public  string               bus_name = "org.freedesktop.Notifications";
     public  string               bus_path = "/org/freedesktop/Notifications";
 
@@ -20,9 +19,6 @@ public class NotifApp : Gtk.Application {
             quit();
             return;
         }
-        if (activated) return;
-        activated = true;
-
         Theme.load();
         LumenCommon.Css.install(Theme.generate_root_css());
 
@@ -59,17 +55,17 @@ public class NotifApp : Gtk.Application {
             window.stack.cascade_dismiss();
         });
         window.stack.close_requested.connect((id) => {
-            if (manager.has(id)) manager.close(id, REASON_DISMISSED);
+            manager.close(id, REASON_DISMISSED);
         });
     }
 
     private void wire_banner(Banner b, uint32 id) {
         b.dismissed.connect(() => {
-            if (manager.has(id)) manager.close(id, REASON_DISMISSED);
+            manager.close(id, REASON_DISMISSED);
         });
         b.action_invoked.connect((key) => {
             service.action_invoked(id, key);
-            if (manager.has(id)) manager.close(id, REASON_DISMISSED);
+            manager.close(id, REASON_DISMISSED);
         });
     }
 

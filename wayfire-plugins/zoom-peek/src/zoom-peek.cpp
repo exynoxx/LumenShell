@@ -101,7 +101,6 @@ inline void zoom_backdrop_node_t::gen_render_instances(
 class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-zoom-peek/toggle"};
-    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-zoom-peek/dismiss"};
     wf::option_wrapper_t<std::string> drawer_app_id_opt{"wayfire-zoom-peek/drawer_app_id"};
     wf::option_wrapper_t<double> initial_scale_opt{"wayfire-zoom-peek/initial_scale"};
     wf::option_wrapper_t<int> blur_levels_opt{"wayfire-zoom-peek/blur_levels"};
@@ -141,17 +140,11 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
         return ipc_toggle();
     };
 
-    // Restore-only; a no-op from IDLE so it doesn't steal Escape when nothing is open.
-    wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
-    {
-        return ipc_stop();
-    };
-
     // Hide the grid as soon as it maps unless a reveal is open.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (!ev->view || (ev->view->get_app_id() != (std::string) drawer_app_id_opt))
+        if ((ev->view->get_app_id() != (std::string) drawer_app_id_opt))
         {
             return;
         }
@@ -199,7 +192,6 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
         zoom_log("per-output init on output=%p drawer_app_id='%s'", (void *) output,
             ((std::string) drawer_app_id_opt).c_str());
         output->add_activator(toggle_opt, &on_toggle);
-        output->add_activator(dismiss_opt, &on_dismiss);
         output->connect(&on_view_mapped);
         output->connect(&on_view_unmapped);
 
@@ -213,7 +205,6 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
     void fini() override
     {
         output->rem_binding(&on_toggle);
-        output->rem_binding(&on_dismiss);
         on_view_mapped.disconnect();
         on_view_unmapped.disconnect();
         if (state != state_t::IDLE)
@@ -278,7 +269,7 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
 
         backdrop_node = std::make_shared<zoom_backdrop_node_t>(rel,
             screenshot_buf.get_texture(), levels[0].get_texture(),
-            (float) std::clamp((double) dim_opt, 0.0, 1.0));
+            (float) (double) dim_opt);
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::BACKGROUND),
             backdrop_node);
 
@@ -335,7 +326,7 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
 
         if (drawer_tr && drawer_view)
         {
-            const float s = (float) (1.0 + (std::max(1.0, (double) initial_scale_opt) - 1.0) * rest);
+            const float s = (float) (1.0 + ((double) initial_scale_opt - 1.0) * rest);
             auto n = drawer_view->get_transformed_node();
             n->begin_transform_update();
             drawer_tr->scale_x = s;
@@ -345,10 +336,7 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
         }
 
         // Blur arrives only as the grid is nearly in place.
-        if (backdrop_node)
-        {
-            backdrop_node->blur = (float) smoothstep(0.55, 0.95, p);
-        }
+        backdrop_node->blur = (float) smoothstep(0.55, 0.95, p);
 
         output->render->damage_whole();
     }
@@ -385,7 +373,7 @@ class wayfire_zoom_peek_t : public wf::per_output_plugin_instance_t
     // ponytail: pyramid blur, swap for a dual-Kawase GLES pass if it looks blocky.
     bool build_blur()
     {
-        const int n = std::clamp((int) blur_levels_opt, 1, 8);
+        const int n = blur_levels_opt;
         levels.clear();
         levels.resize(n);
 

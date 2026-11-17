@@ -2,8 +2,6 @@ namespace LumenSettings {
 
     public class ComboRow : Adw.ComboRow {
         string[] values;
-        // Set during repopulate() so the reset selection doesn't emit value_changed.
-        bool updating = false;
         public signal void value_changed(string val);
 
         public ComboRow(string title, string[] labels, string[] values,
@@ -22,20 +20,17 @@ namespace LumenSettings {
             selected = index_of(initial_value);
 
             notify["selected"].connect(() => {
-                if (updating) return;
                 if (selected < this.values.length) value_changed(this.values[selected]);
             });
         }
 
         public void repopulate(string[] labels, string[] values, string? selected_value) {
-            updating = true;
             this.values = values;
             var sl = (Gtk.StringList) model;
             uint n = sl.get_n_items();
             if (n > 0) sl.splice(0, n, null);
             foreach (var l in labels) sl.append(l);
             selected = index_of(selected_value);
-            updating = false;
         }
 
         uint index_of(string? value) {

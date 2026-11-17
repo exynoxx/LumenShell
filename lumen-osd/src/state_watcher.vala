@@ -42,8 +42,7 @@ public class StateWatcher : Object {
     // hw change — the read still rearms poll(), so errors are just ignored.
     private void watch_kbd_hw_changed() {
         string hw_path = Path.get_dirname((!) kbd_path) + "/brightness_hw_changed";
-        if (!FileUtils.test(hw_path, FileTest.EXISTS)) return;
-        try {
+        try {   // a missing file throws, leaving kbd_path on the poll
             kbd_hw_ch = new IOChannel.file(hw_path, "r");
             kbd_hw_ch.set_encoding(null);
             read_channel_int(kbd_hw_ch);

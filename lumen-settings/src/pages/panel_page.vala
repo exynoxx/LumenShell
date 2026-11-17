@@ -121,9 +121,7 @@ namespace LumenSettings {
                 current_mode(),
                 "Always visible reserves space; Auto-hide reveals over windows; Push slides the whole screen aside to reveal the panel");
             mode_row.value_changed.connect((v) => {
-                // Keep the legacy bool in sync for older panel builds.
-                store.set_bool("behavior.auto-hide", v == "hidden" || v == "push");
-                store.save();
+                // behavior.mode itself is written (and saved) by combo_row.
 #if WITH_WAYFIRE_CONFIG
                 bool push = (v == "push");
                 Wayfire.PluginList.set_enabled(wf_store, PUSH_PLUGIN, push);

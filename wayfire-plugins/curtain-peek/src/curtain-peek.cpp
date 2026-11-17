@@ -231,23 +231,16 @@ class curtain_screenshot_render_instance_t :
 
     void render(const wf::scene::render_instruction_t& data) override
     {
-        if (!self->tex)
-        {
-            return;
-        }
-
+        // tex and a non-empty geo are guaranteed: the node is only built after
+        // lumen::capture_output() succeeded. Option ranges come from the XML.
         const auto g = self->geo;           // logical, full output
         const int  W = g.width;
-        if ((W <= 0) || (g.height <= 0))
-        {
-            return;
-        }
 
         const float p     = std::clamp(self->progress, 0.0f, 1.0f);
-        const int   seam  = std::clamp(self->seam_x, g.x, g.x + W) - g.x; // 0..W
-        const int   folds = std::max(1, self->fold_count);
-        const float foldDepth  = std::clamp(self->fold_depth, 0.0f, 0.9f);
-        const float shadeDepth = std::clamp(self->shade_depth, 0.0f, 1.0f);
+        const int   seam  = self->seam_x - g.x; // 0..W
+        const int   folds = self->fold_count;
+        const float foldDepth  = self->fold_depth;
+        const float shadeDepth = self->shade_depth;
 
         // Eased so a closed curtain is perfectly flat.
         const float foldP = std::sin(p * 1.5707963f);
@@ -300,7 +293,7 @@ class curtain_screenshot_render_instance_t :
                     return;
                 }
 
-                const float gathered = std::min((float) self->edge_px, (float) src_w);
+                const float gathered = (float) self->edge_px; // <= either half, see start_open
                 const float flare = std::min((float) src_w * 0.22f,
                     (float) src_w - gathered);
 
@@ -353,7 +346,6 @@ inline void curtain_screenshot_node_t::gen_render_instances(
 class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_opt{"wayfire-curtain-peek/toggle"};
-    wf::option_wrapper_t<wf::activatorbinding_t> dismiss_opt{"wayfire-curtain-peek/dismiss"};
     wf::option_wrapper_t<double> split_ratio_opt{"wayfire-curtain-peek/split_ratio"};
     wf::option_wrapper_t<int> edge_px_opt{"wayfire-curtain-peek/edge_px"};
     wf::option_wrapper_t<wf::color_t> backdrop_color_opt{"wayfire-curtain-peek/backdrop_color"};
@@ -393,18 +385,11 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         return ipc_toggle();
     };
 
-    // Restore-only; a no-op from IDLE so it doesn't steal Escape from other
-    // consumers when nothing is open.
-    wf::activator_callback on_dismiss = [this] (const wf::activator_data_t&)
-    {
-        return ipc_stop();
-    };
-
     // Hide the grid as soon as it maps unless a reveal is open.
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (!ev->view || (ev->view->get_app_id() != (std::string) drawer_app_id_opt))
+        if ((ev->view->get_app_id() != (std::string) drawer_app_id_opt))
         {
             return;
         }
@@ -456,7 +441,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
     {
         curtain_log("per-output init on output=%p", (void *) output);
         output->add_activator(toggle_opt, &on_toggle);
-        output->add_activator(dismiss_opt, &on_dismiss);
         output->connect(&on_view_mapped);
         output->connect(&on_view_unmapped);
 
@@ -480,7 +464,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
     {
         curtain_log("per-output fini on output=%p state=%d", (void *) output, (int) state);
         output->rem_binding(&on_toggle);
-        output->rem_binding(&on_dismiss);
         on_view_mapped.disconnect();
         on_view_unmapped.disconnect();
         if (state != state_t::IDLE)
@@ -552,10 +535,9 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         // geometry would double-offset); capture_output() needs layout geometry.
         const auto rel = output->get_relative_geometry();
         const int W = rel.width;
-        const double ratio = std::clamp((double) split_ratio_opt, 0.1, 0.9);
-        const int seam_off = (int) std::lround(W * ratio);
-        const int edge = std::clamp((int) edge_px_opt, 0,
-            std::max(0, std::min(seam_off, W - seam_off)));
+        const int seam_off = (int) std::lround(W * (double) split_ratio_opt);
+        // XML caps edge_px at 400; it must also fit the narrower half.
+        const int edge = std::min((int) edge_px_opt, std::min(seam_off, W - seam_off));
 
         // The grid is still hidden, so it is not captured.
         // Opaque black clear: lumen::capture_output frees the buffer on failure.
@@ -589,7 +571,7 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
         screenshot_node->seam_x      = rel.x + seam_off;
         screenshot_node->edge_px     = edge;
         screenshot_node->progress    = 0.0f;
-        screenshot_node->fold_count  = std::max(1, (int) fold_count_opt);
+        screenshot_node->fold_count  = fold_count_opt;
         screenshot_node->fold_depth  = (float) (double) fold_depth_opt;
         screenshot_node->shade_depth = (float) (double) fold_shade_opt;
         wf::scene::add_front(output->node_for_layer(wf::scene::layer::OVERLAY),
@@ -623,11 +605,6 @@ class wayfire_curtain_peek_t : public wf::per_output_plugin_instance_t
 
     void apply_progress(double p)
     {
-        if (!screenshot_node)
-        {
-            return;
-        }
-
         screenshot_node->progress = (float) p;
         output->render->damage_whole();
     }

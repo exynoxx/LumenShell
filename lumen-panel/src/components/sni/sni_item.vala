@@ -10,9 +10,7 @@ public class SniItem : Gtk.Button {
 
     Gtk.Image image;
     DBusProxy? proxy = null;
-    ulong signal_handler = 0;
     uint refresh_timer = 0;
-    bool released = false;
     string? menu_path = null;
     string  status = "Active";
 
@@ -43,41 +41,32 @@ public class SniItem : Gtk.Button {
             warning("lumen-panel systray: proxy %s%s failed: %s", bus, path, e.message);
             return;
         }
-        if (released) { proxy = null; return; }
-
-        signal_handler = proxy.g_signal.connect((sender, signal_name, parms) => {
-            switch (signal_name) {
-                case "NewIcon":
-                case "NewOverlayIcon":
-                case "NewAttentionIcon":
-                case "NewStatus":
-                case "NewToolTip":
-                case "NewTitle":
-                    // Apps fire these in bursts (icon + tooltip + status), and each
-                    // GetAll re-sends every pixmap; collapse a burst into one refresh.
-                    if (refresh_timer == 0)
-                        refresh_timer = Timeout.add(20, () => {
-                            refresh_timer = 0;
-                            refresh.begin();
-                            return Source.REMOVE;
-                        });
-                    break;
-            }
-        });
+        // Method handler ⇒ g_signal_connect_object: no closure ref on `this`, no cycle.
+        proxy.g_signal.connect(on_item_signal);
 
         wire_input();
         yield refresh();
     }
 
-    // The g_signal closure holds `this`, so the item and its proxy keep each other
-    // alive until the handler is dropped. Call when the item leaves the tray.
-    public void release () {
-        released = true;
-        if (proxy != null && signal_handler != 0) SignalHandler.disconnect(proxy, signal_handler);
-        signal_handler = 0;
-        if (refresh_timer != 0) Source.remove(refresh_timer);
-        refresh_timer = 0;
-        proxy = null;
+    void on_item_signal (string? sender, string signal_name, Variant parms) {
+        switch (signal_name) {
+            case "NewIcon":
+            case "NewOverlayIcon":
+            case "NewAttentionIcon":
+            case "NewStatus":
+            case "NewToolTip":
+            case "NewTitle":
+                // Apps fire these in bursts (icon + tooltip + status), and each
+                // GetAll re-sends every pixmap; collapse a burst into one refresh.
+                // The timer's closure holds `this` for at most 20 ms; harmless.
+                if (refresh_timer == 0)
+                    refresh_timer = Timeout.add(20, () => {
+                        refresh_timer = 0;
+                        refresh.begin();
+                        return Source.REMOVE;
+                    });
+                break;
+        }
     }
 
     void wire_input () {

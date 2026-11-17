@@ -51,9 +51,9 @@ public class OsdWindowGroup : Object {
         GtkLayerShell.set_monitor(primary, primary_monitor);
 
         // The primary's monitor must not also carry a mirror (double pill).
-        if (mirrors.contains(primary_monitor)) {
-            var dup = mirrors.get(primary_monitor);
-            if (dup != null) dup.destroy();
+        var dup = mirrors.get(primary_monitor);
+        if (dup != null) {
+            dup.destroy();
             mirrors.remove(primary_monitor);
         }
 

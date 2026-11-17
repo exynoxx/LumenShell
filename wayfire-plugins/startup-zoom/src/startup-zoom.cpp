@@ -15,8 +15,6 @@
 
 #include "transformed_views.hpp"
 
-#include <algorithm>
-
 class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 {
     wf::option_wrapper_t<wf::animation_description_t> duration_opt{"wayfire-startup-zoom/duration"};
@@ -36,12 +34,8 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
     wf::signal::connection_t<wf::view_mapped_signal> on_view_mapped =
         [this] (wf::view_mapped_signal *ev)
     {
-        if (state == state_t::DONE)
-        {
-            return;
-        }
-
-        if (!ev->view || (ev->view->get_output() != output))
+        // finish() disconnects this handler, so state is never DONE here.
+        if (ev->view->get_output() != output)
         {
             return;
         }
@@ -79,24 +73,12 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 
         auto loop = wl_display_get_event_loop(wf::get_core().display);
         grace_timer = wl_event_loop_add_timer(loop, &grace_timer_cb, this);
-        wl_event_source_timer_update(grace_timer, std::max(100, (int) grace_ms_opt));
+        wl_event_source_timer_update(grace_timer, grace_ms_opt);
     }
 
     void fini() override
     {
-        if (grace_timer)
-        {
-            wl_event_source_remove(grace_timer);
-            grace_timer = nullptr;
-        }
-
-        if (state == state_t::RUNNING)
-        {
-            output->render->rem_effect(&on_frame);
-        }
-
-        tracked.clear();
-        state = state_t::DONE;
+        finish();
     }
 
   private:
@@ -109,13 +91,7 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 
         // Apply the in-flight progress immediately so a late-mapping view
         // doesn't pop in at full size mid-animation.
-        if (state == state_t::RUNNING)
-        {
-            apply_progress((double) anim);
-        } else
-        {
-            apply_progress(0.0);
-        }
+        apply_progress(state == state_t::RUNNING ? (double) anim : 0.0);
     }
 
     void ensure_running()
@@ -132,7 +108,7 @@ class wayfire_startup_zoom_t : public wf::per_output_plugin_instance_t
 
     void apply_progress(double p)
     {
-        const double s0 = std::clamp((double) initial_scale_opt, 0.01, 1.0);
+        const double s0 = initial_scale_opt;
         const double s  = s0 + (1.0 - s0) * p;
 
         const auto geo = output->get_relative_geometry();

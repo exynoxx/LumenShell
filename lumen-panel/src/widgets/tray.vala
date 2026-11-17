@@ -111,7 +111,7 @@ public class TrayBar : Gtk.Box {
         if (!reveal.revealed) return;
         reveal.set_reveal (false);
         expanded_changed ();
-        if (cc != null) cc.show_home ();
+        cc.show_home ();
     }
 
     public bool is_expanded ()  { return reveal.revealed; }

@@ -28,12 +28,7 @@ namespace LumenSession {
         }
 
         // add_watch refs the channel, so it outlives this scope.
-        int fd = WLHooks.output_mgmt_get_fd();
-        if (fd < 0) {
-            warning("lumen-session: no wayland fd; exiting");
-            return 1;
-        }
-        var chan = new IOChannel.unix_new(fd);
+        var chan = new IOChannel.unix_new(WLHooks.output_mgmt_get_fd());
         chan.add_watch(IOCondition.IN | IOCondition.HUP | IOCondition.ERR, (source, cond) => {
             if ((cond & (IOCondition.HUP | IOCondition.ERR)) != 0
                 || WLHooks.output_mgmt_dispatch() < 0) {
@@ -51,8 +46,6 @@ namespace LumenSession {
 
         message("lumen-session: started (display-profile restore)");
         loop.run();
-
-        WLHooks.output_mgmt_destroy();
         return 0;
     }
 
@@ -108,10 +101,7 @@ namespace LumenSession {
             current_keys.add(DisplayProfileStore.identity_for(make, model, serial, desc, name));
             conns.add(name);
         });
-        DisplayProfileStore.disambiguate(current_keys, conns);
-        var conn_for = new HashTable<string, string>(str_hash, str_equal);
-        for (int i = 0; i < current_keys.length; i++)
-            conn_for.set(current_keys.get(i), conns.get(i));
+        DisplayProfileStore.disambiguate(current_keys, conns);   // in place, so conns stays index-aligned
 
         if (current_keys.length == 0) return;   // nothing connected yet
 
@@ -128,15 +118,11 @@ namespace LumenSession {
         }
 
         int enable_count = 0;
-        // Configuring one head twice is a protocol error that drops the connection.
-        var configured = new GenericSet<string>(str_hash, str_equal);
+        // Each connector appears once, so no head is configured twice (a protocol error).
         for (int i = 0; i < current_keys.length; i++) {
-            var id = current_keys.get(i);
-            var conn = conn_for.get(id);
-            var st = prof.states.get(id);
+            var conn = conns.get(i);
+            var st = prof.states.get(current_keys.get(i));
             if (st == null) continue;            // connected head not in profile: leave as-is
-            if (conn in configured) continue;
-            configured.add(conn);
             if (st.enabled && st.width > 0 && st.height > 0) {
                 WLHooks.output_mgmt_config_enable(conn, st.width, st.height,
                     st.refresh_mhz, st.x, st.y, st.transform);

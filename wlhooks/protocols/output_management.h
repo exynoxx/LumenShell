@@ -24,7 +24,6 @@ typedef void (*output_mgmt_outputs_changed_cb)(void *user_data);
 // Bind the manager on `display` via a private queue and drain the initial
 // head/mode/done burst. Returns 0 if the manager bound, nonzero otherwise.
 int  wlhooks_output_mgmt_init(struct wl_display *display);
-void wlhooks_output_mgmt_destroy(void);
 bool wlhooks_output_mgmt_available(void);
 
 // Call after init; the current set becomes the baseline. cb=NULL unregisters.

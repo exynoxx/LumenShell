@@ -97,15 +97,6 @@ namespace LumenSettings {
                 o.modes.add(nm);
                 if (current_mode == m) o.current_mode = nm;
             }
-            // Fallback: match by value if reference didn't line up.
-            if (o.current_mode == null && current_mode != null) {
-                foreach (var m in o.modes) {
-                    if (m.width == current_mode.width && m.height == current_mode.height
-                        && Math.fabs(m.refresh - current_mode.refresh) < 0.01) {
-                        o.current_mode = m; break;
-                    }
-                }
-            }
             return o;
         }
 
@@ -138,23 +129,17 @@ namespace LumenSettings {
 
     public class OutputManager : GLib.Object {
 
-        bool initialized = false;
-
-        // Returns true if the compositor exposes wlr-output-management-v1.
-        public bool init() {
-            if (initialized) return WLHooks.output_mgmt_available();
-            initialized = true;
-
+        // Binds wlr-output-management-v1; check available() afterwards.
+        public void init() {
             var gdk = Gdk.Display.get_default();
             if (!(gdk is Gdk.Wayland.Display)) {
                 DiagLog.log("output_mgmt: not running on Wayland — unavailable");
-                return false;
+                return;
             }
             unowned Wl.Display wl = ((Gdk.Wayland.Display) gdk).get_wl_display();
             int rc = WLHooks.output_mgmt_init(wl);
             DiagLog.log("output_mgmt: init rc=%d available=%s",
                 rc, WLHooks.output_mgmt_available().to_string());
-            return WLHooks.output_mgmt_available();
         }
 
         public bool available() { return WLHooks.output_mgmt_available(); }

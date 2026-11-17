@@ -27,7 +27,6 @@ public class PowerProfileService : GLib.Object {
     // Optimistic: show the choice immediately so the selector doesn't bounce back,
     // then reconcile with a delayed re-query.
     public void select(PowerProfile p) {
-        if (backend == PowerBackend.NONE || p == PowerProfile.UNKNOWN) return;
         if (p != current) {
             current = p;
             state_changed();

@@ -70,8 +70,6 @@ namespace LumenSettings {
         void show_page(string id) {
             stack.set_visible_child_name(id);
             var page = registry.lookup(id);
-            if (page == null) return;
-
             content_page.title = page.title;
             restart_target = page.restart_target();
             restart_btn.visible = restart_target != null;
@@ -80,7 +78,6 @@ namespace LumenSettings {
         }
 
         void restart_current_page() {
-            if (restart_target == null) return;
             try {
                 // pkill -x matches the kernel comm, capped at 15 chars; longer
                 // names never match and the old daemon keeps its bus name.

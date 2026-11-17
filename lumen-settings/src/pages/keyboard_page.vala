@@ -33,8 +33,8 @@ namespace LumenSettings {
                 input.put("xkb_layout", code);
                 // The old variant belongs to the previous layout; reset it.
                 var v = xkb.variants_for(code);
+                // Emits value_changed("") (Default), which resets xkb_variant.
                 variant_row.repopulate(v.names, v.codes, "");
-                input.put("xkb_variant", "");
             });
             variant_row.value_changed.connect((code) => {
                 input.put("xkb_variant", code);

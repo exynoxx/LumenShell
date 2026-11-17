@@ -96,7 +96,7 @@ public class AuthFlow : GLib.Object {
     }
 
     private void on_submit(string pw) {
-        if (session == null || done) return;
+        if (done) return;   // session is always set while !done
         dialog.set_busy(true);
         session.response(pw);
     }

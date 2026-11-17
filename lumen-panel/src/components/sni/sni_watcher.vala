@@ -91,7 +91,7 @@ public class SniWatcher : GLib.Object {
         var rec = items[key];
         if (rec == null) return;
         items.unset(key);
-        if (rec.watch_id != 0) Bus.unwatch_name(rec.watch_id);
+        Bus.unwatch_name(rec.watch_id);
         item_removed(key);
         status_notifier_item_unregistered(rec.service);
     }

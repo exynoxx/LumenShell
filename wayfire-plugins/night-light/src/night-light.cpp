@@ -26,7 +26,7 @@ namespace
 // is 1.0: a pure warm shift with no dimming; ~(1,1,1) at 6500K.
 inline void kelvin_to_rgb(int kelvin, float &r, float &g, float &b)
 {
-    const double t = std::clamp(kelvin, 1000, 40000) / 100.0;
+    const double t = kelvin / 100.0; // XML limits temperature to 2500..6500
 
     double rr, gg, bb;
 
@@ -112,11 +112,8 @@ class night_tint_render_instance_t :
 
     void render(const wf::scene::render_instruction_t& data) override
     {
+        // A zero-size output yields empty damage below, so nothing is drawn.
         const auto g = self->get_bounding_box();
-        if ((g.width <= 0) || (g.height <= 0))
-        {
-            return;
-        }
 
         const float x0 = (float) g.x, y0 = (float) g.y;
         const float x1 = (float) (g.x + g.width), y1 = (float) (g.y + g.height);

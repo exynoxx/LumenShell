@@ -26,8 +26,7 @@ namespace LumenSettings {
 
             list.row_selected.connect((row) => {
                 if (row == null) return;
-                var id = row.get_data<string>("page-id");
-                if (id != null) page_selected(id);
+                page_selected(row.get_data<string>("page-id"));
             });
 
             rebuild();

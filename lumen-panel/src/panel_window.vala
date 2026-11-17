@@ -18,7 +18,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
     int64 slide_start_us = 0;
     uint slide_tick_id = 0;
     uint collapse_timeout_id = 0;
-    ulong expanded_handler = 0;     // on the shared tray; dropped in release_tray()
     Cairo.Region? last_region = null;
 
     public PanelWindow (Gtk.Application app, Gdk.Monitor? monitor,
@@ -106,7 +105,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         this.map.connect(update_input_region);
         // The tray's bbox only changes when the surface resizes (TrayReveal grows in one
         // step and shrinks once after the animation), which size_allocate catches.
-        if (tray != null) expanded_handler = tray.expanded_changed.connect(update_input_region);
+        if (tray != null) tray.expanded_changed.connect(update_input_region);
 
         // contains-pointer on the WINDOW, not the tray: Motion.leave on TrayBar
         // misfires during the reveal animation.
@@ -125,10 +124,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
     // Detach the shared TrayBar (held by App) so it survives a window rebuild.
     public void release_tray () {
         if (tray == null) return;
-        // The handler's closure holds `this`; left connected, the shared tray would
-        // keep every rebuilt-away window (and its AppBar) alive.
-        if (expanded_handler != 0) SignalHandler.disconnect(tray, expanded_handler);
-        expanded_handler = 0;
         root.remove(tray);
         tray = null;
     }
@@ -147,7 +142,6 @@ public class PanelWindow : Gtk.ApplicationWindow {
     }
 
     void set_reveal (bool reveal) {
-        if (!hides) return;
         if (reveal == reveal_target && slide_tick_id == 0) {
             int settled = reveal ? 0 : App.HIDDEN_MARGIN;
             if (current_margin == settled) return;

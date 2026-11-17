@@ -61,9 +61,6 @@ namespace WLHooks {
     [CCode (cname = "wlhooks_output_mgmt_dispatch")]
     public int output_mgmt_dispatch ();
 
-    [CCode (cname = "wlhooks_output_mgmt_destroy")]
-    public void output_mgmt_destroy ();
-
     [CCode (cname = "wlhooks_output_mgmt_available")]
     public bool output_mgmt_available ();
 
