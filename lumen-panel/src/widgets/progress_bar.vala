@@ -12,7 +12,7 @@ public class LumenProgressBar : Gtk.Widget {
     }
 
     public void set_progress (int v) {
-        v = int.max(0, int.min(100, v));
+        v = v.clamp(0, 100);
         if (v == _value) return;
         _value = v;
         queue_draw();

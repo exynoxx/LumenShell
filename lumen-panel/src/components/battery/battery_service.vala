@@ -50,7 +50,7 @@ public class BatteryService : GLib.Object {
         if (st == null && pv == null && onb == null) return;
 
         string status = state_name (st != null ? st.get_uint32 () : 0);
-        int    pct     = int.min (100, int.max (0, (int) Math.round (pv != null ? pv.get_double () : 0.0)));
+        int    pct     = ((int) Math.round (pv != null ? pv.get_double () : 0.0)).clamp (0, 100);
         bool   on_ac   = !(onb != null && onb.get_boolean ());
 
         if (status == raw_status && pct == percent && on_ac == ac_online) return;

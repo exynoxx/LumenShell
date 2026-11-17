@@ -103,7 +103,7 @@ public class Backends {
     }
 
     private static double clamp_unit(int percent) {
-        return double.max(0, double.min(1.0, percent / 100.0));
+        return (percent / 100.0).clamp(0.0, 1.0);
     }
 
     // First "NN%" in pactl output, unclamped (over-amplified sinks read > 100).
@@ -144,7 +144,7 @@ public class Backends {
             var pct_str = parts[3].replace("%", "").strip();
             int n = 0;
             if (int.try_parse(pct_str, out n))
-                v = double.max(0, double.min(1.0, n / 100.0));
+                v = (n / 100.0).clamp(0.0, 1.0);
         }
         return State() { value = v, muted = false };
     }

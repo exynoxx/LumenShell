@@ -330,15 +330,14 @@ public class NmcliClient : GLib.Object {
 
         var saved = saved_ssids();
         WifiNet[] result = {};
-        var seen = new GLib.HashTable<string, bool>(str_hash, str_equal);
+        var seen = new GLib.GenericSet<string>(str_hash, str_equal);
 
         foreach (var line in out_str.split("\n")) {
             var p = split_terse(line, 3);
             if (p.length < 3) continue;
             string ssid = p[0].strip();
             if (ssid == "" || ssid == "--") continue;
-            if (seen.contains(ssid)) continue;
-            seen.insert(ssid, true);
+            if (!seen.add(ssid)) continue;
             int signal = 0;
             if (!int.try_parse(p[1], out signal)) continue;
             result += new WifiNet(ssid, signal, p[2], saved.contains(ssid));

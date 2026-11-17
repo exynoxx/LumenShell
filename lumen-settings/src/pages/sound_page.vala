@@ -296,11 +296,11 @@ namespace LumenSettings {
         }
 
         void sync_app_rows() {
-            var seen = new GLib.HashTable<string, bool>(str_hash, str_equal);
+            var seen = new GLib.GenericSet<string>(str_hash, str_equal);
 
             foreach (var s in service.sink_inputs) {
                 if (is_system_sounds(s.app_name)) continue;  // shown in Alerts
-                seen.insert(s.index, true);
+                seen.add(s.index);
 
                 var aw = app_rows.lookup(s.index);
                 if (aw == null) {
@@ -318,15 +318,11 @@ namespace LumenSettings {
             }
 
             // Remove rows whose stream is gone.
-            string[] stale = {};
-            app_rows.foreach((idx, aw) => {
-                if (!seen.contains(idx)) stale += idx;
+            app_rows.foreach_remove((idx, aw) => {
+                if (seen.contains(idx)) return false;
+                apps_group.remove(aw.row);
+                return true;
             });
-            foreach (var idx in stale) {
-                var aw = app_rows.lookup(idx);
-                if (aw != null) apps_group.remove(aw.row);
-                app_rows.remove(idx);
-            }
 
             apps_empty_row.visible = (app_rows.size() == 0);
         }

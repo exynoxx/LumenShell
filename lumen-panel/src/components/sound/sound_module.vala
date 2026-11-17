@@ -8,7 +8,6 @@ public class SoundModule : GLib.Object {
     bool      shown_muted = false;
     CcSlider  slider;
     Gtk.Label device_lbl;
-    bool      suppress = false;
 
     public SoundModule (SoundService service) {
         this.service = service;
@@ -29,7 +28,6 @@ public class SoundModule : GLib.Object {
 
         slider = new CcSlider () { valign = Gtk.Align.CENTER, hexpand = true };
         slider.value_changed.connect ((pct) => {
-            if (suppress) return;
             service.change_volume (pct);
         });
         top.append (slider);
@@ -69,9 +67,7 @@ public class SoundModule : GLib.Object {
     public Gtk.Widget tile () { return root; }
 
     void refresh () {
-        suppress = true;
         slider.set_value (service.volume_percent);
-        suppress = false;
         if (service.muted != shown_muted) {
             shown_muted = service.muted;
             mute_img.set_from_resource (CcStyle.icon (shown_muted ? "sound-mute" : "sound-max"));

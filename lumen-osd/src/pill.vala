@@ -78,10 +78,7 @@ public class ProgressTrack : Gtk.Widget {
     public double fraction {
         get { return _fraction; }
         set {
-            double v = value;
-            if (v < 0.0) v = 0.0;
-            if (v > 1.0) v = 1.0;
-            _fraction = v;
+            _fraction = value.clamp(0.0, 1.0);
             queue_draw();
         }
     }

@@ -46,12 +46,11 @@ namespace LumenSearch {
             if (conn == null) return items;
             var cur = yield conn.query_async(SPARQL, c);
             var home = Environment.get_home_dir();
-            var seen = new HashTable<string, bool>(str_hash, str_equal);
+            var seen = new GenericSet<string>(str_hash, str_equal);
             // ponytail: ~50k files held in memory; page/stream if the index grows far beyond that.
             while (yield cur.next_async(c)) {
                 var u = cur.get_string(0);
-                if (u == null || !u.has_prefix("file://") || seen.contains(u)) continue;
-                seen[u] = true;
+                if (u == null || !u.has_prefix("file://") || !seen.add(u)) continue;
                 var it = LocalSearch.item_from(u, cur.get_string(1) ?? "", home);
                 if (it != null) items += it;
             }

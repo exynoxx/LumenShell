@@ -5,8 +5,7 @@ public class DrawerToplevels : GLib.Object {
 
     public bool any_focused { get; private set; default = false; }
 
-    private GLib.HashTable<uint, bool> live =
-        new GLib.HashTable<uint, bool>(GLib.direct_hash, GLib.direct_equal);
+    private GLib.GenericSet<uint> live = new GLib.GenericSet<uint>(GLib.direct_hash, GLib.direct_equal);
     private uint focused_id = 0;
 
     private static DrawerToplevels? _instance = null;
@@ -34,7 +33,7 @@ public class DrawerToplevels : GLib.Object {
     }
 
     private void on_new(uint id, string app_id, string title) {
-        live.insert(id, true);
+        live.add(id);
     }
 
     private void on_rm(uint id) {

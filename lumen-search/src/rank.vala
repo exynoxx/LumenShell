@@ -58,14 +58,9 @@ namespace LumenSearch {
         }
 
         static void add_pos(ref int[] dst, int[] src) {
-            var l = new GLib.Array<int>();
-            foreach (var d in dst) l.append_val(d);
-            foreach (var p in src) {
-                bool dup = false;
-                foreach (var d in dst) if (d == p) { dup = true; break; }
-                if (!dup) l.append_val(p);
-            }
-            dst = l.data;
+            int[] r = dst;
+            foreach (var p in src) if (!(p in r)) r += p;
+            dst = r;
         }
 
         // Best single path segment (below $HOME when under it); positions are byte offsets in dir.

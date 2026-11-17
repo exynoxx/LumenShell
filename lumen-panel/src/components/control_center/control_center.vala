@@ -91,25 +91,15 @@ public class ControlCenter : Gtk.Box {
         row.append (icon);
 
         var slider = new CcSlider () { valign = Gtk.Align.CENTER, hexpand = true };
-        bool suppress = false;
         slider.set_value (brightness.percent);
-        slider.value_changed.connect ((pct) => {
-            if (suppress) return;
-            brightness.set_level (pct);
-        });
+        slider.value_changed.connect ((pct) => brightness.set_level (pct));
         // Connected only while mapped: the service is shared and outlives this CC,
         // so a permanent handler would pin a rebuilt-away tray in memory.
         ulong changed_id = 0;
         slider.map.connect (() => {
             brightness.watch ();
-            suppress = true;
             slider.set_value (brightness.percent);
-            suppress = false;
-            changed_id = brightness.changed.connect (() => {
-                suppress = true;
-                slider.set_value (brightness.percent);
-                suppress = false;
-            });
+            changed_id = brightness.changed.connect (() => slider.set_value (brightness.percent));
         });
         slider.unmap.connect (() => {
             brightness.unwatch ();

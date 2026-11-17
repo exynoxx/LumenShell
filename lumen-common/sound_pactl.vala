@@ -244,7 +244,7 @@ public class PactlClient : GLib.Object {
     }
 
     public void set_volume(int pct) {
-        pct = int.max(0, int.min(100, pct));
+        pct = pct.clamp(0, 100);
         LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-sink-volume", "@DEFAULT_SINK@", "%d%%".printf(pct)
         });
@@ -291,7 +291,7 @@ public class PactlClient : GLib.Object {
     }
 
     public void set_input_volume(int pct) {
-        pct = int.max(0, int.min(100, pct));
+        pct = pct.clamp(0, 100);
         LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-source-volume", "@DEFAULT_SOURCE@", "%d%%".printf(pct)
         });
@@ -311,7 +311,7 @@ public class PactlClient : GLib.Object {
 
     public void set_sink_volume_by_id(string id, int pct, int max = 100) {
         if (id == "") return;
-        pct = int.max(0, int.min(max, pct));
+        pct = pct.clamp(0, max);
         LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-sink-volume", id, "%d%%".printf(pct)
         });
@@ -319,7 +319,7 @@ public class PactlClient : GLib.Object {
 
     public void set_sink_input_volume(string index, int pct) {
         if (index == "") return;
-        pct = int.max(0, int.min(150, pct));
+        pct = pct.clamp(0, 150);
         LumenCommon.Proc.spawn_detached(new string[] {
             "pactl", "set-sink-input-volume", index, "%d%%".printf(pct)
         });
@@ -362,7 +362,7 @@ public class PactlClient : GLib.Object {
             int start = pct;
             while (start > 0 && text[start - 1].isdigit()) start--;
             if (start < pct)
-                return int.max(0, int.min(max, int.parse(text.substring(start, pct - start))));
+                return int.parse(text.substring(start, pct - start)).clamp(0, max);
         }
         return -1;
     }
@@ -377,7 +377,7 @@ public class PactlClient : GLib.Object {
 
         double v = 0;
         if (!double.try_parse(text.substring(start, i - start), out v)) return 0;
-        return int.max(0, int.min(max, (int)(v * 100.0)));
+        return ((int)(v * 100.0)).clamp(0, max);
     }
 
     private string pretty_sink_name(string sink_id) {

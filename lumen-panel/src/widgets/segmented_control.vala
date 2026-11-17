@@ -53,7 +53,7 @@ public class SegmentedControl : Gtk.Widget {
         int w = get_width();
         if (w <= 0) return -1;
         int i = (int) (x / ((double) w / n));
-        return int.max(0, int.min(n - 1, i));
+        return i.clamp(0, n - 1);
     }
 
     public override Gtk.SizeRequestMode get_request_mode () {

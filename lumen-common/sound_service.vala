@@ -174,7 +174,7 @@ public class SoundService : GLib.Object {
     }
 
     public void change_volume(int pct) {
-        pct = int.max(0, int.min(100, pct));
+        pct = pct.clamp(0, 100);
         if (pct == volume_percent && !muted) return;
 
         volume_out.push(pct);
@@ -201,7 +201,7 @@ public class SoundService : GLib.Object {
     }
 
     public void change_input_volume(int pct) {
-        pct = int.max(0, int.min(100, pct));
+        pct = pct.clamp(0, 100);
         if (pct == input_volume_percent && !input_muted) return;
 
         volume_in.push(pct);
@@ -230,7 +230,7 @@ public class SoundService : GLib.Object {
 
     public void change_sink_input_volume(string index, int pct) {
         if (index == "") return;
-        pct = int.max(0, int.min(150, pct));
+        pct = pct.clamp(0, 150);
         var c = volume_streams.lookup(index);
         if (c == null) {
             c = new LumenCommon.Coalescer((v) => pactl.set_sink_input_volume(index, v));
