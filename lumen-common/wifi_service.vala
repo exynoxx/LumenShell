@@ -47,17 +47,9 @@ public class WifiService : GLib.Object {
         }
     }
 
+    // Radio state persists without us: NetworkManager keeps WirelessEnabled
+    // in its own state file.
     public WifiService() {
-        // Re-apply the remembered radio state; null ⇒ never toggled ⇒ just poll.
-        var saved = RadioState.get_wifi();
-        if (saved != null) apply_radio(saved);
-        else               poll_connection();
-        init_watch();
-    }
-
-    // Does NOT re-apply the saved radio state, so merely constructing it (e.g. the
-    // settings page) never toggles the user's WiFi.
-    public WifiService.passive() {
         poll_connection();
         init_watch();
     }
@@ -99,13 +91,8 @@ public class WifiService : GLib.Object {
         });
     }
 
-    public void set_radio(bool on) {
-        RadioState.set_wifi(on);
-        apply_radio(on);
-    }
-
     // Optimistic first so the toggle doesn't bounce back during the blocking call.
-    private void apply_radio(bool on) {
+    public void set_radio(bool on) {
         enabled = on;
         if (!on) { nets = {}; connected_ssid = ""; }
         state_changed();

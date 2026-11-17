@@ -22,22 +22,9 @@ public class BluetoothService : GLib.Object {
     private bool        refresh_pending = false;
     private string      devices_sig     = "";
 
+    // Power state persists without us: off is an rfkill soft-block that
+    // systemd-rfkill restores at boot, on is BlueZ AutoEnable.
     public BluetoothService() {
-        // Re-apply the remembered power state (beats BlueZ AutoEnable at boot).
-        // Null ⇒ never toggled.
-        var saved = RadioState.get_bluetooth();
-        if (saved != null) restore_power(saved);
-        else               poll_state();
-        watch_bluez();
-        btctl.adapter_added.connect(() => {
-            var s = RadioState.get_bluetooth();
-            if (s != null) restore_power(s);
-        });
-    }
-
-    // Does NOT re-apply the saved power state, so merely constructing it (e.g. the
-    // settings page) never toggles the user's Bluetooth.
-    public BluetoothService.passive() {
         poll_state();
         watch_bluez();
     }
@@ -55,29 +42,12 @@ public class BluetoothService : GLib.Object {
         });
     }
 
-    public void set_power(bool on) {
-        RadioState.set_bluetooth(on);
-        apply_power(on);
-    }
-
     // Optimistic first so the toggle doesn't bounce back during the blocking call.
-    private void apply_power(bool on) {
+    public void set_power(bool on) {
         powered = on;
         state_changed();
         // Powering on also runs a discovery scan.
         LumenCommon.Proc.off_main("bt-power", () => btctl.set_powered(on), () => refresh_scan(on));
-    }
-
-    // Start/resume path: no spawn when the adapter already matches, and no
-    // discovery scan — nobody is looking at a device list.
-    private void restore_power(bool on) {
-        LumenCommon.Proc.off_main("bt-restore", () => {
-            bool pw;
-            btctl.fetch_state(out pw);
-            // Off is always re-applied: an adapter read as unpowered at boot can
-            // still be switched on a moment later by BlueZ AutoEnable.
-            if (pw != on || !on) btctl.set_powered(on);
-        }, () => poll_state());
     }
 
     public void connect_device(string mac) {

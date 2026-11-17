@@ -6,8 +6,8 @@ namespace LumenSettings {
         public string title     { owned get { return "Networking"; } }
         public string icon_name { owned get { return "lumen-settings-networking"; } }
 
-        WifiService      wifi = new WifiService.passive();
-        BluetoothService bt   = new BluetoothService.passive();
+        WifiService      wifi = new WifiService();
+        BluetoothService bt   = new BluetoothService();
         bool building = false;
 
         Gtk.Box root_box;

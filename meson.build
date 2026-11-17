@@ -59,7 +59,6 @@ common_net = files(
   'lumen-common/wifi_service.vala',
   'lumen-common/btctl.vala',
   'lumen-common/bluetooth_service.vala',
-  'lumen-common/radio_state.vala',
   'lumen-common/sound_pactl.vala',
   'lumen-common/sound_service.vala',
 )

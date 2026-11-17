@@ -43,7 +43,7 @@ public class App : GLib.Object {
         sni_watcher.start();
 
         // Built once: the applet factory runs per output, so per-applet services would
-        // multiply polling (and the RadioState re-apply) by the monitor count.
+        // multiply polling by the monitor count.
         wifi_service          = new WifiService();
         bluetooth_service     = new BluetoothService();
         sound_service         = new SoundService();
