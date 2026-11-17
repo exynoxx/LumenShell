@@ -43,10 +43,12 @@ public class ExtensionHost : GLib.Object {
     }
 
     static string read_or_empty (string path) {
-        string text = "";
+        string text;
         try {
             FileUtils.get_contents(path, out text);
-        } catch (FileError e) {}
+        } catch (FileError e) {
+            return "";   // out params are nulled on failure
+        }
         return text;
     }
 

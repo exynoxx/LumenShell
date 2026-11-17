@@ -44,7 +44,9 @@ public class PanelConfig {
         tray_all_monitors = vals.get_boolean_member_with_default("behavior.tray-all-monitors", false);
         show_launcher     = vals.get_boolean_member_with_default("app.launcher-button", false);
         var fmt = vals.get_string_member_with_default("clock.format", "");
-        if (fmt.strip() != "") clock_format = fmt;
+        // Assigned here, not by the field initializer: nothing instantiates
+        // PanelConfig, so static initializers never run (same as CcStyle).
+        clock_format = fmt.strip() != "" ? fmt : DEFAULT_CLOCK_FORMAT;
 
         // Absent (null) and present-but-unrecognised mean different things here:
         // only an absent key falls back to the legacy auto-hide bool.
