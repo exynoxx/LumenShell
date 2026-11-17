@@ -217,7 +217,23 @@ namespace LumenSettings {
 
         public override string? restart_target() { return "lumen-panel"; }
 
+        // Built-in applets plus every discovered extension that provides one
+        // (an extension's applet id is its extension id).
+        string[] known_ids = {};
+        string[] known_labels = {};
+
         Adw.PreferencesGroup build_tray_group() {
+            foreach (var info in LumenTray.CATALOG) {
+                known_ids += info.id;
+                known_labels += info.label;
+            }
+            foreach (var m in Lumen.Loader.discover({ Paths.extensions_dir() })) {
+                if (Lumen.SLOT_TRAY_APPLET in m.provides && !(m.id in known_ids)) {
+                    known_ids += m.id;
+                    known_labels += m.name;
+                }
+            }
+
             var stored_order = store.get_string_array("tray.order");
             var disabled_set = new Gee.HashSet<string>();
             foreach (var id in store.get_string_array("tray.disabled")) {
@@ -226,13 +242,13 @@ namespace LumenSettings {
 
             var ordered = new Gee.ArrayList<string>();
             foreach (var id in stored_order) {
-                if (catalog_has(id) && !ordered.contains(id)) ordered.add(id);
+                if (id in known_ids && !ordered.contains(id)) ordered.add(id);
             }
-            // Same rule as the panel: a missing id slots in after its catalog predecessor.
+            // Same rule as the panel: a missing id slots in after its predecessor.
             int at = 0;
-            foreach (var info in LumenTray.CATALOG) {
-                int i = ordered.index_of(info.id);
-                if (i < 0) ordered.insert(at, info.id); else at = i;
+            foreach (var kid in known_ids) {
+                int i = ordered.index_of(kid);
+                if (i < 0) ordered.insert(at, kid); else at = i;
                 at++;
             }
 
@@ -241,7 +257,7 @@ namespace LumenSettings {
             bool[] enabled = {};
             foreach (var id in ordered) {
                 ids += id;
-                labels += catalog_label(id);
+                labels += known_label(id);
                 enabled += !disabled_set.contains(id);
             }
 
@@ -256,16 +272,9 @@ namespace LumenSettings {
             return group;
         }
 
-        static bool catalog_has(string id) {
-            foreach (var info in LumenTray.CATALOG) {
-                if (info.id == id) return true;
-            }
-            return false;
-        }
-
-        static string catalog_label(string id) {
-            foreach (var info in LumenTray.CATALOG) {
-                if (info.id == id) return info.label;
+        string known_label(string id) {
+            for (int i = 0; i < known_ids.length; i++) {
+                if (known_ids[i] == id) return known_labels[i];
             }
             return id;
         }

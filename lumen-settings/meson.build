@@ -21,6 +21,7 @@ settings_deps = [
   gtk4_wayland_dep,
   wayland_dep,
   wlhooks_dep,
+  lumen_ext_dep,
 ]
 
 settings_vala_args = [
@@ -34,6 +35,10 @@ settings_vala_args = [
   '--pkg=posix',
   '--pkg=gtk4-wayland',
   '--pkg=libwlhooks',
+  # lumen-ext-1.deps names these; their vapis live in vapi_dir or the system.
+  '--pkg=gtk4-layer-shell-0',
+  '--pkg=gmodule-2.0',
+  '--pkg=cairo',
 ]
 
 settings_sources = files(
@@ -70,6 +75,7 @@ settings_sources = files(
   'src/pages/networking_page.vala',
   'src/pages/sound_page.vala',
   'src/pages/users_page.vala',
+  'src/pages/extensions_page.vala',
 )
 
 settings_sources += display_profiles_source
