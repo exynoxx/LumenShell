@@ -22,9 +22,10 @@ namespace Lumen {
 
     // What the tray.applet slot holds. A factory, not an instance: a widget has
     // one parent, and every panel that shows a tray needs its own applets.
-    // applet_id is the id panel.json tray.order / tray.disabled refer to.
+    // The applet's id (what panel.json tray.order / tray.disabled name) is the
+    // provider id: built-ins provide as "wifi", "clock", …; an extension's
+    // applet is named by its extension id, so it provides at most one.
     public interface TrayAppletFactory : GLib.Object {
-        public abstract string applet_id { owned get; }
         public abstract string label { owned get; }
         public abstract TrayApplet create ();
     }
