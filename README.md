@@ -57,7 +57,6 @@ The Vala binaries are independent processes; they coordinate through DBus, Wayfi
 
 - **`lumen-panel`** — bottom (or top) bar. Left half lists running/pinned app windows; right half is a floating tray area (system tray, WiFi, Bluetooth, Battery, Sound, Clock, Exit) that expands into control center like view
 - **`lumen-drawer`** — always-open, bottom-layer app drawer (search bar + paginated tile grid). Hidden by default. it is revealed by a Wayfire peek plugin.
-- **`lumen-desktop (still draft)`** — the desktop widget layer: a bottom-layer surface above the wallpaper and below every window, hosting persistent widgets. Ships a Miller-column file browser; configured per widget instance in `~/.config/lumen-shell/desktop.json`.
 - **`lumen-osd`** — DBus-driven on-screen display pill (volume, brightness, mic, caps-lock, display, custom). Also self-watches sysfs for hardware key changes.
 - **`lumen-notifications`** — `org.freedesktop.Notifications` server. Top-right banner stack with click-to-dismiss and "Clear all".
 - **`lumen-lockscreen`** — invisible-until-locked daemon. Locks the session via `ext-session-lock-v1`, authenticates with PAM, respects logind lock/sleep, and auto-locks on idle. macOS-style blurred-desktop card. *(Built only when `gtk4-session-lock` + `pam` are present.)*
