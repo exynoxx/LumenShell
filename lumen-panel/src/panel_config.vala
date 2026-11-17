@@ -92,8 +92,9 @@ public class PanelConfig {
     }
 
     // tray_order plus any catalog ids it lacks (so new applets appear after an
-    // upgrade), minus disabled and unknown ids.
-    public static string[] tray_enabled_order () {
+    // upgrade) plus extension applets it lacks (at the end), minus disabled ids
+    // and ids nothing provides. `available` = applet ids in the registry.
+    public static string[] tray_enabled_order (string[] available) {
         var order = new Gee.ArrayList<string>();
         foreach (var id in tray_order) order.add(id);
         // A missing id goes right after its catalog predecessor, not at the end.
@@ -103,21 +104,15 @@ public class PanelConfig {
             if (i < 0) order.insert(at, info.id); else at = i;
             at++;
         }
+        foreach (var id in available) if (!order.contains(id)) order.add(id);
 
         string[] result = {};
         foreach (var id in order) {
             if (id in tray_disabled) continue;
-            if (!catalog_has(id)) continue;
+            if (!(id in available)) continue;
             result += id;
         }
         return result;
-    }
-
-    static bool catalog_has (string id) {
-        foreach (var info in LumenTray.CATALOG) {
-            if (info.id == id) return true;
-        }
-        return false;
     }
 
     static OpenIndicator parse_indicator (string? s) {

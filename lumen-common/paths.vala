@@ -26,6 +26,17 @@ namespace LumenCommon {
         public static string power_ini()             { return config_dir() + "/power.ini"; }
         public static string display_profiles_json() { return config_dir() + "/display-profiles.json"; }
         public static string radio_state_json()      { return config_dir() + "/radio-state.json"; }
+        public static string extensions_json()       { return config_dir() + "/extensions.json"; }
+        // User extensions: one <id>/ folder of sources each.
+        public static string extensions_dir()        { return config_dir() + "/extensions"; }
+        // Compiled user extensions, <id>-<key>.so.
+        public static string extension_cache_dir() {
+            return Environment.get_user_cache_dir() + "/lumen-shell/extensions";
+        }
+        // Per-session load status written by lumen-panel, read by lumen-settings.
+        public static string extensions_status_json() {
+            return Environment.get_user_runtime_dir() + "/lumen-panel/extensions-status.json";
+        }
 
         // Wayfire's own config lives beside ours, not inside lumen-shell/.
         public static string wayfire_ini() {

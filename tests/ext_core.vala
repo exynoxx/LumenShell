@@ -1,0 +1,65 @@
+// liblumen-ext core logic + panel tray-order resolution. Light by design:
+// integration is verified by running the panel with a real extension.
+class Dummy : GLib.Object {}
+
+Lumen.Manifest manifest (string json) throws GLib.Error {
+    var p = new Json.Parser ();
+    p.load_from_data (json);
+    return Lumen.Manifest.parse (p.get_root ().get_object (), "/tmp");
+}
+
+void test_manifest () throws GLib.Error {
+    var m = manifest ("""{"id":"tray-wedge","name":"W","version":"1","api":1,
+        "provides":["tray.presenter"],
+        "params":{"height":{"type":"int","default":320,"min":100,"max":800}}}""");
+    assert (m.provides.length == 1 && m.parameters.length == 1);
+    assert (m.type_namespace () == "TrayWedge" && m.symbol_prefix () == "tray_wedge_");
+
+    try { manifest ("""{"id":"Tray Wedge","name":"W","version":"1","api":1}"""); assert_not_reached (); }
+    catch (Lumen.ManifestError.BAD_ID e) {}
+    try { manifest ("""{"id":"w","name":"W","version":"1","api":2}"""); assert_not_reached (); }
+    catch (Lumen.ManifestError.API_MISMATCH e) {}
+
+    // Param: config value clamped to max, wrong type falls back to default.
+    var cfg = Lumen.ExtensionConfig.from_json ("""{"params":{"tray-wedge":{"height":9999}}}""");
+    var ctx = new Lumen.Context (m, new Lumen.Registry (cfg), cfg, null);
+    assert (ctx.param_int ("height") == 800);
+    cfg = Lumen.ExtensionConfig.from_json ("""{"params":{"tray-wedge":{"height":"tall"}}}""");
+    ctx = new Lumen.Context (m, new Lumen.Registry (cfg), cfg, null);
+    assert (ctx.param_int ("height") == 320);
+}
+
+void test_registry () {
+    var cfg = Lumen.ExtensionConfig.from_json ("""{"slots":{"tray.presenter":"b"},"disabled":["clock"]}""");
+    assert (!cfg.is_enabled ("clock") && cfg.is_enabled ("x"));
+    assert (Lumen.ExtensionConfig.load ("/nonexistent").active_for ("tray.presenter") == null);
+
+    var r = new Lumen.Registry (cfg);
+    r.declare ("tray.presenter", Lumen.Cardinality.ONE);
+    var a = new Dummy ();
+    var b = new Dummy ();
+    r.provide ("tray.presenter", "a", a);
+    r.provide ("tray.presenter", "b", b);
+    assert (r.active ("tray.presenter") == b);       // config choice wins
+    int changed = 0;
+    r.changed.connect (() => changed++);
+    r.withdraw ("b");
+    assert (changed == 1 && r.active ("tray.presenter") == a);   // falls back to first
+    r.provide ("nope", "a", a);                       // undeclared: ignored
+    assert (r.all ("nope").length == 0);
+}
+
+void test_tray_order () {
+    PanelConfig.tray_order = { "clock" };
+    PanelConfig.tray_disabled = { "wifi" };
+    // Catalog ids fill in around "clock"; extension applet "myext" is kept, at the end.
+    var got = string.joinv (",", PanelConfig.tray_enabled_order ({ "wifi", "clock", "myext" }));
+    assert (got == "clock,myext");
+}
+
+int main () {
+    try { test_manifest (); } catch (GLib.Error e) { error (e.message); }
+    test_registry ();
+    test_tray_order ();
+    return 0;
+}

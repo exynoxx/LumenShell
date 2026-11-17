@@ -84,9 +84,15 @@ public class App : GLib.Object {
         }
     }
 
+    static string[] catalog_ids () {   // TEMP until the registry lands
+        string[] ids = {};
+        foreach (var info in LumenTray.CATALOG) ids += info.id;
+        return ids;
+    }
+
     TrayBar make_tray () {
         var t = new TrayBar(logind, brightness_service);
-        foreach (var id in PanelConfig.tray_enabled_order()) {
+        foreach (var id in PanelConfig.tray_enabled_order(catalog_ids())) {
             var applet = registry.create(id);
             if (applet != null) t.add(applet);
         }

@@ -1,0 +1,6 @@
+gtk4
+gtk4-layer-shell-0
+gio-2.0
+gmodule-2.0
+json-glib-1.0
+cairo

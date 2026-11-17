@@ -62,6 +62,9 @@ gtk4_layer_shell_dep = dependency('gtk4-layer-shell-0')
 # Top-level only for lumen-drawer's Adw.Carousel.
 adwaita_dep          = dependency('libadwaita-1')
 
+# Extension API (lumen-panel hosts extensions; lumen-settings reads manifests).
+subdir('liblumen-ext')
+
 osd_deps = [
   glib_dep,
   gio_dep,
@@ -118,6 +121,7 @@ panel_resources = gnome.compile_resources(
 gio_unix_dep = dependency('gio-unix-2.0')
 
 panel_deps = [
+  lumen_ext_dep,
   # gtk4-layer-shell MUST appear before gtk4/wayland-client in the link line,
   # otherwise gtk_layer_init_for_window() silently no-ops at runtime.
   # See https://github.com/wmww/gtk4-layer-shell/blob/main/linking.md
@@ -240,7 +244,7 @@ panel_sources = files(
 executable('lumen-panel',
   panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source + tray_catalog_source + network_backend_source + sound_source + paths_source,
   vala_args: panel_vala_args,
-  c_args: lumen_datadir_c_args,
+  c_args: lumen_datadir_c_args + lumen_ext_c_args,
   dependencies: panel_deps,
   link_args: ['-Wl,--no-as-needed'],
   install: true,
@@ -454,6 +458,14 @@ test('display-identity', executable('test-display-identity',
   files('tests/display_identity.vala') + display_profiles_source + paths_source,
   c_args: lumen_datadir_c_args,
   dependencies: [glib_dep, gio_dep, json_dep],
+))
+
+# liblumen-ext core logic + panel tray-order resolution.
+test('ext-core', executable('test-ext-core',
+  files('tests/ext_core.vala', 'lumen-panel/src/panel_config.vala') + tray_catalog_source + paths_source,
+  vala_args: ['--vapidir=' + vapi_dir, '--pkg=gtk4-layer-shell-0', '--pkg=gmodule-2.0', '--pkg=cairo', '--pkg=gee-0.8'],
+  c_args: lumen_datadir_c_args,
+  dependencies: [lumen_ext_dep, gee_dep],
 ))
 
 search_core_source = files(
@@ -731,4 +743,6 @@ endif
 devenv = environment()
 devenv.set('LUMEN_THEME_FILE', meson.project_source_root() / 'default-theme.json')
 devenv.set('GSK_RENDERER', 'gl')
+devenv.set('LUMEN_EXT_VAPIDIR', lumen_ext_build_vapidir)
+devenv.set('LUMEN_EXT_PCDIR', meson.project_build_root() / 'meson-uninstalled')
 meson.add_devenv(devenv)
