@@ -1,6 +1,6 @@
 // Magnifier button: spawns `lumen-search --toggle`. Claims the press so the
 // tray row's own click handler doesn't also open the Control Center.
-public class SearchTray : GLib.Object, ITrayApplet {
+public class SearchTray : GLib.Object, Lumen.TrayApplet {
     TrayButton icon;
 
     public SearchTray () {

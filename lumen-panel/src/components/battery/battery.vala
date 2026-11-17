@@ -1,4 +1,4 @@
-public class BatteryTray : GLib.Object, ITrayApplet, IControlModule {
+public class BatteryTray : GLib.Object, Lumen.TrayApplet, Lumen.CcModule {
     BatteryService service;
     TrayButton icon;
     BatteryModule module_tile;

@@ -1,10 +1,13 @@
+// Builds this window's tray; needs the window, so it runs inside the constructor.
+public delegate Lumen.Tray? TrayMaker (Gtk.Window panel_window);
+
 public class PanelWindow : Gtk.ApplicationWindow {
 
     // HIDDEN: auto-hide overlay. PUSH: like HIDDEN, but a Wayfire plugin slides the
     // scene away so the panel reveals into the freed strip.
     public enum Mode { NORMAL, HIDDEN, PUSH }
 
-    TrayBar? tray;                  // null when this panel shows no tray
+    public Lumen.Tray? tray { get; private set; }   // null when this panel shows no tray
     Gtk.Box  root;
 
     Mode mode = Mode.NORMAL;
@@ -18,13 +21,14 @@ public class PanelWindow : Gtk.ApplicationWindow {
     int64 slide_start_us = 0;
     uint slide_tick_id = 0;
     uint collapse_timeout_id = 0;
-    ulong expanded_handler = 0;     // on the shared tray; dropped in release_tray()
+    // The hide timer fired while the tray was open; hide once the tray closes itself.
+    bool hide_after_tray = false;
     Cairo.Region? last_region = null;
 
     public PanelWindow (Gtk.Application app, Gdk.Monitor? monitor,
-                        bool is_tray_host, TrayBar? tray) {
+                        bool is_tray_host, TrayMaker? make_tray) {
         GLib.Object(application: app);
-        this.tray = tray;
+        if (make_tray != null) tray = make_tray(this);
 
         add_css_class("lumen-panel");
         set_default_size(-1, App.ICON_ROW_HEIGHT);
@@ -67,7 +71,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         var app_bar = new AppBar(only_output, is_tray_host);
         root.append(app_bar);
 
-        if (tray != null) root.append(tray);
+        var strip_widget = tray != null ? tray.strip_widget() : null;
+        if (strip_widget != null) root.append(strip_widget);
 
         var backdrop = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
             hexpand = true, vexpand = true,
@@ -95,7 +100,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         var esc = new Gtk.EventControllerKey();
         esc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
         esc.key_pressed.connect((keyval, keycode, mods) => {
-            if (keyval == Gdk.Key.Escape && tray != null && tray.is_expanded()) {
+            if (keyval == Gdk.Key.Escape && tray != null && tray.expanded) {
                 tray.collapse();
                 return true;
             }
@@ -106,31 +111,27 @@ public class PanelWindow : Gtk.ApplicationWindow {
         this.map.connect(update_input_region);
         // The tray's bbox only changes when the surface resizes (TrayReveal grows in one
         // step and shrinks once after the animation), which size_allocate catches.
-        if (tray != null) expanded_handler = tray.expanded_changed.connect(update_input_region);
+        if (tray != null) tray.expanded_changed.connect(() => {
+            update_input_region();
+            if (hide_after_tray && !tray.expanded) {
+                hide_after_tray = false;
+                set_reveal(false);
+            }
+        });
 
-        // contains-pointer on the WINDOW, not the tray: Motion.leave on TrayBar
-        // misfires during the reveal animation.
+        // Auto-hide only: the tray presenter owns its own dismissal. contains-pointer
+        // on the WINDOW, not the tray: Motion.leave on TrayBar misfires during the reveal.
         var win_motion = new Gtk.EventControllerMotion();
         win_motion.notify["contains-pointer"].connect(() => {
             if (win_motion.contains_pointer) {
                 cancel_collapse();
+                hide_after_tray = false;
                 if (hides) set_reveal(true);
                 return;
             }
-            if ((tray != null && tray.is_expanded()) || hides) schedule_collapse();
+            if (hides) schedule_collapse();
         });
         ((Gtk.Widget) this).add_controller(win_motion);
-    }
-
-    // Detach the shared TrayBar (held by App) so it survives a window rebuild.
-    public void release_tray () {
-        if (tray == null) return;
-        // The handler's closure holds `this`; left connected, the shared tray would
-        // keep every rebuilt-away window (and its AppBar) alive.
-        if (expanded_handler != 0) SignalHandler.disconnect(tray, expanded_handler);
-        expanded_handler = 0;
-        root.remove(tray);
-        tray = null;
     }
 
     // Resolve behavior.mode, falling back to the legacy behavior.auto-hide bool
@@ -191,8 +192,8 @@ public class PanelWindow : Gtk.ApplicationWindow {
         if (collapse_timeout_id != 0) return;
         collapse_timeout_id = GLib.Timeout.add(App.COLLAPSE_DELAY_MS, () => {
             collapse_timeout_id = 0;
-            if (tray != null && tray.is_expanded()) tray.collapse();
-            if (hides && (tray == null || !tray.is_expanded())) set_reveal(false);
+            if (tray != null && tray.expanded) hide_after_tray = true;
+            else set_reveal(false);
             return GLib.Source.REMOVE;
         });
     }
@@ -241,19 +242,7 @@ public class PanelWindow : Gtk.ApplicationWindow {
         };
         region.union_rectangle(strip);
 
-        if (tray != null && (tray.is_expanded() || tray.is_animating())) {
-            Graphene.Point tp;
-            if (tray.compute_point(this, Graphene.Point() { x = 0, y = 0 }, out tp)) {
-                int tw = tray.get_width();
-                int th = tray.get_height();
-                if (tw > 0 && th > 0) {
-                    var trect = Cairo.RectangleInt() {
-                        x = (int) tp.x, y = (int) tp.y, width = tw, height = th,
-                    };
-                    region.union_rectangle(trect);
-                }
-            }
-        }
+        if (tray != null && (tray.expanded || tray.animating)) tray.input_rects(this, region);
 
         apply_input_region(gdk_surface, region);
     }

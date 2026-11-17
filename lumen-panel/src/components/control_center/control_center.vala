@@ -11,14 +11,18 @@ public class ControlCenter : Gtk.Box {
     bool night_light_on = false;
     bool caffeine_on = false;
     LogindBridge logind;
-    GLib.HashTable<string, IControlModule> mods =
-        new GLib.HashTable<string, IControlModule> (str_hash, str_equal);
+    GLib.HashTable<string, Lumen.CcModule> mods =
+        new GLib.HashTable<string, Lumen.CcModule> (str_hash, str_equal);
+    // Laid out by build_home(); any other module (an extension's) gets a card at the end.
+    const string[] KNOWN = { "wifi", "bluetooth", "sound", "battery", "exit" };
+    GLib.GenericArray<Lumen.CcModule> modules;
 
-    public ControlCenter (Gee.List<IControlModule> modules, LogindBridge logind,
+    public ControlCenter (GLib.GenericArray<Lumen.CcModule> modules, LogindBridge logind,
                           BrightnessService brightness) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         this.logind = logind;
         this.brightness = brightness;
+        this.modules = modules;
         add_css_class ("control-center");
         set_size_request (WIDTH, HEIGHT);
 
@@ -43,7 +47,7 @@ public class ControlCenter : Gtk.Box {
         stack.add_named (home, "home");
 
         build_home ();
-        attach_details (modules);
+        attach_details ();
 
         append (stack);
         stack.visible_child_name = "home";
@@ -70,6 +74,10 @@ public class ControlCenter : Gtk.Box {
 
         var battery = mods.lookup ("battery");
         if (battery != null) home.append (wrap_card (battery.home_tile ()));
+
+        // Before the power row, which docks to the bottom.
+        foreach (var m in modules)
+            if (!(m.module_id () in KNOWN)) home.append (wrap_card (m.home_tile ()));
 
         var power = mods.lookup ("exit");
         if (power != null) {
@@ -163,7 +171,7 @@ public class ControlCenter : Gtk.Box {
         WLHooks.idle_inhibit_set (surface.get_wl_surface (), on);
     }
 
-    void attach_details (Gee.List<IControlModule> modules) {
+    void attach_details () {
         foreach (var m in modules) {
             var d = m.detail_view ();
             if (d == null) continue;

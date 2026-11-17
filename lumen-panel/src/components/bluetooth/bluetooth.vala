@@ -1,4 +1,4 @@
-public class BluetoothTray : GLib.Object, ITrayApplet, IControlModule {
+public class BluetoothTray : GLib.Object, Lumen.TrayApplet, Lumen.CcModule {
     BluetoothService service;
     TrayButton icon;
     BluetoothModule module_tile;

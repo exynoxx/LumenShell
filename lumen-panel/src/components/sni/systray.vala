@@ -2,7 +2,7 @@ using Gee;
 
 // The whole widget hides itself when there are no items so the trailing
 // separator never dangles on its own.
-public class SysTray : Gtk.Box, ITrayApplet {
+public class SysTray : Gtk.Box, Lumen.TrayApplet {
 
     Gtk.Box icons;
     HashMap<string, SniItem> by_key = new HashMap<string, SniItem>();

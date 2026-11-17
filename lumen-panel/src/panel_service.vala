@@ -6,13 +6,9 @@
 [DBus (name = "org.lumenshell.Panel1")]
 public class PanelService : GLib.Object {
 
+    // The tray-host window's tray; re-pointed by App whenever the windows are rebuilt.
     [DBus (visible = false)]
-    public weak TrayBar tray { get; private set; }
-
-    [DBus (visible = false)]
-    public PanelService (TrayBar tray) {
-        this.tray = tray;
-    }
+    public weak Lumen.Tray? tray { get; set; }
 
     public void toggle_tray () throws DBusError, IOError {
         if (tray != null) tray.toggle ();

@@ -3,7 +3,7 @@ interface LockProxy : GLib.Object {
     public abstract void Lock () throws DBusError, IOError;
 }
 
-public class ExitTray : GLib.Object, ITrayApplet, IControlModule {
+public class ExitTray : GLib.Object, Lumen.TrayApplet, Lumen.CcModule {
 
     LogindBridge bridge;
     TrayButton icon;

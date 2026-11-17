@@ -1,4 +1,4 @@
-public class Clock : Gtk.Box, ITrayApplet {
+public class Clock : Gtk.Box, Lumen.TrayApplet {
 
     Gtk.Label label;
     uint      timer = 0;

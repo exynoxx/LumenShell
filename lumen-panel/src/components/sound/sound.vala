@@ -1,4 +1,4 @@
-public class SoundTray : GLib.Object, ITrayApplet, IControlModule {
+public class SoundTray : GLib.Object, Lumen.TrayApplet, Lumen.CcModule {
     SoundService service;
     TrayButton icon;
     SoundModule module_tile;

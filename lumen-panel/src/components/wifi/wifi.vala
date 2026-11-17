@@ -1,4 +1,4 @@
-public class WifiTray : GLib.Object, ITrayApplet, IControlModule {
+public class WifiTray : GLib.Object, Lumen.TrayApplet, Lumen.CcModule {
     WifiService service;
     TrayButton icon;
     WifiModule module_tile;

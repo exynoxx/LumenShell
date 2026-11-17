@@ -1,10 +1,19 @@
-// Applets with a control surface also implement IControlModule; icon-only items
-// (Clock, SysTray) implement just this.
-public interface ITrayApplet : GLib.Object {
-    public abstract Gtk.Widget tray_widget ();   // goes in the icon row
+// The built-in "tray-classic" presenter: one TrayBar in each hosting panel's strip.
+public class ClassicPresenter : GLib.Object, Lumen.TrayPresenter {
+    LogindBridge logind;
+    BrightnessService brightness;
+
+    public ClassicPresenter (LogindBridge logind, BrightnessService brightness) {
+        this.logind = logind;
+        this.brightness = brightness;
+    }
+
+    public Lumen.Tray create (Lumen.TrayModel model, Gtk.Window panel_window) {
+        return new TrayBar (model, panel_window, logind, brightness);
+    }
 }
 
-public class TrayBar : Gtk.Box {
+public class TrayBar : Gtk.Box, Lumen.Tray {
 
     Gtk.Box icon_row;
     TrayReveal reveal;
@@ -12,18 +21,18 @@ public class TrayBar : Gtk.Box {
 
     // Keeps applet instances alive (Vala connects handlers with a weak ref to
     // the handler's instance).
-    Gee.ArrayList<ITrayApplet> applets = new Gee.ArrayList<ITrayApplet> ();
-    Gee.ArrayList<IControlModule> modules = new Gee.ArrayList<IControlModule> ();
-
-    public signal void expanded_changed ();
+    Lumen.TrayModel model;
+    uint collapse_timeout_id = 0;
 
     LogindBridge logind;
     BrightnessService brightness;
     // Theme is installed before any TrayBar exists and never reloaded.
     Gdk.RGBA bg_color;
 
-    public TrayBar (LogindBridge logind, BrightnessService brightness) {
+    public TrayBar (Lumen.TrayModel model, Gtk.Window panel_window,
+                    LogindBridge logind, BrightnessService brightness) {
         GLib.Object (orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+        this.model = model;
         this.logind = logind;
         this.brightness = brightness;
         bg_color = Theme.color ("tray.background", "rgba(17,20,31,0.97)");
@@ -77,19 +86,44 @@ public class TrayBar : Gtk.Box {
             // While expanded the invisible row sits over the CC; its clicks must fall through.
             icon_row.can_target = !reveal.revealed;
         });
+
+        foreach (var a in model.applets) icon_row.append (a.tray_widget ());
+
+        // Pointer leaving the panel WINDOW collapses after a debounce. contains-pointer
+        // on the window, not this widget: Motion.leave here misfires during the reveal.
+        var win_motion = new Gtk.EventControllerMotion ();
+        win_motion.notify["contains-pointer"].connect (() => {
+            if (win_motion.contains_pointer) cancel_collapse ();
+            else schedule_collapse ();
+        });
+        ((Gtk.Widget) panel_window).add_controller (win_motion);
     }
 
-    public void add (ITrayApplet item) {
-        applets.add (item);
-        icon_row.append (item.tray_widget ());
-
-        var mod = item as IControlModule;
-        if (mod != null) modules.add (mod);
+    void schedule_collapse () {
+        if (collapse_timeout_id != 0) return;
+        collapse_timeout_id = GLib.Timeout.add (App.COLLAPSE_DELAY_MS, () => {
+            collapse_timeout_id = 0;
+            collapse ();
+            return GLib.Source.REMOVE;
+        });
     }
+
+    void cancel_collapse () {
+        if (collapse_timeout_id == 0) return;
+        GLib.Source.remove (collapse_timeout_id);
+        collapse_timeout_id = 0;
+    }
+
+    public override void dispose () {
+        cancel_collapse ();
+        base.dispose ();
+    }
+
+    public Gtk.Widget? strip_widget () { return this; }
 
     void ensure_cc () {
         if (cc == null) {
-            cc = new ControlCenter (modules, logind, brightness);
+            cc = new ControlCenter (model.modules, logind, brightness);
             reveal.child = cc;
         }
     }
@@ -114,8 +148,17 @@ public class TrayBar : Gtk.Box {
         if (cc != null) cc.show_home ();
     }
 
-    public bool is_expanded ()  { return reveal.revealed; }
-    public bool is_animating () { return reveal.animating; }
+    public bool expanded  { get { return reveal.revealed; } }
+    public bool animating { get { return reveal.animating; } }
+
+    public void input_rects (Gtk.Window panel_window, Cairo.Region region) {
+        Graphene.Point tp;
+        if (!compute_point (panel_window, Graphene.Point () { x = 0, y = 0 }, out tp)) return;
+        int tw = get_width ();
+        int th = get_height ();
+        if (tw > 0 && th > 0)
+            region.union_rectangle (Cairo.RectangleInt () { x = (int) tp.x, y = (int) tp.y, width = tw, height = th });
+    }
 
     // Painted here rather than via CSS so the box bounds can track the reveal
     // fraction (the widget itself is full-size for the whole open cycle).

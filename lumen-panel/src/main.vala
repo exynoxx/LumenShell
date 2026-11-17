@@ -1,3 +1,21 @@
+public delegate Lumen.TrayApplet AppletCtor ();
+
+// A built-in applet in the tray.applet slot: label from LumenTray.CATALOG, a fresh
+// instance per create() so one id can be realized on several panels.
+class BuiltinApplet : GLib.Object, Lumen.TrayAppletFactory {
+    string _label;
+    AppletCtor ctor;
+
+    public BuiltinApplet (string id, owned AppletCtor ctor) {
+        _label = id;
+        foreach (var info in LumenTray.CATALOG) if (info.id == id) _label = info.label;
+        this.ctor = (owned) ctor;
+    }
+
+    public string label { owned get { return _label; } }
+    public Lumen.TrayApplet create () { return ctor(); }
+}
+
 public class App : GLib.Object {
 
     public const int ICON_ROW_HEIGHT = 60;
@@ -11,10 +29,10 @@ public class App : GLib.Object {
     public const int64 REVEAL_ANIM_US = 200000;
 
     Gtk.Application app;
-    TrayBar tray;                            // the primary panel's tray area
     PanelService panel_service;              // session-bus ToggleTray (global hotkey)
     SniWatcher sni_watcher;                  // SNI registry singleton, shared by every SysTray
-    TrayRegistry registry;                   // id → applet factory
+    Lumen.Registry registry;                 // tray applets + presenter, built-in and extension
+    ExtensionHost ext_host;
     LogindBridge logind;
 
     // One instance each, shared by every panel's applets — see activate().
@@ -52,30 +70,38 @@ public class App : GLib.Object {
         brightness_service    = new BrightnessService();
         battery_service.ac_changed.connect(power_profile_service.refresh);
 
-        // Each factory builds a fresh applet so one id can be realized on several panels.
-        registry = new TrayRegistry();
+        var config = Lumen.ExtensionConfig.load(LumenCommon.Paths.extensions_json());
+        registry = new Lumen.Registry(config);
+        registry.declare(Lumen.SLOT_TRAY_APPLET, Lumen.Cardinality.MANY);
+        registry.declare(Lumen.SLOT_TRAY_PRESENTER, Lumen.Cardinality.ONE);
         if (Environment.find_program_in_path("lumen-search") != null)
-            registry.register("search",    () => new SearchTray());
-        registry.register("systray",   () => new SysTray(sni_watcher));
-        registry.register("wifi",      () => new WifiTray(wifi_service));
-        registry.register("bluetooth", () => new BluetoothTray(bluetooth_service));
-        registry.register("battery",   () => new BatteryTray(battery_service, power_profile_service));
-        registry.register("sound",     () => new SoundTray(sound_service));
-        registry.register("clock",     () => new Clock(logind));
-        registry.register("exit",      () => new ExitTray(logind));
+            builtin("search",    () => new SearchTray());
+        builtin("systray",   () => new SysTray(sni_watcher));
+        builtin("wifi",      () => new WifiTray(wifi_service));
+        builtin("bluetooth", () => new BluetoothTray(bluetooth_service));
+        builtin("battery",   () => new BatteryTray(battery_service, power_profile_service));
+        builtin("sound",     () => new SoundTray(sound_service));
+        builtin("clock",     () => new Clock(logind));
+        builtin("exit",      () => new ExitTray(logind));
+        registry.provide(Lumen.SLOT_TRAY_PRESENTER, "tray-classic",
+                         new ClassicPresenter(logind, brightness_service));
 
         // Bind foreign-toplevel before building any AppBar so replay happens
         // synchronously when each AppBar subscribes inside its constructor.
         ToplevelStore.instance.bind();
 
-        tray = make_tray();
-
         // The panel surface only gets keys once clicked, so the global tray hotkey
         // arrives over DBus from a Wayfire [command] binding.
-        panel_service = new PanelService(tray);
+        panel_service = new PanelService();
         panel_service.start();
 
+        // Built-ins first so the panel never waits on valac; extensions rebuild once.
         build_windows();
+
+        ext_host = new ExtensionHost(registry, config, app);
+        ext_host.load_all.begin((obj, res) => {
+            if (ext_host.load_all.end(res)) rebuild_windows();
+        });
 
         if (PanelConfig.multi_monitor && !hotplug_wired) {
             var monitors = Gdk.Display.get_default().get_monitors();
@@ -84,26 +110,37 @@ public class App : GLib.Object {
         }
     }
 
-    static string[] catalog_ids () {   // TEMP until the registry lands
-        string[] ids = {};
-        foreach (var info in LumenTray.CATALOG) ids += info.id;
-        return ids;
+    void builtin (string id, owned AppletCtor ctor) {
+        registry.provide(Lumen.SLOT_TRAY_APPLET, id, new BuiltinApplet(id, (owned) ctor));
     }
 
-    TrayBar make_tray () {
-        var t = new TrayBar(logind, brightness_service);
-        foreach (var id in PanelConfig.tray_enabled_order(catalog_ids())) {
-            var applet = registry.create(id);
-            if (applet != null) t.add(applet);
+    // A fresh model per tray: a widget has one parent.
+    Lumen.Tray? make_tray (Gtk.Window window) {
+        var presenter = registry.active(Lumen.SLOT_TRAY_PRESENTER) as Lumen.TrayPresenter;
+        if (presenter == null) return null;
+        var ids = registry.provider_ids(Lumen.SLOT_TRAY_APPLET);
+        var factories = registry.all(Lumen.SLOT_TRAY_APPLET);
+        var model = new Lumen.TrayModel();
+        foreach (var id in PanelConfig.tray_enabled_order(ids)) {
+            for (int i = 0; i < ids.length; i++) {
+                if (ids[i] != id) continue;
+                model.add(((Lumen.TrayAppletFactory) factories[i]).create());
+                break;
+            }
         }
-        return t;
+        return presenter.create(model, window);
     }
 
     // The first monitor is the tray host; single-monitor mode builds one window
     // with monitor = null.
     void build_windows () {
+        build_windows_on_monitors();
+        panel_service.tray = windows.length > 0 ? windows[0].tray : null;
+    }
+
+    void build_windows_on_monitors () {
         if (!PanelConfig.multi_monitor) {
-            windows.add(new PanelWindow(app, null, true, tray));
+            windows.add(new PanelWindow(app, null, true, make_tray));
             return;
         }
 
@@ -112,24 +149,21 @@ public class App : GLib.Object {
         if (n == 0) {
             // No monitors reported (yet) — fall back to one unpinned window so
             // the panel still appears; hotplug will rebuild when outputs arrive.
-            windows.add(new PanelWindow(app, null, true, tray));
+            windows.add(new PanelWindow(app, null, true, make_tray));
             return;
         }
         for (uint i = 0; i < n; i++) {
             var mon = monitors.get_item(i) as Gdk.Monitor;
             bool host = (i == 0);
-            TrayBar? wtray = host ? tray
-                : (PanelConfig.tray_all_monitors ? make_tray() : null);
-            windows.add(new PanelWindow(app, mon, host, wtray));
+            if (host || PanelConfig.tray_all_monitors)
+                windows.add(new PanelWindow(app, mon, host, make_tray));
+            else
+                windows.add(new PanelWindow(app, mon, host, null));
         }
     }
 
+    // Every window gets fresh trays (the SNI watcher and services live here, not in them).
     void rebuild_windows () {
-        // Detach the shared tray from whichever window holds it so destroying
-        // that window doesn't tear down the singleton SNI watcher.
-        for (int i = 0; i < windows.length; i++) {
-            windows.get(i).release_tray();
-        }
         for (int i = 0; i < windows.length; i++) {
             windows.get(i).destroy();
         }

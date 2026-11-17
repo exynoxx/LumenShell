@@ -1,11 +1,3 @@
-public interface IControlModule : GLib.Object {
-    public abstract string      module_id ();   // "wifi", "bluetooth", …
-    public abstract Gtk.Widget  home_tile ();   // shown in the overview
-    public abstract Gtk.Widget? detail_view (); // inline detail, or null
-
-    public signal void open_detail ();
-}
-
 // Colours for code-drawn widgets (mirrors .cc-* in style.css). MUST stay `const`:
 // nothing instantiates CcStyle, so class_init never runs and a static initialized
 // from a function call would read back transparent.
