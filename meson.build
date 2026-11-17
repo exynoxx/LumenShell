@@ -18,40 +18,53 @@ wlhooks_dep = wlhooks_sub.get_variable('wlhooks_dep')
 
 vapi_dir = meson.project_source_root() / 'vapi'
 
-# Install datadir baked in for Paths.theme_file; required on every target
-# compiling paths_source (it declares extern LUMEN_DATADIR).
+# lumen-common is compiled into each binary in four groups, split only by the
+# libraries they need; a target may carry a few files it never calls.
+# Install datadir baked in for Paths.theme_file: every target compiling
+# common_base needs lumen_datadir_c_args (paths.vala declares extern LUMEN_DATADIR).
 lumen_datadir_c_args = [
   '-DLUMEN_DATADIR="' + (get_option('prefix') / get_option('datadir')) + '"',
 ]
 
-# Requires lumen_datadir_c_args on the consuming target.
-paths_source = files(
+# glib/gio + json-glib.
+common_base = files(
   'lumen-common/paths.vala',
-)
-
-# Needs json-glib + gtk4 on the consuming target.
-theme_json_source = files(
-  'lumen-common/theme_json.vala',
-)
-
-# Needs --pkg=posix on the consuming target.
-diaglog_source = files(
-  'lumen-common/diaglog.vala',
-)
-
-desktop_exec_source = files(
-  'lumen-common/desktop_exec.vala',
-)
-
-proc_source = files(
   'lumen-common/proc.vala',
-)
-
-display_profiles_source = files(
+  'lumen-common/dbus_cli.vala',
+  'lumen-common/lock_proxy.vala',
+  'lumen-common/desktop_exec.vala',
+  'lumen-common/accounts.vala',
   'lumen-common/display_profiles.vala',
+  'lumen-common/tray_applets.vala',
 )
 
-# Requires wayland + wlhooks + display_profiles_source on the consuming target.
+# + gtk4.
+common_gtk = files(
+  'lumen-common/theme_json.vala',
+  'lumen-common/css.vala',
+  'lumen-common/draw.vala',
+  'lumen-common/monitors.vala',
+)
+
+# + posix, gio-unix (UnixFDList, UnixSocketAddress).
+common_system = files(
+  'lumen-common/logind.vala',
+  'lumen-common/diaglog.vala',
+  'lumen-common/wayfire_ipc.vala',
+)
+
+# Network + sound backends (panel tray, settings pages).
+common_net = files(
+  'lumen-common/nmcli.vala',
+  'lumen-common/wifi_service.vala',
+  'lumen-common/btctl.vala',
+  'lumen-common/bluetooth_service.vala',
+  'lumen-common/radio_state.vala',
+  'lumen-common/sound_pactl.vala',
+  'lumen-common/sound_service.vala',
+)
+
+# + wayland + wlhooks.
 display_ctl_source = files(
   'lumen-common/display_ctl.vala',
 )
@@ -97,7 +110,7 @@ osd_sources = files(
 )
 
 executable('lumen-osd',
-  osd_sources + paths_source + theme_json_source + proc_source + display_ctl_source + display_profiles_source,
+  osd_sources + common_base + common_gtk + display_ctl_source,
   vala_args: osd_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: osd_deps,
@@ -148,42 +161,10 @@ panel_vala_args = [
   '--pkg=gio-unix-2.0',
 ]
 
-lumen_common_sources = files(
-  'lumen-common/logind.vala',
-)
-
-accounts_source = files(
-  'lumen-common/accounts.vala',
-)
-
-# Needs proc_source + json_dep on the consuming target.
-network_backend_source = files(
-  'lumen-common/nmcli.vala',
-  'lumen-common/wifi_service.vala',
-  'lumen-common/btctl.vala',
-  'lumen-common/bluetooth_service.vala',
-  'lumen-common/radio_state.vala',
-)
-
-# Needs proc_source on the consuming target.
-sound_source = files(
-  'lumen-common/sound_pactl.vala',
-  'lumen-common/sound_service.vala',
-)
-
-dbus_cli_source = files(
-  'lumen-common/dbus_cli.vala',
-)
-
-tray_catalog_source = files(
-  'lumen-common/tray_applets.vala',
-)
-
 panel_peek_sources = []
 if get_option('with_panel_peek')
   panel_vala_args += ['--define=PANEL_PEEK']
   panel_peek_sources = files(
-    'lumen-common/wayfire_ipc.vala',
     'lumen-panel/src/peek_ipc.vala',
     'lumen-panel/src/components/launcher.vala',
   )
@@ -238,7 +219,7 @@ panel_sources = files(
 )
 
 executable('lumen-panel',
-  panel_sources + panel_peek_sources + panel_resources + lumen_common_sources + proc_source + tray_catalog_source + network_backend_source + sound_source + paths_source,
+  panel_sources + panel_peek_sources + panel_resources + common_base + common_gtk + common_system + common_net,
   vala_args: panel_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: panel_deps,
@@ -281,7 +262,7 @@ notif_sources = files(
 )
 
 executable('lumen-notifications',
-  notif_sources + paths_source + theme_json_source,
+  notif_sources + common_base + common_gtk,
   vala_args: notif_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: notif_deps,
@@ -301,6 +282,7 @@ drawer_deps = [
   glib_dep,
   gio_dep,
   gio_unix_dep,
+  json_dep,
   m_dep,
 ]
 
@@ -315,11 +297,12 @@ drawer_vala_args = [
   '--pkg=glib-2.0',
   '--pkg=gio-2.0',
   '--pkg=gio-unix-2.0',
+  '--pkg=json-glib-1.0',
+  '--pkg=posix',
   '--pkg=libwlhooks',
 ]
 
 drawer_sources = files(
-  'lumen-common/wayfire_ipc.vala',
   'lumen-drawer/src/main.vala',
   'lumen-drawer/src/drawer_config.vala',
   'lumen-drawer/src/window.vala',
@@ -333,7 +316,7 @@ drawer_sources = files(
 )
 
 executable('lumen-drawer',
-  drawer_sources + paths_source + desktop_exec_source,
+  drawer_sources + common_base + common_gtk + common_system,
   vala_args: drawer_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: drawer_deps,
@@ -381,7 +364,7 @@ desktopwidgets_sources = files(
 )
 
 executable('lumen-desktop',
-  desktopwidgets_sources + paths_source,
+  desktopwidgets_sources + common_base + common_gtk,
   vala_args: desktopwidgets_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: desktopwidgets_deps,
@@ -412,7 +395,7 @@ osdctl_sources = files(
 )
 
 executable('lumen-osdctl',
-  osdctl_sources + proc_source + dbus_cli_source + paths_source + display_profiles_source + display_ctl_source,
+  osdctl_sources + common_base + display_ctl_source,
   vala_args: osdctl_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: osdctl_deps,
@@ -443,7 +426,7 @@ session_sources = files(
 )
 
 executable('lumen-session',
-  session_sources + display_profiles_source + accounts_source + paths_source,
+  session_sources + common_base,
   vala_args: session_vala_args,
   c_args: lumen_datadir_c_args,
   dependencies: session_deps,
@@ -451,7 +434,7 @@ executable('lumen-session',
 )
 
 test('display-identity', executable('test-display-identity',
-  files('tests/display_identity.vala') + display_profiles_source + paths_source,
+  files('tests/display_identity.vala') + common_base,
   c_args: lumen_datadir_c_args,
   dependencies: [glib_dep, gio_dep, json_dep],
 ))
@@ -483,7 +466,7 @@ if get_option('with_search').allowed() and tinysparql_dep.found()
   )
 
   executable('lumen-search',
-    search_sources + search_core_source + paths_source + theme_json_source,
+    search_sources + search_core_source + common_base + common_gtk,
     vala_args: [
       '--vapidir=' + vapi_dir,
       '--pkg=gtk4',
@@ -517,7 +500,7 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       'lumen-polkit-agent/src/listener.vala',
       'lumen-polkit-agent/src/auth_flow.vala',
       'lumen-polkit-agent/src/dialog.vala',
-    ),
+    ) + common_gtk,
     vala_args: [
       '--vapidir=' + vapi_dir,
       '--pkg=gtk4',
@@ -525,6 +508,7 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       '--pkg=polkit-agent-1',
       '--pkg=polkit-gobject-1',
       '--pkg=posix',
+      '--pkg=json-glib-1.0',
     ],
     # polkit refuses to expose its headers without these opt-in defines.
     c_args: [
@@ -539,6 +523,7 @@ if get_option('with_polkit_agent').allowed() and polkit_agent_dep.found() and po
       gio_dep,
       polkit_agent_dep,
       polkit_gobject_dep,
+      json_dep,
       m_dep,
     ],
     # Keep the linker from dropping layer-shell as "unused".
@@ -613,7 +598,7 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
   )
 
   executable('lumen-lockscreen',
-    lockscreen_sources + lockscreen_resources + lumen_common_sources + accounts_source + paths_source + theme_json_source + diaglog_source,
+    lockscreen_sources + lockscreen_resources + common_base + common_gtk + common_system,
     vala_args: lockscreen_vala_args,
     c_args: lumen_datadir_c_args,
     dependencies: lockscreen_deps,
@@ -623,12 +608,10 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
   )
 
   executable('lumen-lockctl',
-    files(
-      'lumen-lockctl/src/main.vala',
-      'lumen-lockctl/src/dbus_proxy.vala',
-    ) + dbus_cli_source,
-    vala_args: ['--pkg=gio-2.0', '--pkg=glib-2.0'],
-    dependencies: [glib_dep, gio_dep, m_dep],
+    files('lumen-lockctl/src/main.vala') + common_base,
+    vala_args: ['--pkg=gio-2.0', '--pkg=glib-2.0', '--pkg=json-glib-1.0'],
+    c_args: lumen_datadir_c_args,
+    dependencies: [glib_dep, gio_dep, json_dep, m_dep],
     install: true,
   )
 

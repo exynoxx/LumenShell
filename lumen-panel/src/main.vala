@@ -101,16 +101,10 @@ public class App : GLib.Object {
             return;
         }
 
-        var monitors = Gdk.Display.get_default().get_monitors();
-        uint n = monitors.get_n_items();
-        if (n == 0) {
-            // No monitors reported (yet) — fall back to one unpinned window so
-            // the panel still appears; hotplug will rebuild when outputs arrive.
-            windows.add(new PanelWindow(app, null, true, tray));
-            return;
-        }
-        for (uint i = 0; i < n; i++) {
-            var mon = monitors.get_item(i) as Gdk.Monitor;
+        // No monitors yet ⇒ one unpinned host window; hotplug rebuilds later.
+        var mons = LumenCommon.Monitors.or_unpinned();
+        for (int i = 0; i < mons.length; i++) {
+            var mon = mons[i];
             bool host = (i == 0);
             TrayBar? wtray = host ? tray
                 : (PanelConfig.tray_all_monitors ? make_tray() : null);

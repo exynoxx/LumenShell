@@ -106,13 +106,7 @@ namespace LumenDesktop {
             if (w <= 0 || h <= 0 || _entry == null) return;
 
             if (_selected) {
-                var r = Graphene.Rect();
-                r.init(2, 1, w - 4, h - 2);
-                var rr = Gsk.RoundedRect();
-                rr.init_from_rect(r, 6);
-                s.push_rounded_clip(rr);
-                s.append_color({ 1.0f, 1.0f, 1.0f, 0.16f }, r);
-                s.pop();
+                LumenCommon.Draw.fill_rounded(s, 2, 1, w - 4, h - 2, 6, { 1.0f, 1.0f, 1.0f, 0.16f });
             }
 
             int x = PAD_X;

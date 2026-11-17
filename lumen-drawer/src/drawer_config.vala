@@ -10,31 +10,16 @@ namespace LumenDrawer {
         public static int margin_y = 130;
 
         public static void load() {
-            var kf = new KeyFile();
-            try {
-                kf.load_from_file(LumenCommon.Paths.drawer_ini(), KeyFileFlags.NONE);
-            } catch (Error e) {
-                return;   // no file yet, or unreadable: the defaults stand
-            }
-
-            int v = read_int(kf, "grid.cols");
+            var path = LumenCommon.Paths.drawer_ini();
+            int v = LumenCommon.Ini.get_int(path, "drawer", "grid.cols", -1);
             if (v > 0) cols = v;
-            v = read_int(kf, "grid.rows");
+            v = LumenCommon.Ini.get_int(path, "drawer", "grid.rows", -1);
             if (v > 0) rows = v;
             per_page = cols * rows;
 
             // One value for all edges; unset keeps the asymmetric defaults.
-            v = read_int(kf, "grid.margin");
+            v = LumenCommon.Ini.get_int(path, "drawer", "grid.margin", -1);
             if (v >= 0) { margin_x = v; margin_y = v; }
-        }
-
-        // -1 = absent or not an integer.
-        private static int read_int(KeyFile kf, string key) {
-            try {
-                return kf.get_integer("drawer", key);
-            } catch (Error e) {
-                return -1;
-            }
         }
     }
 }

@@ -22,7 +22,7 @@ public class OsdApp : Gtk.Application {
         activated = true;
 
         Theme.load();
-        install_root_css();
+        LumenCommon.Css.install(Theme.generate_root_css());
         group = new OsdWindowGroup(this);
 
         service = new OsdService(group);
@@ -48,16 +48,6 @@ public class OsdApp : Gtk.Application {
                 stderr.printf("lumen-osd: could not acquire org.lumenshell.OSD (already running?)\n");
                 quit();
             }
-        );
-    }
-
-    private void install_root_css() {
-        var provider = new Gtk.CssProvider();
-        provider.load_from_string(Theme.generate_root_css());
-        Gtk.StyleContext.add_provider_for_display(
-            (!) Gdk.Display.get_default(),
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         );
     }
 }

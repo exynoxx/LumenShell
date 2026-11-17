@@ -87,13 +87,8 @@ public class LockManager : GLib.Object {
 
     // power.ini [power] lock-on-suspend, written by lumen-settings; default on.
     private static bool lock_on_suspend_enabled() {
-        var kf = new KeyFile();
-        try {
-            kf.load_from_file(Paths.power_ini(), KeyFileFlags.NONE);
-            return kf.get_string("power", "lock-on-suspend").strip() == "true";
-        } catch (Error e) {
-            return true;
-        }
+        var v = LumenCommon.Ini.get_str(Paths.power_ini(), "power", "lock-on-suspend");
+        return v == null || v.strip() == "true";
     }
 
     // Bind ext-idle-notify-v1 (idle auto-lock) on GTK's own wl_display, so the
@@ -283,30 +278,11 @@ public class LockManager : GLib.Object {
     // Idempotent: exactly one window per output, the card on a single primary.
     private void reconcile_monitors() {
         if (instance == null) return;
-        var display = Gdk.Display.get_default();
-        if (display == null) return;
-
-        var model = display.get_monitors();
-        uint n = model.get_n_items();
-
-        var live = new GenericArray<Gdk.Monitor>();
-        for (uint i = 0; i < n; i++)
-            live.add((Gdk.Monitor) model.get_item(i));
-
-        var gone = new GenericArray<Gdk.Monitor>();
-        windows.foreach((mon, win) => {
-            if (!contains(live, mon)) gone.add(mon);
-        });
-        for (int i = 0; i < gone.length; i++) {
-            var win = windows.get(gone.get(i));
-            if (win != null) win.destroy();
-            windows.remove(gone.get(i));
-        }
-
+        var live = LumenCommon.Monitors.live();
+        LumenCommon.Monitors.prune(windows, live);
         if (live.length == 0) return;
 
-        if (primary_monitor == null || !contains(live, primary_monitor))
-            primary_monitor = live.get(0);
+        primary_monitor = LumenCommon.Monitors.keep_primary(primary_monitor, live);
 
         for (int i = 0; i < live.length; i++) {
             var mon = live.get(i);
@@ -352,11 +328,5 @@ public class LockManager : GLib.Object {
         var primary = current_primary();
         if (primary != null && primary.password != null)
             primary.password.focus_entry();
-    }
-
-    private static bool contains(GenericArray<Gdk.Monitor> arr, Gdk.Monitor m) {
-        for (int i = 0; i < arr.length; i++)
-            if (arr.get(i) == m) return true;
-        return false;
     }
 }

@@ -1,8 +1,3 @@
-[DBus (name = "org.lumenshell.Lock1")]
-interface LockProxy : GLib.Object {
-    public abstract void Lock () throws DBusError, IOError;
-}
-
 public class ExitTray : GLib.Object, ITrayApplet, IControlModule {
 
     LogindBridge bridge;

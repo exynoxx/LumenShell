@@ -67,4 +67,28 @@ namespace LumenCommon {
             return "/usr/share/" + packaged_relpath;
         }
     }
+
+    // One-key INI reads. A missing file, group or key, or a parse error, all
+    // read as "not set": null / `def`.
+    public class Ini {
+        public static string? get_str(string path, string group, string key) {
+            var kf = new KeyFile();
+            try {
+                kf.load_from_file(path, KeyFileFlags.NONE);
+                return kf.get_string(group, key);
+            } catch (Error e) {
+                return null;
+            }
+        }
+
+        public static int get_int(string path, string group, string key, int def) {
+            var kf = new KeyFile();
+            try {
+                kf.load_from_file(path, KeyFileFlags.NONE);
+                return kf.get_integer(group, key);
+            } catch (Error e) {
+                return def;
+            }
+        }
+    }
 }

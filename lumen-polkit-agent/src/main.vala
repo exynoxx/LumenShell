@@ -17,7 +17,7 @@ public class App : Gtk.Application {
         if (activated) return;
         activated = true;
 
-        install_css();
+        LumenCommon.Css.install(AGENT_CSS);
 
         if (!register_agent()) {
             // Another agent owns this session, or no polkit: exit, don't linger.
@@ -60,14 +60,6 @@ public class App : Gtk.Application {
             reg_handle = null;
         }
         base.shutdown();
-    }
-
-    private void install_css() {
-        var p = new Gtk.CssProvider();
-        p.load_from_string(AGENT_CSS);
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), p,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
 }
 

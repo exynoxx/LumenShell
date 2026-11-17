@@ -146,7 +146,7 @@ public class TrayBar : Gtk.Box {
             float x = full_w - bw;
             float y = PanelConfig.at_top ? 0.0f : full_h - bh;
 
-            Utils.fill_rounded (s, x, y, bw, bh, BOX_RADIUS, bg_color);
+            LumenCommon.Draw.fill_rounded (s, x, y, bw, bh, BOX_RADIUS, bg_color);
         }
         base.snapshot (s);
     }

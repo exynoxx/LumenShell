@@ -38,16 +38,7 @@ namespace LumenDesktop {
                 if (!held) { held = true; hold(); }
                 return;
             }
-            var monitors = Gdk.Display.get_default().get_monitors();
-            uint n = monitors.get_n_items();
-            if (n == 0) {
-                add_window_for(null);
-                return;
-            }
-            for (uint i = 0; i < n; i++) {
-                var mon = monitors.get_item(i) as Gdk.Monitor;
-                add_window_for(mon);
-            }
+            foreach (var mon in LumenCommon.Monitors.or_unpinned()) add_window_for(mon);
         }
 
         private void add_window_for(Gdk.Monitor? monitor) {

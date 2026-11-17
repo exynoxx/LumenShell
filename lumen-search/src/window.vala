@@ -319,10 +319,7 @@ namespace LumenSearch {
             """.printf(rgba(SearchConfig.background), rgba(SearchConfig.text), rgba(SearchConfig.text),
                 hl.to_string(), rgba(SearchConfig.muted_text), sel.to_string(),
                 rgba(SearchConfig.muted_text), hl.to_string());
-            var p = new Gtk.CssProvider();
-            p.load_from_string(css);
-            Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), p,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+            LumenCommon.Css.install(css);
         }
 
         // Round-trip through Gdk.RGBA so config strings can't inject CSS.

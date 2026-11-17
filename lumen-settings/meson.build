@@ -21,6 +21,7 @@ settings_deps = [
   gtk4_wayland_dep,
   wayland_dep,
   wlhooks_dep,
+  gio_unix_dep,
 ]
 
 settings_vala_args = [
@@ -32,6 +33,7 @@ settings_vala_args = [
   '--pkg=glib-2.0',
   '--pkg=gio-2.0',
   '--pkg=posix',
+  '--pkg=gio-unix-2.0',
   '--pkg=gtk4-wayland',
   '--pkg=libwlhooks',
 ]
@@ -72,17 +74,7 @@ settings_sources = files(
   'src/pages/users_page.vala',
 )
 
-settings_sources += display_profiles_source
-settings_sources += tray_catalog_source
-
-# proc_source is needed by the network/sound backends.
-settings_sources += proc_source
-settings_sources += network_backend_source
-settings_sources += sound_source
-
-settings_sources += paths_source
-settings_sources += diaglog_source
-settings_sources += accounts_source
+settings_sources += common_base + common_gtk + common_system + common_net
 
 libxml_settings_dep = dependency('libxml-2.0', required: false)
 settings_wayfire_enabled = libxml_settings_dep.found()

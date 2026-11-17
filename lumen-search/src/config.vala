@@ -1,4 +1,4 @@
-// search.json reader. Scalars via ThemeJson; boost-dirs is an array, read with json-glib.
+// search.json reader (via ThemeJson).
 namespace LumenSearch {
     public class SearchConfig {
         // No initialisers: statics of a never-instantiated class are not set up (class_init
@@ -33,22 +33,7 @@ namespace LumenSearch {
             text = tj.get_str("search.text", "#ffffff");
             muted_text = tj.get_str("search.muted-text", "#ffffff99");
             highlight = tj.get_str("search.highlight", "#4c9bffff");
-            try {
-                var parser = new Json.Parser();
-                parser.load_from_file(path);
-                var root = parser.get_root();
-                if (root != null && root.get_node_type() == Json.NodeType.OBJECT) {
-                    var o = root.get_object();
-                    var bd = o.get_member("search.boost-dirs");
-                    if (bd != null && bd.get_node_type() == Json.NodeType.ARRAY) {
-                        bd.get_array().foreach_element((a, i, n) => {
-                            if (n.get_value_type() == typeof(string)) dirs += expand(n.get_string());
-                        });
-                    }
-                }
-            } catch (GLib.Error e) {
-                // missing/invalid file means defaults
-            }
+            foreach (var d in tj.get_str_array("search.boost-dirs")) dirs += expand(d);
             boost_dirs = dirs;
         }
 

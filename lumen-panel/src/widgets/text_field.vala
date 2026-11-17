@@ -19,7 +19,7 @@ public class LumenTextField : Gtk.Widget {
         set { entry.visibility = !value; }
     }
 
-    static Gdk.RGBA glow = Utils.rgba(0.22f, 0.48f, 1.0f, 0.55f);
+    static Gdk.RGBA glow = LumenCommon.Draw.rgba(0.22f, 0.48f, 1.0f, 0.55f);
 
     public LumenTextField () {
         layout_manager = new Gtk.BinLayout();

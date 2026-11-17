@@ -43,28 +43,11 @@ public class OsdWindowGroup : Object {
     }
 
     private void reconcile() {
-        var display = Gdk.Display.get_default();
-        if (display == null) return;
-
-        var model = display.get_monitors();
-        uint n = model.get_n_items();
-
-        var live = new GenericArray<Gdk.Monitor>();
-        for (uint i = 0; i < n; i++)
-            live.add((Gdk.Monitor) model.get_item(i));
-
-        var gone = new GenericArray<Gdk.Monitor>();
-        mirrors.foreach((mon, win) => { if (!contains(live, mon)) gone.add(mon); });
-        for (int i = 0; i < gone.length; i++) {
-            var win = mirrors.get(gone.get(i));
-            if (win != null) win.destroy();
-            mirrors.remove(gone.get(i));
-        }
-
+        var live = LumenCommon.Monitors.live();
+        LumenCommon.Monitors.prune(mirrors, live);
         if (live.length == 0) return;
 
-        if (primary_monitor == null || !contains(live, primary_monitor))
-            primary_monitor = live.get(0);
+        primary_monitor = LumenCommon.Monitors.keep_primary(primary_monitor, live);
         GtkLayerShell.set_monitor(primary, primary_monitor);
 
         // The primary's monitor must not also carry a mirror (double pill).
@@ -87,11 +70,5 @@ public class OsdWindowGroup : Object {
         win.present();
         win.set_visible(false);
         mirrors.set(mon, win);
-    }
-
-    private static bool contains(GenericArray<Gdk.Monitor> arr, Gdk.Monitor m) {
-        for (int i = 0; i < arr.length; i++)
-            if (arr.get(i) == m) return true;
-        return false;
     }
 }

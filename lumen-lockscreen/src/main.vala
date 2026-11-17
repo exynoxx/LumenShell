@@ -21,7 +21,7 @@ public class LockApp : Gtk.Application {
             GtkSessionLock.is_supported().to_string());
 
         Theme.load();
-        install_root_css();
+        LumenCommon.Css.install_resource("/org/lumenshell/lockscreen/res/style.css", Theme.generate_root_css());
 
         manager = new LockManager(this);
         service = new LockService(manager);
@@ -47,24 +47,6 @@ public class LockApp : Gtk.Application {
                 warning("lumen-lockscreen: could not acquire org.lumenshell.Lock (already running?); exiting");
                 quit();
             }
-        );
-    }
-
-    private void install_root_css() {
-        var provider = new Gtk.CssProvider();
-        try {
-            var bytes = resources_lookup_data(
-                "/org/lumenshell/lockscreen/res/style.css", ResourceLookupFlags.NONE);
-            var combined = Theme.generate_root_css() + "\n" + (string) bytes.get_data();
-            provider.load_from_string(combined);
-        } catch (Error e) {
-            warning("lumen-lockscreen: failed to load CSS: %s", e.message);
-            return;
-        }
-        Gtk.StyleContext.add_provider_for_display(
-            (!) Gdk.Display.get_default(),
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         );
     }
 }

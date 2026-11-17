@@ -253,14 +253,14 @@ public class AppEntry : Gtk.Button {
     const int   SPLIT_INSET   = 8;
     const int   SPLIT_H       = 3;
     const int   SPLIT_GAP     = 3;
-    static Gdk.RGBA SPLIT_DIM = Utils.rgba(1.0f, 1.0f, 1.0f, 0.35f);
+    static Gdk.RGBA SPLIT_DIM = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.35f);
 
     // Pinned-but-closed icons under dim-closed.
     const float DIM_OPACITY    = 0.65f;
     const float DIM_SATURATION = 0.2f;
     const float DIM_BRIGHTNESS = 0.75f;
 
-    static Gdk.RGBA WHITE = Utils.rgba(1.0f, 1.0f, 1.0f, 1.0f);
+    static Gdk.RGBA WHITE = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 1.0f);
 
     const int   OPEN_SHADE_H     = 12;   // px height of the bottom shading band
     const float OPEN_SHADE_ALPHA = 0.5f; // bottom-of-shade tint strength
@@ -274,12 +274,12 @@ public class AppEntry : Gtk.Button {
     const int   OPEN_EMBER_INSET = 18;
     const int   OPEN_EMBER_H     = 2;
     const int   OPEN_MARK_GAP    = 4;    // px from ticks/pip to the bottom edge
-    static Gdk.RGBA OPEN_TICK_COLOR  = Utils.rgba(1.0f, 1.0f, 1.0f, 0.80f);
-    static Gdk.RGBA OPEN_PIP_COLOR   = Utils.rgba(1.0f, 1.0f, 1.0f, 0.75f);
-    static Gdk.RGBA OPEN_EMBER_COLOR = Utils.rgba(1.0f, 1.0f, 1.0f, 0.45f);
+    static Gdk.RGBA OPEN_TICK_COLOR  = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.80f);
+    static Gdk.RGBA OPEN_PIP_COLOR   = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.75f);
+    static Gdk.RGBA OPEN_EMBER_COLOR = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.45f);
     const int   OPEN_SEG_INSET   = 14;
     const int   OPEN_SEG_H       = 2;
-    static Gdk.RGBA OPEN_SEG_COLOR   = Utils.rgba(1.0f, 1.0f, 1.0f, 0.55f);
+    static Gdk.RGBA OPEN_SEG_COLOR   = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.55f);
 
     static bool open_color_loaded = false;
     static Gdk.RGBA open_color_val;
@@ -287,8 +287,8 @@ public class AppEntry : Gtk.Button {
         return lazy_color(ref open_color_loaded, ref open_color_val,
                           "app.open-indicator-color", "rgba(61,122,255,1)");
     }
-    static Gdk.RGBA OPEN_GLASS_TOP = Utils.rgba(1.0f, 1.0f, 1.0f, 0.22f);
-    static Gdk.RGBA OPEN_GLASS_BOT = Utils.rgba(1.0f, 1.0f, 1.0f, 0.08f);
+    static Gdk.RGBA OPEN_GLASS_TOP = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.22f);
+    static Gdk.RGBA OPEN_GLASS_BOT = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.08f);
     const int OPEN_GLASS_INSET  = 4;   // px gap from the slot edge
     const int OPEN_GLASS_RADIUS = 8;   // px corner rounding (matches .dragging)
 
@@ -317,7 +317,7 @@ public class AppEntry : Gtk.Button {
         var flags = get_state_flags();
         if (PanelConfig.hover_style == PanelConfig.HoverStyle.CHIP
                 && (flags & Gtk.StateFlags.PRELIGHT) != 0 && !dragging) {
-            Utils.fill_rounded(s, CHIP_INSET_X, CHIP_INSET_Y,
+            LumenCommon.Draw.fill_rounded(s, CHIP_INSET_X, CHIP_INSET_Y,
                                get_width() - 2 * CHIP_INSET_X, get_height() - 2 * CHIP_INSET_Y,
                                CHIP_RADIUS, hover_color());
         }
@@ -343,7 +343,7 @@ public class AppEntry : Gtk.Button {
             s.translate(c);
         }
         if (lift > 0) {
-            Gsk.Shadow[] shadow = { { Utils.rgba(0f, 0f, 0f, 0.35f * lift), 0f, 2f, 4f } };
+            Gsk.Shadow[] shadow = { { LumenCommon.Draw.rgba(0f, 0f, 0f, 0.35f * lift), 0f, 2f, 4f } };
             s.push_shadow(shadow);
         }
         bool dim = PanelConfig.open_indicator == PanelConfig.OpenIndicator.DIM_CLOSED
@@ -532,15 +532,14 @@ public class AppEntry : Gtk.Button {
     }
 
     void draw_active_underline (Gtk.Snapshot s) {
-        Utils.fill_rounded(s, 0, get_height() - UNDERLINE_H, get_width(),
-                           UNDERLINE_H, 0, underline_color());
+        LumenCommon.Draw.fill_rounded(s, 0, get_height() - UNDERLINE_H, get_width(), UNDERLINE_H, 0, underline_color());
     }
 
     void draw_active_pill (Gtk.Snapshot s) {
         float w = PILL_W * ease_out(pill_t);
         if (w <= 0) return;
         float y = PanelConfig.at_top ? PILL_GAP : get_height() - PILL_GAP - PILL_H;
-        Utils.fill_rounded(s, (get_width() - w) / 2f, y, w, PILL_H, PILL_H / 2f, WHITE);
+        LumenCommon.Draw.fill_rounded(s, (get_width() - w) / 2f, y, w, PILL_H, PILL_H / 2f, WHITE);
     }
 
     void draw_active_caret (Gtk.Snapshot s) {
@@ -642,9 +641,7 @@ public class AppEntry : Gtk.Button {
         c.red   = (c.red   + 1f) / 2f;
         c.green = (c.green + 1f) / 2f;
         c.blue  = (c.blue  + 1f) / 2f;
-        Utils.fill_rounded(s, (get_width() - TINT_BAR_W) / 2f,
-                           get_height() - 2 - TINT_BAR_H,
-                           TINT_BAR_W, TINT_BAR_H, TINT_BAR_H / 2f, c);
+        LumenCommon.Draw.fill_rounded(s, (get_width() - TINT_BAR_W) / 2f, get_height() - 2 - TINT_BAR_H, TINT_BAR_W, TINT_BAR_H, TINT_BAR_H / 2f, c);
     }
 
     // The icon's dominant colour, computed once on first draw (it needs the
@@ -690,8 +687,7 @@ public class AppEntry : Gtk.Button {
             r += pr * wt; g += pg * wt; b += pb * wt; wsum += wt;
         }
         if (wsum <= 0) return false;
-        result = Utils.rgba((float) double.min(r / wsum, 1), (float) double.min(g / wsum, 1),
-                            (float) double.min(b / wsum, 1), 1f);
+        result = LumenCommon.Draw.rgba((float) double.min(r / wsum, 1), (float) double.min(g / wsum, 1), (float) double.min(b / wsum, 1), 1f);
         return true;
     }
 
@@ -717,12 +713,12 @@ public class AppEntry : Gtk.Button {
         s.append_fill(pb.to_path(), Gsk.FillRule.WINDING, underline_color());
     }
 
-    static Gdk.RGBA ACTIVE_GLASS_TOP = Utils.rgba(0.08f, 0.16f, 0.35f, 0.60f);
-    static Gdk.RGBA ACTIVE_GLASS_BOT = Utils.rgba(0.08f, 0.16f, 0.35f, 0.30f);
-    static Gdk.RGBA ACTIVE_CIRCLE_FILL = Utils.rgba(1.0f, 1.0f, 1.0f, 0.65f);
+    static Gdk.RGBA ACTIVE_GLASS_TOP = LumenCommon.Draw.rgba(0.08f, 0.16f, 0.35f, 0.60f);
+    static Gdk.RGBA ACTIVE_GLASS_BOT = LumenCommon.Draw.rgba(0.08f, 0.16f, 0.35f, 0.30f);
+    static Gdk.RGBA ACTIVE_CIRCLE_FILL = LumenCommon.Draw.rgba(1.0f, 1.0f, 1.0f, 0.65f);
 
     void draw_open_dot (Gtk.Snapshot s) {
-        Utils.fill_rounded(s, (get_width() - OPEN_DOT_D) / 2f,
+        LumenCommon.Draw.fill_rounded(s, (get_width() - OPEN_DOT_D) / 2f,
                            get_height() - OPEN_DOT_D - OPEN_DOT_GAP,
                            OPEN_DOT_D, OPEN_DOT_D, OPEN_DOT_D / 2f, open_color());
     }
@@ -735,8 +731,7 @@ public class AppEntry : Gtk.Button {
         float y = get_height() - OPEN_MARK_GAP - OPEN_TICK_D;
         for (int i = 0; i < n; i++) {
             float w = i == 0 ? first : OPEN_TICK_D;
-            Utils.fill_rounded(s, x, y, w, OPEN_TICK_D, OPEN_TICK_D / 2f,
-                               (active && i == 0) ? WHITE : OPEN_TICK_COLOR);
+            LumenCommon.Draw.fill_rounded(s, x, y, w, OPEN_TICK_D, OPEN_TICK_D / 2f, (active && i == 0) ? WHITE : OPEN_TICK_COLOR);
             x += w + OPEN_TICK_GAP;
         }
     }
@@ -746,19 +741,19 @@ public class AppEntry : Gtk.Button {
         if (n == 0) return;
         float seg = (get_width() - 2 * OPEN_SEG_INSET - (n - 1) * OPEN_TICK_GAP) / (float) n;
         for (int i = 0; i < n; i++)
-            Utils.fill_rounded(s, OPEN_SEG_INSET + i * (seg + OPEN_TICK_GAP),
+            LumenCommon.Draw.fill_rounded(s, OPEN_SEG_INSET + i * (seg + OPEN_TICK_GAP),
                                get_height() - OPEN_SEG_H, seg, OPEN_SEG_H,
                                OPEN_SEG_H / 2f, OPEN_SEG_COLOR);
     }
 
     void draw_open_pip (Gtk.Snapshot s) {
-        Utils.fill_rounded(s, (get_width() - OPEN_PIP_D) / 2f,
+        LumenCommon.Draw.fill_rounded(s, (get_width() - OPEN_PIP_D) / 2f,
                            get_height() - OPEN_MARK_GAP - OPEN_PIP_D,
                            OPEN_PIP_D, OPEN_PIP_D, OPEN_PIP_D / 2f, OPEN_PIP_COLOR);
     }
 
     void draw_open_ember (Gtk.Snapshot s) {
-        Utils.fill_rounded(s, OPEN_EMBER_INSET, get_height() - OPEN_EMBER_H,
+        LumenCommon.Draw.fill_rounded(s, OPEN_EMBER_INSET, get_height() - OPEN_EMBER_H,
                            get_width() - 2 * OPEN_EMBER_INSET, OPEN_EMBER_H,
                            OPEN_EMBER_H / 2f, OPEN_EMBER_COLOR);
     }

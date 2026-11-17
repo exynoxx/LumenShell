@@ -16,32 +16,7 @@ Actions:
 """;
 
 private static OsdProxy? connect_proxy() {
-    DBusConnection conn;
-    try {
-        conn = Bus.get_sync(BusType.SESSION);
-    } catch (Error e) {
-        stderr.printf("lumen-osdctl: session bus unavailable: %s\n", e.message);
-        return null;
-    }
-
-    if (!LumenCommon.DbusCli.name_has_owner(conn, "org.lumenshell.OSD")) {
-        stderr.printf("lumen-osdctl: lumen-osd daemon is not running\n");
-        return null;
-    }
-
-    try {
-        OsdProxy proxy = Bus.get_proxy_sync(
-            BusType.SESSION,
-            "org.lumenshell.OSD",
-            "/org/lumenshell/OSD",
-            DBusProxyFlags.DO_NOT_LOAD_PROPERTIES | DBusProxyFlags.DO_NOT_AUTO_START
-        );
-        ((DBusProxy) proxy).set_default_timeout(1500);
-        return proxy;
-    } catch (Error e) {
-        stderr.printf("lumen-osdctl: D-Bus proxy failed: %s\n", e.message);
-        return null;
-    }
+    return LumenCommon.DbusCli.connect<OsdProxy>("lumen-osdctl", "lumen-osd", "org.lumenshell.OSD", "/org/lumenshell/OSD");
 }
 
 private static void send_show(string kind, double value, string text,

@@ -24,7 +24,7 @@ public class NotifApp : Gtk.Application {
         activated = true;
 
         Theme.load();
-        install_root_css();
+        LumenCommon.Css.install(Theme.generate_root_css());
 
         manager = new NotificationManager();
         window  = new LayerWindow(this);
@@ -71,16 +71,6 @@ public class NotifApp : Gtk.Application {
             service.action_invoked(id, key);
             if (manager.has(id)) manager.close(id, REASON_DISMISSED);
         });
-    }
-
-    private void install_root_css() {
-        var provider = new Gtk.CssProvider();
-        provider.load_from_string(Theme.generate_root_css());
-        Gtk.StyleContext.add_provider_for_display(
-            (!) Gdk.Display.get_default(),
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        );
     }
 
     private void own_bus_name() {

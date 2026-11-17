@@ -87,29 +87,16 @@ public class Selector : Gtk.Box {
         int w = get_width();
         int h = get_height();
 
-        var bg_rect = Graphene.Rect();
-        bg_rect.init(0f, 0f, (float) w, (float) h);
-        var rr = Gsk.RoundedRect();
-        rr.init_from_rect(bg_rect, 26f);
-        s.push_rounded_clip(rr);
-        s.append_color(Theme.background, bg_rect);
-        s.pop();
+        LumenCommon.Draw.fill_rounded(s, 0f, 0f, w, h, 26f, Theme.background);
 
         if (count > 0 && selected >= 0 && selected < count) {
             float x = (float) PAD + selected * (float) (TILE_W + SP);
-            var hl_rect = Graphene.Rect();
-            hl_rect.init(x, (float) PAD, (float) TILE_W, (float) TILE_H);
-            var hrr = Gsk.RoundedRect();
-            hrr.init_from_rect(hl_rect, 16f);
-
             // A translucent wash of the accent (progress fill) reads as
             // "selected" without fighting the white symbolic icon on top.
             Gdk.RGBA hl = Theme.progress_fill;
             hl.alpha = 0.22f;
 
-            s.push_rounded_clip(hrr);
-            s.append_color(hl, hl_rect);
-            s.pop();
+            LumenCommon.Draw.fill_rounded(s, x, PAD, TILE_W, TILE_H, 16f, hl);
         }
 
         base.snapshot(s);

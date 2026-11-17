@@ -38,7 +38,7 @@ public class WifiRow : Gtk.Widget, CcRow {
         set { if (_show_separator == value) return; _show_separator = value; queue_draw (); }
     }
 
-    static Gdk.RGBA lock_fg = Utils.rgba (0.921f, 0.921f, 0.960f, 0.45f);
+    static Gdk.RGBA lock_fg = LumenCommon.Draw.rgba (0.921f, 0.921f, 0.960f, 0.45f);
 
     public WifiRow (WifiNet net, bool is_connected) {
         this.ssid = net.ssid;
@@ -76,24 +76,22 @@ public class WifiRow : Gtk.Widget, CcRow {
         int h = get_height ();
 
         if (_selected || hovered)
-            Utils.fill_rounded (s, 0, 0, w, h, 0,
-                                _selected ? CcStyle.row_selected : CcStyle.row_hover);
+            LumenCommon.Draw.fill_rounded (s, 0, 0, w, h, 0, _selected ? CcStyle.row_selected : CcStyle.row_hover);
 
         if (_is_connected) {
-            var check = Utils.text_layout (this, "✓", 15, Pango.Weight.BOLD);
+            var check = LumenCommon.Draw.text_layout (this, "✓", 15, Pango.Weight.BOLD);
             int cw, ch;
             check.get_pixel_size (out cw, out ch);
-            Utils.draw_layout (s, check, PAD - 2, (h - ch) / 2, CcStyle.green);
+            LumenCommon.Draw.draw_layout (s, check, PAD - 2, (h - ch) / 2, CcStyle.green);
         }
 
-        var layout = Utils.text_layout (this, ssid, 15, Pango.Weight.MEDIUM);
+        var layout = LumenCommon.Draw.text_layout (this, ssid, 15, Pango.Weight.MEDIUM);
         int right_reserve = PAD + ARC_W + GAP + (is_secured ? LOCK_W + GAP : 0);
         layout.set_width ((w - NAME_X - right_reserve) * Pango.SCALE);
         layout.set_ellipsize (Pango.EllipsizeMode.END);
         int tw, th;
         layout.get_pixel_size (out tw, out th);
-        Utils.draw_layout (s, layout, NAME_X, (h - th) / 2,
-                           _is_connected ? CcStyle.green : CcStyle.label);
+        LumenCommon.Draw.draw_layout (s, layout, NAME_X, (h - th) / 2, _is_connected ? CcStyle.green : CcStyle.label);
 
         float arc_cx = w - PAD - ARC_W / 2.0f;
         WifiArc.draw (s, arc_cx, h / 2.0f + 6, signal_pct, CcStyle.label);
@@ -104,14 +102,14 @@ public class WifiRow : Gtk.Widget, CcRow {
         }
 
         if (_show_separator)
-            Utils.fill_rounded (s, NAME_X, h - 1, w - PAD - NAME_X, 1, 0, CcStyle.separator);
+            LumenCommon.Draw.fill_rounded (s, NAME_X, h - 1, w - PAD - NAME_X, 1, 0, CcStyle.separator);
     }
 
     static void draw_lock (Gtk.Snapshot s, float x, float y, float sz, Gdk.RGBA c) {
         float bh = sz * 0.60f;
         float by = y + sz - bh;
 
-        Utils.fill_rounded (s, x, by, sz, bh, sz * 0.18f, c);
+        LumenCommon.Draw.fill_rounded (s, x, by, sz, bh, sz * 0.18f, c);
 
         float sr = sz * 0.30f;
         float scx = x + sz / 2.0f;

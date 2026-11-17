@@ -9,9 +9,9 @@ public class CcSlider : Gtk.Widget {
 
     public signal void value_changed (int pct);
 
-    static Gdk.RGBA track_col = Utils.rgba (1f, 1f, 1f, 0.16f);
-    static Gdk.RGBA fill_col  = Utils.rgba (1f, 1f, 1f, 0.95f);
-    static Gdk.RGBA knob_col  = Utils.rgba (1f, 1f, 1f, 1f);
+    static Gdk.RGBA track_col = LumenCommon.Draw.rgba (1f, 1f, 1f, 0.16f);
+    static Gdk.RGBA fill_col  = LumenCommon.Draw.rgba (1f, 1f, 1f, 0.95f);
+    static Gdk.RGBA knob_col  = LumenCommon.Draw.rgba (1f, 1f, 1f, 1f);
 
     public CcSlider () {
         set_size_request (-1, H);
@@ -54,12 +54,12 @@ public class CcSlider : Gtk.Widget {
         float ty = (H - TH) / 2.0f;
         float radius = TH / 2.0f;
 
-        Utils.fill_rounded (s, 0, ty, w, TH, radius, track_col);
+        LumenCommon.Draw.fill_rounded (s, 0, ty, w, TH, radius, track_col);
 
         // knob center travels between the inset ends
         float kx = TH / 2.0f + (float) (_value / 100.0 * (w - TH));
 
-        if (kx > 0) Utils.fill_rounded (s, 0, ty, kx, TH, radius, fill_col);
+        if (kx > 0) LumenCommon.Draw.fill_rounded (s, 0, ty, kx, TH, radius, fill_col);
 
         var kb = new Gsk.PathBuilder ();
         var c = Graphene.Point ();

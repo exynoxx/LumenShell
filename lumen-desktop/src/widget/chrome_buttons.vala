@@ -67,15 +67,9 @@ namespace LumenDesktop {
         private static void draw_hover(Gtk.Snapshot s, Cairo.RectangleInt r,
                                        Gdk.RGBA fg, bool on) {
             if (!on) return;
-            var rect = Graphene.Rect();
-            rect.init(r.x - 2, r.y - 2, r.width + 4, r.height + 4);
-            var rr = Gsk.RoundedRect();
-            rr.init_from_rect(rect, (r.width + 4) / 4.0f);
             var tint = fg;
             tint.alpha = fg.alpha * 0.18f;
-            s.push_rounded_clip(rr);
-            s.append_color(tint, rect);
-            s.pop();
+            LumenCommon.Draw.fill_rounded(s, r.x - 2, r.y - 2, r.width + 4, r.height + 4, (r.width + 4) / 4.0f, tint);
         }
 
         // Drawn in a 0..100 unit box; tilted 45° when unpinned.

@@ -9,11 +9,11 @@ public class SegmentedControl : Gtk.Widget {
 
     public signal void segment_selected (int index);
 
-    static Gdk.RGBA track_col = Utils.rgba(1f, 1f, 1f, 0.08f);
-    static Gdk.RGBA sel_bg    = Utils.rgba(0.039f, 0.518f, 1.0f, 1f);   // #0A84FF
-    static Gdk.RGBA hov_bg    = Utils.rgba(1f, 1f, 1f, 0.07f);
-    static Gdk.RGBA sel_fg    = Utils.rgba(1f, 1f, 1f, 1f);
-    static Gdk.RGBA norm_fg   = Utils.rgba(0.921f, 0.921f, 0.960f, 0.60f);
+    static Gdk.RGBA track_col = LumenCommon.Draw.rgba(1f, 1f, 1f, 0.08f);
+    static Gdk.RGBA sel_bg    = LumenCommon.Draw.rgba(0.039f, 0.518f, 1.0f, 1f);   // #0A84FF
+    static Gdk.RGBA hov_bg    = LumenCommon.Draw.rgba(1f, 1f, 1f, 0.07f);
+    static Gdk.RGBA sel_fg    = LumenCommon.Draw.rgba(1f, 1f, 1f, 1f);
+    static Gdk.RGBA norm_fg   = LumenCommon.Draw.rgba(0.921f, 0.921f, 0.960f, 0.60f);
 
     public SegmentedControl () {
         height_request = CTRL_H;
@@ -79,7 +79,7 @@ public class SegmentedControl : Gtk.Widget {
         int h = get_height();
         if (w <= 0 || h <= 0) return;
 
-        Utils.fill_rounded(s, 0, 0, w, h, 10, track_col);
+        LumenCommon.Draw.fill_rounded(s, 0, 0, w, h, 10, track_col);
 
         float seg_w = (float) w / n;
 
@@ -88,16 +88,13 @@ public class SegmentedControl : Gtk.Widget {
             bool selected = i == _selected;
 
             if (selected || i == _hovered) {
-                Utils.fill_rounded(s, sx + INSET, INSET, seg_w - INSET * 2, h - INSET * 2,
-                                   8, selected ? sel_bg : hov_bg);
+                LumenCommon.Draw.fill_rounded(s, sx + INSET, INSET, seg_w - INSET * 2, h - INSET * 2, 8, selected ? sel_bg : hov_bg);
             }
 
-            var layout = Utils.text_layout(this, _labels[i], 12,
-                selected ? Pango.Weight.SEMIBOLD : Pango.Weight.NORMAL);
+            var layout = LumenCommon.Draw.text_layout(this, _labels[i], 12, selected ? Pango.Weight.SEMIBOLD : Pango.Weight.NORMAL);
             int tw, th;
             layout.get_pixel_size(out tw, out th);
-            Utils.draw_layout(s, layout, sx + (seg_w - tw) / 2, (h - th) / 2,
-                              selected ? sel_fg : norm_fg);
+            LumenCommon.Draw.draw_layout(s, layout, sx + (seg_w - tw) / 2, (h - th) / 2, selected ? sel_fg : norm_fg);
         }
     }
 }

@@ -10,29 +10,7 @@ Commands:
 """;
 
 private static LockProxy? connect_proxy() {
-    DBusConnection conn;
-    try {
-        conn = Bus.get_sync(BusType.SESSION);
-    } catch (Error e) {
-        stderr.printf("lumen-lockctl: session bus unavailable: %s\n", e.message);
-        return null;
-    }
-
-    if (!LumenCommon.DbusCli.name_has_owner(conn, "org.lumenshell.Lock")) {
-        stderr.printf("lumen-lockctl: lumen-lockscreen daemon is not running\n");
-        return null;
-    }
-
-    try {
-        LockProxy proxy = Bus.get_proxy_sync(
-            BusType.SESSION, "org.lumenshell.Lock", "/org/lumenshell/Lock",
-            DBusProxyFlags.DO_NOT_LOAD_PROPERTIES | DBusProxyFlags.DO_NOT_AUTO_START);
-        ((DBusProxy) proxy).set_default_timeout(1500);
-        return proxy;
-    } catch (Error e) {
-        stderr.printf("lumen-lockctl: D-Bus proxy failed: %s\n", e.message);
-        return null;
-    }
+    return LumenCommon.DbusCli.connect<LockProxy>("lumen-lockctl", "lumen-lockscreen", "org.lumenshell.Lock", "/org/lumenshell/Lock");
 }
 
 public static int main(string[] args) {

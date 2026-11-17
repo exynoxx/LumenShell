@@ -68,11 +68,7 @@ namespace LumenDesktop {
         private static void install_css() {
             if (css_installed) return;
             css_installed = true;
-            var css = new Gtk.CssProvider();
-            css.load_from_string(DESKTOP_CSS);
-            Gtk.StyleContext.add_provider_for_display(
-                Gdk.Display.get_default(), css,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+            LumenCommon.Css.install(DESKTOP_CSS);
         }
 
         // Input region clipped to the widgets; without it this full-output

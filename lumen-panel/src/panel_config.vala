@@ -33,62 +33,31 @@ public class PanelConfig {
     public static string[] tray_disabled = {};
 
     public static void load () {
-        var vals = parse(LumenCommon.Paths.panel_json());
+        var cfg = new LumenCommon.ThemeJson(LumenCommon.Paths.panel_json());
 
-        at_top            = vals.get_string_member_with_default("position", "") == "top";
-        open_indicator    = parse_indicator(vals.get_string_member_with_default("app.open-indicator", ""));
-        active_indicator  = parse_active_indicator(vals.get_string_member_with_default("app.active-indicator", ""));
-        hover_style       = parse_hover_style(vals.get_string_member_with_default("app.hover-style", ""));
-        multi_monitor     = vals.get_boolean_member_with_default("behavior.multi-monitor", false);
-        per_monitor_apps  = vals.get_boolean_member_with_default("behavior.per-monitor-apps", false);
-        tray_all_monitors = vals.get_boolean_member_with_default("behavior.tray-all-monitors", false);
-        show_launcher     = vals.get_boolean_member_with_default("app.launcher-button", false);
-        var fmt = vals.get_string_member_with_default("clock.format", "");
+        at_top            = cfg.get_str("position", "") == "top";
+        open_indicator    = parse_indicator(cfg.get_str("app.open-indicator", ""));
+        active_indicator  = parse_active_indicator(cfg.get_str("app.active-indicator", ""));
+        hover_style       = parse_hover_style(cfg.get_str("app.hover-style", ""));
+        multi_monitor     = cfg.get_bool("behavior.multi-monitor", false);
+        per_monitor_apps  = cfg.get_bool("behavior.per-monitor-apps", false);
+        tray_all_monitors = cfg.get_bool("behavior.tray-all-monitors", false);
+        show_launcher     = cfg.get_bool("app.launcher-button", false);
+        var fmt = cfg.get_str("clock.format", "");
         if (fmt.strip() != "") clock_format = fmt;
 
         // Absent (null) and present-but-unrecognised mean different things here:
         // only an absent key falls back to the legacy auto-hide bool.
-        behavior_mode      = vals.has_member("behavior.mode")
-            ? vals.get_string_member_with_default("behavior.mode", "") : null;
-        behavior_auto_hide = vals.get_boolean_member_with_default("behavior.auto-hide", false);
+        behavior_mode      = cfg.has("behavior.mode") ? cfg.get_str("behavior.mode", "") : null;
+        behavior_auto_hide = cfg.get_bool("behavior.auto-hide", false);
 
-        tray_order    = get_string_array(vals, "tray.order");
-        tray_disabled = get_string_array(vals, "tray.disabled");
+        tray_order    = cfg.get_str_array("tray.order");
+        tray_disabled = cfg.get_str_array("tray.disabled");
         if (tray_order.length == 0) {
             string[] defaults = {};
             foreach (var info in LumenTray.CATALOG) defaults += info.id;
             tray_order = defaults;
         }
-    }
-
-    // Fail-soft: a missing or unparseable file yields an empty object.
-    static Json.Object parse (string path) {
-        if (!FileUtils.test(path, FileTest.EXISTS)) return new Json.Object();
-        var parser = new Json.Parser();
-        try {
-            parser.load_from_file(path);
-        } catch (Error e) {
-            stderr.printf("PanelConfig: load %s failed: %s\n", path, e.message);
-            return new Json.Object();
-        }
-        var root = parser.get_root();
-        if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return new Json.Object();
-        return root.get_object();
-    }
-
-    // String-array getter: strips, drops empties. Non-array/missing ⇒ empty.
-    static string[] get_string_array (Json.Object o, string key) {
-        string[] result = {};
-        if (!o.has_member(key)) return result;
-        var n = o.get_member(key);
-        if (n.get_node_type() != Json.NodeType.ARRAY) return result;
-        foreach (var elem in n.get_array().get_elements()) {
-            if (elem.get_node_type() != Json.NodeType.VALUE) continue;
-            if (elem.get_value_type() != typeof(string)) continue;
-            var s = elem.get_string().strip();
-            if (s != "") result += s;
-        }
-        return result;
     }
 
     // tray_order plus any catalog ids it lacks (so new applets appear after an

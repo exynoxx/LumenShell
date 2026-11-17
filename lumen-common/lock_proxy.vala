@@ -1,0 +1,7 @@
+// Client side of lumen-lockscreen's org.lumenshell.Lock1.
+[DBus (name = "org.lumenshell.Lock1")]
+public interface LockProxy : GLib.Object {
+    public abstract void Lock() throws DBusError, IOError;
+    public abstract void Unlock() throws DBusError, IOError;
+    public abstract bool IsLocked() throws DBusError, IOError;
+}

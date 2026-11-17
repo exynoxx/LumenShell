@@ -85,17 +85,7 @@ namespace LumenSettings {
         }
 
         void load() {
-            if (!FileUtils.test(path, FileTest.EXISTS)) return;
-            var parser = new Json.Parser();
-            try {
-                parser.load_from_file(path);
-            } catch (Error e) {
-                stderr.printf("lumen-settings: JsonStore.load(%s): %s\n", path, e.message);
-                return;
-            }
-            var root = parser.get_root();
-            if (root == null || root.get_node_type() != Json.NodeType.OBJECT) return;
-            root.get_object().foreach_member((obj, name, node) => {
+            new LumenCommon.ThemeJson(path).root().foreach_member((obj, name, node) => {
                 values.insert(name, node.copy());
             });
         }

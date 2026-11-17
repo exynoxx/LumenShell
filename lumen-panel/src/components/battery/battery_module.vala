@@ -41,8 +41,7 @@ public class BatteryModule : GLib.Object {
         root.append (top);
 
         bar = new LumenProgressBar () {
-            track_color = Utils.rgba (1f, 1f, 1f, 0.14f),
-        };
+            track_color = LumenCommon.Draw.rgba (1f, 1f, 1f, 0.14f), };
         root.append (bar);
 
         if (pps.backend != PowerBackend.NONE) {
@@ -74,10 +73,9 @@ public class BatteryModule : GLib.Object {
         int pct = service.percent;
         bar.set_progress (pct);
         bar.fill_color = pct > 30
-            ? Utils.rgba (0.13f, 0.76f, 0.34f, 1f)
+            ? LumenCommon.Draw.rgba (0.13f, 0.76f, 0.34f, 1f)
             : pct >= 10
-                ? Utils.rgba (0.90f, 0.62f, 0.06f, 1f)
-                : Utils.rgba (0.86f, 0.20f, 0.20f, 1f);
+                ? LumenCommon.Draw.rgba (0.90f, 0.62f, 0.06f, 1f) : LumenCommon.Draw.rgba (0.86f, 0.20f, 0.20f, 1f);
 
         if      (raw == "charging")        status_lbl.label = "Charging";
         else if (raw == "discharging")     status_lbl.label = "On battery";

@@ -23,8 +23,7 @@ namespace LumenSettings {
             // The bundled palette is dark-only; force libadwaita to match.
             Adw.StyleManager.get_default().color_scheme = Adw.ColorScheme.FORCE_DARK;
 
-            Theme.load();
-            install_css();
+            Theme.install();
             // Sidebar icons ship in the gresource so the user's icon theme can't swap or drop them.
             Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
                 .add_resource_path("/org/lumenshell/settings/icons");
@@ -32,26 +31,6 @@ namespace LumenSettings {
 
             window = new SettingsWindow(this, registry);
             window.present();
-        }
-
-        void install_css() {
-            var provider = new Gtk.CssProvider();
-            try {
-                var bytes = resources_lookup_data(
-                    "/org/lumenshell/settings/res/style.css",
-                    ResourceLookupFlags.NONE);
-                var base_css = (string) bytes.get_data();
-                var combined = Theme.generate_root_css() + "\n" + base_css;
-                provider.load_from_string(combined);
-            } catch (Error e) {
-                stderr.printf("lumen-settings: failed to load CSS: %s\n", e.message);
-                return;
-            }
-            Gtk.StyleContext.add_provider_for_display(
-                (!) Gdk.Display.get_default(),
-                provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            );
         }
 
         void register_pages() {

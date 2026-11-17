@@ -66,15 +66,7 @@ public class Pill : Gtk.Box {
                        ? (float) int.min(w, h) * 0.5f
                        : (float) Theme.corner_radius;
 
-        var bg_rect = Graphene.Rect();
-        bg_rect.init(0f, 0f, (float) w, (float) h);
-
-        var rr = Gsk.RoundedRect();
-        rr.init_from_rect(bg_rect, radius);
-
-        s.push_rounded_clip(rr);
-        s.append_color(Theme.background, bg_rect);
-        s.pop();
+        LumenCommon.Draw.fill_rounded(s, 0f, 0f, w, h, radius, Theme.background);
 
         base.snapshot(s);
     }
@@ -118,29 +110,16 @@ public class ProgressTrack : Gtk.Widget {
         bool  vert = Theme.vertical();
         float thickness = vert ? (float) w : (float) h;
 
-        var track_rect = Graphene.Rect();
-        track_rect.init(0f, 0f, (float) w, (float) h);
-        var trr = Gsk.RoundedRect();
-        trr.init_from_rect(track_rect, thickness * 0.5f);
-        s.push_rounded_clip(trr);
-        s.append_color(Theme.progress_track, track_rect);
-        s.pop();
+        LumenCommon.Draw.fill_rounded(s, 0f, 0f, w, h, thickness * 0.5f, Theme.progress_track);
 
         float fill = (float) ((vert ? h : w) * _fraction);
         if (fill <= 0f) return;
         // Ensure the rounded fill cap is visible even at tiny fractions.
         if (fill < thickness) fill = thickness;
 
-        var fill_rect = Graphene.Rect();
-        if (vert)
-            fill_rect.init(0f, (float) h - fill, (float) w, fill);  // grows upward
+        if (vert)   // grows upward
+            LumenCommon.Draw.fill_rounded(s, 0f, h - fill, w, fill, thickness * 0.5f, Theme.progress_fill);
         else
-            fill_rect.init(0f, 0f, fill, (float) h);
-
-        var frr = Gsk.RoundedRect();
-        frr.init_from_rect(fill_rect, thickness * 0.5f);
-        s.push_rounded_clip(frr);
-        s.append_color(Theme.progress_fill, fill_rect);
-        s.pop();
+            LumenCommon.Draw.fill_rounded(s, 0f, 0f, fill, h, thickness * 0.5f, Theme.progress_fill);
     }
 }

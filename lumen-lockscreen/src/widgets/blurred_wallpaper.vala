@@ -29,10 +29,10 @@ public class BlurredWallpaper : GLib.Object {
     private static string resolve_path() {
         string? p;
 
-        p = read_ini_key(LumenCommon.Paths.wallpaper_ini(), "wallpaper", "image");
+        p = LumenCommon.Ini.get_str(LumenCommon.Paths.wallpaper_ini(), "wallpaper", "image");
         if (usable(p)) return (!) p;
 
-        p = read_ini_key(LumenCommon.Paths.wf_shell_ini(), "background", "image");
+        p = LumenCommon.Ini.get_str(LumenCommon.Paths.wf_shell_ini(), "background", "image");
         if (usable(p)) return (!) p;
 
         if (usable(Theme.background_image)) return Theme.background_image;
@@ -41,18 +41,6 @@ public class BlurredWallpaper : GLib.Object {
 
     private static bool usable(string? path) {
         return path != null && path != "" && FileUtils.test(path, FileTest.EXISTS);
-    }
-
-    // A missing file, a missing group/key or a syntax error all mean "not
-    // configured here" — fall through to the next source.
-    private static string? read_ini_key(string path, string section, string key) {
-        var kf = new KeyFile();
-        try {
-            kf.load_from_file(path, KeyFileFlags.NONE);
-            return kf.get_string(section, key);
-        } catch (Error e) {
-            return null;
-        }
     }
 
     // Crops a blur-radius border off every side so the edge fade (blur sampling

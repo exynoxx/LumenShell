@@ -45,16 +45,7 @@ public class DrawerApp : Gtk.Application {
     // One per monitor: peeks are per-output, and an output with no grid
     // would reveal only the grey backdrop.
     void build_windows() {
-        var monitors = Gdk.Display.get_default().get_monitors();
-        uint n = monitors.get_n_items();
-        if (n == 0) {
-            wins.add(new DrawerWindow(this, null));
-            return;
-        }
-        for (uint i = 0; i < n; i++) {
-            var mon = monitors.get_item(i) as Gdk.Monitor;
-            wins.add(new DrawerWindow(this, mon));
-        }
+        foreach (var mon in LumenCommon.Monitors.or_unpinned()) wins.add(new DrawerWindow(this, mon));
     }
 
     void rebuild_windows() {

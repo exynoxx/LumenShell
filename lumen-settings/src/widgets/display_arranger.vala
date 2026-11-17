@@ -175,13 +175,7 @@ namespace LumenSettings {
             int w = get_width(), h = get_height();
             if (w <= 0 || h <= 0) return;
 
-            var full = Graphene.Rect();
-            full.init(0, 0, w, h);
-            var rr = Gsk.RoundedRect();
-            rr.init_from_rect(full, 10);
-            s.push_rounded_clip(rr);
-            s.append_color(canvas_bg, full);
-            s.pop();
+            LumenCommon.Draw.fill_rounded(s, 0, 0, w, h, 10, canvas_bg);
 
             compute_transform();
 
@@ -191,14 +185,7 @@ namespace LumenSettings {
                 double rx, ry, rw, rh;
                 rect_of(o, out rx, out ry, out rw, out rh);
 
-                var rect = Graphene.Rect();
-                rect.init((float) (rx + 2), (float) (ry + 2),
-                          (float) (rw - 4), (float) (rh - 4));
-                var box = Gsk.RoundedRect();
-                box.init_from_rect(rect, 6);
-                s.push_rounded_clip(box);
-                s.append_color(i == selected ? rect_sel : rect_bg, rect);
-                s.pop();
+                LumenCommon.Draw.fill_rounded(s, (float) (rx + 2), (float) (ry + 2), (float) (rw - 4), (float) (rh - 4), 6, i == selected ? rect_sel : rect_bg);
 
                 var layout = create_pango_layout(
                     "%s\n%s".printf(o.name, o.current_mode.res_key()));
