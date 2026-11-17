@@ -50,7 +50,7 @@ import('pkgconfig').generate(lumen_ext_lib,
   description: 'LumenShell extension API',
   version: '1.0',
   subdirs: 'lumen-ext-1',
-  requires: ['gtk4', 'gtk4-layer-shell-0', 'gio-2.0', 'gmodule-2.0', 'json-glib-1.0', 'cairo'],
+  requires: ['gtk4', 'gio-2.0', 'json-glib-1.0', 'cairo'],
 )
 
 lumen_ext_dep = declare_dependency(

@@ -62,10 +62,43 @@ void test_shape () {
     assert (r.contains_point (320, 300) && !r.contains_point (10, 10));
 }
 
+// Builds fixture <name> with the real valac; returns the .so or rethrows.
+string build_fixture (Lumen.Compiler c, string name) throws GLib.Error {
+    var m = Lumen.Manifest.load (Path.build_filename (Environment.get_variable ("EXT_FIXTURES"), name));
+    var loop = new MainLoop ();
+    string? so = null;
+    GLib.Error? err = null;
+    c.build.begin (m, null, (o, res) => {
+        try { so = c.build.end (res); } catch (GLib.Error e) { err = e; }
+        loop.quit ();
+    });
+    loop.run ();
+    if (err != null) throw err;
+    return so;
+}
+
+void test_build () throws GLib.Error {
+    var c = new Lumen.Compiler (DirUtils.make_tmp ("ext-cache-XXXXXX"),
+                                Environment.get_variable ("LUMEN_EXT_VAPIDIR"),
+                                Environment.get_variable ("LUMEN_EXT_PCDIR"));
+    var so = build_fixture (c, "hello");
+    assert (FileUtils.test (so, FileTest.EXISTS));
+    Posix.Stat st1, st2;
+    Posix.stat (so, out st1);
+    assert (build_fixture (c, "hello") == so);        // cache hit: not rebuilt
+    Posix.stat (so, out st2);
+    assert (st1.st_mtime == st2.st_mtime && st1.st_ino == st2.st_ino);
+    assert (Lumen.Loader.load (so) != null);
+
+    try { build_fixture (c, "bad"); assert_not_reached (); }
+    catch (Lumen.CompileError.BAD_TYPES e) { assert ("wedge_get_type" in e.message); }
+}
+
 int main () {
     try { test_manifest (); } catch (GLib.Error e) { error (e.message); }
     test_registry ();
     test_tray_order ();
     test_shape ();
+    try { test_build (); } catch (GLib.Error e) { error (e.message); }
     return 0;
 }

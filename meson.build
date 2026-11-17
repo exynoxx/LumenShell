@@ -463,10 +463,14 @@ test('display-identity', executable('test-display-identity',
 # liblumen-ext core logic + panel tray-order resolution.
 test('ext-core', executable('test-ext-core',
   files('tests/ext_core.vala', 'lumen-panel/src/panel_config.vala') + tray_catalog_source + paths_source,
-  vala_args: ['--vapidir=' + vapi_dir, '--pkg=gtk4-layer-shell-0', '--pkg=gmodule-2.0', '--pkg=cairo', '--pkg=gee-0.8'],
+  vala_args: ['--vapidir=' + vapi_dir, '--pkg=gtk4-layer-shell-0', '--pkg=gmodule-2.0', '--pkg=cairo', '--pkg=gee-0.8', '--pkg=posix'],
   c_args: lumen_datadir_c_args,
   dependencies: [lumen_ext_dep, gee_dep],
-))
+), env: {
+  'LUMEN_EXT_VAPIDIR': lumen_ext_build_vapidir,
+  'LUMEN_EXT_PCDIR': meson.project_build_root() / 'meson-uninstalled',
+  'EXT_FIXTURES': meson.current_source_dir() / 'tests/ext/fixtures',
+}, timeout: 120)
 
 search_core_source = files(
   'lumen-search/src/fuzzy.vala',
