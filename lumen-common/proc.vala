@@ -1,10 +1,13 @@
 namespace LumenCommon {
+#if !FREEBSD
     // Linux prctl(2), declared here so proc.vala needs no --pkg=posix/linux
-    // (lumen-osd and lumen-osdctl compile it without either).
+    // (lumen-osd and lumen-osdctl compile it without either). FreeBSD uses
+    // procctl(PROC_PDEATHSIG_CTL) via lumen-common/bsd instead.
     [CCode (cheader_filename = "sys/prctl.h", cname = "prctl")]
     private extern int prctl(int option, ulong arg2);
     [CCode (cheader_filename = "sys/prctl.h", cname = "PR_SET_PDEATHSIG")]
     private extern const int PR_SET_PDEATHSIG;
+#endif
     [CCode (cheader_filename = "signal.h", cname = "SIGTERM")]
     private extern const int SIGTERM;
 
@@ -58,7 +61,7 @@ namespace LumenCommon {
     }
 
     // Streams stdout lines of a long-lived event command (`pactl subscribe`,
-    // `nmcli monitor`). `running` is false if it failed to spawn or exited.
+    // `nmcli monitor`, FreeBSD's `route -n monitor`). `running` is false if it failed to spawn or exited.
     // The child gets SIGTERM when we die, so it never outlives us as an orphan.
     public class LineWatcher : GLib.Object {
         public signal void line(string text);
@@ -75,7 +78,11 @@ namespace LumenCommon {
                 launcher.setenv("LC_ALL", "C", true);
                 // Fires on death of the *spawning thread*: start() must be
                 // called from the main thread, as every caller does today.
+#if FREEBSD
+                launcher.set_child_setup(() => { Bsd.set_pdeathsig(SIGTERM); });
+#else
                 launcher.set_child_setup(() => { prctl(PR_SET_PDEATHSIG, SIGTERM); });
+#endif
                 proc = launcher.spawnv(argv);
             } catch (GLib.Error e) {
                 return false;

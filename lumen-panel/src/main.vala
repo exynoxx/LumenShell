@@ -44,7 +44,8 @@ public class App : GLib.Object {
         // Built once: the applet factory runs per output, so per-applet services would
         // multiply polling by the monitor count.
         wifi_service          = new WifiService();
-        bluetooth_service     = new BluetoothService();
+        if (BluetoothService.supported)
+            bluetooth_service = new BluetoothService();
         sound_service         = new SoundService();
         battery_service       = new BatteryService();
         power_profile_service = new PowerProfileService();

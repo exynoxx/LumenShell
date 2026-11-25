@@ -35,11 +35,10 @@ namespace LumenSettings.Wayfire {
     }
 
     public class WayfirePages {
-        const string METADATA_DIR = "/usr/share/wayfire/metadata";
-
+        // /usr/share on Linux distros, /usr/local/share from FreeBSD ports.
         public static void register(PageRegistry r) {
             var store = new IniStore(Paths.wayfire_ini());
-            var plugins = Metadata.load_dir(METADATA_DIR);
+            var plugins = Metadata.load_dir(Paths.system_data_file("wayfire/metadata"));
 
             r.add(new WayfirePluginsPage(plugins, store), "Wayfire");
         }

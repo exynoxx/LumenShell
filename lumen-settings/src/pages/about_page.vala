@@ -30,7 +30,12 @@ namespace LumenSettings {
                 logo_name != "" && theme.has_icon(logo_name) ? logo_name : "computer") {
                 pixel_size = 128,
             });
-            var heading = new Gtk.Label(os["PRETTY_NAME"] ?? os["NAME"] ?? "Linux");
+#if FREEBSD
+            const string OS_FALLBACK = "FreeBSD";
+#else
+            const string OS_FALLBACK = "Linux";
+#endif
+            var heading = new Gtk.Label(os["PRETTY_NAME"] ?? os["NAME"] ?? OS_FALLBACK);
             heading.add_css_class("lumen-about-title");
             head.append(heading);
             var head_group = new Adw.PreferencesGroup();
@@ -77,10 +82,17 @@ namespace LumenSettings {
         }
 
         void refresh() {
+#if FREEBSD
+            // sysctl(3)/kenv(2): FreeBSD has no /proc or /sys by default.
+            set("Kernel", LumenCommon.Bsd.SysInfo.kernel());
+            var host = LumenCommon.Bsd.SysInfo.host();
+            set("Host", host != "" ? host : "Unknown");
+#else
             set("Kernel", read_line("/proc/sys/kernel/osrelease") ?? "Unknown");
             var vendor = read_line("/sys/class/dmi/id/sys_vendor") ?? "";
             var product = read_line("/sys/class/dmi/id/product_name") ?? "";
             set("Host", (vendor + " " + product).strip() != "" ? (vendor + " " + product).strip() : "Unknown");
+#endif
             set("Uptime", uptime());
             set("CPU", cpu());
             set("Memory", memory());
@@ -115,7 +127,9 @@ namespace LumenSettings {
 
         static HashTable<string, string> read_os_release() {
             var t = new HashTable<string, string>(str_hash, str_equal);
-            var s = read_line("/etc/os-release") ?? read_line("/usr/lib/os-release") ?? "";
+            // FreeBSD 13+: /etc/os-release → /var/run/os-release, written by rc.
+            var s = read_line("/etc/os-release") ?? read_line("/usr/lib/os-release")
+                 ?? read_line("/var/run/os-release") ?? "";
             foreach (var line in s.split("\n")) {
                 var eq = line.index_of_char('=');
                 if (eq <= 0) continue;
@@ -128,9 +142,14 @@ namespace LumenSettings {
         }
 
         static string uptime() {
+#if FREEBSD
+            var secs = LumenCommon.Bsd.uptime_seconds();
+            if (secs < 0) return "Unknown";
+#else
             var s = read_line("/proc/uptime");
             if (s == null) return "Unknown";
             var secs = (int64) double.parse(s.split(" ")[0]);
+#endif
             int d = (int) (secs / 86400), h = (int) (secs % 86400 / 3600), m = (int) (secs % 3600 / 60);
             if (d > 0) return "%dd %dh %dm".printf(d, h, m);
             if (h > 0) return "%dh %dm".printf(h, m);
@@ -138,6 +157,9 @@ namespace LumenSettings {
         }
 
         static string cpu() {
+#if FREEBSD
+            return "%s (%u threads)".printf(LumenCommon.Bsd.SysInfo.cpu_model(), get_num_processors());
+#endif
             var model = "Unknown";
             foreach (var line in (read_line("/proc/cpuinfo") ?? "").split("\n")) {
                 if (line.has_prefix("model name")) {
@@ -150,6 +172,11 @@ namespace LumenSettings {
 
         static string memory() {
             int64 total = -1, avail = -1;
+#if FREEBSD
+            LumenCommon.Bsd.SysInfo.memory(out total, out avail);
+            if (total < 0 || avail < 0) return "Unknown";
+            return "%s / %s".printf(format_size((uint64) (total - avail)), format_size((uint64) total));
+#endif
             foreach (var line in (read_line("/proc/meminfo") ?? "").split("\n")) {
                 var parts = line.split_set(": ", 0);
                 string[] f = {};
@@ -189,6 +216,10 @@ namespace LumenSettings {
         }
 
         static string gpu() {
+#if FREEBSD
+            var found = LumenCommon.Bsd.SysInfo.gpus();
+            return found.length > 0 ? string.joinv("\n", found) : "Unknown";
+#endif
             var lspci = Proc.run_capture({ "lspci" });
             string[] gpus = {};
             foreach (var line in (lspci ?? "").split("\n")) {

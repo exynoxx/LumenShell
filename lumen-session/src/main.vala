@@ -54,9 +54,16 @@ namespace LumenSession {
     // Best-effort and idempotent.
     static void session_bootstrap() {
         string vars = "WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP";
+#if FREEBSD
+        // No systemd user manager: dbus-daemon activates xdg-desktop-portal
+        // itself, it only needs the session env (and the runtime dir, which
+        // start-lumenshell guarantees).
+        run_best_effort("dbus-update-activation-environment " + vars + " XDG_RUNTIME_DIR");
+#else
         run_best_effort("systemctl --user import-environment " + vars);
         run_best_effort("dbus-update-activation-environment --systemd " + vars);
         run_best_effort("systemctl --user start lumenshell-session.target");
+#endif
 
         // Guarded so a dev-run under another DE never clobbers the user's real
         // last-session.

@@ -7,7 +7,8 @@ namespace LumenSettings {
         public string icon_name { owned get { return "lumen-settings-networking"; } }
 
         WifiService      wifi = new WifiService();
-        BluetoothService bt   = new BluetoothService();
+        // null where BlueZ doesn't exist (FreeBSD): the Bluetooth group is left out.
+        BluetoothService? bt  = null;
         bool building = false;
 
         Gtk.Box root_box;
@@ -65,22 +66,25 @@ namespace LumenSettings {
         public Gtk.Widget build() {
             // One box, so lists rebuilt in place keep their order between groups.
             root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 18);
+            if (BluetoothService.supported) bt = new BluetoothService();
 
             build_wifi();
             build_wifi_details();
             build_ethernet();
-            build_bluetooth();
+            if (bt != null) build_bluetooth();
 
             wifi.state_changed.connect(rebuild_wifi);
             wifi.state_changed.connect(rebuild_eth);
             wifi.connect_result.connect(on_wifi_connect_result);
             wifi.details_ready.connect(on_details_ready);
-            bt.state_changed.connect(rebuild_bt);
-            bt.device_details_ready.connect(on_bt_details_ready);
+            if (bt != null) {
+                bt.state_changed.connect(rebuild_bt);
+                bt.device_details_ready.connect(on_bt_details_ready);
+            }
 
             rebuild_wifi();
             rebuild_eth();
-            rebuild_bt();
+            if (bt != null) rebuild_bt();
 
             var holder = new Adw.PreferencesGroup();
             holder.add(root_box);
@@ -90,7 +94,7 @@ namespace LumenSettings {
             page.map.connect(() => {
                 wifi.paused = false;
                 wifi.refresh_scan(true);
-                bt.refresh_scan(true);
+                if (bt != null) bt.refresh_scan(true);
             });
             page.unmap.connect(() => { wifi.paused = true; });
             page.add(holder);
@@ -442,7 +446,7 @@ namespace LumenSettings {
 
         public void reveal(string anchor) {
             // Focusing scrolls the PreferencesPage viewport to it.
-            if (anchor == "bluetooth") bt_switch.grab_focus();
+            if (anchor == "bluetooth" && bt_switch != null) bt_switch.grab_focus();
         }
 
         void build_bluetooth() {

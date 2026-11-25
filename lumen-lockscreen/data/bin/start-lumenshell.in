@@ -1,0 +1,84 @@
+#!/bin/sh
+# LumenShell session launcher (lumenshell.desktop Exec=). Wayfire's [autostart]
+# (see ../wayfire/lumenshell.ini.d/autostart.ini) spawns the lumen-* binaries.
+
+set -e
+
+# --- 1. Session identity ----------------------------------------------------
+export XDG_CURRENT_DESKTOP=LumenShell
+export XDG_SESSION_DESKTOP=lumenshell
+export XDG_SESSION_TYPE=wayland
+
+# Pin NGL — Vulkan misbehaves on some host GPUs. Inherited by every autostarted
+# GTK binary; export GSK_RENDERER beforehand to override.
+export GSK_RENDERER="${GSK_RENDERER:-gl}"
+
+# --- 2. Non-systemd session plumbing (FreeBSD, …) ---------------------------
+# On systemd distros logind/pam_systemd provide all of this; elsewhere the
+# launcher has to. Every step is skipped when the variable is already set.
+if [ "$(uname -s)" = "FreeBSD" ]; then
+    # Wayland needs a private runtime dir. pam_xdg(8) (base since 14.1, add
+    # `session optional pam_xdg.so` to /etc/pam.d/system or your login
+    # manager) creates /var/run/xdg/$USER; fall back to a 0700 dir in /tmp.
+    if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+        XDG_RUNTIME_DIR="/tmp/$(id -u)-runtime-dir"
+        if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+            mkdir -m 0700 "$XDG_RUNTIME_DIR"
+        fi
+        export XDG_RUNTIME_DIR
+    fi
+
+    # Shell-launched sessions from ttyv0 have no session bus; give Wayfire
+    # (and so every autostarted lumen-* binary) one that ends with it.
+    if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -z "${LUMEN_IN_DBUS_SESSION:-}" ] \
+       && command -v dbus-run-session >/dev/null 2>&1; then
+        export LUMEN_IN_DBUS_SESSION=1
+        exec dbus-run-session -- "$0" "$@"
+    fi
+
+    # Regional formats chosen in Settings > Users: systemd reads environment.d
+    # for us on Linux; here the launcher does (KEY=VALUE lines only).
+    for conf in "${XDG_CONFIG_HOME:-$HOME/.config}"/environment.d/*.conf; do
+        [ -r "$conf" ] || continue
+        while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in
+                ''|'#'*) ;;
+                [A-Za-z_]*=*) export "$line" ;;
+            esac
+        done < "$conf"
+    done
+fi
+
+# --- 3. Optional pre-start hooks --------------------------------------------
+if [ -d @SYSCONFDIR@/lumenshell/pre-start.d ]; then
+    for hook in @SYSCONFDIR@/lumenshell/pre-start.d/*.sh; do
+        [ -r "$hook" ] && . "$hook"
+    done
+fi
+
+# --- 4. Hand env to systemd user manager ------------------------------------
+# Best-effort: failures are non-fatal (works on systemd distros, no-op elsewhere).
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user import-environment \
+        XDG_CURRENT_DESKTOP \
+        XDG_SESSION_DESKTOP \
+        XDG_SESSION_TYPE \
+        XDG_SESSION_CLASS \
+        XDG_SESSION_ID \
+        WAYLAND_DISPLAY \
+        DISPLAY \
+        2>/dev/null || true
+fi
+
+# --- 5. Locate wayfire ------------------------------------------------------
+WAYFIRE_BIN="${WAYFIRE_BIN:-$(command -v wayfire || true)}"
+if [ -z "$WAYFIRE_BIN" ]; then
+    echo "start-lumenshell: wayfire not found on PATH" >&2
+    echo "Install wayfire (see install_dependencies.py; on FreeBSD" \
+         "scripts/freebsd/build-extern.sh wayfire) and retry." >&2
+    exit 1
+fi
+
+# --- 6. Launch --------------------------------------------------------------
+# exec so wayfire is the session leader logind (or ConsoleKit2) tracks.
+exec "$WAYFIRE_BIN" "$@"

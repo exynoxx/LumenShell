@@ -24,6 +24,18 @@ public class StateWatcher : Object {
 
     public StateWatcher(OsdService service) {
         this.service = service;
+#if FREEBSD
+        // backlight(9) covers the panel and (on drivers that register one)
+        // the keyboard; there is no CapsLock LED in userland. read_int()
+        // dispatches on the path.
+        screen_path = LumenCommon.Bsd.Backlight.first_device();
+        kbd_path    = LumenCommon.Bsd.Backlight.keyboard_device();
+        if (screen_path != null) screen_max = 100;
+        if (kbd_path != null)    kbd_max    = 100;
+        if (screen_path != null || kbd_path != null)
+            Timeout.add(500, this.tick);
+        return;
+#endif
         discover(out kbd_path,    out kbd_max,    "/sys/class/leds",      "::kbd_backlight", true);
         discover(out screen_path, out screen_max, "/sys/class/backlight", null,              true);
         int _unused;
@@ -135,6 +147,10 @@ public class StateWatcher : Object {
     }
 
     private static int read_int(string path) {
+#if FREEBSD
+        if (path.has_prefix(LumenCommon.Bsd.Backlight.DIR + "/"))
+            return LumenCommon.Bsd.Backlight.get_percent(path);
+#endif
         string contents = "";
         try {
             if (FileUtils.get_contents(path, out contents)) {

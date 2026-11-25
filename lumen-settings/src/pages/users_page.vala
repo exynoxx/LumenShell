@@ -73,9 +73,18 @@ namespace LumenSettings {
                 description = "Changes apply at next login.",
             };
             string[] locales = {};
+#if FREEBSD
+            // No localectl: locale(1) lists every installed locale; offer the
+            // UTF-8 ones, as localectl effectively does.
+            var out = Proc.run_capture({ "locale", "-a" });
+            if (out != null)
+                foreach (var l in out.split("\n"))
+                    if (l.strip().has_suffix(".UTF-8")) locales += l.strip();
+#else
             var out = Proc.run_capture({ "localectl", "list-locales" });
             if (out != null)
                 foreach (var l in out.split("\n")) if (l.strip() != "") locales += l.strip();
+#endif
 
             var lang = "";
             var lv = usr != null ? usr.get_cached_property("Language") : null;

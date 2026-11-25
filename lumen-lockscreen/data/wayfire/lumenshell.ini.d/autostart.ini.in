@@ -1,5 +1,5 @@
 # Reference snippet, not a standalone config: merge these blocks into
-# ~/.config/wayfire.ini, e.g. `cat /usr/share/lumenshell/wayfire.ini.d/autostart.ini >> ~/.config/wayfire.ini`.
+# ~/.config/wayfire.ini, e.g. `cat @DATADIR@/lumenshell/wayfire.ini.d/autostart.ini >> ~/.config/wayfire.ini`.
 
 [core]
 # Append `autostart` to your existing plugin list rather than overwriting it.
@@ -9,22 +9,22 @@
 #           window-rules wm-actions wobbly zoom
 
 [autostart]
-# Wayfire spawns these with stdout/stderr on /dev/null; systemd-cat routes
-# them to the journal (journalctl --user -t lumen-panel).
+# Wayfire spawns these with stdout/stderr on /dev/null; `@LOGGER@ <tag>`
+# routes them to @LOG_HINT@.
 # MUST run first: its session bootstrap is what lets xdg-desktop-portal activate
 # (else libadwaita apps render light and ScreenCast is dead).
-session_daemon = systemd-cat -t lumen-session lumen-session
+session_daemon = @LOGGER@ lumen-session lumen-session
 # Without a polkit agent every privileged action fails silently. Harmless if
 # the binary wasn't built.
-polkit_agent  = systemd-cat -t lumen-polkit-agent lumen-polkit-agent
-notifications = systemd-cat -t lumen-notifications lumen-notifications
-panel         = systemd-cat -t lumen-panel lumen-panel
-drawer        = systemd-cat -t lumen-drawer lumen-drawer
-osd           = systemd-cat -t lumen-osd lumen-osd
+polkit_agent  = @LOGGER@ lumen-polkit-agent lumen-polkit-agent
+notifications = @LOGGER@ lumen-notifications lumen-notifications
+panel         = @LOGGER@ lumen-panel lumen-panel
+drawer        = @LOGGER@ lumen-drawer lumen-drawer
+osd           = @LOGGER@ lumen-osd lumen-osd
 # Resident Spotlight-style search; harmless if the binary wasn't built.
-search        = systemd-cat -t lumen-search lumen-search
+search        = @LOGGER@ lumen-search lumen-search
 # Built-in idle lock; no swayidle needed. Harmless if the binary wasn't built.
-lockscreen    = systemd-cat -t lumen-lockscreen lumen-lockscreen
+lockscreen    = @LOGGER@ lumen-lockscreen lumen-lockscreen
 
 # Optional extras — uncomment to enable.
 # background    = swaybg -i /path/to/wallpaper.jpg -m fill

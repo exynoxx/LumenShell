@@ -3,7 +3,6 @@ namespace LumenSettings {
     // evdev.lst: `! layout` lines are `<code> <name>`, `! variant` lines are
     // `<varcode> <layout>: <name>`. Missing file ⇒ hard-coded layouts, no variants.
     public class XkbLayouts : GLib.Object {
-        const string PATH = "/usr/share/X11/xkb/rules/evdev.lst";
 
         public string[] layout_codes;
         public string[] layout_names;
@@ -39,11 +38,13 @@ namespace LumenSettings {
         }
 
         void load() {
+            // xkeyboard-config: /usr/share on Linux, /usr/local/share on FreeBSD.
+            var path = LumenCommon.Paths.system_data_file("X11/xkb/rules/evdev.lst");
             string content;
             try {
-                FileUtils.get_contents(PATH, out content);
+                FileUtils.get_contents(path, out content);
             } catch (Error e) {
-                stderr.printf("XkbLayouts: read %s: %s\n", PATH, e.message);
+                stderr.printf("XkbLayouts: read %s: %s\n", path, e.message);
                 load_fallback();
                 return;
             }

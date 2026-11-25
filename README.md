@@ -95,12 +95,14 @@ C++ `shared_module`s, each gated by a Meson option. IPC verbs are exposed throug
 | Debian 13 | ✅ | ❌ | ❌ |
 | Arch | ✅ | ❌ | ✅? |
 | openSUSE TW | ✅ | ❌ | ✅? |
+| FreeBSD 14+ | ✅? | ⚠️ `scripts/freebsd/build-extern.sh wayfire` | ✅? |
 
 Plugins need Wayfire 0.10 + wlroots 0.19; elsewhere, configure with the plugin options off.
+FreeBSD uses native backends (OSS, backlight(9), wpa_supplicant, ConsoleKit2, OpenPAM); see [docs/FREEBSD.md](docs/FREEBSD.md).
 
 ### 1. Install dependencies
 
-A helper script covers Fedora, Ubuntu/Debian and Arch:
+A helper script covers Fedora, Ubuntu/Debian, Arch and FreeBSD (`pkg`; then run `scripts/freebsd/setup-system.sh`, see [docs/FREEBSD.md](docs/FREEBSD.md)):
 
 ```sh
 python3 install_dependencies.py

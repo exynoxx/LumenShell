@@ -37,7 +37,8 @@ namespace LumenCommon {
 
         // Regional formats (LC_TIME, ...) for the Users page. environment.d is
         // what reaches the session: GDM imports the systemd user environment,
-        // while profile.d (and so Fedora's ~/.i18n) is never sourced.
+        // while profile.d (and so Fedora's ~/.i18n) is never sourced. Without
+        // systemd (FreeBSD) start-lumenshell sources the same file itself.
         public static string formats_env_conf() {
             return Environment.get_user_config_dir() + "/environment.d/90-lumen-formats.conf";
         }
@@ -62,7 +63,19 @@ namespace LumenCommon {
             var packaged = datadir + "/" + packaged_relpath;
             if (FileUtils.test(packaged, FileTest.EXISTS)) return packaged;
 
-            return "/usr/share/" + packaged_relpath;
+            return system_data_file(packaged_relpath);
+        }
+
+        // First existing <dir>/<relpath> over the XDG system data dirs
+        // (GLib defaults them to /usr/local/share:/usr/share, so FreeBSD's
+        // ports prefix is found), else the /usr/share path. Used for files
+        // other packages install: Wayfire metadata, xkb rules, wallpapers.
+        public static string system_data_file(string relpath) {
+            foreach (var dir in Environment.get_system_data_dirs()) {
+                var p = Path.build_filename(dir, relpath);
+                if (FileUtils.test(p, FileTest.EXISTS)) return p;
+            }
+            return "/usr/share/" + relpath;
         }
     }
 

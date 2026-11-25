@@ -1,0 +1,25 @@
+[
+{ type: install
+  message: <<EOM
+LumenShell needs a little system setup (groups, rc.conf, devfs rules,
+wpa_supplicant control socket, syslog). Run, as root:
+
+  /usr/local/share/lumenshell/freebsd/setup-system.sh -u <user>
+
+or apply the samples in /usr/local/share/lumenshell/freebsd by hand:
+
+  - pw groupmod video -m <user>; pw groupmod operator -m <user>
+  - sysrc dbus_enable=YES seatd_enable=YES
+  - /etc/wpa_supplicant.conf: ctrl_interface_group=wheel, update_config=1
+  - devfs.rules, syslog.d and newsyslog.conf.d drop-ins
+
+Then merge /usr/local/share/lumenshell/wayfire.ini.d/autostart.ini into
+~/.config/wayfire.ini and start the session with start-lumenshell (or pick
+"LumenShell" in your display manager).
+
+lumen-lockscreen authenticates through the setuid-root helper
+/usr/local/libexec/lumen-chkpass, because OpenPAM's pam_unix can only read
+master.passwd as root. PAM policy: /usr/local/etc/pam.d/lumen-lockscreen.
+EOM
+}
+]

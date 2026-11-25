@@ -35,10 +35,12 @@ public class ClockWidget : Gtk.Box {
         // GLib timers run on CLOCK_MONOTONIC, which stops during suspend, so the
         // minute-aligned tick would be up to a minute stale on resume — and the
         // lock screen is exactly what is showing then. Re-sync on wake.
+        // login1 on systemd, ConsoleKit2 on FreeBSD: same signal, other names.
+        string svc, path, iface;
+        LogindBridge.sleep_signal_source(out svc, out path, out iface);
         try {
             sleep_sub = Bus.get_sync(BusType.SYSTEM).signal_subscribe(
-                "org.freedesktop.login1", "org.freedesktop.login1.Manager",
-                "PrepareForSleep", "/org/freedesktop/login1", null,
+                svc, iface, "PrepareForSleep", path, null,
                 DBusSignalFlags.NONE, (c, s, p, i, n, args) => {
                     if (!args.get_child_value(0).get_boolean()) tick();
                 });

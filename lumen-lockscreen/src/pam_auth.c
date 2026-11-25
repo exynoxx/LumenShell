@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef LUMEN_FREEBSD
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <spawn.h>
+#include <unistd.h>
+#endif
+
 /* The single password the conversation replies with. Carried through PAM's
  * appdata_ptr so the conv callback stays reentrant (one per authenticate). */
 struct conv_data {
@@ -47,8 +55,59 @@ static int lumen_conv(int num_msg, const struct pam_message **msg,
     return PAM_SUCCESS;
 }
 
+#ifdef LUMEN_FREEBSD
+/* Unprivileged OpenPAM can't verify a pam_unix password (master.passwd is
+ * root-only), so hand it to the setuid lumen-chkpass helper over a socket
+ * (MSG_NOSIGNAL: a helper that dies early must not SIGPIPE the locker).
+ * posix_spawn keeps this safe in a threaded GTK process. Returns the helper's
+ * exit status, which is a PAM result code. */
+static int helper_authenticate(const char *password)
+{
+    int sv[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv) != 0)
+        return PAM_SYSTEM_ERR;
+
+    posix_spawn_file_actions_t fa;
+    posix_spawn_file_actions_init(&fa);
+    posix_spawn_file_actions_adddup2(&fa, sv[0], STDIN_FILENO);
+
+    char *argv[] = { (char *) LUMEN_CHKPASS_PATH, NULL };
+    char *envp[] = { NULL };
+    pid_t pid;
+    int rc = posix_spawn(&pid, LUMEN_CHKPASS_PATH, &fa, NULL, argv, envp);
+    posix_spawn_file_actions_destroy(&fa);
+    close(sv[0]);
+    if (rc != 0) {
+        close(sv[1]);
+        return PAM_SYSTEM_ERR;
+    }
+
+    size_t len = password != NULL ? strlen(password) : 0, off = 0;
+    while (off < len) {
+        ssize_t n = send(sv[1], password + off, len - off, MSG_NOSIGNAL);
+        if (n < 0 && errno == EINTR)
+            continue;
+        if (n <= 0)
+            break;
+        off += (size_t) n;
+    }
+    close(sv[1]);
+
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR)
+            return PAM_SYSTEM_ERR;
+    }
+    return WIFEXITED(status) ? WEXITSTATUS(status) : PAM_SYSTEM_ERR;
+}
+#endif
+
 int lumen_pam_authenticate(const char *service, const char *user, const char *password)
 {
+#ifdef LUMEN_FREEBSD
+    if (geteuid() != 0 && access(LUMEN_CHKPASS_PATH, X_OK) == 0)
+        return helper_authenticate(password);
+#endif
     struct conv_data data = { password };
     struct pam_conv conv = { lumen_conv, &data };
     pam_handle_t *pamh = NULL;

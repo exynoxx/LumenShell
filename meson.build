@@ -6,6 +6,19 @@ project('lumenshell', ['c', 'vala'],
 cc = meson.get_compiler('c')
 fs = import('fs')
 
+# FreeBSD: native backends replace the Linux-only ones (sysfs, prctl, nmcli,
+# rfkill, BlueZ, brightnessctl, systemd). Vala sees --define=FREEBSD, C sees
+# -DLUMEN_FREEBSD. See docs/FREEBSD.md.
+is_freebsd = host_machine.system() == 'freebsd'
+if is_freebsd
+  add_project_arguments('--define=FREEBSD', language: 'vala')
+  add_project_arguments(
+    '-DLUMEN_FREEBSD',
+    '-I' + (meson.project_source_root() / 'lumen-common' / 'bsd'),
+    language: 'c',
+  )
+endif
+
 glib_dep        = dependency('glib-2.0')
 gio_dep         = dependency('gio-2.0')
 gee_dep         = dependency('gee-0.8')
@@ -38,6 +51,16 @@ common_base = files(
   'lumen-common/tray_applets.vala',
 )
 
+# FreeBSD: sysctl/kenv/procctl/backlight shim (proc.vala needs it in every
+# target) and the OSS mixer, which lumen-osdctl uses without common_net.
+if is_freebsd
+  common_base += files(
+    'lumen-common/bsd/lumen_bsd.c',
+    'lumen-common/bsd/bsd.vala',
+    'lumen-common/bsd/oss_mixer.vala',
+  )
+endif
+
 # + gtk4.
 common_gtk = files(
   'lumen-common/theme_json.vala',
@@ -62,6 +85,14 @@ common_net = files(
   'lumen-common/sound_pactl.vala',
   'lumen-common/sound_service.vala',
 )
+# FreeBSD: wpa_supplicant/ifconfig Wi-Fi and OSS sound clients. nmcli.vala
+# and sound_pactl.vala stay: they also define the shared data classes.
+if is_freebsd
+  common_net += files(
+    'lumen-common/bsd/wpa_cli.vala',
+    'lumen-common/bsd/sound_oss.vala',
+  )
+endif
 
 # + wayland + wlhooks.
 display_ctl_source = files(
@@ -482,7 +513,15 @@ else
 endif
 
 # --- lumen-lockscreen + lumen-lockctl ---
-gtk4_session_lock_dep = dependency('gtk4-session-lock-0', required: get_option('with_lockscreen'))
+# gtk4-layer-shell >= 1.1 ships the same gtk_session_lock_* API (header
+# gtk4-session-lock.h) inside libgtk4-layer-shell, which is what FreeBSD's
+# x11-toolkits/gtk4-layer-shell provides; fall back to it when the standalone
+# gtk4-session-lock-0 isn't installed.
+gtk4_session_lock_dep = dependency('gtk4-session-lock-0', required: false)
+if not gtk4_session_lock_dep.found()
+  gtk4_session_lock_dep = dependency('gtk4-layer-shell-0', version: '>=1.1.0',
+                                     required: get_option('with_lockscreen'))
+endif
 pam_dep               = cc.find_library('pam', required: get_option('with_lockscreen'))
 
 if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and pam_dep.found()
@@ -543,10 +582,25 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     'lumen-lockscreen/src/pam_auth.c',
   )
 
+  lockscreen_c_args = lumen_datadir_c_args
+  if is_freebsd
+    # OpenPAM's pam_unix needs root to read master.passwd: the locker asks this
+    # setuid helper instead (lumen-lockscreen/src/bsd/lumen-chkpass.c).
+    chkpass_path = get_option('prefix') / get_option('libexecdir') / 'lumen-chkpass'
+    lockscreen_c_args += ['-DLUMEN_CHKPASS_PATH="' + chkpass_path + '"']
+    executable('lumen-chkpass',
+      files('lumen-lockscreen/src/bsd/lumen-chkpass.c'),
+      dependencies: [pam_dep],
+      install: true,
+      install_dir: get_option('libexecdir'),
+      install_mode: 'rwsr-xr-x',
+    )
+  endif
+
   executable('lumen-lockscreen',
     lockscreen_sources + lockscreen_resources + common_base + common_gtk + common_system,
     vala_args: lockscreen_vala_args,
-    c_args: lumen_datadir_c_args,
+    c_args: lockscreen_c_args,
     dependencies: lockscreen_deps,
     include_directories: include_directories('lumen-lockscreen/src'),
     link_args: ['-Wl,--no-as-needed'],
@@ -561,21 +615,34 @@ if get_option('with_lockscreen').allowed() and gtk4_session_lock_dep.found() and
     install: true,
   )
 
-  # Always /etc/pam.d, never under the install prefix.
+  # Linux: always /etc/pam.d, never under the install prefix. FreeBSD: ports
+  # convention, <prefix>/etc/pam.d (/usr/local/etc/pam.d), which OpenPAM
+  # searches after /etc/pam.d.
   pam_base = get_option('pam_base')
   if pam_base == 'auto'
-    pam_base = fs.exists('/etc/pam.d/system-auth') ? 'system-auth' : 'common'
+    if is_freebsd
+      pam_base = 'system'
+    else
+      pam_base = fs.exists('/etc/pam.d/system-auth') ? 'system-auth' : 'common'
+    endif
   endif
   pam_conf = configuration_data()
-  pam_conf.set('PAM_AUTH',    pam_base == 'common' ? 'common-auth'    : 'system-auth')
-  pam_conf.set('PAM_ACCOUNT', pam_base == 'common' ? 'common-account' : 'system-auth')
+  if pam_base == 'system'
+    # FreeBSD/OpenPAM: /etc/pam.d/system holds both stacks.
+    pam_conf.set('PAM_AUTH',    'system')
+    pam_conf.set('PAM_ACCOUNT', 'system')
+  else
+    pam_conf.set('PAM_AUTH',    pam_base == 'common' ? 'common-auth'    : 'system-auth')
+    pam_conf.set('PAM_ACCOUNT', pam_base == 'common' ? 'common-account' : 'system-auth')
+  endif
   # .pam suffix: the build dir already has a lumen-lockscreen executable.
   pam_file = configure_file(
     input: 'lumen-lockscreen/data/pam.d/lumen-lockscreen.in',
     output: 'lumen-lockscreen.pam',
     configuration: pam_conf,
   )
-  install_data(pam_file, rename: 'lumen-lockscreen', install_dir: '/etc/pam.d')
+  pam_dir = is_freebsd ? get_option('prefix') / get_option('sysconfdir') / 'pam.d' : '/etc/pam.d'
+  install_data(pam_file, rename: 'lumen-lockscreen', install_dir: pam_dir)
 
   message('lumen-lockscreen: enabled')
 else
@@ -585,10 +652,13 @@ endif
 # --- session / XDG portal glue ---
 # The target binds graphical-session.target so xdg-desktop-portal can start
 # under Wayfire. systemd user units always go in <prefix>/lib, never lib64.
-install_data(
-  'data/systemd/lumenshell-session.target',
-  install_dir: get_option('prefix') / 'lib' / 'systemd' / 'user',
-)
+# FreeBSD has no systemd: dbus-daemon activates the portal directly.
+if not is_freebsd
+  install_data(
+    'data/systemd/lumenshell-session.target',
+    install_dir: get_option('prefix') / 'lib' / 'systemd' / 'user',
+  )
+endif
 install_data(
   'data/xdg-desktop-portal/lumenshell-portals.conf',
   install_dir: get_option('datadir') / 'xdg-desktop-portal',
@@ -604,18 +674,51 @@ configure_file(
   configuration: session_conf,
   install_dir: get_option('datadir') / 'wayland-sessions',
 )
-install_data(
-  'lumen-lockscreen/data/bin/start-lumenshell',
+# @SYSCONFDIR@: pre-start hooks live in /etc on Linux and in the ports
+# prefix's etc (/usr/local/etc) on FreeBSD, per hier(7).
+launcher_conf = configuration_data()
+launcher_conf.set('SYSCONFDIR', is_freebsd
+  ? get_option('prefix') / get_option('sysconfdir') : '/etc')
+configure_file(
+  input: 'lumen-lockscreen/data/bin/start-lumenshell.in',
+  output: 'start-lumenshell',
+  configuration: launcher_conf,
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x',
 )
 # Path is referenced by the snippet's own header; keep them in sync.
-install_data(
-  'lumen-lockscreen/data/wayfire/lumenshell.ini.d/autostart.ini',
+# Wayfire discards autostart output: route it to the journal (systemd-cat) on
+# Linux, to syslogd via daemon(8) on FreeBSD (data/freebsd/syslog.d).
+autostart_conf = configuration_data()
+autostart_conf.set('LOGGER', is_freebsd ? 'daemon -T' : 'systemd-cat -t')
+autostart_conf.set('LOG_HINT', is_freebsd
+  ? 'syslogd (/var/log/lumenshell.log with data/freebsd/syslog.d, else /var/log/messages)'
+  : 'the journal (journalctl --user -t lumen-panel)')
+autostart_conf.set('DATADIR', get_option('prefix') / get_option('datadir'))
+configure_file(
+  input: 'lumen-lockscreen/data/wayfire/lumenshell.ini.d/autostart.ini.in',
+  output: 'autostart.ini',
+  configuration: autostart_conf,
   install_dir: get_option('datadir') / 'lumenshell' / 'wayfire.ini.d',
 )
 
+# FreeBSD system integration samples (devfs.rules, syslog.d, newsyslog.conf.d,
+# wpa_supplicant.conf), installed for scripts/freebsd/setup-system.sh and
+# for admins who prefer to merge them by hand.
+if is_freebsd
+  install_subdir('data/freebsd',
+    install_dir: get_option('datadir') / 'lumenshell',
+    strip_directory: false,
+  )
+  install_data('scripts/freebsd/setup-system.sh',
+    install_dir: get_option('datadir') / 'lumenshell' / 'freebsd',
+    install_mode: 'rwxr-xr-x',
+  )
+endif
+
 # --- wayfire-plugins/* ---
+# They build unchanged on FreeBSD against x11-wm/wayfire + graphics/wlroots019
+# (or scripts/freebsd/build-extern.sh wayfire when ports lag behind 0.10).
 # C++ is only enabled when a plugin is, so the Vala tree builds without it.
 if get_option('with_desktop_peek') \
    or get_option('with_curtain_peek') \

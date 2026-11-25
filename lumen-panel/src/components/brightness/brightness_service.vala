@@ -1,5 +1,7 @@
 // Reads sysfs directly (cheap, no subprocess); writes via brightnessctl, which
 // carries the udev permissions to touch the backlight.
+// FreeBSD: backlight(9) ioctls on /dev/backlight/backlightN for both read and
+// write (0..100, group `video`), no subprocess.
 public class BrightnessService : GLib.Object {
 
     public signal void changed ();
@@ -18,10 +20,14 @@ public class BrightnessService : GLib.Object {
 
     public BrightnessService () {
         writer = new LumenCommon.Coalescer ((pct) => {
+#if FREEBSD
+            LumenCommon.Bsd.Backlight.set_percent (dir, pct);
+#else
             // -d: the device read() reads, not brightnessctl's default.
             LumenCommon.Proc.spawn_detached (new string[] {
                 "brightnessctl", "-d", Path.get_basename (dir), "set", "%d%%".printf (pct)
             });
+#endif
         });
         detect ();
         if (available) read ();
@@ -41,6 +47,13 @@ public class BrightnessService : GLib.Object {
     }
 
     void detect () {
+#if FREEBSD
+        var dev = LumenCommon.Bsd.Backlight.first_device ();
+        if (dev != null && LumenCommon.Bsd.Backlight.get_percent ((!) dev) >= 0) {
+            dir = (!) dev; max = 100; available = true;
+        }
+        return;
+#endif
         try {
             var bl = File.new_for_path ("/sys/class/backlight");
             var en = bl.enumerate_children ("standard::name", FileQueryInfoFlags.NONE);
@@ -57,7 +70,12 @@ public class BrightnessService : GLib.Object {
 
     void read () {
         if (!available || writer.busy) return;
+#if FREEBSD
+        int cur = LumenCommon.Bsd.Backlight.get_percent (dir);
+        if (cur < 0) return;
+#else
         int cur = read_int (dir + "/brightness");
+#endif
         int pct = (int) Math.round ((double) cur / max * 100.0);
         pct = pct.clamp (1, 100);
         if (pct == percent) return;

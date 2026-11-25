@@ -21,7 +21,12 @@ public class SoundService : GLib.Object {
     private const uint POLL_MS = 1500;
     private const uint EVENT_DEBOUNCE_MS = 150;
 
+#if FREEBSD
+    // OSS via mixer(8); see lumen-common/bsd/sound_oss.vala.
+    private OssMixerClient pactl       = new OssMixerClient();
+#else
     private PactlClient pactl          = new PactlClient();
+#endif
     // Sources, sink inputs and input volume are only queried when set.
     private bool        track_streams;
     private bool        poll_in_flight = false;
@@ -64,6 +69,11 @@ public class SoundService : GLib.Object {
 
     private void start_watch() {
         if (watcher.running) return;
+#if FREEBSD
+        // OSS has no change notifications (devd only reports hotplug): poll.
+        start_poll();
+        return;
+#endif
         if (watcher.start({ "pactl", "subscribe" })) {
             stop_poll();
             need_info = true;   // events may have been missed while it was down
@@ -292,6 +302,21 @@ public class SoundService : GLib.Object {
 
     private void spawn_meter() {
         if (!meter_running) return;
+#if FREEBSD
+        // OSS's per-open defaults are exactly the meter's format: unsigned
+        // 8-bit, mono, 8 kHz. /dev/dspN of the chosen source, via vchans so
+        // other recorders keep working.
+        try {
+            string dsp = default_source.has_prefix("pcm")
+                ? "/dev/dsp" + default_source.substring(3) : "/dev/dsp";
+            meter_proc = new GLib.Subprocess.newv({ "cat", dsp },
+                GLib.SubprocessFlags.STDOUT_PIPE | GLib.SubprocessFlags.STDERR_SILENCE);
+            read_loop.begin(meter_proc.get_stdout_pipe(), meter_proc);
+        } catch (GLib.Error e) {
+            meter_proc = null;
+        }
+        return;
+#endif
         try {
             string[] argv = { "parec" };
             if (default_source != "") {

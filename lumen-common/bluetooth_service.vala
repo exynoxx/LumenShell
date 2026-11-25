@@ -13,6 +13,15 @@ public class BluetoothService : GLib.Object {
 
     public bool connected { get { return connected_name != ""; } }
 
+    // BlueZ (DBus + bluetoothctl + rfkill) is Linux-only. FreeBSD's own stack
+    // (ng_hci, hccontrol, hcsecd) has no session-bus API to drive, so the UI
+    // leaves Bluetooth out there rather than show a dead switch.
+#if FREEBSD
+    public static bool supported { get { return false; } }
+#else
+    public static bool supported { get { return true; } }
+#endif
+
     private const uint SCAN_SECS    = 8;
     private const uint COALESCE_MS  = 300;
 

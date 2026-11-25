@@ -7,6 +7,59 @@ public class Backends {
         public bool   muted;
     }
 
+#if FREEBSD
+    // FreeBSD: OSS via mixer(8) (default unit = hw.snd.default_unit) and
+    // backlight(9) for panel and keyboard. OSS can't over-amplify.
+    private static State mixer_step(string ctl_out, bool input, int delta) {
+        var c = LumenCommon.Bsd.OssMixer.read();
+        string ctl = input ? c.input_control() : ctl_out;
+        int now = (c.vol(ctl).clamp(0, 100) + delta).clamp(0, 100);
+        LumenCommon.Bsd.OssMixer.set_volume(null, ctl, now);
+        if (delta > 0) LumenCommon.Bsd.OssMixer.set_mute(null, ctl, "off");
+        return State() { value = now / 100.0, muted = delta > 0 ? false : c.mute(ctl) };
+    }
+
+    private static State mixer_toggle(bool input) {
+        var c = LumenCommon.Bsd.OssMixer.read();
+        string ctl = input ? c.input_control() : "vol";
+        LumenCommon.Bsd.OssMixer.set_mute(null, ctl, "toggle");
+        return State() { value = c.vol(ctl).clamp(0, 100) / 100.0, muted = !c.mute(ctl) };
+    }
+
+    private static State mixer_query(bool input) {
+        var c = LumenCommon.Bsd.OssMixer.read();
+        string ctl = input ? c.input_control() : "vol";
+        return State() { value = c.vol(ctl).clamp(0, 100) / 100.0, muted = c.mute(ctl) };
+    }
+
+    public static State output_volume_raise(int step) { return mixer_step("vol", false, step); }
+    public static State output_volume_lower(int step) { return mixer_step("vol", false, -step); }
+    public static State output_volume_mute_toggle()   { return mixer_toggle(false); }
+    public static State query_sink()                  { return mixer_query(false); }
+    public static State input_volume_raise(int step)  { return mixer_step("", true, step); }
+    public static State input_volume_lower(int step)  { return mixer_step("", true, -step); }
+    public static State input_volume_mute_toggle()    { return mixer_toggle(true); }
+    public static State query_source()                { return mixer_query(true); }
+
+    private static State backlight_step(int delta, bool keyboard = false) {
+        var dev = keyboard ? LumenCommon.Bsd.Backlight.keyboard_device()
+                           : LumenCommon.Bsd.Backlight.first_device();
+        if (dev == null) return State() { value = 0.0, muted = false };
+        int cur = LumenCommon.Bsd.Backlight.get_percent((!) dev);
+        int now = (cur.clamp(0, 100) + delta).clamp(0, 100);
+        LumenCommon.Bsd.Backlight.set_percent((!) dev, now);
+        return State() { value = now / 100.0, muted = false };
+    }
+
+    public static State brightness_raise(int step) { return backlight_step(step); }
+    public static State brightness_lower(int step) { return backlight_step(-step); }
+    public static State kbd_brightness_raise(int step) { return backlight_step(step, true); }
+    public static State kbd_brightness_lower(int step) { return backlight_step(-step, true); }
+
+    // No LED state is exported to userland on FreeBSD.
+    public static bool caps_lock_on() { return false; }
+#else
+
     // Setters use run_capture, not spawn_detached: the follow-up query must
     // observe the new value.
     private static void set_sync(string[] argv) {
@@ -164,4 +217,5 @@ public class Backends {
         } catch (Error e) {}
         return false;
     }
+#endif
 }

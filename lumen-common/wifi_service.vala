@@ -26,7 +26,12 @@ public class WifiService : GLib.Object {
     private uint poll_timer  = 0;
     private uint event_timer = 0;
 
+#if FREEBSD
+    // wpa_supplicant + ifconfig; see lumen-common/bsd/wpa_cli.vala.
+    private WpaClient   nmcli          = new WpaClient();
+#else
     private NmcliClient nmcli          = new NmcliClient();
+#endif
     private bool        poll_in_flight = false;
     private bool        poll_again     = false;
     private bool        scan_in_flight = false;
@@ -48,7 +53,7 @@ public class WifiService : GLib.Object {
     }
 
     // Radio state persists without us: NetworkManager keeps WirelessEnabled
-    // in its own state file.
+    // in its own state file. (FreeBSD: wpa_supplicant.conf, via rc.conf.)
     public WifiService() {
         poll_connection();
         init_watch();
@@ -73,9 +78,16 @@ public class WifiService : GLib.Object {
         start_watch();
     }
 
+    // FreeBSD: the routing socket reports link up/down, (dis)association
+    // and DHCP address changes; any line triggers the same debounced poll.
     private void start_watch() {
         if (watcher.running) return;
-        if (watcher.start({ "nmcli", "monitor" })) {
+#if FREEBSD
+        string[] monitor = { "route", "-n", "monitor" };
+#else
+        string[] monitor = { "nmcli", "monitor" };
+#endif
+        if (watcher.start(monitor)) {
             if (poll_timer != 0) { GLib.Source.remove(poll_timer); poll_timer = 0; }
             poll_connection();
         } else {

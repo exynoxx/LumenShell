@@ -173,7 +173,7 @@ namespace LumenSettings {
         // and escapes follow the real string-list format.
         string[] gallery_folders() {
             var raw = wp.get_str("gallery-folders");
-            if (raw == null) return { default_folder(), "/usr/share/backgrounds" };
+            if (raw == null) return { default_folder(), Paths.system_data_file("backgrounds") };
             var kf = new KeyFile();
             kf.set_value("x", "x", raw);
             try {

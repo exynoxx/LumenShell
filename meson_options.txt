@@ -78,7 +78,7 @@ option(
 option(
   'pam_base',
   type: 'combo',
-  choices: ['auto', 'system-auth', 'common'],
+  choices: ['auto', 'system-auth', 'common', 'system'],
   value: 'auto',
-  description: 'Base PAM stack for lumen-lockscreen: system-auth (Fedora/Arch) or common (common-auth/common-account: Debian/Ubuntu/openSUSE). Auto: system-auth if /etc/pam.d/system-auth exists.',
+  description: 'Base PAM stack for lumen-lockscreen: system-auth (Fedora/Arch), common (common-auth/common-account: Debian/Ubuntu/openSUSE) or system (FreeBSD/OpenPAM /etc/pam.d/system). Auto: system on FreeBSD, else system-auth if /etc/pam.d/system-auth exists.',
 )

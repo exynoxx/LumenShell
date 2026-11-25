@@ -1,0 +1,25 @@
+bin/lumen-drawer
+%%LOCKSCREEN%%bin/lumen-lockctl
+%%LOCKSCREEN%%bin/lumen-lockscreen
+bin/lumen-notifications
+bin/lumen-osd
+bin/lumen-osdctl
+bin/lumen-panel
+%%POLKIT%%bin/lumen-polkit-agent
+%%SEARCH%%bin/lumen-search
+bin/lumen-session
+bin/lumen-settings
+bin/start-lumenshell
+%%LOCKSCREEN%%etc/pam.d/lumen-lockscreen
+%%LOCKSCREEN%%@(root,wheel,4555) libexec/lumen-chkpass
+share/applications/org.lumenshell.Settings.desktop
+share/lumen-panel/default-theme.json
+share/lumen-settings/default-settings-theme.json
+share/lumenshell/freebsd/devfs.rules
+share/lumenshell/freebsd/newsyslog.conf.d/lumenshell.conf
+share/lumenshell/freebsd/setup-system.sh
+share/lumenshell/freebsd/syslog.d/lumenshell.conf
+share/lumenshell/freebsd/wpa_supplicant.conf.sample
+share/lumenshell/wayfire.ini.d/autostart.ini
+share/wayland-sessions/lumenshell.desktop
+share/xdg-desktop-portal/lumenshell-portals.conf

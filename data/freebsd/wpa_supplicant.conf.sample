@@ -1,0 +1,8 @@
+# Minimal /etc/wpa_supplicant.conf for LumenShell's Wi-Fi panel (wpa_cli).
+#  - ctrl_interface_group lets members of `wheel` drive wpa_supplicant without
+#    root; pick another group if your user isn't in wheel.
+#  - update_config=1 lets networks joined from the panel persist.
+# Networks you add by hand below are fine too; keep the file mode 0600.
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=wheel
+update_config=1

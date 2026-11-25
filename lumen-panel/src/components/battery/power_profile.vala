@@ -1,11 +1,14 @@
 // UNKNOWN: the backend couldn't report a value (e.g. tlp-stat needs root).
 public enum PowerProfile { UNKNOWN, PERFORMANCE, BALANCED, POWER_SAVER }
 
-public enum PowerBackend { NONE, PPD, TLP }
+// EPP: FreeBSD hwpstate_intel(4) Energy/Performance Preference sysctls.
+public enum PowerBackend { NONE, PPD, TLP, EPP }
 
 // power-profiles-daemon is preferred (polkit, no prompt); TLP is the fallback and
 // its mode commands need root, so writes go through pkexec.
 public class PowerProfileClient : GLib.Object {
+
+    private const string EPP_OID = "dev.hwpstate_intel.%d.epp";
 
     private DBusProxy? ppd = null;
     private bool       ppd_tried = false;
@@ -18,6 +21,11 @@ public class PowerProfileClient : GLib.Object {
         if (ensure_ppd() != null)
             return PowerBackend.PPD;
 
+#if FREEBSD
+        if (LumenCommon.Bsd.sysctl_int64(EPP_OID.printf(0), -1) >= 0)
+            return PowerBackend.EPP;
+#endif
+
         if (Environment.find_program_in_path("tlp") != null
             || Environment.find_program_in_path("tlp-stat") != null)
             return PowerBackend.TLP;
@@ -26,6 +34,9 @@ public class PowerProfileClient : GLib.Object {
     }
 
     public PowerProfile[] available(PowerBackend backend) {
+        if (backend == PowerBackend.EPP)
+            return { PowerProfile.PERFORMANCE, PowerProfile.BALANCED, PowerProfile.POWER_SAVER };
+
         if (backend == PowerBackend.TLP)
             return { PowerProfile.PERFORMANCE, PowerProfile.POWER_SAVER };
 
@@ -48,6 +59,17 @@ public class PowerProfileClient : GLib.Object {
     }
 
     public PowerProfile current(PowerBackend backend) {
+#if FREEBSD
+        if (backend == PowerBackend.EPP) {
+            // 0 = all performance … 100 = all efficiency; CPU 0 speaks for all.
+            int64 epp = LumenCommon.Bsd.sysctl_int64(EPP_OID.printf(0), -1);
+            if (epp < 0)   return PowerProfile.UNKNOWN;
+            if (epp <= 33) return PowerProfile.PERFORMANCE;
+            if (epp <= 66) return PowerProfile.BALANCED;
+            return PowerProfile.POWER_SAVER;
+        }
+#endif
+
         if (backend == PowerBackend.PPD) {
             var name = ppd_active_profile();
             return name != "" ? ppd_name_to_profile(name) : PowerProfile.UNKNOWN;
@@ -71,6 +93,20 @@ public class PowerProfileClient : GLib.Object {
     }
 
     public void set(PowerBackend backend, PowerProfile profile) {
+#if FREEBSD
+        if (backend == PowerBackend.EPP) {
+            int v = profile == PowerProfile.PERFORMANCE ? 0
+                  : profile == PowerProfile.BALANCED    ? 50 : 100;
+            // One root sysctl(8) for every core; polkit prompts. To skip the
+            // prompt, set it at boot from /etc/sysctl.conf instead.
+            string[] argv = { "pkexec", "/sbin/sysctl" };
+            for (int cpu = 0; LumenCommon.Bsd.sysctl_int64(EPP_OID.printf(cpu), -1) >= 0; cpu++)
+                argv += (EPP_OID + "=%d").printf(cpu, v);
+            LumenCommon.Proc.spawn_detached(argv);
+            return;
+        }
+#endif
+
         if (backend == PowerBackend.PPD) {
             string name = profile_to_ppd_name(profile);
             var p = ensure_ppd();

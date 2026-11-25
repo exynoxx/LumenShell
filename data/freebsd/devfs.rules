@@ -1,0 +1,12 @@
+# LumenShell devfs(8) ruleset — merge into /etc/devfs.rules and enable with
+#   sysrc devfs_system_ruleset="lumenshell"
+#   service devfs restart
+# (scripts/freebsd/setup-system.sh does both when no system ruleset is set.)
+#
+# backlight(9) units are root:video 0660 on current kernels already; the rule
+# keeps older kernels and custom rulesets in line. DRM nodes are what
+# Wayfire/wlroots render through, also for the `video` group.
+[lumenshell=4210]
+add path 'backlight/*' mode 0660 group video
+add path 'dri/*'       mode 0660 group video
+add path 'drm/*'       mode 0660 group video

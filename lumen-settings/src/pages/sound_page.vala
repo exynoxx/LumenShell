@@ -18,7 +18,11 @@ namespace LumenSettings {
         private delegate void SetBool(bool v);
 
         SoundService service;
+#if FREEBSD
+        OssMixerClient pactl = new OssMixerClient();  // OSS: capped at 100%
+#else
         PactlClient  pactl = new PactlClient();  // page-local, for over-100% writes
+#endif
         bool syncing = false;
 
         // Output widgets
@@ -96,7 +100,7 @@ namespace LumenSettings {
                 action_target = new Variant.string("networking:bluetooth"),
             };
             bt_link.add_suffix(new Gtk.Image.from_icon_name("go-next-symbolic"));
-            group.add(bt_link);
+            if (BluetoothService.supported) group.add(bt_link);
 
             out_scale = make_scale(0, allow_over ? 150 : 100);
             track_drag(out_scale, (v) => { out_dragging = v; });

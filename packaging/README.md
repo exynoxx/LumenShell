@@ -71,3 +71,12 @@ is not packaged on stock Fedora. `lumen-polkit-agent` is likewise gated behind
 `--with polkit_agent`: its meson option is `auto`, and `%meson` injects
 `--auto-features=enabled`, so leaving it unset would build a binary that
 `%files` does not package and fail the rpmbuild.
+
+## FreeBSD (ports)
+
+`packaging/freebsd/` is a ports skeleton for `x11/lumenshell`: copy it into
+the ports tree (or an overlay), then `make makesum && make install clean`.
+It builds with the Wayfire plugins off, because ports ship Wayfire 0.11, and
+installs the setuid `libexec/lumen-chkpass` the lock screen needs under OpenPAM.
+See `docs/FREEBSD.md` for the system setup and the side-by-side Wayfire 0.10
+build (`scripts/freebsd/build-extern.sh`).

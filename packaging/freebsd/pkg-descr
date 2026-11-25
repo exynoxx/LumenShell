@@ -1,0 +1,8 @@
+LumenShell is a ChromeOS-inspired desktop shell for Wayland, built on the
+Wayfire compositor: a panel with control center, app drawer, notifications,
+on-screen display, lock screen, polkit agent and a settings app, written in
+Vala with GTK 4 and gtk4-layer-shell.
+
+On FreeBSD it uses the native stack: OSS through mixer(8), backlight(9),
+wpa_supplicant(8)/ifconfig(8) for networking, ConsoleKit2 or shutdown(8)
+for power, OpenPAM for unlocking and syslogd(8) for logs.
